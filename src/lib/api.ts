@@ -117,6 +117,14 @@ async function dashboard(params: Record<string, unknown>): Promise<DashboardSumm
     const target = Math.round(baseTarget * multiplier)
     return { user_id: user.id, cb_email: user.email, name: user.name, is_active: user.is_active, tasks_submitted: submitted, weekly_target: target, progress: target ? submitted / target : 0 }
   })
+  // Match submissions to active contributors by email only — mixing user_id and
+  // cb_email as the same identity key in one Set let a contributor with both kinds
+  // of rows (or an unmatched email) inflate the distinct-submitter count, silently
+  // under-reporting contributors_without_submissions.
+  const activeContributorEmails = new Set(
+    (users ?? []).filter((user) => user.is_active).map((user) => user.email.toLowerCase()),
+  )
+
   const dailyReport: DailyReportRow[] = []
   const day = new Date(`${rangeStart}T00:00:00Z`)
   const endTime = new Date(`${rangeEnd}T00:00:00Z`).getTime()
@@ -126,15 +134,15 @@ async function dashboard(params: Record<string, unknown>): Promise<DashboardSumm
     const submittingContributors = new Set(
       dayEntries
         .filter((entry) => entry.status === 'submitted')
-        .map((entry) => entry.user_id ?? entry.cb_email?.toLowerCase()),
+        .map((entry) => entry.cb_email?.toLowerCase())
+        .filter((email): email is string => Boolean(email) && activeContributorEmails.has(email)),
     )
-    const activeContributors = (users ?? []).filter((user) => user.is_active).length
     dailyReport.push({
       date,
       tasks_submitted: dayEntries.filter((entry) => entry.status === 'submitted').length,
       tasks_logged: dayEntries.length,
       contributors_submitted: submittingContributors.size,
-      contributors_without_submissions: Math.max(0, activeContributors - submittingContributors.size),
+      contributors_without_submissions: Math.max(0, activeContributorEmails.size - submittingContributors.size),
     })
     day.setUTCDate(day.getUTCDate() + 1)
   }

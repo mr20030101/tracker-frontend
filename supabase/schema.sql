@@ -132,3 +132,9 @@ create policy "managers update resource files" on storage.objects for update
   using (bucket_id = 'resources' and public.is_manager()) with check (bucket_id = 'resources' and public.is_manager());
 create policy "managers delete resource files" on storage.objects for delete
   using (bucket_id = 'resources' and public.is_manager());
+
+-- Enables live INSERT/UPDATE notifications on task_submissions (e.g. the
+-- "a contributor just submitted" toast). Realtime respects the table's RLS
+-- select policy, so a manager receives every row's changes while a
+-- contributor only receives changes to rows where user_id = auth.uid().
+alter publication supabase_realtime add table public.task_submissions;
