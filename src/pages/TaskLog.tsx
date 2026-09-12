@@ -3,11 +3,12 @@ import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
-import type { Paginated, Stage, SubmissionStatus, TaskSubmission } from '../types'
+import type { Paginated, Project, Stage, SubmissionStatus, TaskSubmission } from '../types'
 import { StatusPill } from '../components/StatusPill'
 import { Avatar } from '../components/Avatar'
 import { TaskSubmissionForm } from '../components/TaskSubmissionForm'
 import { SortableHeader } from '../components/SortableHeader'
+import { BulkImportModal } from '../components/BulkImportModal'
 
 const MANAGER_ROLES = ['admin', 'lead']
 
@@ -37,7 +38,13 @@ export function TaskLog() {
   const [formTarget, setFormTarget] = useState<'new' | TaskSubmission | null>(null)
   const [editingStatusId, setEditingStatusId] = useState<number | null>(null)
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'date', dir: 'desc' })
+  const [bulkImportOpen, setBulkImportOpen] = useState(false)
   const queryClient = useQueryClient()
+
+  const { data: projects } = useQuery({
+    queryKey: ['projects'],
+    queryFn: async () => (await api.get<Project[]>('/projects')).data,
+  })
 
   const { data, isLoading } = useQuery({
     queryKey: ['task-submissions', stage, search, page, sort],
@@ -86,12 +93,22 @@ export function TaskLog() {
             {data ? `${data.total} ${isManager ? 'total' : 'of your'} submissions` : 'Loading...'}
           </p>
         </div>
-        <button
-          onClick={() => setFormTarget('new')}
-          className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
-        >
-          + Add Submission
-        </button>
+        <div className="flex gap-2">
+          {isManager && (
+            <button
+              onClick={() => setBulkImportOpen(true)}
+              className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            >
+              Bulk Import
+            </button>
+          )}
+          <button
+            onClick={() => setFormTarget('new')}
+            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
+          >
+            + Add Submission
+          </button>
+        </div>
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -270,6 +287,10 @@ export function TaskLog() {
           submission={formTarget === 'new' ? undefined : formTarget}
           onClose={() => setFormTarget(null)}
         />
+      )}
+
+      {bulkImportOpen && (
+        <BulkImportModal projects={projects ?? []} onClose={() => setBulkImportOpen(false)} />
       )}
     </div>
   )
