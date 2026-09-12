@@ -28,8 +28,8 @@ export function Login() {
     try {
       await login(email, password)
       navigate('/')
-    } catch {
-      setError('Invalid email or password.')
+    } catch (loginError) {
+      setError(loginError instanceof Error ? loginError.message : 'Unable to sign in.')
     } finally {
       setSubmitting(false)
     }
@@ -121,38 +121,38 @@ export function Login() {
           </form>
         ) : (
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Email</label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Password</label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
-            />
-          </div>
-          {error && <div className="text-sm text-status-danger-text">{error}</div>}
-          <button
-            type="submit"
-            disabled={submitting}
-            className="mt-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
-          >
-            {submitting ? 'Signing in...' : 'Sign in'}
-          </button>
-          <button type="button" onClick={() => { setMode('forgot'); setError(null); setNotice(null) }} className="text-sm text-sky-700 hover:underline">
-            Forgot password?
-          </button>
-        </form>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Email</label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Password</label>
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
+              />
+            </div>
+            {error && <div className="text-sm text-status-danger-text">{error}</div>}
+            <button
+              type="submit"
+              disabled={submitting}
+              className="mt-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+            >
+              {submitting ? 'Signing in...' : 'Sign in'}
+            </button>
+            <button type="button" onClick={() => { setMode('forgot'); setError(null); setNotice(null) }} className="text-sm text-sky-700 hover:underline">
+              Forgot password?
+            </button>
+          </form>
         )}
       </div>
     </div>
