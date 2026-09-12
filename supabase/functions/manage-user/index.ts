@@ -30,19 +30,13 @@ Deno.serve(async (request) => {
     const body = await request.json()
     if (body.password && (body.id || body.email)) {
         let targetId = body.id
-        if (!targetId && body.email) {
-            const { data: users } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 })
-            targetId = users.users.find((user) => user.email?.toLowerCase() === body.email.toLowerCase())?.id
-        }
-        if (!targetId) return errorResponse('Target Auth user was not found.', 404)
-        let { data, error } = await admin.auth.admin.updateUserById(targetId, { password: body.password })
-        if (error && body.email) {
+        if (body.email) {
             const { data: users } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 })
             const matchingUser = users.users.find((user) => user.email?.toLowerCase() === body.email.toLowerCase())
-            if (matchingUser && matchingUser.id !== targetId) {
-                ({ data, error } = await admin.auth.admin.updateUserById(matchingUser.id, { password: body.password }))
-            }
+            targetId = matchingUser?.id ?? targetId
         }
+        if (!targetId) return errorResponse('Target Auth user was not found.', 404)
+        const { data, error } = await admin.auth.admin.updateUserById(targetId, { password: body.password })
         if (error) return errorResponse(`Password reset failed: ${error.message}`, 400)
         return Response.json({ id: data.user.id }, { headers: corsHeaders })
     }
