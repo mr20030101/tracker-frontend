@@ -19,6 +19,7 @@ dist-ssr
 supabase/.temp/
 supabase/import/*.csv
 supabase/import/*.sql
+supabase/import/*.xlsx
 
 # Editor directories and files
 .vscode/*

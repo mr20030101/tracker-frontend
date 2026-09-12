@@ -14,7 +14,7 @@ export interface Project {
 }
 
 export type Stage = 'attempt' | 'l0' | 'l1'
-export type SubmissionStatus = 'submitted' | 'in_progress' | 'empty'
+export type SubmissionStatus = 'submitted' | 'in_progress' | 'empty' | 'expired' | 'claimed_by_another'
 
 export interface TaskSubmission {
   id: number

@@ -26,7 +26,7 @@ create table if not exists public.task_submissions (
   user_id uuid references public.profiles(id) on delete set null,
   project_id bigint references public.projects(id) on delete set null,
   stage text not null default 'attempt' check (stage in ('attempt', 'l0', 'l1')),
-  status text not null default 'in_progress' check (status in ('submitted', 'in_progress', 'empty')),
+  status text not null default 'in_progress' check (status in ('submitted', 'in_progress', 'empty', 'expired', 'claimed_by_another')),
   notes text,
   date date,
   submitted_at date,

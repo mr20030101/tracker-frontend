@@ -4,12 +4,16 @@ const STYLES: Record<SubmissionStatus, string> = {
   submitted: 'bg-status-success-bg text-status-success-text',
   in_progress: 'bg-status-warning-bg text-status-warning-text',
   empty: 'bg-status-danger-bg text-status-danger-text',
+  expired: 'bg-status-neutral-bg text-status-neutral-text',
+  claimed_by_another: 'bg-status-danger-bg text-status-danger-text',
 }
 
 const LABELS: Record<SubmissionStatus, string> = {
   submitted: 'Submitted',
   in_progress: 'In Progress',
   empty: 'Empty',
+  expired: 'Expired',
+  claimed_by_another: 'Claimed by Another Person',
 }
 
 export function StatusPill({ status }: { status: SubmissionStatus }) {

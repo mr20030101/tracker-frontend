@@ -12,6 +12,15 @@ interface Props {
   onClose: () => void
 }
 
+function extractErrorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message
+  if (typeof err === 'object' && err !== null && 'message' in err) {
+    const message = (err as { message?: unknown }).message
+    if (typeof message === 'string' && message) return message
+  }
+  return 'Could not save this entry. Check the fields and try again.'
+}
+
 const emptyForm = {
   cb_email: '',
   task_id: '',
@@ -77,9 +86,10 @@ export function TaskSubmissionForm({ submission, onClose }: Props) {
       queryClient.invalidateQueries({ queryKey: ['task-submissions'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] })
       queryClient.invalidateQueries({ queryKey: ['projects'] })
+      queryClient.invalidateQueries({ queryKey: ['contributor'] })
       onClose()
     },
-    onError: () => setError('Could not save this entry. Check the fields and try again.'),
+    onError: (err) => setError(extractErrorMessage(err)),
   })
 
   function handleSubmit(e: FormEvent) {
@@ -159,6 +169,8 @@ export function TaskSubmissionForm({ submission, onClose }: Props) {
               <option value="submitted">Submitted</option>
               <option value="in_progress">In Progress</option>
               <option value="empty">Empty</option>
+              <option value="expired">Expired</option>
+              <option value="claimed_by_another">Claimed by Another Person</option>
             </select>
           </div>
         </div>

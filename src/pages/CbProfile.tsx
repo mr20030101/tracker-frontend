@@ -4,10 +4,13 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { startOfWeek, toISODate, formatRange } from '../lib/week'
-import type { ContributorProfile } from '../types'
+import type { ContributorProfile, TaskSubmission } from '../types'
 import { Avatar } from '../components/Avatar'
 import { StatusPill } from '../components/StatusPill'
 import { ProgressBar } from '../components/ProgressBar'
+import { TaskSubmissionForm } from '../components/TaskSubmissionForm'
+
+const MANAGER_ROLES = ['admin', 'lead']
 
 function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
@@ -23,6 +26,7 @@ export function CbProfile() {
   const { email = '' } = useParams<{ email: string }>()
   const decodedEmail = decodeURIComponent(email)
 
+  const [editTarget, setEditTarget] = useState<TaskSubmission | null>(null)
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()))
   const weekStartIso = useMemo(() => toISODate(weekStart), [weekStart])
   const thisWeekIso = useMemo(() => toISODate(startOfWeek(new Date())), [])
@@ -55,6 +59,8 @@ export function CbProfile() {
   if (data.user && data.user.role !== 'contributor' && !isOwnProfile) {
     return <Navigate to="/" replace />
   }
+
+  const canEdit = isOwnProfile || Boolean(currentUser && MANAGER_ROLES.includes(currentUser.role))
 
   const displayName = data.user?.name ?? decodedEmail
   const progress = data.weekly_target > 0 ? data.submitted_this_week / data.weekly_target : 0
@@ -181,12 +187,13 @@ export function CbProfile() {
               <th className="px-5 py-3">Stage</th>
               <th className="px-5 py-3">Status</th>
               <th className="px-5 py-3">Date</th>
+              {canEdit && <th className="px-5 py-3 text-right">Actions</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {data.week_submissions.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-5 py-6 text-center text-gray-400">
+                <td colSpan={canEdit ? 6 : 5} className="px-5 py-6 text-center text-gray-400">
                   No submissions for this week.
                 </td>
               </tr>
@@ -202,11 +209,23 @@ export function CbProfile() {
                   <StatusPill status={row.status} />
                 </td>
                 <td className="px-5 py-3 text-gray-500">{row.date?.slice(0, 10) ?? '—'}</td>
+                {canEdit && (
+                  <td className="px-5 py-3 text-right">
+                    <button
+                      onClick={() => setEditTarget(row)}
+                      className="text-xs font-medium text-gray-500 hover:text-gray-900"
+                    >
+                      Edit
+                    </button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {editTarget && <TaskSubmissionForm submission={editTarget} onClose={() => setEditTarget(null)} />}
     </div>
   )
 }
