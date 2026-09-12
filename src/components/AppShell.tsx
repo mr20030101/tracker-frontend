@@ -16,7 +16,12 @@ function navSections(isManager: boolean, ownProfilePath: string) {
     },
     {
       label: 'Logs',
-      items: [{ to: '/task-log', label: 'Task Log' }],
+      items: isManager
+        ? [
+          { to: '/task-log', label: 'Task Log' },
+          { to: '/data-quality', label: 'Data Quality' },
+        ]
+        : [{ to: '/task-log', label: 'Task Log' }],
     },
     {
       label: 'Library',
@@ -61,7 +66,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             ? 'Users'
             : location.pathname === '/projects'
               ? 'Projects'
-              : location.pathname.startsWith('/contributors/')
+              : location.pathname === '/data-quality'
+                ? 'Data Quality'
+                : location.pathname.startsWith('/contributors/')
                 ? isManager
                   ? 'CB Profile'
                   : 'My Profile'

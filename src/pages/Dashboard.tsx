@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api } from '../lib/api'
+import { api, supabase } from '../lib/api'
 import { startOfWeek, toISODate, formatRange } from '../lib/week'
 import type { DashboardSummary, Project } from '../types'
 import { Avatar } from '../components/Avatar'
@@ -90,6 +90,24 @@ export function Dashboard() {
   const toggleActiveMutation = useMutation({
     mutationFn: async ({ userId, isActive }: { userId: string; isActive: boolean }) =>
       api.patch(`/users/${userId}`, { is_active: isActive }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] }),
+  })
+
+  // Weekly targets are configured per ISO week; edits apply to the week containing
+  // whatever range is currently being viewed (matching the lookup api.ts's dashboard()
+  // already does server-side).
+  const targetWeekStartIso = useMemo(
+    () => toISODate(startOfWeek(new Date(`${rangeStart}T00:00:00`))),
+    [rangeStart],
+  )
+
+  const targetMutation = useMutation({
+    mutationFn: async ({ userId, target }: { userId: string; target: number }) => {
+      const { error } = await supabase
+        .from('weekly_targets')
+        .upsert({ user_id: userId, week_start: targetWeekStartIso, target }, { onConflict: 'user_id,week_start' })
+      if (error) throw error
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] }),
   })
 
@@ -382,7 +400,25 @@ export function Dashboard() {
                     </Link>
                   </td>
                   <td className="px-5 py-3 font-medium">{row.tasks_submitted}</td>
-                  <td className="px-5 py-3 text-gray-500">{row.weekly_target}</td>
+                  <td className="px-5 py-3 text-gray-500">
+                    {viewMode === 'week' ? (
+                      <input
+                        type="number"
+                        min={0}
+                        defaultValue={row.weekly_target}
+                        key={`${row.user_id}-${row.weekly_target}`}
+                        onBlur={(e) => {
+                          const next = Number(e.target.value)
+                          if (Number.isFinite(next) && next >= 0 && next !== row.weekly_target) {
+                            targetMutation.mutate({ userId: row.user_id, target: next })
+                          }
+                        }}
+                        className="w-16 rounded-lg border border-gray-200 px-2 py-1 text-sm outline-none focus:border-accent"
+                      />
+                    ) : (
+                      row.weekly_target
+                    )}
+                  </td>
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-2">
                       <ProgressBar value={row.progress} />
