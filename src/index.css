@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+@theme {
+  --color-accent: #d4a017;
+  --color-accent-foreground: #1a1500;
+
+  --color-status-success-bg: #ecfdf3;
+  --color-status-success-text: #027a48;
+  --color-status-warning-bg: #fffaeb;
+  --color-status-warning-text: #b54708;
+  --color-status-danger-bg: #fef3f2;
+  --color-status-danger-text: #b42318;
+  --color-status-neutral-bg: #f2f4f7;
+  --color-status-neutral-text: #475467;
+}
+
+body {
+  @apply bg-gray-50 text-gray-900 antialiased;
+}
+
+@keyframes heartbeat {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  15% {
+    transform: scale(1.35);
+  }
+  30% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.25);
+  }
+  60% {
+    transform: scale(1);
+  }
+}
+
+.animate-heartbeat {
+  display: inline-block;
+  animation: heartbeat 1.4s ease-in-out infinite;
+  transform-origin: center;
+}
