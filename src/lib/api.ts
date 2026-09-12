@@ -9,6 +9,18 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 type Response<T> = { data: T }
 
+async function functionErrorMessage(error: { message: string; context?: globalThis.Response }): Promise<Error> {
+  if (error.context) {
+    try {
+      const body = await error.context.clone().json()
+      if (body?.error) return new Error(body.error)
+    } catch {
+      // Fall back to the SDK error when the function response is not JSON.
+    }
+  }
+  return new Error(error.message)
+}
+
 async function result<T>(query: PromiseLike<{ data: T[] | null; error: { message: string } | null }>): Promise<Response<T[]>> {
   const { data, error } = await query
   if (error) throw error
@@ -160,7 +172,7 @@ export const api = {
     await currentProfile()
     if (path === '/users') {
       const { data, error } = await supabase.functions.invoke('manage-user', { body: payload })
-      if (error) throw error
+      if (error) throw await functionErrorMessage(error)
       return { data: data as T }
     }
     const table = path.slice(1).replace('task-submissions', 'task_submissions').replace('house-rules', 'house_rules')
@@ -174,7 +186,7 @@ export const api = {
     const [, resource, id] = path.split('/')
     if (resource === 'users' && payload.password) {
       const { data, error } = await supabase.functions.invoke('manage-user', { body: { id, ...payload } })
-      if (error) throw error
+      if (error) throw await functionErrorMessage(error)
       return { data: data as T }
     }
     const table = resource === 'users' ? 'profiles' : resource.replace('task-submissions', 'task_submissions').replace('house-rules', 'house_rules')

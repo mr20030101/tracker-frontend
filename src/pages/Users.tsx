@@ -49,7 +49,7 @@ export function Users() {
   })
 
   const resetMutation = useMutation({
-    mutationFn: async () => api.patch(`/users/${resetTarget!.id}`, { password: resetPassword }),
+    mutationFn: async () => api.patch(`/users/${resetTarget!.id}`, { password: resetPassword, email: resetTarget!.email }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
       setResetTarget(null)
