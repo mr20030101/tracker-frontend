@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { Navigate, useParams, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { startOfWeek, toISODate, formatRange } from '../lib/week'
@@ -47,6 +47,10 @@ export function CbProfile() {
 
   if (isLoading || !data) {
     return <div className="text-gray-400">Loading...</div>
+  }
+
+  if (data.user && data.user.role !== 'contributor') {
+    return <Navigate to="/" replace />
   }
 
   const displayName = data.user?.name ?? decodedEmail
