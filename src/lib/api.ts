@@ -70,12 +70,16 @@ async function dashboard(params: Record<string, unknown>): Promise<DashboardSumm
   const weekEnd = weekEndDate.toISOString().slice(0, 10)
   const [{ data: users }, { data: submissions }, { data: targets }] = await Promise.all([
     supabase.from('profiles').select('*').order('name'),
-    supabase.from('task_submissions').select('user_id, project_id, status').gte('date', weekStart).lte('date', weekEnd),
+    supabase.from('task_submissions').select('user_id, cb_email, project_id, status').gte('date', weekStart).lte('date', weekEnd),
     supabase.from('weekly_targets').select('*').eq('week_start', weekStart),
   ])
   const projectId = params.project_id ? Number(params.project_id) : null
   const rows = (users ?? []).map((user) => {
-    const entries = (submissions ?? []).filter((submission) => submission.user_id === user.id && (!projectId || submission.project_id === projectId))
+    const entries = (submissions ?? []).filter(
+      (submission) =>
+        (submission.user_id === user.id || submission.cb_email?.toLowerCase() === user.email.toLowerCase()) &&
+        (!projectId || submission.project_id === projectId),
+    )
     const submitted = entries.filter((entry) => entry.status === 'submitted').length
     const target = (targets ?? []).find((item) => item.user_id === user.id)?.target ?? 50
     return { user_id: user.id, cb_email: user.email, name: user.name, is_active: user.is_active, tasks_submitted: submitted, weekly_target: target, progress: target ? submitted / target : 0 }
