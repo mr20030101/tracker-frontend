@@ -21,6 +21,7 @@ export function Dashboard() {
   const [projectId, setProjectId] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [activityFilter, setActivityFilter] = useState<ActivityFilter>('all')
+  const [showGraphs, setShowGraphs] = useState(true)
 
   const { data: projects } = useQuery({
     queryKey: ['projects'],
@@ -191,11 +192,20 @@ export function Dashboard() {
       </div>
 
       <div className="mb-6 overflow-hidden rounded-xl border border-gray-200 bg-white">
-        <div className="border-b border-gray-200 px-5 py-4">
-          <h2 className="text-sm font-semibold text-gray-900">Daily Submission Report</h2>
-          <p className="mt-1 text-xs text-gray-500">Team activity for the selected week.</p>
+        <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-900">Daily Submission Report</h2>
+            <p className="mt-1 text-xs text-gray-500">Team activity for the selected week.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowGraphs((visible) => !visible)}
+            className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
+          >
+            {showGraphs ? 'Hide Graphs' : 'Show Graphs'}
+          </button>
         </div>
-        <div className="grid grid-cols-1 gap-4 border-b border-gray-200 p-5 lg:grid-cols-2">
+        {showGraphs && <div className="grid grid-cols-1 gap-4 border-b border-gray-200 p-5 lg:grid-cols-2">
           <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-gray-700">Submitted Tasks by Day</h3>
@@ -245,7 +255,7 @@ export function Dashboard() {
               })}
             </div>
           </div>
-        </div>
+        </div>}
         <div className="overflow-x-auto">
           <table className="w-full min-w-[680px] text-left text-sm">
             <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
