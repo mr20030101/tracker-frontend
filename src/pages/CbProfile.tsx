@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Navigate, useParams, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../lib/api'
@@ -14,6 +14,15 @@ import { LineChart } from '../components/LineChart'
 
 const MANAGER_ROLES = ['admin', 'lead']
 
+const CTS_FORM_URL =
+  'https://docs.google.com/forms/d/e/1FAIpQLSfXDNf6MntiYIlJHWBlEz2uKFe7I5aNzcPQHm007bUs2qBe9w/viewform'
+
+function buildCtsFormUrl(email: string) {
+  const params = new URLSearchParams()
+  if (email) params.set('entry.544080514', email)
+  return `${CTS_FORM_URL}?${params.toString()}`
+}
+
 export function CbProfile() {
   const { user: currentUser } = useAuth()
   const { email = '' } = useParams<{ email: string }>()
@@ -22,6 +31,13 @@ export function CbProfile() {
   const isOwnProfile = currentUser?.email.toLowerCase() === decodedEmail.toLowerCase()
 
   const [formTarget, setFormTarget] = useState<'new' | TaskSubmission | null>(null)
+  const [showWarning, setShowWarning] = useState(true)
+
+  useEffect(() => {
+    setShowWarning(true)
+    const timer = setTimeout(() => setShowWarning(false), 10000)
+    return () => clearTimeout(timer)
+  }, [decodedEmail])
   const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('day')
   const [anchorDate, setAnchorDate] = useState(() => new Date())
   const thisWeekIso = useMemo(() => toISODate(startOfWeek(new Date())), [])
@@ -170,17 +186,30 @@ export function CbProfile() {
           <h1 className="text-2xl font-bold text-gray-900">{displayName}</h1>
           <p className="text-sm text-gray-500">{decodedEmail}</p>
         </div>
+        <button
+          onClick={() => window.open(buildCtsFormUrl(decodedEmail), '_blank', 'noopener,noreferrer')}
+          className="ml-auto rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+        >
+          CTS Form
+        </button>
         {data.user && (
-          <span className="ml-auto rounded-full bg-status-neutral-bg px-3 py-1 text-xs font-medium capitalize text-status-neutral-text">
+          <span className="rounded-full bg-status-neutral-bg px-3 py-1 text-xs font-medium capitalize text-status-neutral-text">
             {data.user.role}
           </span>
         )}
       </div>
 
-      {data.submitted_this_week === 0 && (!data.user || data.user.is_active) && (
+      {showWarning && data.submitted_this_week === 0 && (!data.user || data.user.is_active) && (
         <div className="mb-6 flex items-center gap-3 rounded-xl border-2 border-status-danger-text bg-status-danger-text px-5 py-4 text-sm font-semibold text-white shadow-sm">
           <span className="animate-heartbeat text-lg leading-none">⚠</span>
           <span>WARNING: No submissions logged yet this week.</span>
+          <button
+            onClick={() => setShowWarning(false)}
+            className="ml-auto text-lg leading-none text-white/80 hover:text-white"
+            aria-label="Dismiss"
+          >
+            ×
+          </button>
         </div>
       )}
 

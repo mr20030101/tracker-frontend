@@ -18,6 +18,7 @@ export function Users() {
   const [form, setForm] = useState(emptyForm)
   const [resetPassword, setResetPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
   const [searchParams] = useSearchParams()
   const search = (searchParams.get('search') ?? '').toLowerCase()
 
@@ -35,6 +36,19 @@ export function Users() {
       setError(null)
     },
     onError: (mutationError: Error) => setError(mutationError.message || 'Could not create this login.'),
+  })
+
+  const syncTaskUsersMutation = useMutation({
+    mutationFn: async () => api.post<{ created: number; updated: number; total: number }>('/users', {
+      action: 'sync-task-users',
+      password: 'password',
+    }),
+    onSuccess: ({ data: result }) => {
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+      setNotice(`${result.created} created, ${result.updated} updated from task logs.`)
+      setError(null)
+    },
+    onError: (mutationError: Error) => setError(mutationError.message || 'Could not create task-log users.'),
   })
 
   const roleMutation = useMutation({
@@ -83,7 +97,15 @@ export function Users() {
         >
           + Add Login
         </button>
+        <button
+          onClick={() => syncTaskUsersMutation.mutate()}
+          disabled={syncTaskUsersMutation.isPending}
+          className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 disabled:opacity-50"
+        >
+          {syncTaskUsersMutation.isPending ? 'Syncing...' : 'Create Task Log Users'}
+        </button>
       </div>
+      {notice && <div className="mb-4 text-sm text-status-success-text">{notice}</div>}
 
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
         <table className="w-full text-left text-sm">
