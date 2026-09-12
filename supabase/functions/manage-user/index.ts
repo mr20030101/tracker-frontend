@@ -41,12 +41,39 @@ Deno.serve(async (request) => {
         return Response.json({ id: data.user.id }, { headers: corsHeaders })
     }
 
-    const { data, error } = await admin.auth.admin.createUser({
+    if (!body.email || !body.password || !body.name) return errorResponse('Name, email, and password are required.', 400)
+
+    const { data: existingUsers } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 })
+    const existingUser = existingUsers.users.find((user) => user.email?.toLowerCase() === body.email.toLowerCase())
+    let userId = existingUser?.id
+
+    if (userId) {
+        const { error } = await admin.auth.admin.updateUserById(userId, {
+            password: body.password,
+            email_confirm: true,
+            user_metadata: { name: body.name, role: body.role },
+        })
+        if (error) return errorResponse(`User update failed: ${error.message}`, 400)
+    } else {
+        const { data, error } = await admin.auth.admin.createUser({
+            email: body.email,
+            password: body.password,
+            email_confirm: true,
+            user_metadata: { name: body.name, role: body.role },
+        })
+        if (error) return errorResponse(`User creation failed: ${error.message}`, 400)
+        userId = data.user.id
+    }
+
+    const { error: profileError } = await admin.from('profiles').upsert({
+        id: userId,
+        name: body.name,
         email: body.email,
-        password: body.password,
-        email_confirm: true,
-        user_metadata: { name: body.name, role: body.role },
+        role: body.role ?? 'contributor',
+        shift: body.shift ?? null,
+        is_active: true,
+        updated_at: new Date().toISOString(),
     })
-    if (error) return errorResponse(`User creation failed: ${error.message}`, 400)
-    return Response.json({ id: data.user.id }, { headers: corsHeaders })
+    if (profileError) return errorResponse(`Profile update failed: ${profileError.message}`, 400)
+    return Response.json({ id: userId }, { headers: corsHeaders })
 })
