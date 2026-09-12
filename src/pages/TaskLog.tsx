@@ -10,6 +10,18 @@ import { TaskSubmissionForm } from '../components/TaskSubmissionForm'
 
 const MANAGER_ROLES = ['admin', 'lead']
 
+const CTS_FORM_URL =
+  'https://docs.google.com/forms/d/e/1FAIpQLSfXDNf6MntiYIlJHWBlEz2uKFe7I5aNzcPQHm007bUs2qBe9w/viewform'
+
+function buildCtsFormUrl(row: TaskSubmission) {
+  const params = new URLSearchParams()
+  if (row.cb_email) params.set('entry.544080514', row.cb_email)
+  if (row.task_id) params.set('entry.1598956863', row.task_id)
+  if (row.project?.name) params.set('entry.525573583', row.project.name)
+  if (row.notes) params.set('entry.1155908526', row.notes)
+  return `${CTS_FORM_URL}?${params.toString()}`
+}
+
 const STAGES: { value: Stage | ''; label: string }[] = [
   { value: '', label: 'All Stages' },
   { value: 'attempt', label: 'Attempt' },
@@ -30,6 +42,7 @@ export function TaskLog() {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [formTarget, setFormTarget] = useState<'new' | TaskSubmission | null>(null)
+  const [editingStatusId, setEditingStatusId] = useState<number | null>(null)
   const queryClient = useQueryClient()
 
   const { data, isLoading } = useQuery({
@@ -144,26 +157,40 @@ export function TaskLog() {
                 <td className="px-5 py-3 uppercase text-gray-600">{row.stage}</td>
                 <td className="px-5 py-3">
                   <div className="flex items-center gap-2">
-                    <StatusPill status={row.status} />
-                    <select
-                      aria-label="Change status"
-                      value={row.status}
-                      onChange={(e) =>
-                        statusMutation.mutate({ id: row.id, status: e.target.value as SubmissionStatus })
-                      }
-                      className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs outline-none focus:border-accent"
-                    >
-                      {STATUS_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
+                    {editingStatusId === row.id ? (
+                      <select
+                        aria-label="Change status"
+                        autoFocus
+                        value={row.status}
+                        onChange={(e) => {
+                          statusMutation.mutate({ id: row.id, status: e.target.value as SubmissionStatus })
+                          setEditingStatusId(null)
+                        }}
+                        onBlur={() => setEditingStatusId(null)}
+                        className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs outline-none focus:border-accent"
+                      >
+                        {STATUS_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <button onClick={() => setEditingStatusId(row.id)}>
+                        <StatusPill status={row.status} />
+                      </button>
+                    )}
                   </div>
                 </td>
                 <td className="px-5 py-3 text-gray-500">{row.date?.slice(0, 10) ?? '—'}</td>
                 <td className="px-5 py-3 text-right">
                   <div className="flex justify-end gap-3 text-xs font-medium">
+                    <button
+                      onClick={() => window.open(buildCtsFormUrl(row), '_blank', 'noopener,noreferrer')}
+                      className="text-gray-500 hover:text-gray-900"
+                    >
+                      CTS
+                    </button>
                     <button onClick={() => setFormTarget(row)} className="text-gray-500 hover:text-gray-900">
                       Edit
                     </button>
