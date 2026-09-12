@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Navigate, useParams, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../lib/api'
+import { useAuth } from '../lib/auth'
 import { startOfWeek, toISODate, formatRange } from '../lib/week'
 import type { ContributorProfile } from '../types'
 import { Avatar } from '../components/Avatar'
@@ -18,6 +19,7 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
 }
 
 export function CbProfile() {
+  const { user: currentUser } = useAuth()
   const { email = '' } = useParams<{ email: string }>()
   const decodedEmail = decodeURIComponent(email)
 
@@ -49,7 +51,8 @@ export function CbProfile() {
     return <div className="text-gray-400">Loading...</div>
   }
 
-  if (data.user && data.user.role !== 'contributor') {
+  const isOwnProfile = currentUser?.email.toLowerCase() === decodedEmail.toLowerCase()
+  if (data.user && data.user.role !== 'contributor' && !isOwnProfile) {
     return <Navigate to="/" replace />
   }
 

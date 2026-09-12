@@ -95,11 +95,17 @@ export function AppShell({ children }: { children: ReactNode }) {
         {user && (
           <div className="border-t border-gray-200 p-3">
             <div className="flex items-center gap-2 rounded-lg p-2 hover:bg-gray-100">
-              <Avatar name={user.name} size={32} />
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-semibold">{user.name}</div>
-                <div className="truncate text-xs text-gray-400 capitalize">{user.role}</div>
-              </div>
+              <NavLink
+                to={ownProfilePath}
+                className="flex min-w-0 flex-1 items-center gap-2"
+                aria-label="Open your profile"
+              >
+                <Avatar name={user.name} size={32} />
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-semibold">{user.name}</div>
+                  <div className="truncate text-xs text-gray-400 capitalize">{user.role}</div>
+                </div>
+              </NavLink>
               <button
                 onClick={() => logout()}
                 className="text-xs font-medium text-gray-400 hover:text-gray-700"
