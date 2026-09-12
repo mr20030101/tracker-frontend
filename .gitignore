@@ -18,6 +18,7 @@ dist-ssr
 !.env.example
 supabase/.temp/
 supabase/import/*.csv
+supabase/import/*.sql
 
 # Editor directories and files
 .vscode/*
