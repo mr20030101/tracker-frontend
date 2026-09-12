@@ -187,6 +187,37 @@ export function Dashboard() {
         )}
       </div>
 
+      <div className="mb-6 overflow-hidden rounded-xl border border-gray-200 bg-white">
+        <div className="border-b border-gray-200 px-5 py-4">
+          <h2 className="text-sm font-semibold text-gray-900">Daily Submission Report</h2>
+          <p className="mt-1 text-xs text-gray-500">Team activity for the selected week.</p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[680px] text-left text-sm">
+            <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
+              <tr>
+                <th className="px-5 py-3">Date</th>
+                <th className="px-5 py-3">Submitted</th>
+                <th className="px-5 py-3">Logged</th>
+                <th className="px-5 py-3">Contributors Submitted</th>
+                <th className="px-5 py-3">No Submissions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {data?.daily_report.map((day) => (
+                <tr key={day.date} className={day.contributors_without_submissions > 0 ? 'bg-status-danger-bg/30' : ''}>
+                  <td className="px-5 py-3 font-medium text-gray-900">{day.date}</td>
+                  <td className="px-5 py-3 font-semibold text-gray-900">{day.tasks_submitted}</td>
+                  <td className="px-5 py-3 text-gray-600">{day.tasks_logged}</td>
+                  <td className="px-5 py-3 text-gray-600">{day.contributors_submitted}</td>
+                  <td className="px-5 py-3 font-medium text-status-danger-text">{day.contributors_without_submissions}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">

@@ -71,6 +71,15 @@ export interface DashboardSummary {
   week_start: string
   week_end: string
   data: DashboardRow[]
+  daily_report: DailyReportRow[]
+}
+
+export interface DailyReportRow {
+  date: string
+  tasks_submitted: number
+  tasks_logged: number
+  contributors_submitted: number
+  contributors_without_submissions: number
 }
 
 export interface ProjectBreakdown {

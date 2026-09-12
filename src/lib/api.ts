@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import type { ContributorProfile, DashboardSummary, HouseRule, Paginated, Project, Resource, TaskSubmission, User } from '../types'
+import type { ContributorProfile, DashboardSummary, DailyReportRow, HouseRule, Paginated, Project, Resource, TaskSubmission, User } from '../types'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim() || 'https://ieovepkcseytccagzedg.supabase.co'
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() ||
@@ -70,12 +70,13 @@ async function dashboard(params: Record<string, unknown>): Promise<DashboardSumm
   const weekEnd = weekEndDate.toISOString().slice(0, 10)
   const [{ data: users }, { data: submissions }, { data: targets }] = await Promise.all([
     supabase.from('profiles').select('*').eq('role', 'contributor').order('name'),
-    supabase.from('task_submissions').select('user_id, cb_email, project_id, status').gte('date', weekStart).lte('date', weekEnd),
+    supabase.from('task_submissions').select('user_id, cb_email, project_id, status, date').gte('date', weekStart).lte('date', weekEnd),
     supabase.from('weekly_targets').select('*').eq('week_start', weekStart),
   ])
   const projectId = params.project_id ? Number(params.project_id) : null
+  const filteredSubmissions = (submissions ?? []).filter((submission) => !projectId || submission.project_id === projectId)
   const rows = (users ?? []).map((user) => {
-    const entries = (submissions ?? []).filter(
+    const entries = filteredSubmissions.filter(
       (submission) =>
         (submission.user_id === user.id || submission.cb_email?.toLowerCase() === user.email.toLowerCase()) &&
         (!projectId || submission.project_id === projectId),
@@ -84,7 +85,27 @@ async function dashboard(params: Record<string, unknown>): Promise<DashboardSumm
     const target = (targets ?? []).find((item) => item.user_id === user.id)?.target ?? 50
     return { user_id: user.id, cb_email: user.email, name: user.name, is_active: user.is_active, tasks_submitted: submitted, weekly_target: target, progress: target ? submitted / target : 0 }
   })
-  return { week_start: weekStart, week_end: weekEnd, data: rows }
+  const dailyReport: DailyReportRow[] = []
+  const day = new Date(`${weekStart}T00:00:00Z`)
+  for (let index = 0; index < 7; index += 1) {
+    const date = day.toISOString().slice(0, 10)
+    const dayEntries = filteredSubmissions.filter((submission) => submission.date?.slice(0, 10) === date)
+    const submittingContributors = new Set(
+      dayEntries
+        .filter((entry) => entry.status === 'submitted')
+        .map((entry) => entry.user_id ?? entry.cb_email?.toLowerCase()),
+    )
+    const activeContributors = (users ?? []).filter((user) => user.is_active).length
+    dailyReport.push({
+      date,
+      tasks_submitted: dayEntries.filter((entry) => entry.status === 'submitted').length,
+      tasks_logged: dayEntries.length,
+      contributors_submitted: submittingContributors.size,
+      contributors_without_submissions: Math.max(0, activeContributors - submittingContributors.size),
+    })
+    day.setUTCDate(day.getUTCDate() + 1)
+  }
+  return { week_start: weekStart, week_end: weekEnd, data: rows, daily_report: dailyReport }
 }
 
 async function contributor(params: Record<string, unknown>): Promise<ContributorProfile> {
