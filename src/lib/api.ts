@@ -69,7 +69,7 @@ async function dashboard(params: Record<string, unknown>): Promise<DashboardSumm
   weekEndDate.setUTCDate(weekEndDate.getUTCDate() + 6)
   const weekEnd = weekEndDate.toISOString().slice(0, 10)
   const [{ data: users }, { data: submissions }, { data: targets }] = await Promise.all([
-    supabase.from('profiles').select('*').order('name'),
+    supabase.from('profiles').select('*').eq('role', 'contributor').order('name'),
     supabase.from('task_submissions').select('user_id, cb_email, project_id, status').gte('date', weekStart).lte('date', weekEnd),
     supabase.from('weekly_targets').select('*').eq('week_start', weekStart),
   ])

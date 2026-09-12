@@ -130,8 +130,8 @@ export function Users() {
                 <td className="px-5 py-3">
                   <span
                     className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${u.is_active
-                        ? 'bg-status-success-bg text-status-success-text'
-                        : 'bg-status-danger-bg text-status-danger-text'
+                      ? 'bg-status-success-bg text-status-success-text'
+                      : 'bg-status-danger-bg text-status-danger-text'
                       }`}
                   >
                     {u.is_active ? 'Active' : 'Disabled'}
