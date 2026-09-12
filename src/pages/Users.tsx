@@ -7,8 +7,9 @@ import { Modal } from '../components/Modal'
 import { Avatar } from '../components/Avatar'
 
 const ROLES: User['role'][] = ['contributor', 'lead', 'admin']
+const DEFAULT_PASSWORD = 'password'
 
-const emptyForm = { name: '', email: '', password: '', role: 'contributor' as User['role'], shift: '' }
+const emptyForm = { name: '', email: '', password: DEFAULT_PASSWORD, role: 'contributor' as User['role'], shift: '' }
 
 export function Users() {
   const queryClient = useQueryClient()
@@ -71,6 +72,7 @@ export function Users() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Users</h1>
           <p className="text-sm text-gray-500">Manage CB logins, roles, and passwords.</p>
+          <p className="mt-1 text-xs text-gray-400">New accounts default to: {DEFAULT_PASSWORD}</p>
         </div>
         <button
           onClick={() => setAdding(true)}
