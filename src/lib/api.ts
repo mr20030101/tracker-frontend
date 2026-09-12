@@ -1,12 +1,9 @@
 import { createClient } from '@supabase/supabase-js'
 import type { ContributorProfile, DashboardSummary, HouseRule, Paginated, Project, Resource, TaskSubmission, User } from '../types'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY')
-}
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL ?? 'https://ieovepkcseytccagzedg.supabase.co'
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ??
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imllb3ZlcGtjc2V5dGNjYWd6ZWRnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxNjU1NDUsImV4cCI6MjEwNDc0MTU0NX0.OMZEAONl3XoSwjb_RhYo70fYXThONXVBGQLlGF-OQ7s'
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
