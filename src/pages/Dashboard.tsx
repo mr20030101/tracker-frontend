@@ -67,6 +67,9 @@ export function Dashboard() {
   const submittedCount = allRows.filter((r) => r.tasks_submitted > 0).length
   const disabledCount = allRows.filter((r) => !r.is_active).length
   const noProgressCount = allRows.filter((r) => r.is_active && r.tasks_submitted === 0).length
+  const dailyReport = data?.daily_report ?? []
+  const maxDailySubmissions = Math.max(1, ...dailyReport.map((day) => day.tasks_submitted))
+  const maxDailyContributors = Math.max(1, ...dailyReport.map((day) => day.contributors_submitted))
 
   function shiftWeek(days: number) {
     setWeekStart((prev) => {
@@ -90,8 +93,8 @@ export function Dashboard() {
           <button
             onClick={() => setActivityFilter(activityFilter === 'no_submissions' ? 'all' : 'no_submissions')}
             className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${activityFilter === 'no_submissions'
-                ? 'border-status-danger-text bg-status-danger-text text-white'
-                : 'border-status-danger-text/30 bg-status-danger-bg text-status-danger-text hover:border-status-danger-text'
+              ? 'border-status-danger-text bg-status-danger-text text-white'
+              : 'border-status-danger-text/30 bg-status-danger-bg text-status-danger-text hover:border-status-danger-text'
               }`}
           >
             <span className="h-2 w-2 rounded-full bg-current" />
@@ -192,6 +195,57 @@ export function Dashboard() {
           <h2 className="text-sm font-semibold text-gray-900">Daily Submission Report</h2>
           <p className="mt-1 text-xs text-gray-500">Team activity for the selected week.</p>
         </div>
+        <div className="grid grid-cols-1 gap-4 border-b border-gray-200 p-5 lg:grid-cols-2">
+          <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-gray-700">Submitted Tasks by Day</h3>
+              <span className="text-xs text-gray-400">tasks</span>
+            </div>
+            <div className="flex h-40 items-end gap-2 sm:gap-4">
+              {dailyReport.map((day) => {
+                const height = Math.max(8, (day.tasks_submitted / maxDailySubmissions) * 100)
+                return (
+                  <div key={day.date} className="flex min-w-0 flex-1 flex-col items-center gap-2">
+                    <span className="text-xs font-semibold text-gray-600">{day.tasks_submitted}</span>
+                    <div className="flex h-28 w-full items-end">
+                      <div
+                        className="w-full rounded-t-md bg-accent transition-all"
+                        style={{ height: `${height}%` }}
+                        title={`${day.date}: ${day.tasks_submitted} submitted tasks`}
+                      />
+                    </div>
+                    <span className="text-[10px] text-gray-400">{day.date.slice(5)}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-gray-700">Contributors Active by Day</h3>
+              <span className="text-xs text-gray-400">contributors</span>
+            </div>
+            <div className="flex h-40 items-end gap-2 sm:gap-4">
+              {dailyReport.map((day) => {
+                const height = Math.max(8, (day.contributors_submitted / maxDailyContributors) * 100)
+                return (
+                  <div key={day.date} className="flex min-w-0 flex-1 flex-col items-center gap-2">
+                    <span className="text-xs font-semibold text-gray-600">{day.contributors_submitted}</span>
+                    <div className="flex h-28 w-full items-end">
+                      <div
+                        className="w-full rounded-t-md bg-sky-600 transition-all"
+                        style={{ height: `${height}%` }}
+                        title={`${day.date}: ${day.contributors_submitted} contributors submitted`}
+                      />
+                    </div>
+                    <span className="text-[10px] text-gray-400">{day.date.slice(5)}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[680px] text-left text-sm">
             <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
@@ -281,8 +335,8 @@ export function Dashboard() {
                   <td className="px-5 py-3">
                     <span
                       className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${row.is_active
-                          ? 'bg-status-success-bg text-status-success-text'
-                          : 'bg-status-danger-bg text-status-danger-text'
+                        ? 'bg-status-success-bg text-status-success-text'
+                        : 'bg-status-danger-bg text-status-danger-text'
                         }`}
                     >
                       {row.is_active ? 'Active' : 'Disabled'}
