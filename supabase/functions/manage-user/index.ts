@@ -28,7 +28,7 @@ Deno.serve(async (request) => {
     }
 
     const body = await request.json()
-    if (body.password && (body.id || body.email)) {
+    if (body.password && body.id) {
         let targetId = body.id
         if (body.email) {
             const { data: users } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 })

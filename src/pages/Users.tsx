@@ -34,7 +34,7 @@ export function Users() {
       setForm(emptyForm)
       setError(null)
     },
-    onError: () => setError('Could not create this login. The email may already be in use.'),
+    onError: (mutationError: Error) => setError(mutationError.message || 'Could not create this login.'),
   })
 
   const roleMutation = useMutation({
