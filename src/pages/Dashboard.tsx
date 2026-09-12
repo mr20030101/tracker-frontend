@@ -6,16 +6,64 @@ import { startOfWeek, toISODate, formatRange } from '../lib/week'
 import type { DashboardSummary, Project } from '../types'
 import { Avatar } from '../components/Avatar'
 import { ProgressBar } from '../components/ProgressBar'
+import { LineChart } from '../components/LineChart'
 
 type StatusFilter = 'all' | 'active' | 'disabled'
 type ActivityFilter = 'all' | 'submitted' | 'no_submissions'
 
 export function Dashboard() {
   const queryClient = useQueryClient()
-  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()))
-  const weekStartIso = useMemo(() => toISODate(weekStart), [weekStart])
-  const thisWeekIso = useMemo(() => toISODate(startOfWeek(new Date())), [])
-  const isCurrentWeek = weekStartIso === thisWeekIso
+  const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('week')
+  const [anchorDate, setAnchorDate] = useState(() => new Date())
+
+  const rangeStart = useMemo(() => {
+    if (viewMode === 'day') return toISODate(anchorDate)
+    if (viewMode === 'week') return toISODate(startOfWeek(anchorDate))
+    return toISODate(new Date(anchorDate.getFullYear(), anchorDate.getMonth(), 1))
+  }, [viewMode, anchorDate])
+
+  const rangeEnd = useMemo(() => {
+    if (viewMode === 'day') return toISODate(anchorDate)
+    if (viewMode === 'week') {
+      const d = startOfWeek(anchorDate)
+      d.setDate(d.getDate() + 6)
+      return toISODate(d)
+    }
+    return toISODate(new Date(anchorDate.getFullYear(), anchorDate.getMonth() + 1, 0))
+  }, [viewMode, anchorDate])
+
+  const isCurrentRange = useMemo(() => {
+    const today = new Date()
+    if (viewMode === 'day') return rangeStart === toISODate(today)
+    if (viewMode === 'week') return rangeStart === toISODate(startOfWeek(today))
+    return anchorDate.getFullYear() === today.getFullYear() && anchorDate.getMonth() === today.getMonth()
+  }, [viewMode, rangeStart, anchorDate])
+
+  function shiftRange(direction: 1 | -1) {
+    setAnchorDate((prev) => {
+      const next = new Date(prev)
+      if (viewMode === 'day') next.setDate(next.getDate() + direction)
+      else if (viewMode === 'week') next.setDate(next.getDate() + direction * 7)
+      else {
+        next.setDate(1)
+        next.setMonth(next.getMonth() + direction)
+      }
+      return next
+    })
+  }
+
+  function rangeLabel(): string {
+    if (viewMode === 'day') {
+      return new Date(`${rangeStart}T00:00:00`).toLocaleDateString(undefined, {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })
+    }
+    if (viewMode === 'week') return formatRange(rangeStart, rangeEnd)
+    return anchorDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+  }
 
   const [search, setSearch] = useState('')
   const [projectId, setProjectId] = useState('')
@@ -29,11 +77,11 @@ export function Dashboard() {
   })
 
   const { data, isLoading } = useQuery({
-    queryKey: ['dashboard-summary', weekStartIso, projectId],
+    queryKey: ['dashboard-summary', rangeStart, rangeEnd, viewMode, projectId],
     queryFn: async () =>
       (
         await api.get<DashboardSummary>('/dashboard/summary', {
-          params: { week_start: weekStartIso, project_id: projectId || undefined },
+          params: { range_start: rangeStart, range_end: rangeEnd, view: viewMode, project_id: projectId || undefined },
         })
       ).data,
   })
@@ -69,16 +117,9 @@ export function Dashboard() {
   const disabledCount = allRows.filter((r) => !r.is_active).length
   const noProgressCount = allRows.filter((r) => r.is_active && r.tasks_submitted === 0).length
   const dailyReport = data?.daily_report ?? []
-  const maxDailySubmissions = Math.max(1, ...dailyReport.map((day) => day.tasks_submitted))
-  const maxDailyContributors = Math.max(1, ...dailyReport.map((day) => day.contributors_submitted))
 
-  function shiftWeek(days: number) {
-    setWeekStart((prev) => {
-      const next = new Date(prev)
-      next.setDate(next.getDate() + days)
-      return next
-    })
-  }
+  const viewLabel = viewMode === 'day' ? 'Day' : viewMode === 'week' ? 'Week' : 'Month'
+  const periodPhrase = viewMode === 'day' ? 'today' : viewMode === 'week' ? 'this week' : 'this month'
 
   return (
     <div>
@@ -86,7 +127,7 @@ export function Dashboard() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
           <p className="text-sm text-gray-500">
-            {submittedCount} contributors submitted this week
+            {submittedCount} contributors submitted {periodPhrase}
             {disabledCount > 0 && ` · ${disabledCount} disabled`}
           </p>
         </div>
@@ -104,35 +145,47 @@ export function Dashboard() {
         )}
       </div>
 
-      <div className="mb-4 flex items-center gap-3">
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <div className="flex rounded-lg border border-gray-200 bg-white p-1">
+          {(['day', 'week', 'month'] as const).map((mode) => (
+            <button
+              key={mode}
+              onClick={() => setViewMode(mode)}
+              className={`rounded-md px-3 py-1 text-sm font-medium capitalize ${viewMode === mode ? 'bg-accent text-accent-foreground' : 'text-gray-600'}`}
+            >
+              {mode}
+            </button>
+          ))}
+        </div>
+
         <button
-          onClick={() => shiftWeek(-7)}
+          onClick={() => shiftRange(-1)}
           className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
         >
-          ← Prev Week
+          ← Prev
         </button>
         <div className="min-w-48 rounded-lg border border-gray-200 bg-white px-4 py-2 text-center text-sm font-medium text-gray-700">
-          {data ? formatRange(data.week_start, data.week_end) : '...'}
+          {rangeLabel()}
         </div>
         <button
-          onClick={() => shiftWeek(7)}
+          onClick={() => shiftRange(1)}
           className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
         >
-          Next Week →
+          Next →
         </button>
-        {!isCurrentWeek && (
+        {!isCurrentRange && (
           <button
-            onClick={() => setWeekStart(startOfWeek(new Date()))}
+            onClick={() => setAnchorDate(new Date())}
             className="text-sm font-medium text-sky-700 hover:underline"
           >
-            Back to this week
+            Back to {periodPhrase}
           </button>
         )}
         <input
           type="date"
-          value={weekStartIso}
+          value={toISODate(anchorDate)}
           onChange={(e) => {
-            if (e.target.value) setWeekStart(startOfWeek(new Date(`${e.target.value}T00:00:00`)))
+            if (e.target.value) setAnchorDate(new Date(`${e.target.value}T00:00:00`))
           }}
           className="ml-auto rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
         />
@@ -164,7 +217,7 @@ export function Dashboard() {
           className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
         >
           <option value="all">All Activity</option>
-          <option value="submitted">Submitted This Week</option>
+          <option value="submitted">{`Submitted ${viewLabel === 'Day' ? 'Today' : `This ${viewLabel}`}`}</option>
           <option value="no_submissions">No Submissions</option>
         </select>
         <select
@@ -195,67 +248,45 @@ export function Dashboard() {
         <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
           <div>
             <h2 className="text-sm font-semibold text-gray-900">Daily Submission Report</h2>
-            <p className="mt-1 text-xs text-gray-500">Team activity for the selected week.</p>
+            <p className="mt-1 text-xs text-gray-500">Team activity for the selected {viewMode}.</p>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowGraphs((visible) => !visible)}
-            className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
-          >
-            {showGraphs ? 'Hide Graphs' : 'Show Graphs'}
-          </button>
+          {viewMode !== 'day' && (
+            <button
+              type="button"
+              onClick={() => setShowGraphs((visible) => !visible)}
+              className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
+            >
+              {showGraphs ? 'Hide Graphs' : 'Show Graphs'}
+            </button>
+          )}
         </div>
-        {showGraphs && <div className="grid grid-cols-1 gap-4 border-b border-gray-200 p-5 lg:grid-cols-2">
-          <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-700">Submitted Tasks by Day</h3>
-              <span className="text-xs text-gray-400">tasks</span>
+        {viewMode !== 'day' && showGraphs && (
+          <div className="grid grid-cols-1 gap-4 border-b border-gray-200 p-5 lg:grid-cols-2">
+            <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-gray-700">Submitted Tasks by Day</h3>
+                <span className="text-xs text-gray-400">tasks</span>
+              </div>
+              <LineChart
+                data={dailyReport.map((day) => ({ date: day.date, value: day.tasks_submitted }))}
+                color="#d4a017"
+                unitLabel="submitted tasks"
+              />
             </div>
-            <div className="flex h-40 items-end gap-2 sm:gap-4">
-              {dailyReport.map((day) => {
-                const height = Math.max(8, (day.tasks_submitted / maxDailySubmissions) * 100)
-                return (
-                  <div key={day.date} className="flex min-w-0 flex-1 flex-col items-center gap-2">
-                    <span className="text-xs font-semibold text-gray-600">{day.tasks_submitted}</span>
-                    <div className="flex h-28 w-full items-end">
-                      <div
-                        className="w-full rounded-t-md bg-accent transition-all"
-                        style={{ height: `${height}%` }}
-                        title={`${day.date}: ${day.tasks_submitted} submitted tasks`}
-                      />
-                    </div>
-                    <span className="text-[10px] text-gray-400">{day.date.slice(5)}</span>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
 
-          <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-700">Contributors Active by Day</h3>
-              <span className="text-xs text-gray-400">contributors</span>
-            </div>
-            <div className="flex h-40 items-end gap-2 sm:gap-4">
-              {dailyReport.map((day) => {
-                const height = Math.max(8, (day.contributors_submitted / maxDailyContributors) * 100)
-                return (
-                  <div key={day.date} className="flex min-w-0 flex-1 flex-col items-center gap-2">
-                    <span className="text-xs font-semibold text-gray-600">{day.contributors_submitted}</span>
-                    <div className="flex h-28 w-full items-end">
-                      <div
-                        className="w-full rounded-t-md bg-sky-600 transition-all"
-                        style={{ height: `${height}%` }}
-                        title={`${day.date}: ${day.contributors_submitted} contributors submitted`}
-                      />
-                    </div>
-                    <span className="text-[10px] text-gray-400">{day.date.slice(5)}</span>
-                  </div>
-                )
-              })}
+            <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-gray-700">Contributors Active by Day</h3>
+                <span className="text-xs text-gray-400">contributors</span>
+              </div>
+              <LineChart
+                data={dailyReport.map((day) => ({ date: day.date, value: day.contributors_submitted }))}
+                color="#0284c7"
+                unitLabel="contributors submitted"
+              />
             </div>
           </div>
-        </div>}
+        )}
         <div className="overflow-x-auto">
           <table className="w-full min-w-[680px] text-left text-sm">
             <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
@@ -288,7 +319,7 @@ export function Dashboard() {
             <tr>
               <th className="px-5 py-3">Contributor</th>
               <th className="px-5 py-3">Tasks Submitted</th>
-              <th className="px-5 py-3">Weekly Target</th>
+              <th className="px-5 py-3">{viewLabel} Target</th>
               <th className="px-5 py-3">Progress</th>
               <th className="px-5 py-3">Account Status</th>
               <th className="px-5 py-3 text-right">Actions</th>
@@ -305,7 +336,7 @@ export function Dashboard() {
             {!isLoading && rows.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-5 py-6 text-center text-gray-400">
-                  {allRows.length === 0 ? 'No activity for this week.' : 'No contributors match these filters.'}
+                  {allRows.length === 0 ? `No activity for ${periodPhrase}.` : 'No contributors match these filters.'}
                 </td>
               </tr>
             )}

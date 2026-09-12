@@ -79,15 +79,30 @@ async function submissions(params: Record<string, unknown> = {}): Promise<Pagina
   return { data: rows, current_page: page, last_page: Math.max(1, Math.ceil(total / 25)), total, from: total ? from + 1 : null, to: total ? Math.min(to + 1, total) : null }
 }
 
+const TARGET_MULTIPLIER: Record<string, number> = { day: 1 / 5, week: 1, month: 4 }
+
 async function dashboard(params: Record<string, unknown>): Promise<DashboardSummary> {
-  const weekStart = String(params.week_start)
-  const weekEndDate = new Date(`${weekStart}T00:00:00Z`)
-  weekEndDate.setUTCDate(weekEndDate.getUTCDate() + 6)
-  const weekEnd = weekEndDate.toISOString().slice(0, 10)
+  const rangeStart = String(params.range_start ?? params.week_start)
+  const rangeEnd = String(
+    params.range_end ??
+      (() => {
+        const d = new Date(`${rangeStart}T00:00:00Z`)
+        d.setUTCDate(d.getUTCDate() + 6)
+        return d.toISOString().slice(0, 10)
+      })(),
+  )
+  const view = typeof params.view === 'string' ? params.view : 'week'
+  const multiplier = TARGET_MULTIPLIER[view] ?? 1
+  // Weekly targets are configured per ISO week; use the week containing the range's start as the basis.
+  const targetWeekStart = new Date(`${rangeStart}T00:00:00Z`)
+  const isoDay = targetWeekStart.getUTCDay()
+  targetWeekStart.setUTCDate(targetWeekStart.getUTCDate() - (isoDay === 0 ? 6 : isoDay - 1))
+  const targetWeekStartIso = targetWeekStart.toISOString().slice(0, 10)
+
   const [{ data: users }, { data: submissions }, { data: targets }] = await Promise.all([
     supabase.from('profiles').select('*').eq('role', 'contributor').order('name'),
-    supabase.from('task_submissions').select('user_id, cb_email, project_id, status, date').gte('date', weekStart).lte('date', weekEnd),
-    supabase.from('weekly_targets').select('*').eq('week_start', weekStart),
+    supabase.from('task_submissions').select('user_id, cb_email, project_id, status, date').gte('date', rangeStart).lte('date', rangeEnd),
+    supabase.from('weekly_targets').select('*').eq('week_start', targetWeekStartIso),
   ])
   const projectId = params.project_id ? Number(params.project_id) : null
   const filteredSubmissions = (submissions ?? []).filter((submission) => !projectId || submission.project_id === projectId)
@@ -98,12 +113,14 @@ async function dashboard(params: Record<string, unknown>): Promise<DashboardSumm
         (!projectId || submission.project_id === projectId),
     )
     const submitted = entries.filter((entry) => entry.status === 'submitted').length
-    const target = (targets ?? []).find((item) => item.user_id === user.id)?.target ?? 50
+    const baseTarget = (targets ?? []).find((item) => item.user_id === user.id)?.target ?? 50
+    const target = Math.round(baseTarget * multiplier)
     return { user_id: user.id, cb_email: user.email, name: user.name, is_active: user.is_active, tasks_submitted: submitted, weekly_target: target, progress: target ? submitted / target : 0 }
   })
   const dailyReport: DailyReportRow[] = []
-  const day = new Date(`${weekStart}T00:00:00Z`)
-  for (let index = 0; index < 7; index += 1) {
+  const day = new Date(`${rangeStart}T00:00:00Z`)
+  const endTime = new Date(`${rangeEnd}T00:00:00Z`).getTime()
+  while (day.getTime() <= endTime) {
     const date = day.toISOString().slice(0, 10)
     const dayEntries = filteredSubmissions.filter((submission) => submission.date?.slice(0, 10) === date)
     const submittingContributors = new Set(
@@ -121,7 +138,7 @@ async function dashboard(params: Record<string, unknown>): Promise<DashboardSumm
     })
     day.setUTCDate(day.getUTCDate() + 1)
   }
-  return { week_start: weekStart, week_end: weekEnd, data: rows, daily_report: dailyReport }
+  return { week_start: rangeStart, week_end: rangeEnd, data: rows, daily_report: dailyReport }
 }
 
 async function contributor(params: Record<string, unknown>): Promise<ContributorProfile> {

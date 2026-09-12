@@ -7,20 +7,12 @@ import { startOfWeek, toISODate, formatRange } from '../lib/week'
 import type { ContributorProfile, TaskSubmission } from '../types'
 import { Avatar } from '../components/Avatar'
 import { StatusPill } from '../components/StatusPill'
-import { ProgressBar } from '../components/ProgressBar'
 import { TaskSubmissionForm } from '../components/TaskSubmissionForm'
 import { SortableHeader } from '../components/SortableHeader'
+import { ProgressRing } from '../components/ProgressRing'
+import { LineChart } from '../components/LineChart'
 
 const MANAGER_ROLES = ['admin', 'lead']
-
-function StatCard({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="rounded-xl border border-gray-200 bg-white px-5 py-4">
-      <div className="text-xs font-medium uppercase tracking-wider text-gray-400">{label}</div>
-      <div className="mt-1 text-2xl font-bold text-gray-900">{value}</div>
-    </div>
-  )
-}
 
 export function CbProfile() {
   const { user: currentUser } = useAuth()
@@ -112,6 +104,17 @@ export function CbProfile() {
 
   const displayName = data.user?.name ?? decodedEmail
   const stages = Object.entries(data.stage_breakdown) as [string, number][]
+  const maxStageTotal = Math.max(1, ...stages.map(([, total]) => total))
+  const maxProjectTotal = Math.max(1, ...data.project_breakdown.map((p) => p.total))
+
+  const TREND_DAYS = 30
+  const trendData = Array.from({ length: TREND_DAYS }, (_, i) => {
+    const d = new Date()
+    d.setDate(d.getDate() - (TREND_DAYS - 1 - i))
+    const iso = toISODate(d)
+    const value = data.all_submissions.filter((r) => r.date?.slice(0, 10) === iso && r.status === 'submitted').length
+    return { date: iso, value }
+  })
   const visibleSubmissions = data.all_submissions.filter((row) => {
     const d = row.date?.slice(0, 10)
     return d && d >= rangeStart && d <= rangeEnd
@@ -195,46 +198,73 @@ export function CbProfile() {
         </div>
       )}
 
-      <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <StatCard label={`Submitted (${viewLabel})`} value={submittedInRange} />
-        <StatCard label={`Logged (${viewLabel})`} value={loggedInRange} />
-        <div className="rounded-xl border border-gray-200 bg-white px-5 py-4">
-          <div className="text-xs font-medium uppercase tracking-wider text-gray-400">{`Target (${viewLabel})`}</div>
-          <div className="mt-1 text-2xl font-bold text-gray-900">{`${submittedInRange} / ${rangeTarget}`}</div>
-          <div className="mt-1 text-xs text-gray-400">Minimum goal — submit as much as you want, no upper limit.</div>
-        </div>
-        <div className="rounded-xl border border-gray-200 bg-white px-5 py-4">
-          <div className="text-xs font-medium uppercase tracking-wider text-gray-400">{viewLabel} Progress</div>
-          <div className="mt-2">
-            <ProgressBar value={rangeProgress} />
+      <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="flex items-center gap-5 rounded-xl border border-gray-200 bg-white p-5 lg:col-span-1">
+          <ProgressRing
+            value={rangeProgress}
+            label={`${viewLabel} Goal`}
+            sublabel={`${submittedInRange} / ${rangeTarget}`}
+          />
+          <div className="flex flex-col gap-3">
+            <div>
+              <div className="text-xs font-medium uppercase tracking-wider text-gray-400">{`Submitted (${viewLabel})`}</div>
+              <div className="text-xl font-bold text-gray-900">{submittedInRange}</div>
+            </div>
+            <div>
+              <div className="text-xs font-medium uppercase tracking-wider text-gray-400">{`Logged (${viewLabel})`}</div>
+              <div className="text-xl font-bold text-gray-900">{loggedInRange}</div>
+            </div>
+            <div className="text-xs text-gray-400">Minimum goal — submit as much as you want, no upper limit.</div>
           </div>
+        </div>
+
+        <div className="rounded-xl border border-gray-200 bg-white p-5 lg:col-span-2">
+          <div className="mb-3 flex items-center justify-between">
+            <div className="text-sm font-semibold text-gray-700">Submission Trend</div>
+            <span className="text-xs text-gray-400">last {TREND_DAYS} days</span>
+          </div>
+          <LineChart data={trendData} color="#d4a017" unitLabel="submitted" />
         </div>
       </div>
 
       <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="rounded-xl border border-gray-200 bg-white p-5">
           <div className="mb-3 text-sm font-semibold text-gray-700">By Stage (all-time)</div>
-          <ul className="flex flex-col gap-2">
-            {stages.length === 0 && <li className="text-sm text-gray-400">No submissions yet.</li>}
+          <div className="flex flex-col gap-3">
+            {stages.length === 0 && <div className="text-sm text-gray-400">No submissions yet.</div>}
             {stages.map(([stage, total]) => (
-              <li key={stage} className="flex items-center justify-between text-sm">
-                <span className="uppercase text-gray-600">{stage}</span>
-                <span className="font-medium text-gray-900">{total}</span>
-              </li>
+              <div key={stage} className="flex items-center gap-3 text-sm">
+                <span className="w-16 shrink-0 uppercase text-gray-600">{stage}</span>
+                <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-100">
+                  <div
+                    className="h-full rounded-full bg-accent"
+                    style={{ width: `${Math.max(4, (total / maxStageTotal) * 100)}%` }}
+                  />
+                </div>
+                <span className="w-8 shrink-0 text-right font-medium text-gray-900">{total}</span>
+              </div>
             ))}
-          </ul>
+          </div>
         </div>
         <div className="rounded-xl border border-gray-200 bg-white p-5">
           <div className="mb-3 text-sm font-semibold text-gray-700">By Project (all-time)</div>
-          <ul className="flex flex-col gap-2">
-            {data.project_breakdown.length === 0 && <li className="text-sm text-gray-400">No submissions yet.</li>}
+          <div className="flex flex-col gap-3">
+            {data.project_breakdown.length === 0 && <div className="text-sm text-gray-400">No submissions yet.</div>}
             {data.project_breakdown.map((p) => (
-              <li key={p.name} className="flex items-center justify-between text-sm">
-                <span className="text-gray-600">{p.name}</span>
-                <span className="font-medium text-gray-900">{p.total}</span>
-              </li>
+              <div key={p.name} className="flex items-center gap-3 text-sm">
+                <span className="w-32 shrink-0 truncate text-gray-600" title={p.name}>
+                  {p.name}
+                </span>
+                <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-100">
+                  <div
+                    className="h-full rounded-full bg-sky-600"
+                    style={{ width: `${Math.max(4, (p.total / maxProjectTotal) * 100)}%` }}
+                  />
+                </div>
+                <span className="w-8 shrink-0 text-right font-medium text-gray-900">{p.total}</span>
+              </div>
             ))}
-          </ul>
+          </div>
         </div>
       </div>
 
