@@ -69,6 +69,8 @@ async function submissions(params: Record<string, unknown> = {}): Promise<Pagina
   if (profile.role === 'contributor') query = query.eq('user_id', profile.id)
   if (params.stage) query = query.eq('stage', params.stage)
   if (params.cb_email) query = query.ilike('cb_email', `%${params.cb_email}%`)
+  if (params.date_from) query = query.gte('date', params.date_from)
+  if (params.date_to) query = query.lte('date', params.date_to)
   const page = Number(params.page ?? 1)
   const from = (page - 1) * 25
   const to = from + 24

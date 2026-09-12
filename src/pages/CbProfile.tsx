@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Navigate, useParams, Link } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { startOfWeek, toISODate, formatRange } from '../lib/week'
@@ -56,6 +56,16 @@ export function CbProfile() {
         })
       ).data,
     enabled: Boolean(decodedEmail),
+  })
+
+  const queryClient = useQueryClient()
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => api.delete(`/task-submissions/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contributor'] })
+      queryClient.invalidateQueries({ queryKey: ['task-submissions'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] })
+    },
   })
 
   const rangeStart = useMemo(() => {
@@ -411,12 +421,24 @@ export function CbProfile() {
                 <td className="px-5 py-3 text-gray-500">{row.date?.slice(0, 10) ?? '—'}</td>
                 {canEdit && (
                   <td className="px-5 py-3 text-right">
-                    <button
-                      onClick={() => setFormTarget(row)}
-                      className="text-xs font-medium text-gray-500 hover:text-gray-900"
-                    >
-                      Edit
-                    </button>
+                    <div className="flex justify-end gap-3">
+                      <button
+                        onClick={() => setFormTarget(row)}
+                        className="text-xs font-medium text-gray-500 hover:text-gray-900"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (confirm('Delete this submission?')) {
+                            deleteMutation.mutate(row.id)
+                          }
+                        }}
+                        className="text-xs font-medium text-status-danger-text hover:underline"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </td>
                 )}
               </tr>

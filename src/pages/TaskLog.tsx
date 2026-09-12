@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api } from '../lib/api'
+import { api, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import type { Paginated, Project, Stage, SubmissionStatus, TaskSubmission } from '../types'
 import { StatusPill } from '../components/StatusPill'
@@ -9,6 +9,7 @@ import { Avatar } from '../components/Avatar'
 import { TaskSubmissionForm } from '../components/TaskSubmissionForm'
 import { SortableHeader } from '../components/SortableHeader'
 import { BulkImportModal } from '../components/BulkImportModal'
+import { downloadCsv } from '../lib/csv'
 
 const MANAGER_ROLES = ['admin', 'lead']
 
@@ -34,11 +35,14 @@ export function TaskLog() {
   const isManager = Boolean(user && MANAGER_ROLES.includes(user.role))
   const [stage, setStage] = useState<Stage | ''>('')
   const [search, setSearch] = useState('')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
   const [page, setPage] = useState(1)
   const [formTarget, setFormTarget] = useState<'new' | TaskSubmission | null>(null)
   const [editingStatusId, setEditingStatusId] = useState<number | null>(null)
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'date', dir: 'desc' })
   const [bulkImportOpen, setBulkImportOpen] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const queryClient = useQueryClient()
 
   const { data: projects } = useQuery({
@@ -47,13 +51,15 @@ export function TaskLog() {
   })
 
   const { data, isLoading } = useQuery({
-    queryKey: ['task-submissions', stage, search, page, sort],
+    queryKey: ['task-submissions', stage, search, dateFrom, dateTo, page, sort],
     queryFn: async () =>
       (
         await api.get<Paginated<TaskSubmission>>('/task-submissions', {
           params: {
             stage: stage || undefined,
             cb_email: search || undefined,
+            date_from: dateFrom || undefined,
+            date_to: dateTo || undefined,
             page,
             sort: sort.key === 'project' ? 'project_id' : sort.key,
             sort_dir: sort.dir,
@@ -65,6 +71,41 @@ export function TaskLog() {
   function toggleSort(key: SortKey) {
     setSort((prev) => (prev.key === key ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }))
     setPage(1)
+  }
+
+  async function handleExport() {
+    setExporting(true)
+    try {
+      let query = supabase
+        .from('task_submissions')
+        .select('date, cb_email, task_id, project_id, stage, status, notes, submitted_at')
+        .order(sort.key === 'project' ? 'project_id' : sort.key, { ascending: sort.dir === 'asc' })
+      if (stage) query = query.eq('stage', stage)
+      if (search) query = query.ilike('cb_email', `%${search}%`)
+      if (dateFrom) query = query.gte('date', dateFrom)
+      if (dateTo) query = query.lte('date', dateTo)
+      const { data: rows, error } = await query
+      if (error) throw error
+
+      const projectById = new Map((projects ?? []).map((p) => [p.id, p.name]))
+      downloadCsv(
+        `task-log-${new Date().toISOString().slice(0, 10)}.csv`,
+        (rows ?? []).map((r) => ({
+          date: r.date ?? '',
+          cb_email: r.cb_email,
+          task_id: r.task_id ?? '',
+          project: r.project_id ? (projectById.get(r.project_id) ?? '') : '',
+          stage: r.stage,
+          status: r.status,
+          notes: r.notes ?? '',
+          submitted_at: r.submitted_at ?? '',
+        })),
+      )
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Export failed.')
+    } finally {
+      setExporting(false)
+    }
   }
 
   const statusMutation = useMutation({
@@ -95,12 +136,21 @@ export function TaskLog() {
         </div>
         <div className="flex gap-2">
           {isManager && (
-            <button
-              onClick={() => setBulkImportOpen(true)}
-              className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-            >
-              Bulk Import
-            </button>
+            <>
+              <button
+                onClick={handleExport}
+                disabled={exporting}
+                className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                {exporting ? 'Exporting...' : 'Export CSV'}
+              </button>
+              <button
+                onClick={() => setBulkImportOpen(true)}
+                className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+              >
+                Bulk Import
+              </button>
+            </>
           )}
           <button
             onClick={() => setFormTarget('new')}
@@ -138,6 +188,41 @@ export function TaskLog() {
             </option>
           ))}
         </select>
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => {
+              setDateFrom(e.target.value)
+              setPage(1)
+            }}
+            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
+          />
+          <span className="text-sm text-gray-400">to</span>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => {
+              setDateTo(e.target.value)
+              setPage(1)
+            }}
+            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
+          />
+        </div>
+        {(stage || search || dateFrom || dateTo) && (
+          <button
+            onClick={() => {
+              setStage('')
+              setSearch('')
+              setDateFrom('')
+              setDateTo('')
+              setPage(1)
+            }}
+            className="text-sm font-medium text-sky-700 hover:underline"
+          >
+            Clear filters
+          </button>
+        )}
       </div>
 
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">

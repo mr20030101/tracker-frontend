@@ -26,11 +26,11 @@ function navSections(isManager: boolean, ownProfilePath: string) {
       label: 'Team',
       items: isManager
         ? [
-          { to: '/team', label: 'Team' },
+          { to: '/team', label: 'Team Handbook' },
           { to: '/users', label: 'Users' },
           { to: '/projects', label: 'Projects' },
         ]
-        : [{ to: '/team', label: 'Team' }],
+        : [{ to: '/team', label: 'Team Handbook' }],
     },
   ]
 }

@@ -7,6 +7,7 @@ import type { DashboardSummary, Project } from '../types'
 import { Avatar } from '../components/Avatar'
 import { ProgressBar } from '../components/ProgressBar'
 import { LineChart } from '../components/LineChart'
+import { downloadCsv } from '../lib/csv'
 
 type StatusFilter = 'all' | 'active' | 'disabled'
 type ActivityFilter = 'all' | 'submitted' | 'no_submissions'
@@ -242,6 +243,25 @@ export function Dashboard() {
             Clear filters
           </button>
         )}
+        <button
+          onClick={() =>
+            downloadCsv(
+              `dashboard-${rangeStart}-to-${rangeEnd}.csv`,
+              rows.map((r) => ({
+                name: r.name,
+                cb_email: r.cb_email,
+                tasks_submitted: r.tasks_submitted,
+                target: r.weekly_target,
+                progress_pct: Math.round(r.progress * 100),
+                is_active: r.is_active,
+              })),
+            )
+          }
+          disabled={rows.length === 0}
+          className="ml-auto rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+        >
+          Export CSV
+        </button>
       </div>
 
       <div className="mb-6 overflow-hidden rounded-xl border border-gray-200 bg-white">
