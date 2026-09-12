@@ -7,8 +7,11 @@ import type { Paginated, Stage, SubmissionStatus, TaskSubmission } from '../type
 import { StatusPill } from '../components/StatusPill'
 import { Avatar } from '../components/Avatar'
 import { TaskSubmissionForm } from '../components/TaskSubmissionForm'
+import { SortableHeader } from '../components/SortableHeader'
 
 const MANAGER_ROLES = ['admin', 'lead']
+
+type SortKey = 'cb_email' | 'task_id' | 'project' | 'stage' | 'status' | 'date'
 
 const STAGES: { value: Stage | ''; label: string }[] = [
   { value: '', label: 'All Stages' },
@@ -33,17 +36,29 @@ export function TaskLog() {
   const [page, setPage] = useState(1)
   const [formTarget, setFormTarget] = useState<'new' | TaskSubmission | null>(null)
   const [editingStatusId, setEditingStatusId] = useState<number | null>(null)
+  const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'date', dir: 'desc' })
   const queryClient = useQueryClient()
 
   const { data, isLoading } = useQuery({
-    queryKey: ['task-submissions', stage, search, page],
+    queryKey: ['task-submissions', stage, search, page, sort],
     queryFn: async () =>
       (
         await api.get<Paginated<TaskSubmission>>('/task-submissions', {
-          params: { stage: stage || undefined, cb_email: search || undefined, page },
+          params: {
+            stage: stage || undefined,
+            cb_email: search || undefined,
+            page,
+            sort: sort.key === 'project' ? 'project_id' : sort.key,
+            sort_dir: sort.dir,
+          },
         })
       ).data,
   })
+
+  function toggleSort(key: SortKey) {
+    setSort((prev) => (prev.key === key ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }))
+    setPage(1)
+  }
 
   const statusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: number; status: SubmissionStatus }) =>
@@ -112,12 +127,42 @@ export function TaskLog() {
         <table className="w-full text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
             <tr>
-              <th className="px-5 py-3">CB Email</th>
-              <th className="px-5 py-3">Task ID</th>
-              <th className="px-5 py-3">Project</th>
-              <th className="px-5 py-3">Stage</th>
-              <th className="px-5 py-3">Status</th>
-              <th className="px-5 py-3">Date</th>
+              <SortableHeader
+                label="CB Email"
+                active={sort.key === 'cb_email'}
+                dir={sort.dir}
+                onClick={() => toggleSort('cb_email')}
+              />
+              <SortableHeader
+                label="Task ID"
+                active={sort.key === 'task_id'}
+                dir={sort.dir}
+                onClick={() => toggleSort('task_id')}
+              />
+              <SortableHeader
+                label="Project"
+                active={sort.key === 'project'}
+                dir={sort.dir}
+                onClick={() => toggleSort('project')}
+              />
+              <SortableHeader
+                label="Stage"
+                active={sort.key === 'stage'}
+                dir={sort.dir}
+                onClick={() => toggleSort('stage')}
+              />
+              <SortableHeader
+                label="Status"
+                active={sort.key === 'status'}
+                dir={sort.dir}
+                onClick={() => toggleSort('status')}
+              />
+              <SortableHeader
+                label="Date"
+                active={sort.key === 'date'}
+                dir={sort.dir}
+                onClick={() => toggleSort('date')}
+              />
               <th className="px-5 py-3 text-right">Actions</th>
             </tr>
           </thead>

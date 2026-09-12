@@ -21,7 +21,7 @@ export function Dashboard() {
   const [projectId, setProjectId] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [activityFilter, setActivityFilter] = useState<ActivityFilter>('all')
-  const [showGraphs, setShowGraphs] = useState(true)
+  const [showGraphs, setShowGraphs] = useState(false)
 
   const { data: projects } = useQuery({
     queryKey: ['projects'],

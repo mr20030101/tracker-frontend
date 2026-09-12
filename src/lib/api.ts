@@ -59,9 +59,13 @@ async function projects(): Promise<Project[]> {
   return data as Project[]
 }
 
+const SORTABLE_COLUMNS = new Set(['cb_email', 'task_id', 'stage', 'status', 'date', 'project_id'])
+
 async function submissions(params: Record<string, unknown> = {}): Promise<Paginated<TaskSubmission>> {
   const profile = await currentProfile()
-  let query = supabase.from('task_submissions').select('*', { count: 'exact' }).order('date', { ascending: false })
+  const sortColumn = typeof params.sort === 'string' && SORTABLE_COLUMNS.has(params.sort) ? params.sort : 'date'
+  const sortAscending = params.sort_dir === 'asc'
+  let query = supabase.from('task_submissions').select('*', { count: 'exact' }).order(sortColumn, { ascending: sortAscending })
   if (profile.role === 'contributor') query = query.eq('user_id', profile.id)
   if (params.stage) query = query.eq('stage', params.stage)
   if (params.cb_email) query = query.ilike('cb_email', `%${params.cb_email}%`)
@@ -138,7 +142,7 @@ async function contributor(params: Record<string, unknown>): Promise<Contributor
     const name = row.project?.name ?? 'Unassigned'
     return { ...counts, [name]: (counts[name] ?? 0) + 1 }
   }, {})
-  return { user: user as User | null, cb_email: email, week_start: weekStart, week_end: weekEnd, weekly_target: target?.target ?? 50, submitted_this_week: weekRows.filter((row) => row.status === 'submitted').length, total_submitted: submissions.filter((row) => row.status === 'submitted').length, total_logged: submissions.length, stage_breakdown: stageBreakdown, project_breakdown: Object.entries(projectBreakdown).map(([name, total]) => ({ name, total })), week_submissions: weekRows, recent_submissions: submissions.slice(0, 10) }
+  return { user: user as User | null, cb_email: email, week_start: weekStart, week_end: weekEnd, weekly_target: target?.target ?? 50, submitted_this_week: weekRows.filter((row) => row.status === 'submitted').length, total_submitted: submissions.filter((row) => row.status === 'submitted').length, total_logged: submissions.length, stage_breakdown: stageBreakdown, project_breakdown: Object.entries(projectBreakdown).map(([name, total]) => ({ name, total })), week_submissions: weekRows, recent_submissions: submissions.slice(0, 10), all_submissions: submissions }
 }
 
 async function listResources(): Promise<Resource[]> {

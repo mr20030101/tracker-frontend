@@ -100,4 +100,5 @@ export interface ContributorProfile {
   project_breakdown: ProjectBreakdown[]
   week_submissions: TaskSubmission[]
   recent_submissions: TaskSubmission[]
+  all_submissions: TaskSubmission[]
 }

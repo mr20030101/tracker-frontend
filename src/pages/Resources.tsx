@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api } from '../lib/api'
+import { api, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import type { Resource } from '../types'
 import { Modal } from '../components/Modal'
@@ -16,6 +16,7 @@ export function Resources() {
   const [formTarget, setFormTarget] = useState<'new' | Resource | null>(null)
   const [form, setForm] = useState(emptyForm)
   const [error, setError] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
 
   const { data, isLoading } = useQuery({
     queryKey: ['resources'],
@@ -58,12 +59,32 @@ export function Resources() {
     setFormTarget(null)
     setForm(emptyForm)
     setError(null)
+    setUploading(false)
   }
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
     saveMutation.mutate()
+  }
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    setError(null)
+    try {
+      const path = `${crypto.randomUUID()}-${file.name}`
+      const { error: uploadError } = await supabase.storage.from('resources').upload(path, file)
+      if (uploadError) throw uploadError
+      const { data: publicUrlData } = supabase.storage.from('resources').getPublicUrl(path)
+      setForm((prev) => ({ ...prev, url: publicUrlData.publicUrl, title: prev.title || file.name }))
+    } catch {
+      setError('Could not upload this file. Try again.')
+    } finally {
+      setUploading(false)
+      e.target.value = ''
+    }
   }
 
   const groups = new Map<string, Resource[]>()
@@ -164,8 +185,20 @@ export function Resources() {
                 required
                 value={form.url}
                 onChange={(e) => setForm({ ...form, url: e.target.value })}
+                placeholder="https://... or upload a file below"
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
               />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Or upload an image/video</label>
+              <input
+                type="file"
+                accept="image/*,video/*"
+                disabled={uploading}
+                onChange={handleFileChange}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent disabled:opacity-50"
+              />
+              {uploading && <div className="mt-1 text-xs text-gray-400">Uploading...</div>}
             </div>
             {error && <div className="text-sm text-status-danger-text">{error}</div>}
             <div className="mt-2 flex justify-end gap-2">
@@ -178,7 +211,7 @@ export function Resources() {
               </button>
               <button
                 type="submit"
-                disabled={saveMutation.isPending}
+                disabled={saveMutation.isPending || uploading}
                 className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
               >
                 {saveMutation.isPending ? 'Saving...' : formTarget === 'new' ? 'Add Resource' : 'Save Changes'}

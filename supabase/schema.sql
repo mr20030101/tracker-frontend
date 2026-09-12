@@ -119,3 +119,16 @@ create policy "users delete permitted submissions" on public.task_submissions fo
 
 create policy "users read own targets" on public.weekly_targets for select using (public.is_manager() or user_id = auth.uid());
 create policy "managers manage targets" on public.weekly_targets for all using (public.is_manager()) with check (public.is_manager());
+
+insert into storage.buckets (id, name, public)
+values ('resources', 'resources', true)
+on conflict (id) do nothing;
+
+create policy "active users read resource files" on storage.objects for select
+  using (bucket_id = 'resources' and public.is_active_user());
+create policy "managers upload resource files" on storage.objects for insert
+  with check (bucket_id = 'resources' and public.is_manager());
+create policy "managers update resource files" on storage.objects for update
+  using (bucket_id = 'resources' and public.is_manager()) with check (bucket_id = 'resources' and public.is_manager());
+create policy "managers delete resource files" on storage.objects for delete
+  using (bucket_id = 'resources' and public.is_manager());
