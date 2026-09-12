@@ -28,6 +28,53 @@ Deno.serve(async (request) => {
     }
 
     const body = await request.json()
+    if (body.action === 'sync-task-users') {
+        const { data: taskRows, error: taskError } = await admin.from('task_submissions').select('cb_email')
+        if (taskError) return errorResponse(`Task user lookup failed: ${taskError.message}`, 400)
+
+        const emails = [...new Set((taskRows ?? []).map((row) => row.cb_email?.trim().toLowerCase()).filter(Boolean))]
+        const { data: existingUsers } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 })
+        let created = 0
+        let updated = 0
+
+        for (const email of emails) {
+            const name = email.split('@')[0]
+            const existingUser = existingUsers.users.find((user) => user.email?.toLowerCase() === email)
+            let userId = existingUser?.id
+
+            if (userId) {
+                await admin.auth.admin.updateUserById(userId, {
+                    password: body.password ?? 'password',
+                    email_confirm: true,
+                    user_metadata: { name, role: 'contributor' },
+                })
+                updated += 1
+            } else {
+                const { data, error } = await admin.auth.admin.createUser({
+                    email,
+                    password: body.password ?? 'password',
+                    email_confirm: true,
+                    user_metadata: { name, role: 'contributor' },
+                })
+                if (error) return errorResponse(`Could not create ${email}: ${error.message}`, 400)
+                userId = data.user.id
+                created += 1
+            }
+
+            const { error: profileError } = await admin.from('profiles').upsert({
+                id: userId,
+                name,
+                email,
+                role: 'contributor',
+                is_active: true,
+                updated_at: new Date().toISOString(),
+            })
+            if (profileError) return errorResponse(`Profile update failed for ${email}: ${profileError.message}`, 400)
+        }
+
+        return Response.json({ created, updated, total: emails.length }, { headers: corsHeaders })
+    }
+
     if (body.password && body.id) {
         let targetId = body.id
         if (body.email) {
