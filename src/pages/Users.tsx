@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import type { User } from '../types'
@@ -18,6 +18,8 @@ export function Users() {
   const [form, setForm] = useState(emptyForm)
   const [resetPassword, setResetPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [searchParams] = useSearchParams()
+  const search = (searchParams.get('search') ?? '').toLowerCase()
 
   const { data, isLoading } = useQuery({
     queryKey: ['users'],
@@ -53,6 +55,7 @@ export function Users() {
       setResetTarget(null)
       setResetPassword('')
     },
+    onError: (mutationError: Error) => setError(mutationError.message || 'Could not reset this password.'),
   })
 
   function handleCreate(e: FormEvent) {
@@ -100,7 +103,7 @@ export function Users() {
                 </td>
               </tr>
             )}
-            {data?.map((u) => (
+            {data?.filter((u) => !search || u.name.toLowerCase().includes(search) || u.email.toLowerCase().includes(search)).map((u) => (
               <tr key={u.id} className={`hover:bg-gray-50 ${!u.is_active ? 'opacity-60' : ''}`}>
                 <td className="px-5 py-3">
                   <Link
@@ -242,6 +245,7 @@ export function Users() {
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
               />
             </div>
+            {error && <div className="text-sm text-status-danger-text">{error}</div>}
             <div className="mt-2 flex justify-end gap-2">
               <button
                 type="button"

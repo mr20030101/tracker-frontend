@@ -1,4 +1,5 @@
-import { NavLink, useLocation } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { useState, type KeyboardEvent } from 'react'
 import type { ReactNode } from 'react'
 import { useAuth } from '../lib/auth'
 import { Avatar } from './Avatar'
@@ -23,10 +24,10 @@ function navSections(isManager: boolean, ownProfilePath: string) {
       label: 'Team',
       items: isManager
         ? [
-            { to: '/team', label: 'Team' },
-            { to: '/users', label: 'Users' },
-            { to: '/projects', label: 'Projects' },
-          ]
+          { to: '/team', label: 'Team' },
+          { to: '/users', label: 'Users' },
+          { to: '/projects', label: 'Projects' },
+        ]
         : [{ to: '/team', label: 'Team' }],
     },
   ]
@@ -35,8 +36,17 @@ function navSections(isManager: boolean, ownProfilePath: string) {
 export function AppShell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth()
   const location = useLocation()
+  const navigate = useNavigate()
+  const [search, setSearch] = useState('')
   const isManager = Boolean(user && MANAGER_ROLES.includes(user.role))
   const ownProfilePath = user ? `/contributors/${encodeURIComponent(user.email)}` : '/'
+
+  function handleSearch(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key !== 'Enter' || !search.trim()) return
+    if (isManager) {
+      navigate(`/users?search=${encodeURIComponent(search.trim())}`)
+    }
+  }
 
   const crumb =
     location.pathname === '/task-log'
@@ -50,10 +60,10 @@ export function AppShell({ children }: { children: ReactNode }) {
             : location.pathname === '/projects'
               ? 'Projects'
               : location.pathname.startsWith('/contributors/')
-              ? isManager
-                ? 'CB Profile'
-                : 'My Profile'
-              : 'Dashboard'
+                ? isManager
+                  ? 'CB Profile'
+                  : 'My Profile'
+                : 'Dashboard'
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -80,8 +90,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   to={item.to}
                   end
                   className={({ isActive }) =>
-                    `block rounded-lg px-3 py-2 text-sm font-medium ${
-                      isActive ? 'bg-accent-bg text-accent-foreground' : 'text-gray-600 hover:bg-gray-100'
+                    `block rounded-lg px-3 py-2 text-sm font-medium ${isActive ? 'bg-accent-bg text-accent-foreground' : 'text-gray-600 hover:bg-gray-100'
                     }`
                   }
                 >
@@ -128,6 +137,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             <input
               type="search"
               placeholder="Search..."
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              onKeyDown={handleSearch}
               className="w-64 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm outline-none focus:border-accent"
             />
             {user && <Avatar name={user.name} size={32} />}
