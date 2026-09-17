@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api } from '../lib/api'
+import { api, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import type { Project, Stage, SubmissionStatus, TaskSubmission } from '../types'
 import { Modal } from './Modal'
@@ -36,6 +36,7 @@ export function TaskSubmissionForm({ submission, onClose }: Props) {
   const queryClient = useQueryClient()
   const { user } = useAuth()
   const isManager = Boolean(user && MANAGER_ROLES.includes(user.role))
+  const isAdmin = user?.role === 'admin'
   const { data: projects } = useQuery({
     queryKey: ['projects'],
     queryFn: async () => (await api.get<Project[]>('/projects')).data,
@@ -57,11 +58,52 @@ export function TaskSubmissionForm({ submission, onClose }: Props) {
   )
   const [error, setError] = useState<string | null>(null)
 
+  // Scope the Project choices to whichever lead the target CB is attached
+  // to, so a submission can only be logged against a project that lead
+  // actually runs.
+  const { data: contributorLeadId } = useQuery({
+    queryKey: ['profile-lead-id', form.cb_email],
+    queryFn: async () => {
+      const { data, error: profileError } = await supabase
+        .from('profiles')
+        .select('lead_id')
+        .eq('email', form.cb_email)
+        .maybeSingle()
+      if (profileError) throw profileError
+      return (data?.lead_id as string | null) ?? null
+    },
+    enabled: Boolean(form.cb_email),
+  })
+
+  const { data: leadProjectIds } = useQuery({
+    queryKey: ['project-leads-for-lead', contributorLeadId],
+    queryFn: async () => {
+      const { data, error: leadsError } = await supabase
+        .from('project_leads')
+        .select('project_id')
+        .eq('lead_id', contributorLeadId!)
+      if (leadsError) throw leadsError
+      return data.map((row) => row.project_id as number)
+    },
+    enabled: Boolean(contributorLeadId),
+  })
+
+  const currentProjectId = form.project_id ? Number(form.project_id) : null
+  const visibleProjects = (() => {
+    if (!contributorLeadId || !leadProjectIds) return projects ?? []
+    const scoped = (projects ?? []).filter((p) => leadProjectIds.includes(p.id))
+    if (currentProjectId && !scoped.some((p) => p.id === currentProjectId)) {
+      const existing = projects?.find((p) => p.id === currentProjectId)
+      if (existing) return [...scoped, existing]
+    }
+    return scoped
+  })()
+
   const mutation = useMutation({
     mutationFn: async () => {
       let projectId = form.project_id ? Number(form.project_id) : null
 
-      if (isManager && !projectId && form.new_project.trim()) {
+      if (isAdmin && !projectId && form.new_project.trim()) {
         const res = await api.post<Project>('/projects', { name: form.new_project.trim() })
         projectId = res.data.id
       }
@@ -130,13 +172,13 @@ export function TaskSubmissionForm({ submission, onClose }: Props) {
             className="mb-2 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
           >
             <option value="">— None —</option>
-            {projects?.map((p) => (
+            {visibleProjects.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
               </option>
             ))}
           </select>
-          {isManager && (
+          {isAdmin && (
             <input
               placeholder="Or type a new project name..."
               value={form.new_project}
@@ -195,7 +237,9 @@ export function TaskSubmissionForm({ submission, onClose }: Props) {
           />
         </div>
 
-        {error && <div className="text-sm text-status-danger-text">{error}</div>}
+        {error && (
+          <div className="rounded-lg bg-status-danger-text px-3 py-2 text-sm text-status-danger-bg">{error}</div>
+        )}
 
         <div className="mt-2 flex justify-end gap-2">
           <button

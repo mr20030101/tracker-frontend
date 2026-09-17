@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Navigate, useParams, Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { startOfWeek, toISODate, formatRange } from '../lib/week'
+import { updateOwnProfile, uploadAvatar } from '../lib/profile'
 import type { ContributorProfile, TaskSubmission } from '../types'
 import { Avatar } from '../components/Avatar'
+import { Modal } from '../components/Modal'
 import { StatusPill } from '../components/StatusPill'
 import { TaskSubmissionForm } from '../components/TaskSubmissionForm'
 import { SortableHeader } from '../components/SortableHeader'
@@ -24,7 +26,7 @@ function buildCtsFormUrl(email: string) {
 }
 
 export function CbProfile() {
-  const { user: currentUser } = useAuth()
+  const { user: currentUser, refreshUser } = useAuth()
   const { email = '' } = useParams<{ email: string }>()
   const decodedEmail = decodeURIComponent(email)
 
@@ -32,12 +34,24 @@ export function CbProfile() {
 
   const [formTarget, setFormTarget] = useState<'new' | TaskSubmission | null>(null)
   const [showWarning, setShowWarning] = useState(true)
+  const [editingProfile, setEditingProfile] = useState(false)
+  const [profileName, setProfileName] = useState('')
+  const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null)
+  const [profilePhotoPreview, setProfilePhotoPreview] = useState<string | null>(null)
+  const [profileError, setProfileError] = useState<string | null>(null)
+  const photoInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     setShowWarning(true)
     const timer = setTimeout(() => setShowWarning(false), 10000)
     return () => clearTimeout(timer)
   }, [decodedEmail])
+
+  useEffect(() => {
+    return () => {
+      if (profilePhotoPreview) URL.revokeObjectURL(profilePhotoPreview)
+    }
+  }, [profilePhotoPreview])
   const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('day')
   const [anchorDate, setAnchorDate] = useState(() => new Date())
   const thisWeekIso = useMemo(() => toISODate(startOfWeek(new Date())), [])
@@ -67,6 +81,44 @@ export function CbProfile() {
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] })
     },
   })
+
+  const saveProfileMutation = useMutation({
+    mutationFn: async () => {
+      if (!currentUser) throw new Error('Unauthenticated')
+      let avatarUrl = currentUser.avatar_url
+      if (profilePhotoFile) avatarUrl = await uploadAvatar(currentUser.id, profilePhotoFile)
+      await updateOwnProfile(profileName.trim(), avatarUrl)
+    },
+    onSuccess: async () => {
+      await refreshUser()
+      queryClient.invalidateQueries({ queryKey: ['contributor'] })
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+      queryClient.invalidateQueries({ queryKey: ['directory'] })
+      setEditingProfile(false)
+      setProfilePhotoFile(null)
+      setProfilePhotoPreview(null)
+    },
+    onError: (mutationError: Error) => setProfileError(mutationError.message || 'Could not save your profile.'),
+  })
+
+  function openEditProfile() {
+    setProfileName(currentUser?.name ?? '')
+    setProfilePhotoFile(null)
+    setProfilePhotoPreview(null)
+    setProfileError(null)
+    setEditingProfile(true)
+  }
+
+  function handlePhotoChange(file: File | null) {
+    setProfilePhotoFile(file)
+    setProfilePhotoPreview(file ? URL.createObjectURL(file) : null)
+  }
+
+  function handleSaveProfile(e: FormEvent) {
+    e.preventDefault()
+    setProfileError(null)
+    saveProfileMutation.mutate()
+  }
 
   const rangeStart = useMemo(() => {
     if (viewMode === 'day') return toISODate(anchorDate)
@@ -127,6 +179,7 @@ export function CbProfile() {
   }
 
   const canEdit = isOwnProfile || Boolean(currentUser && MANAGER_ROLES.includes(currentUser.role))
+  const isContributorRole = !data.user || data.user.role === 'contributor'
 
   const displayName = data.user?.name ?? decodedEmail
   const stages = Object.entries(data.stage_breakdown) as [string, number][]
@@ -191,25 +244,99 @@ export function CbProfile() {
       </Link>
 
       <div className="mb-6 flex items-center gap-4">
-        <Avatar name={displayName} size={56} />
+        <Avatar name={displayName} photoUrl={isOwnProfile ? currentUser?.avatar_url : data.user?.avatar_url} size={56} />
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{displayName}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-gray-900">{displayName}</h1>
+            {data.user && (
+              <span className="rounded-full bg-accent-bg px-3 py-1 text-xs font-medium capitalize text-accent-foreground">
+                {data.user.role}
+              </span>
+            )}
+          </div>
           <p className="text-sm text-gray-500">{decodedEmail}</p>
         </div>
-        <button
-          onClick={() => window.open(buildCtsFormUrl(decodedEmail), '_blank', 'noopener,noreferrer')}
-          className="ml-auto rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-        >
-          CTS Form
-        </button>
-        {data.user && (
-          <span className="rounded-full bg-status-neutral-bg px-3 py-1 text-xs font-medium capitalize text-status-neutral-text">
-            {data.user.role}
-          </span>
-        )}
+        <div className="ml-auto flex items-center gap-2">
+          {isOwnProfile && (
+            <button
+              onClick={openEditProfile}
+              className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            >
+              Edit Profile
+            </button>
+          )}
+          {isContributorRole && (
+            <button
+              onClick={() => window.open(buildCtsFormUrl(decodedEmail), '_blank', 'noopener,noreferrer')}
+              className="animate-heartbeat-soft rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground hover:opacity-90"
+            >
+              CTS Form
+            </button>
+          )}
+        </div>
       </div>
 
-      {showWarning && data.submitted_this_week === 0 && (!data.user || data.user.is_active) && (
+      {editingProfile && (
+        <Modal title="Edit Profile" onClose={() => setEditingProfile(false)}>
+          <form onSubmit={handleSaveProfile} className="flex flex-col gap-4">
+            <div className="flex items-center gap-4">
+              <Avatar name={profileName || displayName} photoUrl={profilePhotoPreview ?? currentUser?.avatar_url} size={64} />
+              <div>
+                <button
+                  type="button"
+                  onClick={() => photoInputRef.current?.click()}
+                  className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
+                >
+                  Change Photo
+                </button>
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => handlePhotoChange(e.target.files?.[0] ?? null)}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Name</label>
+              <input
+                required
+                value={profileName}
+                onChange={(e) => setProfileName(e.target.value)}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Email</label>
+              <input
+                disabled
+                value={decodedEmail}
+                className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500"
+              />
+            </div>
+            {profileError && <div className="rounded-lg bg-status-danger-text px-3 py-2 text-sm text-status-danger-bg">{profileError}</div>}
+            <div className="mt-2 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setEditingProfile(false)}
+                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={saveProfileMutation.isPending || !profileName.trim()}
+                className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+              >
+                {saveProfileMutation.isPending ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {isContributorRole && showWarning && data.submitted_this_week === 0 && (!data.user || data.user.is_active) && (
         <div className="mb-6 flex items-center gap-3 rounded-xl border-2 border-status-danger-text bg-status-danger-text px-5 py-4 text-sm font-semibold text-white shadow-sm">
           <span className="animate-heartbeat text-lg leading-none">⚠</span>
           <span>WARNING: No submissions logged yet this week.</span>
@@ -237,6 +364,27 @@ export function CbProfile() {
         </div>
       )}
 
+      {!isContributorRole && (
+        <div className="rounded-xl border border-gray-200 bg-white p-5 text-sm text-gray-600">
+          <div className="mb-1 font-semibold text-gray-900">No task submissions to track</div>
+          <p>
+            {data.user?.role === 'lead'
+              ? 'Leads don’t log individual task submissions. Manage your attached contributors from '
+              : 'Admins don’t log individual task submissions. Manage the team from '}
+            <Link to="/users" className="text-sky-700 hover:underline">
+              Users
+            </Link>{' '}
+            or check overall progress on the{' '}
+            <Link to="/" className="text-sky-700 hover:underline">
+              Dashboard
+            </Link>
+            .
+          </p>
+        </div>
+      )}
+
+      {isContributorRole && (
+      <>
       <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="flex items-center gap-5 rounded-xl border border-gray-200 bg-white p-5 lg:col-span-1">
           <ProgressRing
@@ -471,6 +619,8 @@ export function CbProfile() {
           </div>
         )}
       </div>
+      </>
+      )}
 
       {formTarget && (
         <TaskSubmissionForm

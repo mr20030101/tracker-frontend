@@ -37,53 +37,6 @@ Deno.serve(async (request) => {
         return Response.json({ id: body.id }, { headers: corsHeaders })
     }
 
-    if (body.action === 'sync-task-users') {
-        const { data: taskRows, error: taskError } = await admin.from('task_submissions').select('cb_email')
-        if (taskError) return errorResponse(`Task user lookup failed: ${taskError.message}`, 400)
-
-        const emails = [...new Set((taskRows ?? []).map((row) => row.cb_email?.trim().toLowerCase()).filter(Boolean))]
-        const { data: existingUsers } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 })
-        let created = 0
-        let updated = 0
-
-        for (const email of emails) {
-            const name = email.split('@')[0]
-            const existingUser = existingUsers.users.find((user) => user.email?.toLowerCase() === email)
-            let userId = existingUser?.id
-
-            if (userId) {
-                await admin.auth.admin.updateUserById(userId, {
-                    password: body.password ?? 'password',
-                    email_confirm: true,
-                    user_metadata: { name, role: 'contributor' },
-                })
-                updated += 1
-            } else {
-                const { data, error } = await admin.auth.admin.createUser({
-                    email,
-                    password: body.password ?? 'password',
-                    email_confirm: true,
-                    user_metadata: { name, role: 'contributor' },
-                })
-                if (error) return errorResponse(`Could not create ${email}: ${error.message}`, 400)
-                userId = data.user.id
-                created += 1
-            }
-
-            const { error: profileError } = await admin.from('profiles').upsert({
-                id: userId,
-                name,
-                email,
-                role: 'contributor',
-                is_active: true,
-                updated_at: new Date().toISOString(),
-            })
-            if (profileError) return errorResponse(`Profile update failed for ${email}: ${profileError.message}`, 400)
-        }
-
-        return Response.json({ created, updated, total: emails.length }, { headers: corsHeaders })
-    }
-
     if (body.password && body.id) {
         let targetId = body.id
         if (body.email) {
@@ -99,6 +52,10 @@ Deno.serve(async (request) => {
 
     if (!body.email || !body.password || !body.name) return errorResponse('Name, email, and password are required.', 400)
 
+    // Only an admin caller may hand out a non-contributor role — a lead's
+    // logins always come out as contributors, regardless of what was sent.
+    const role = profile.role === 'admin' ? (body.role ?? 'contributor') : 'contributor'
+
     const { data: existingUsers } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 })
     const existingUser = existingUsers.users.find((user) => user.email?.toLowerCase() === body.email.toLowerCase())
     let userId = existingUser?.id
@@ -107,7 +64,7 @@ Deno.serve(async (request) => {
         const { error } = await admin.auth.admin.updateUserById(userId, {
             password: body.password,
             email_confirm: true,
-            user_metadata: { name: body.name, role: body.role },
+            user_metadata: { name: body.name, role },
         })
         if (error) return errorResponse(`User update failed: ${error.message}`, 400)
     } else {
@@ -115,7 +72,7 @@ Deno.serve(async (request) => {
             email: body.email,
             password: body.password,
             email_confirm: true,
-            user_metadata: { name: body.name, role: body.role },
+            user_metadata: { name: body.name, role },
         })
         if (error) return errorResponse(`User creation failed: ${error.message}`, 400)
         userId = data.user.id
@@ -125,7 +82,7 @@ Deno.serve(async (request) => {
         id: userId,
         name: body.name,
         email: body.email,
-        role: body.role ?? 'contributor',
+        role,
         shift: body.shift ?? null,
         is_active: true,
         updated_at: new Date().toISOString(),

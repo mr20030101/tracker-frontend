@@ -6,6 +6,7 @@ import { Dashboard } from './pages/Dashboard'
 import { TaskLog } from './pages/TaskLog'
 import { Resources } from './pages/Resources'
 import { Team } from './pages/Team'
+import { Messages } from './pages/Messages'
 import { CbProfile } from './pages/CbProfile'
 import { Users } from './pages/Users'
 import { Projects } from './pages/Projects'
@@ -37,6 +38,8 @@ function ProtectedLayout() {
         <Route path="/task-log" element={<TaskLog />} />
         <Route path="/resources" element={<Resources />} />
         <Route path="/team" element={<Team />} />
+        <Route path="/messages" element={<Messages />} />
+        <Route path="/messages/:userId" element={<Messages />} />
         <Route path="/contributors/:email" element={<CbProfile />} />
         {isManager && <Route path="/users" element={<Users />} />}
         {isManager && <Route path="/projects" element={<Projects />} />}

@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { Navigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
@@ -17,6 +18,8 @@ export function Team() {
   const queryClient = useQueryClient()
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState({ title: '', body: '' })
+  const [editingInfo, setEditingInfo] = useState(false)
+  const [infoForm, setInfoForm] = useState<Record<number, string>>({})
 
   const { data, isLoading } = useQuery({
     queryKey: ['house-rules'],
@@ -32,6 +35,25 @@ export function Team() {
     },
   })
 
+  const saveInfoMutation = useMutation({
+    mutationFn: async (edits: Record<number, string>) =>
+      Promise.all(Object.entries(edits).map(([id, body]) => api.patch(`/house-rules/${id}`, { body }))),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['house-rules'] })
+      setEditingInfo(false)
+    },
+  })
+
+  function startEditingInfo() {
+    setInfoForm(Object.fromEntries(info.map((item) => [item.id, item.body])))
+    setEditingInfo(true)
+  }
+
+  function handleSaveInfo(e: FormEvent) {
+    e.preventDefault()
+    saveInfoMutation.mutate(infoForm)
+  }
+
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => api.delete(`/house-rules/${id}`),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['house-rules'] }),
@@ -45,6 +67,8 @@ export function Team() {
   const info = data?.filter((r) => r.type === 'info' && r.title !== 'Closing Note') ?? []
   const rules = data?.filter((r) => r.type === 'rule') ?? []
   const closingNote = data?.find((r) => r.title === 'Closing Note')
+
+  if (user?.role === 'admin') return <Navigate to="/" replace />
 
   return (
     <div>
@@ -70,22 +94,70 @@ export function Team() {
 
       <article className="rounded-2xl border border-gray-200 bg-white px-8 py-10 shadow-sm">
         {info.length > 0 && (
-          <dl className="mb-8 grid grid-cols-1 gap-4 border-b border-gray-100 pb-8 sm:grid-cols-2">
-            {info.map((item) => (
-              <div key={item.id}>
-                <dt className="text-xs font-semibold uppercase tracking-wider text-gray-400">{item.title}</dt>
-                <dd className="mt-1 text-sm text-gray-800">
-                  {isUrl(item.body) ? (
-                    <a href={item.body} target="_blank" rel="noreferrer" className="text-sky-700 hover:underline">
-                      {item.body}
-                    </a>
-                  ) : (
-                    item.body
-                  )}
-                </dd>
+          <div className="mb-8 border-b border-gray-100 pb-8">
+            {isManager && !editingInfo && (
+              <div className="mb-4 flex justify-end">
+                <button
+                  type="button"
+                  onClick={startEditingInfo}
+                  className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
+                >
+                  Edit
+                </button>
               </div>
-            ))}
-          </dl>
+            )}
+            {editingInfo ? (
+              <form onSubmit={handleSaveInfo}>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  {info.map((item) => (
+                    <div key={item.id}>
+                      <label className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+                        {item.title}
+                      </label>
+                      <input
+                        value={infoForm[item.id] ?? ''}
+                        onChange={(e) => setInfoForm({ ...infoForm, [item.id]: e.target.value })}
+                        className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
+                      />
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-4 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingInfo(false)}
+                    className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={saveInfoMutation.isPending}
+                    className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+                  >
+                    {saveInfoMutation.isPending ? 'Saving...' : 'Save'}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {info.map((item) => (
+                  <div key={item.id}>
+                    <dt className="text-xs font-semibold uppercase tracking-wider text-gray-400">{item.title}</dt>
+                    <dd className="mt-1 text-sm text-gray-800">
+                      {isUrl(item.body) ? (
+                        <a href={item.body} target="_blank" rel="noreferrer" className="text-sky-700 hover:underline">
+                          {item.body}
+                        </a>
+                      ) : (
+                        item.body
+                      )}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+          </div>
         )}
 
         <h2 className="mb-2 text-lg font-bold text-gray-900">House Rules</h2>

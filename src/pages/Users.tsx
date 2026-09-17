@@ -3,13 +3,14 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
+import { isOnline } from '../lib/presence'
 import type { User } from '../types'
 import { Modal } from '../components/Modal'
 import { Avatar } from '../components/Avatar'
+import { Combobox } from '../components/Combobox'
 
 const ROLES: User['role'][] = ['contributor', 'lead', 'admin']
 const DEFAULT_PASSWORD = 'password'
-const ONLINE_THRESHOLD_MS = 3 * 60 * 1000
 
 function formatLastSeen(lastSeenAt: string | null) {
   if (!lastSeenAt) return 'Never signed in'
@@ -26,6 +27,7 @@ const emptyForm = { name: '', email: '', password: DEFAULT_PASSWORD, role: 'cont
 
 export function Users() {
   const { user: currentUser } = useAuth()
+  const isAdmin = currentUser?.role === 'admin'
   const queryClient = useQueryClient()
   const [adding, setAdding] = useState(false)
   const [resetTarget, setResetTarget] = useState<User | null>(null)
@@ -54,21 +56,14 @@ export function Users() {
     onError: (mutationError: Error) => setError(mutationError.message || 'Could not create this login.'),
   })
 
-  const syncTaskUsersMutation = useMutation({
-    mutationFn: async () => api.post<{ created: number; updated: number; total: number }>('/users', {
-      action: 'sync-task-users',
-      password: 'password',
-    }),
-    onSuccess: ({ data: result }) => {
-      queryClient.invalidateQueries({ queryKey: ['users'] })
-      setNotice(`${result.created} created, ${result.updated} updated from task logs.`)
-      setError(null)
-    },
-    onError: (mutationError: Error) => setError(mutationError.message || 'Could not create task-log users.'),
-  })
-
   const roleMutation = useMutation({
     mutationFn: async ({ id, role }: { id: string; role: User['role'] }) => api.patch(`/users/${id}`, { role }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
+  })
+
+  const leadMutation = useMutation({
+    mutationFn: async ({ id, leadId }: { id: string; leadId: string | null }) =>
+      api.patch(`/users/${id}`, { lead_id: leadId }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
   })
 
@@ -129,13 +124,6 @@ export function Users() {
         >
           + Add Login
         </button>
-        <button
-          onClick={() => syncTaskUsersMutation.mutate()}
-          disabled={syncTaskUsersMutation.isPending}
-          className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 disabled:opacity-50"
-        >
-          {syncTaskUsersMutation.isPending ? 'Syncing...' : 'Create Task Log Users'}
-        </button>
       </div>
       {notice && <div className="mb-4 text-sm text-status-success-text">{notice}</div>}
 
@@ -145,6 +133,7 @@ export function Users() {
             <tr>
               <th className="px-5 py-3">Name</th>
               <th className="px-5 py-3">Role</th>
+              <th className="px-5 py-3">Lead</th>
               <th className="px-5 py-3">Status</th>
               <th className="px-5 py-3">Session</th>
               <th className="px-5 py-3 text-right">Actions</th>
@@ -153,19 +142,22 @@ export function Users() {
           <tbody className="divide-y divide-gray-100">
             {isLoading && (
               <tr>
-                <td colSpan={5} className="px-5 py-6 text-center text-gray-400">
+                <td colSpan={6} className="px-5 py-6 text-center text-gray-400">
                   Loading...
                 </td>
               </tr>
             )}
-            {data?.filter((u) => !search || u.name.toLowerCase().includes(search) || u.email.toLowerCase().includes(search)).map((u) => (
+            {data
+              ?.filter((u) => u.id !== currentUser?.id)
+              .filter((u) => !search || u.name.toLowerCase().includes(search) || u.email.toLowerCase().includes(search))
+              .map((u) => (
               <tr key={u.id} className={`hover:bg-gray-50 ${!u.is_active ? 'opacity-60' : ''}`}>
                 <td className="px-5 py-3">
                   <Link
                     to={`/contributors/${encodeURIComponent(u.email)}`}
                     className="flex items-center gap-3 hover:underline"
                   >
-                    <Avatar name={u.name} size={28} />
+                    <Avatar name={u.name} photoUrl={u.avatar_url} size={28} />
                     <div>
                       <div className="font-medium text-gray-900">{u.name}</div>
                       <div className="text-xs text-gray-400">{u.email}</div>
@@ -173,17 +165,40 @@ export function Users() {
                   </Link>
                 </td>
                 <td className="px-5 py-3">
-                  <select
-                    value={u.role}
-                    onChange={(e) => roleMutation.mutate({ id: u.id, role: e.target.value as User['role'] })}
-                    className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs capitalize outline-none focus:border-accent"
-                  >
-                    {ROLES.map((r) => (
-                      <option key={r} value={r}>
-                        {r}
-                      </option>
-                    ))}
-                  </select>
+                  {isAdmin ? (
+                    <select
+                      value={u.role}
+                      onChange={(e) => roleMutation.mutate({ id: u.id, role: e.target.value as User['role'] })}
+                      className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs capitalize outline-none focus:border-accent"
+                    >
+                      {ROLES.map((r) => (
+                        <option key={r} value={r}>
+                          {r}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span className="text-xs capitalize text-gray-600">{u.role}</span>
+                  )}
+                </td>
+                <td className="px-5 py-3">
+                  {isAdmin ? (
+                    <Combobox
+                      value={u.lead_id ?? ''}
+                      onChange={(leadId) => leadMutation.mutate({ id: u.id, leadId: leadId || null })}
+                      options={
+                        data
+                          ?.filter((lead) => lead.role === 'lead' && lead.id !== u.id)
+                          .map((lead) => ({ value: lead.id, label: lead.name })) ?? []
+                      }
+                      placeholder="Search leads..."
+                      className="max-w-40"
+                    />
+                  ) : (
+                    <span className="text-xs text-gray-500">
+                      {data?.find((lead) => lead.id === u.lead_id)?.name ?? '—'}
+                    </span>
+                  )}
                 </td>
                 <td className="px-5 py-3">
                   <span
@@ -197,7 +212,7 @@ export function Users() {
                 </td>
                 <td className="px-5 py-3">
                   {(() => {
-                    const online = Boolean(u.last_seen_at) && Date.now() - new Date(u.last_seen_at!).getTime() < ONLINE_THRESHOLD_MS
+                    const online = isOnline(u.last_seen_at)
                     return (
                       <span className="inline-flex items-center gap-1.5 text-xs text-gray-500">
                         <span className={`h-2 w-2 rounded-full ${online ? 'bg-status-success-text' : 'bg-gray-300'}`} />
@@ -273,20 +288,22 @@ export function Users() {
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
               />
             </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Role</label>
-              <select
-                value={form.role}
-                onChange={(e) => setForm({ ...form, role: e.target.value as User['role'] })}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm capitalize outline-none focus:border-accent"
-              >
-                {ROLES.map((r) => (
-                  <option key={r} value={r}>
-                    {r}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {isAdmin && (
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Role</label>
+                <select
+                  value={form.role}
+                  onChange={(e) => setForm({ ...form, role: e.target.value as User['role'] })}
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm capitalize outline-none focus:border-accent"
+                >
+                  {ROLES.map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             {error && <div className="text-sm text-status-danger-text">{error}</div>}
             <div className="mt-2 flex justify-end gap-2">
               <button

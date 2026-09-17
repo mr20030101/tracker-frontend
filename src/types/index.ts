@@ -7,6 +7,8 @@ export interface User {
   meet_link: string | null
   is_active: boolean
   last_seen_at: string | null
+  lead_id: string | null
+  avatar_url: string | null
 }
 
 export type ActivityEvent = 'login' | 'login_failed' | 'logout'
@@ -98,6 +100,33 @@ export interface DailyReportRow {
 export interface ProjectBreakdown {
   name: string
   total: number
+}
+
+export interface DirectoryUser {
+  id: string
+  name: string
+  is_active: boolean
+  last_seen_at: string | null
+  avatar_url: string | null
+}
+
+export interface Message {
+  id: number
+  sender_id: string
+  recipient_id: string
+  body: string
+  read_at: string | null
+  deleted_by_sender: boolean
+  deleted_by_recipient: boolean
+  created_at: string
+}
+
+export interface Conversation {
+  otherUserId: string
+  otherUserName: string
+  otherUserAvatarUrl: string | null
+  lastMessage: Message
+  unreadCount: number
 }
 
 export interface ContributorProfile {

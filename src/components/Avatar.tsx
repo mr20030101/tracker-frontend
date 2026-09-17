@@ -22,7 +22,17 @@ function initialsFor(name: string) {
   return (first + second).toUpperCase()
 }
 
-export function Avatar({ name, size = 36 }: { name: string; size?: number }) {
+export function Avatar({ name, photoUrl, size = 36 }: { name: string; photoUrl?: string | null; size?: number }) {
+  if (photoUrl) {
+    return (
+      <img
+        src={photoUrl}
+        alt={name}
+        className="shrink-0 rounded-full object-cover"
+        style={{ width: size, height: size }}
+      />
+    )
+  }
   return (
     <div
       className={`flex shrink-0 items-center justify-center rounded-full font-semibold ${colorFor(name)}`}
