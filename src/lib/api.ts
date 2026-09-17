@@ -16,7 +16,7 @@ export function taskIdConflictError(table: string, error: { code?: string; messa
   return error as Error
 }
 
-async function functionErrorMessage(error: { message: string; context?: globalThis.Response }): Promise<Error> {
+export async function functionErrorMessage(error: { message: string; context?: globalThis.Response }): Promise<Error> {
   if (error.context) {
     try {
       const body = await error.context.clone().json()

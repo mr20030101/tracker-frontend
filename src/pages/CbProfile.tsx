@@ -1,18 +1,21 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Navigate, useParams, Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api } from '../lib/api'
+import { api, functionErrorMessage, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { startOfWeek, toISODate, formatRange } from '../lib/week'
 import { updateOwnProfile, uploadAvatar } from '../lib/profile'
-import type { ContributorProfile, TaskSubmission } from '../types'
+import type { ContributorProfile, ContributorProjectLevel, Project, ProjectLevel, TaskSubmission } from '../types'
 import { Avatar } from '../components/Avatar'
 import { Modal } from '../components/Modal'
 import { StatusPill } from '../components/StatusPill'
+import { LevelPill, LEVEL_STYLES } from '../components/LevelPill'
 import { TaskSubmissionForm } from '../components/TaskSubmissionForm'
 import { SortableHeader } from '../components/SortableHeader'
 import { ProgressRing } from '../components/ProgressRing'
 import { LineChart } from '../components/LineChart'
+
+const LEVEL_OPTIONS: ProjectLevel[] = ['contributor', 'l0', 'l1', 'l10']
 
 const MANAGER_ROLES = ['admin', 'lead']
 
@@ -79,6 +82,63 @@ export function CbProfile() {
       queryClient.invalidateQueries({ queryKey: ['contributor'] })
       queryClient.invalidateQueries({ queryKey: ['task-submissions'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] })
+    },
+  })
+
+  const contributorId = data?.user?.id ?? null
+  const contributorLeadId = data?.user?.lead_id ?? null
+
+  const { data: allProjects = [] } = useQuery({
+    queryKey: ['projects'],
+    queryFn: async () => (await api.get<Project[]>('/projects')).data,
+  })
+
+  // A contributor's project list is exactly whichever projects their lead
+  // runs — there's no separate "assign contributor to project" step.
+  const { data: leadProjectIds = [] } = useQuery({
+    queryKey: ['project-leads-for-lead', contributorLeadId],
+    queryFn: async () => {
+      const { data: rows, error } = await supabase
+        .from('project_leads')
+        .select('project_id')
+        .eq('lead_id', contributorLeadId!)
+      if (error) throw error
+      return rows.map((row) => row.project_id as number)
+    },
+    enabled: Boolean(contributorLeadId),
+  })
+
+  const { data: projectLevels = [] } = useQuery({
+    queryKey: ['contributor-project-levels', contributorId],
+    queryFn: async () => {
+      const { data: rows, error } = await supabase
+        .from('contributor_project_levels')
+        .select('*')
+        .eq('user_id', contributorId!)
+      if (error) throw error
+      return rows as ContributorProjectLevel[]
+    },
+    enabled: Boolean(contributorId),
+  })
+
+  const levelMutation = useMutation({
+    mutationFn: async ({ projectId, level }: { projectId: number; level: ProjectLevel }) => {
+      const { error } = await supabase
+        .from('contributor_project_levels')
+        .upsert({ user_id: contributorId!, project_id: projectId, level }, { onConflict: 'user_id,project_id' })
+      if (error) throw error
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['contributor-project-levels', contributorId] }),
+  })
+
+  const recommendationMutation = useMutation({
+    mutationFn: async () => {
+      const { data: result, error } = await supabase.functions.invoke<{ recommendation: string }>(
+        'lead-recommendation',
+        {},
+      )
+      if (error) throw await functionErrorMessage(error)
+      return result!.recommendation
     },
   })
 
@@ -180,6 +240,12 @@ export function CbProfile() {
 
   const canEdit = isOwnProfile || Boolean(currentUser && MANAGER_ROLES.includes(currentUser.role))
   const isContributorRole = !data.user || data.user.role === 'contributor'
+  const canManageLevels = Boolean(currentUser && MANAGER_ROLES.includes(currentUser.role))
+  const levelByProjectId = new Map(projectLevels.map((row) => [row.project_id, row.level]))
+  const levelProjects = leadProjectIds
+    .map((id) => allProjects.find((project) => project.id === id))
+    .filter((project): project is Project => Boolean(project))
+    .map((project) => ({ project, level: levelByProjectId.get(project.id) ?? ('contributor' as ProjectLevel) }))
 
   const displayName = data.user?.name ?? decodedEmail
   const stages = Object.entries(data.stage_breakdown) as [string, number][]
@@ -364,22 +430,67 @@ export function CbProfile() {
         </div>
       )}
 
-      {!isContributorRole && (
-        <div className="rounded-xl border border-gray-200 bg-white p-5 text-sm text-gray-600">
-          <div className="mb-1 font-semibold text-gray-900">No task submissions to track</div>
-          <p>
-            {data.user?.role === 'lead'
-              ? 'Leads don’t log individual task submissions. Manage your attached contributors from '
-              : 'Admins don’t log individual task submissions. Manage the team from '}
-            <Link to="/users" className="text-sky-700 hover:underline">
-              Users
-            </Link>{' '}
-            or check overall progress on the{' '}
-            <Link to="/" className="text-sky-700 hover:underline">
-              Dashboard
-            </Link>
-            .
-          </p>
+      {isContributorRole && levelProjects.length > 0 && (
+        <div className="mb-6 rounded-xl border border-gray-200 bg-white p-5">
+          <div className="mb-3 text-sm font-semibold text-gray-700">Project Levels</div>
+          <div className="flex flex-col gap-3">
+            {levelProjects.map(({ project, level }) => (
+              <div key={project.id} className="flex items-center justify-between gap-3 text-sm">
+                <span className="uppercase text-gray-700">{project.name}</span>
+                {canManageLevels ? (
+                  <select
+                    value={level}
+                    onChange={(e) =>
+                      levelMutation.mutate({ projectId: project.id, level: e.target.value as ProjectLevel })
+                    }
+                    className={`rounded-full border-none px-2.5 py-1 text-xs font-medium uppercase outline-none focus:ring-2 focus:ring-accent ${LEVEL_STYLES[level]}`}
+                  >
+                    {LEVEL_OPTIONS.map((option) => (
+                      <option key={option} value={option}>
+                        {option === 'contributor' ? 'Contributor' : option.toUpperCase()}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <LevelPill level={level} />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {isOwnProfile && data.user?.role === 'lead' && (
+        <div className="mt-6 rounded-xl border border-gray-200 bg-white p-5">
+          <div className="mb-3 flex items-center justify-between">
+            <div className="text-sm font-semibold text-gray-700">Team Recommendations</div>
+            <button
+              onClick={() => recommendationMutation.mutate()}
+              disabled={recommendationMutation.isPending}
+              className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+            >
+              {recommendationMutation.isPending
+                ? 'Generating...'
+                : recommendationMutation.data
+                  ? 'Regenerate'
+                  : 'Generate Recommendation'}
+            </button>
+          </div>
+          {recommendationMutation.isError && (
+            <div className="rounded-lg bg-status-danger-text px-3 py-2 text-sm text-status-danger-bg">
+              {(recommendationMutation.error as Error).message}
+            </div>
+          )}
+          {recommendationMutation.data ? (
+            <div className="whitespace-pre-line text-sm text-gray-600">{recommendationMutation.data}</div>
+          ) : (
+            !recommendationMutation.isPending &&
+            !recommendationMutation.isError && (
+              <p className="text-sm text-gray-400">
+                Generate an AI-powered summary of how your attached contributors are trending this week.
+              </p>
+            )
+          )}
         </div>
       )}
 

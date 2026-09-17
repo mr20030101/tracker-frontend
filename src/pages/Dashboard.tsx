@@ -390,7 +390,7 @@ export function Dashboard() {
               return (
                 <tr
                   key={row.cb_email}
-                  className={`hover:bg-gray-50 ${!row.is_active ? 'opacity-60' : ''} ${noProgress ? 'bg-status-danger-bg/40' : ''
+                  className={`hover:bg-gray-50 ${!row.is_active ? 'opacity-60' : ''} ${noProgress ? 'bg-status-danger-bg' : ''
                     }`}
                 >
                   <td className="px-5 py-3">
@@ -426,14 +426,7 @@ export function Dashboard() {
                     )}
                   </td>
                   <td className="px-5 py-3">
-                    <div className="flex items-center gap-2">
-                      <ProgressBar value={row.progress} />
-                      {noProgress && (
-                        <span className="inline-flex items-center rounded-full bg-status-danger-text px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
-                          No Progress
-                        </span>
-                      )}
-                    </div>
+                    <ProgressBar value={row.progress} danger={noProgress} />
                   </td>
                   <td className="px-5 py-3">
                     <span

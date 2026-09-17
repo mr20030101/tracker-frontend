@@ -31,6 +31,17 @@ export interface Project {
 export type Stage = 'attempt' | 'l0' | 'l1'
 export type SubmissionStatus = 'submitted' | 'in_progress' | 'empty' | 'expired' | 'claimed_by_another'
 
+// A contributor's rank on a given project — distinct from Stage above,
+// which describes a task submission's own pipeline stage.
+export type ProjectLevel = 'contributor' | 'l0' | 'l1' | 'l10'
+
+export interface ContributorProjectLevel {
+  id: number
+  user_id: string
+  project_id: number
+  level: ProjectLevel
+}
+
 export interface TaskSubmission {
   id: number
   task_id: string | null

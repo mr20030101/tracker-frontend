@@ -30,33 +30,39 @@ function Section({
   title,
   count,
   description,
+  actions,
   children,
 }: {
   title: string
   count: number
   description: string
+  actions?: ReactNode
   children: ReactNode
 }) {
   const [open, setOpen] = useState(true)
   return (
     <div className="mb-4 overflow-hidden rounded-xl border border-gray-200 bg-white">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between px-5 py-4 text-left"
-      >
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-sm font-semibold text-gray-900">{title}</h2>
-            {count > 0 && (
-              <span className="rounded-full bg-status-danger-bg px-2 py-0.5 text-xs font-semibold text-status-danger-text">
-                {count}
-              </span>
-            )}
+      <div className="flex w-full items-center justify-between px-5 py-4">
+        <button onClick={() => setOpen((v) => !v)} className="flex flex-1 items-center gap-2 text-left">
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-semibold text-gray-900">{title}</h2>
+              {count > 0 && (
+                <span className="rounded-full bg-status-danger-bg px-2 py-0.5 text-xs font-semibold text-status-danger-text">
+                  {count}
+                </span>
+              )}
+            </div>
+            <p className="mt-1 text-xs text-gray-500">{description}</p>
           </div>
-          <p className="mt-1 text-xs text-gray-500">{description}</p>
+        </button>
+        <div className="flex shrink-0 items-center gap-3">
+          {actions}
+          <button onClick={() => setOpen((v) => !v)} className="text-gray-400" aria-label={open ? 'Collapse' : 'Expand'}>
+            {open ? '▲' : '▼'}
+          </button>
         </div>
-        <span className="text-gray-400">{open ? '▲' : '▼'}</span>
-      </button>
+      </div>
       {open && count > 0 && <div className="border-t border-gray-200">{children}</div>}
     </div>
   )
@@ -113,8 +119,27 @@ export function DataQuality() {
     return [...groups.values()].filter((g) => g.count > HIGH_VOLUME_THRESHOLD).sort((a, b) => b.count - a.count)
   }, [all])
 
+  const deleteAllMutation = useMutation({
+    mutationFn: async (ids: number[]) => {
+      const { error } = await supabase.from('task_submissions').delete().in('id', ids)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['data-quality-rows'] })
+      queryClient.invalidateQueries({ queryKey: ['task-submissions'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] })
+      queryClient.invalidateQueries({ queryKey: ['contributor'] })
+    },
+  })
+
   function handleDelete(id: number) {
     if (confirm('Delete this submission?')) deleteMutation.mutate(id)
+  }
+
+  function handleDeleteAll(ids: number[]) {
+    if (confirm(`Delete all ${ids.length} submissions with no Task ID? This cannot be undone.`)) {
+      deleteAllMutation.mutate(ids)
+    }
   }
 
   return (
@@ -218,6 +243,17 @@ export function DataQuality() {
             title="Missing Task ID"
             count={missingTaskId.length}
             description="Submissions with no Task ID recorded (may be intentional blank placeholders)."
+            actions={
+              missingTaskId.length > 0 && (
+                <button
+                  onClick={() => handleDeleteAll(missingTaskId.map((row) => row.id))}
+                  disabled={deleteAllMutation.isPending}
+                  className="text-xs font-medium text-status-danger-text hover:underline disabled:opacity-50"
+                >
+                  {deleteAllMutation.isPending ? 'Deleting...' : 'Delete All'}
+                </button>
+              )
+            }
           >
             <table className="w-full text-left text-sm">
               <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">

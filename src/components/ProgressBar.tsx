@@ -1,6 +1,6 @@
-export function ProgressBar({ value }: { value: number }) {
+export function ProgressBar({ value, danger = false }: { value: number; danger?: boolean }) {
   const pct = Math.round(Math.min(1, Math.max(0, value)) * 100)
-  const color = pct >= 100 ? 'bg-emerald-500' : pct >= 50 ? 'bg-accent' : 'bg-amber-400'
+  const color = danger ? 'bg-red-800' : pct >= 100 ? 'bg-emerald-500' : pct >= 50 ? 'bg-accent' : 'bg-amber-400'
 
   return (
     <div className="flex items-center gap-2">
