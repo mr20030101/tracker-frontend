@@ -6,6 +6,19 @@ export interface User {
   shift: string | null
   meet_link: string | null
   is_active: boolean
+  last_seen_at: string | null
+}
+
+export type ActivityEvent = 'login' | 'login_failed' | 'logout'
+
+export interface ActivityLog {
+  id: number
+  user_id: string | null
+  email: string | null
+  event: ActivityEvent
+  user_agent: string | null
+  created_at: string
+  user: Pick<User, 'id' | 'name' | 'email'> | null
 }
 
 export interface Project {

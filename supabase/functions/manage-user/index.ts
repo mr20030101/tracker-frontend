@@ -28,6 +28,15 @@ Deno.serve(async (request) => {
     }
 
     const body = await request.json()
+    if (body.action === 'delete-user') {
+        if (!body.id) return errorResponse('A user id is required.', 400)
+        if (body.id === caller.user.id) return errorResponse('You cannot delete your own account.', 422)
+
+        const { error } = await admin.auth.admin.deleteUser(body.id)
+        if (error) return errorResponse(`User deletion failed: ${error.message}`, 400)
+        return Response.json({ id: body.id }, { headers: corsHeaders })
+    }
+
     if (body.action === 'sync-task-users') {
         const { data: taskRows, error: taskError } = await admin.from('task_submissions').select('cb_email')
         if (taskError) return errorResponse(`Task user lookup failed: ${taskError.message}`, 400)

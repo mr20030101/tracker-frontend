@@ -57,7 +57,7 @@ export function TaskLog() {
         await api.get<Paginated<TaskSubmission>>('/task-submissions', {
           params: {
             stage: stage || undefined,
-            cb_email: search || undefined,
+            search: search || undefined,
             date_from: dateFrom || undefined,
             date_to: dateTo || undefined,
             page,
@@ -81,7 +81,10 @@ export function TaskLog() {
         .select('date, cb_email, task_id, project_id, stage, status, notes, submitted_at')
         .order(sort.key === 'project' ? 'project_id' : sort.key, { ascending: sort.dir === 'asc' })
       if (stage) query = query.eq('stage', stage)
-      if (search) query = query.ilike('cb_email', `%${search}%`)
+      if (search) {
+        const term = search.replace(/[%,]/g, '')
+        query = query.or(`cb_email.ilike.%${term}%,task_id.ilike.%${term}%`)
+      }
       if (dateFrom) query = query.gte('date', dateFrom)
       if (dateTo) query = query.lte('date', dateTo)
       const { data: rows, error } = await query
@@ -165,7 +168,7 @@ export function TaskLog() {
         {isManager && (
           <input
             type="search"
-            placeholder="Search by CB email..."
+            placeholder="Search by CB email or Task ID..."
             value={search}
             onChange={(e) => {
               setSearch(e.target.value)

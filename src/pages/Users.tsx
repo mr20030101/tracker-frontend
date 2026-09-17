@@ -2,19 +2,34 @@ import { useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
+import { useAuth } from '../lib/auth'
 import type { User } from '../types'
 import { Modal } from '../components/Modal'
 import { Avatar } from '../components/Avatar'
 
 const ROLES: User['role'][] = ['contributor', 'lead', 'admin']
 const DEFAULT_PASSWORD = 'password'
+const ONLINE_THRESHOLD_MS = 3 * 60 * 1000
+
+function formatLastSeen(lastSeenAt: string | null) {
+  if (!lastSeenAt) return 'Never signed in'
+  const diffMs = Date.now() - new Date(lastSeenAt).getTime()
+  const minutes = Math.floor(diffMs / 60_000)
+  if (minutes < 1) return 'Just now'
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  return `${Math.floor(hours / 24)}d ago`
+}
 
 const emptyForm = { name: '', email: '', password: DEFAULT_PASSWORD, role: 'contributor' as User['role'], shift: '' }
 
 export function Users() {
+  const { user: currentUser } = useAuth()
   const queryClient = useQueryClient()
   const [adding, setAdding] = useState(false)
   const [resetTarget, setResetTarget] = useState<User | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<User | null>(null)
   const [form, setForm] = useState(emptyForm)
   const [resetPassword, setResetPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -25,6 +40,7 @@ export function Users() {
   const { data, isLoading } = useQuery({
     queryKey: ['users'],
     queryFn: async () => (await api.get<User[]>('/users')).data,
+    refetchInterval: 30_000,
   })
 
   const createMutation = useMutation({
@@ -62,6 +78,17 @@ export function Users() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: async (u: User) => api.delete(`/users/${u.id}`),
+    onSuccess: (_result, u) => {
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+      setNotice(`${u.name}'s login was deleted.`)
+      setError(null)
+      setDeleteTarget(null)
+    },
+    onError: (mutationError: Error) => setError(mutationError.message || 'Could not delete this login.'),
+  })
+
   const resetMutation = useMutation({
     mutationFn: async () => api.patch(`/users/${resetTarget!.id}`, { password: resetPassword, email: resetTarget!.email }),
     onSuccess: () => {
@@ -81,6 +108,11 @@ export function Users() {
   function handleReset(e: FormEvent) {
     e.preventDefault()
     resetMutation.mutate()
+  }
+
+  function handleDelete(e: FormEvent) {
+    e.preventDefault()
+    if (deleteTarget) deleteMutation.mutate(deleteTarget)
   }
 
   return (
@@ -114,13 +146,14 @@ export function Users() {
               <th className="px-5 py-3">Name</th>
               <th className="px-5 py-3">Role</th>
               <th className="px-5 py-3">Status</th>
+              <th className="px-5 py-3">Session</th>
               <th className="px-5 py-3 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {isLoading && (
               <tr>
-                <td colSpan={4} className="px-5 py-6 text-center text-gray-400">
+                <td colSpan={5} className="px-5 py-6 text-center text-gray-400">
                   Loading...
                 </td>
               </tr>
@@ -162,6 +195,17 @@ export function Users() {
                     {u.is_active ? 'Active' : 'Disabled'}
                   </span>
                 </td>
+                <td className="px-5 py-3">
+                  {(() => {
+                    const online = Boolean(u.last_seen_at) && Date.now() - new Date(u.last_seen_at!).getTime() < ONLINE_THRESHOLD_MS
+                    return (
+                      <span className="inline-flex items-center gap-1.5 text-xs text-gray-500">
+                        <span className={`h-2 w-2 rounded-full ${online ? 'bg-status-success-text' : 'bg-gray-300'}`} />
+                        {online ? 'Online' : formatLastSeen(u.last_seen_at)}
+                      </span>
+                    )
+                  })()}
+                </td>
                 <td className="px-5 py-3 text-right">
                   <div className="flex justify-end gap-3">
                     <button
@@ -176,6 +220,17 @@ export function Users() {
                       className="text-xs font-medium text-sky-700 hover:underline"
                     >
                       Reset Password
+                    </button>
+                    <button
+                      onClick={() => {
+                        setError(null)
+                        setDeleteTarget(u)
+                      }}
+                      disabled={u.id === currentUser?.id || deleteMutation.isPending}
+                      title={u.id === currentUser?.id ? 'You cannot delete your own account.' : undefined}
+                      className="text-xs font-medium text-status-danger-text hover:underline disabled:cursor-not-allowed disabled:text-gray-300 disabled:no-underline"
+                    >
+                      Delete
                     </button>
                   </div>
                 </td>
@@ -282,6 +337,34 @@ export function Users() {
                 className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
               >
                 {resetMutation.isPending ? 'Saving...' : 'Set Password'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {deleteTarget && (
+        <Modal title={`Delete ${deleteTarget.name}'s login?`} onClose={() => setDeleteTarget(null)}>
+          <form onSubmit={handleDelete} className="flex flex-col gap-3">
+            <p className="text-sm text-gray-600">
+              This permanently removes <span className="font-medium text-gray-900">{deleteTarget.name}</span>'s ({deleteTarget.email}) login. This
+              cannot be undone.
+            </p>
+            {error && <div className="text-sm text-status-danger-text">{error}</div>}
+            <div className="mt-2 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setDeleteTarget(null)}
+                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={deleteMutation.isPending}
+                className="rounded-lg bg-status-danger-text px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              >
+                {deleteMutation.isPending ? 'Deleting...' : 'Delete Login'}
               </button>
             </div>
           </form>

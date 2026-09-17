@@ -7,6 +7,7 @@ import type { DashboardSummary, Project } from '../types'
 import { Avatar } from '../components/Avatar'
 import { ProgressBar } from '../components/ProgressBar'
 import { LineChart } from '../components/LineChart'
+import { Modal } from '../components/Modal'
 import { downloadCsv } from '../lib/csv'
 
 type StatusFilter = 'all' | 'active' | 'disabled'
@@ -70,7 +71,7 @@ export function Dashboard() {
   const [projectId, setProjectId] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [activityFilter, setActivityFilter] = useState<ActivityFilter>('all')
-  const [showGraphs, setShowGraphs] = useState(false)
+  const [showDailyReport, setShowDailyReport] = useState(false)
 
   const { data: projects } = useQuery({
     queryKey: ['projects'],
@@ -282,74 +283,79 @@ export function Dashboard() {
         </button>
       </div>
 
-      <div className="mb-6 overflow-hidden rounded-xl border border-gray-200 bg-white">
-        <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
-          <div>
-            <h2 className="text-sm font-semibold text-gray-900">Daily Submission Report</h2>
-            <p className="mt-1 text-xs text-gray-500">Team activity for the selected {viewMode}.</p>
-          </div>
-          {viewMode !== 'day' && (
-            <button
-              type="button"
-              onClick={() => setShowGraphs((visible) => !visible)}
-              className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
-            >
-              {showGraphs ? 'Hide Graphs' : 'Show Graphs'}
-            </button>
-          )}
+      <div className="mb-6 flex items-center justify-between rounded-xl border border-gray-200 bg-white px-5 py-4">
+        <div>
+          <h2 className="text-sm font-semibold text-gray-900">Daily Submission Report</h2>
+          <p className="mt-1 text-xs text-gray-500">Team activity for the selected {viewMode}.</p>
         </div>
-        {viewMode !== 'day' && showGraphs && (
-          <div className="grid grid-cols-1 gap-4 border-b border-gray-200 p-5 lg:grid-cols-2">
-            <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
-              <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-gray-700">Submitted Tasks by Day</h3>
-                <span className="text-xs text-gray-400">tasks</span>
-              </div>
-              <LineChart
-                data={dailyReport.map((day) => ({ date: day.date, value: day.tasks_submitted }))}
-                color="#d4a017"
-                unitLabel="submitted tasks"
-              />
-            </div>
-
-            <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
-              <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-gray-700">Contributors Active by Day</h3>
-                <span className="text-xs text-gray-400">contributors</span>
-              </div>
-              <LineChart
-                data={dailyReport.map((day) => ({ date: day.date, value: day.contributors_submitted }))}
-                color="#0284c7"
-                unitLabel="contributors submitted"
-              />
-            </div>
-          </div>
-        )}
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[680px] text-left text-sm">
-            <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
-              <tr>
-                <th className="px-5 py-3">Date</th>
-                <th className="px-5 py-3">Submitted</th>
-                <th className="px-5 py-3">Logged</th>
-                <th className="px-5 py-3">Contributors Submitted</th>
-                <th className="px-5 py-3">No Submissions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {data?.daily_report.map((day) => (
-                <tr key={day.date} className={day.contributors_without_submissions > 0 ? 'bg-status-danger-bg/30' : ''}>
-                  <td className="px-5 py-3 font-medium text-gray-900">{day.date}</td>
-                  <td className="px-5 py-3 font-semibold text-gray-900">{day.tasks_submitted}</td>
-                  <td className="px-5 py-3 text-gray-600">{day.tasks_logged}</td>
-                  <td className="px-5 py-3 text-gray-600">{day.contributors_submitted}</td>
-                  <td className="px-5 py-3 font-medium text-status-danger-text">{day.contributors_without_submissions}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <button
+          type="button"
+          onClick={() => setShowDailyReport(true)}
+          className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
+        >
+          Show Report
+        </button>
       </div>
+
+      {showDailyReport && (
+        <Modal
+          title="Daily Submission Report"
+          onClose={() => setShowDailyReport(false)}
+          maxWidthClassName="max-w-4xl"
+        >
+          {viewMode !== 'day' && (
+            <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-gray-700">Submitted Tasks by Day</h3>
+                  <span className="text-xs text-gray-400">tasks</span>
+                </div>
+                <LineChart
+                  data={dailyReport.map((day) => ({ date: day.date, value: day.tasks_submitted }))}
+                  color="#d4a017"
+                  unitLabel="submitted tasks"
+                />
+              </div>
+
+              <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-gray-700">Contributors Active by Day</h3>
+                  <span className="text-xs text-gray-400">contributors</span>
+                </div>
+                <LineChart
+                  data={dailyReport.map((day) => ({ date: day.date, value: day.contributors_submitted }))}
+                  color="#0284c7"
+                  unitLabel="contributors submitted"
+                />
+              </div>
+            </div>
+          )}
+          <div className="max-h-[50vh] overflow-auto rounded-lg border border-gray-200">
+            <table className="w-full min-w-[680px] text-left text-sm">
+              <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
+                <tr>
+                  <th className="px-5 py-3">Date</th>
+                  <th className="px-5 py-3">Submitted</th>
+                  <th className="px-5 py-3">Logged</th>
+                  <th className="px-5 py-3">Contributors Submitted</th>
+                  <th className="px-5 py-3">No Submissions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {data?.daily_report.map((day) => (
+                  <tr key={day.date} className={day.contributors_without_submissions > 0 ? 'bg-status-danger-bg/30' : ''}>
+                    <td className="px-5 py-3 font-medium text-gray-900">{day.date}</td>
+                    <td className="px-5 py-3 font-semibold text-gray-900">{day.tasks_submitted}</td>
+                    <td className="px-5 py-3 text-gray-600">{day.tasks_logged}</td>
+                    <td className="px-5 py-3 text-gray-600">{day.contributors_submitted}</td>
+                    <td className="px-5 py-3 font-medium text-status-danger-text">{day.contributors_without_submissions}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Modal>
+      )}
 
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
         <table className="w-full text-left text-sm">

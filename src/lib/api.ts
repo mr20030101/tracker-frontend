@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import type { ContributorProfile, DashboardSummary, DailyReportRow, HouseRule, Paginated, Project, Resource, TaskSubmission, User } from '../types'
+import type { ActivityEvent, ActivityLog, ContributorProfile, DashboardSummary, DailyReportRow, HouseRule, Paginated, Project, Resource, TaskSubmission, User } from '../types'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim() || 'https://ieovepkcseytccagzedg.supabase.co'
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() ||
@@ -68,7 +68,10 @@ async function submissions(params: Record<string, unknown> = {}): Promise<Pagina
   let query = supabase.from('task_submissions').select('*', { count: 'exact' }).order(sortColumn, { ascending: sortAscending })
   if (profile.role === 'contributor') query = query.eq('user_id', profile.id)
   if (params.stage) query = query.eq('stage', params.stage)
-  if (params.cb_email) query = query.ilike('cb_email', `%${params.cb_email}%`)
+  if (params.search) {
+    const term = String(params.search).replace(/[%,]/g, '')
+    query = query.or(`cb_email.ilike.%${term}%,task_id.ilike.%${term}%`)
+  }
   if (params.date_from) query = query.gte('date', params.date_from)
   if (params.date_to) query = query.lte('date', params.date_to)
   const page = Number(params.page ?? 1)
@@ -182,6 +185,34 @@ async function listHouseRules(): Promise<HouseRule[]> {
   return withProject(data as HouseRule[], await projects()) as HouseRule[]
 }
 
+async function activityLogs(): Promise<ActivityLog[]> {
+  await currentProfile()
+  const { data, error } = await supabase
+    .from('activity_logs')
+    .select('*, user:profiles(id, name, email)')
+    .order('created_at', { ascending: false })
+    .limit(200)
+  if (error) throw error
+  return data as ActivityLog[]
+}
+
+// Fire-and-forget: auth events are logged best-effort and should never block
+// the login/logout flow they describe.
+export function logActivity(event: ActivityEvent, userId: string | null, email?: string) {
+  supabase
+    .from('activity_logs')
+    .insert({ event, user_id: userId, email: email ?? null, user_agent: navigator.userAgent })
+    .then(({ error }) => {
+      if (error) console.warn('Could not record activity log:', error.message)
+    })
+}
+
+export function touchPresence() {
+  supabase.rpc('touch_presence').then(({ error }) => {
+    if (error) console.warn('Could not update presence:', error.message)
+  })
+}
+
 export const api = {
   async get<T>(path: string, options?: { params?: Record<string, unknown> }): Promise<Response<T>> {
     const params = options?.params ?? {}
@@ -197,6 +228,7 @@ export const api = {
     if (path === '/task-submissions') return { data: (await submissions(params)) as T }
     if (path === '/dashboard/summary') return { data: (await dashboard(params)) as T }
     if (path === '/contributor') return { data: (await contributor(params)) as T }
+    if (path === '/activity-logs') return { data: (await activityLogs()) as T }
     throw new Error(`Unsupported GET endpoint: ${path}`)
   },
   async post<T>(path: string, payload: Record<string, unknown>): Promise<Response<T>> {
@@ -228,6 +260,11 @@ export const api = {
   async delete(path: string): Promise<Response<null>> {
     await currentProfile()
     const [, resource, id] = path.split('/')
+    if (resource === 'users') {
+      const { error } = await supabase.functions.invoke('manage-user', { body: { action: 'delete-user', id } })
+      if (error) throw await functionErrorMessage(error)
+      return { data: null }
+    }
     const table = resource.replace('task-submissions', 'task_submissions').replace('house-rules', 'house_rules')
     const { error } = await supabase.from(table).delete().eq('id', id)
     if (error) throw error

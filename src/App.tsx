@@ -10,6 +10,7 @@ import { CbProfile } from './pages/CbProfile'
 import { Users } from './pages/Users'
 import { Projects } from './pages/Projects'
 import { DataQuality } from './pages/DataQuality'
+import { ActivityLog } from './pages/ActivityLog'
 
 const MANAGER_ROLES = ['admin', 'lead']
 
@@ -40,6 +41,7 @@ function ProtectedLayout() {
         {isManager && <Route path="/users" element={<Users />} />}
         {isManager && <Route path="/projects" element={<Projects />} />}
         {isManager && <Route path="/data-quality" element={<DataQuality />} />}
+        {isManager && <Route path="/activity-log" element={<ActivityLog />} />}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AppShell>

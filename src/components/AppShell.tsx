@@ -20,6 +20,7 @@ function navSections(isManager: boolean, ownProfilePath: string) {
         ? [
           { to: '/task-log', label: 'Task Log' },
           { to: '/data-quality', label: 'Data Quality' },
+          { to: '/activity-log', label: 'Activity Log' },
         ]
         : [{ to: '/task-log', label: 'Task Log' }],
     },
@@ -68,11 +69,13 @@ export function AppShell({ children }: { children: ReactNode }) {
               ? 'Projects'
               : location.pathname === '/data-quality'
                 ? 'Data Quality'
-                : location.pathname.startsWith('/contributors/')
-                ? isManager
-                  ? 'CB Profile'
-                  : 'My Profile'
-                : 'Dashboard'
+                : location.pathname === '/activity-log'
+                  ? 'Activity Log'
+                  : location.pathname.startsWith('/contributors/')
+                    ? isManager
+                      ? 'CB Profile'
+                      : 'My Profile'
+                    : 'Dashboard'
 
   return (
     <div className="flex h-screen bg-gray-50">
