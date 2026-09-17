@@ -83,6 +83,9 @@ create table if not exists public.house_rules (
 create index if not exists task_submissions_user_id_idx on public.task_submissions(user_id);
 create index if not exists task_submissions_cb_email_idx on public.task_submissions(cb_email);
 create index if not exists task_submissions_date_idx on public.task_submissions(date);
+-- Enforces one row per Task ID; multiple NULLs are still allowed since a
+-- unique index treats each NULL as distinct.
+create unique index if not exists task_submissions_task_id_key on public.task_submissions(task_id);
 create index if not exists resources_project_category_idx on public.resources(project_id, category, sort_order);
 create index if not exists house_rules_project_idx on public.house_rules(project_id, sort_order);
 create index if not exists activity_logs_created_at_idx on public.activity_logs(created_at desc);

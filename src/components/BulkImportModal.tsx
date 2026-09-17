@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { supabase } from '../lib/api'
+import { supabase, taskIdConflictError } from '../lib/api'
 import type { Project, Stage, SubmissionStatus } from '../types'
 
 interface Props {
@@ -155,12 +155,14 @@ export function BulkImportModal({ projects, onClose }: Props) {
       const userIdByEmail = new Map((profiles ?? []).map((p) => [p.email.toLowerCase(), p.id as string]))
 
       let duplicates = 0
+      const seenTaskIds = new Set<string>()
       const toInsert = []
       for (const { row, index } of includedRows) {
-        if (row.task_id && existingIds.has(row.task_id)) {
+        if (row.task_id && (existingIds.has(row.task_id) || seenTaskIds.has(row.task_id))) {
           duplicates += 1
           continue
         }
+        if (row.task_id) seenTaskIds.add(row.task_id)
         toInsert.push({
           task_id: row.task_id,
           cb_email: row.cb_email,
@@ -176,7 +178,7 @@ export function BulkImportModal({ projects, onClose }: Props) {
 
       if (toInsert.length > 0) {
         const { error: insertErr } = await supabase.from('task_submissions').insert(toInsert)
-        if (insertErr) throw insertErr
+        if (insertErr) throw taskIdConflictError('task_submissions', insertErr)
       }
 
       queryClient.invalidateQueries({ queryKey: ['task-submissions'] })

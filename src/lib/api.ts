@@ -9,6 +9,13 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 type Response<T> = { data: T }
 
+export function taskIdConflictError(table: string, error: { code?: string; message: string }): Error {
+  if (table === 'task_submissions' && error.code === '23505' && error.message.includes('task_id')) {
+    return new Error('This Task ID has already been logged. Double check your Task ID.')
+  }
+  return error as Error
+}
+
 async function functionErrorMessage(error: { message: string; context?: globalThis.Response }): Promise<Error> {
   if (error.context) {
     try {
@@ -241,7 +248,7 @@ export const api = {
     const table = path.slice(1).replace('task-submissions', 'task_submissions').replace('house-rules', 'house_rules')
     const row = path === '/task-submissions' ? { ...payload, user_id: (await supabase.auth.getUser()).data.user?.id } : payload
     const { data, error } = await supabase.from(table).insert(row).select().single()
-    if (error) throw error
+    if (error) throw taskIdConflictError(table, error)
     return { data: data as T }
   },
   async patch<T>(path: string, payload: Record<string, unknown>): Promise<Response<T>> {
@@ -254,7 +261,7 @@ export const api = {
     }
     const table = resource === 'users' ? 'profiles' : resource.replace('task-submissions', 'task_submissions').replace('house-rules', 'house_rules')
     const { data, error } = await supabase.from(table).update(payload).eq('id', id).select().single()
-    if (error) throw error
+    if (error) throw taskIdConflictError(table, error)
     return { data: data as T }
   },
   async delete(path: string): Promise<Response<null>> {
