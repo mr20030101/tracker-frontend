@@ -281,7 +281,8 @@ export function CbProfile() {
     return d && d >= rangeStart && d <= rangeEnd
   })
   const todaysSubmissions = data.all_submissions.filter(
-    (row) => row.date?.slice(0, 10) === toISODate(new Date()) && row.status !== 'in_progress',
+    (row) =>
+      row.date?.slice(0, 10) === toISODate(new Date()) && row.status !== 'in_progress' && !row.cts_submitted_at,
   )
 
   function sortValue(row: TaskSubmission): string {
@@ -709,6 +710,7 @@ export function CbProfile() {
                 dir={sort.dir}
                 onClick={() => toggleSort('status')}
               />
+              <th className="px-5 py-3">CTS</th>
               <SortableHeader
                 label="Date"
                 active={sort.key === 'date'}
@@ -721,7 +723,7 @@ export function CbProfile() {
           <tbody className="divide-y divide-gray-100">
             {pagedSubmissions.length === 0 && (
               <tr>
-                <td colSpan={canEdit ? 6 : 5} className="px-5 py-6 text-center text-gray-400">
+                <td colSpan={canEdit ? 7 : 6} className="px-5 py-6 text-center text-gray-400">
                   No submissions for this {viewMode}.
                 </td>
               </tr>
@@ -759,6 +761,17 @@ export function CbProfile() {
                 <td className="px-5 py-3 uppercase text-gray-600">{row.stage}</td>
                 <td className="px-5 py-3">
                   <StatusPill status={row.status} />
+                </td>
+                <td className="px-5 py-3">
+                  {row.cts_submitted_at ? (
+                    <span className="inline-flex items-center rounded-full bg-status-success-bg px-2.5 py-0.5 text-xs font-medium text-status-success-text">
+                      Sent
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center rounded-full bg-status-neutral-bg px-2.5 py-0.5 text-xs font-medium text-status-neutral-text">
+                      Pending
+                    </span>
+                  )}
                 </td>
                 <td className="px-5 py-3 text-gray-500">
                   {row.date?.slice(0, 10) ?? '—'}

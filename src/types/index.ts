@@ -56,6 +56,7 @@ export interface TaskSubmission {
   date: string | null
   submitted_at: string | null
   snipboard_url: string | null
+  cts_submitted_at: string | null
   created_at: string
 }
 

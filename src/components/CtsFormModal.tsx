@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { supabase } from '../lib/api'
 import type { TaskSubmission } from '../types'
 import { Modal } from './Modal'
 import { StatusPill } from './StatusPill'
@@ -21,7 +23,25 @@ interface Props {
 }
 
 export function CtsFormModal({ email, submissions, onClose }: Props) {
+  const queryClient = useQueryClient()
   const [selected, setSelected] = useState<Set<number>>(new Set(submissions.map((s) => s.id)))
+  const [step, setStep] = useState<'select' | 'confirm'>('select')
+  const chosen = submissions.filter((s) => selected.has(s.id))
+
+  const markSubmittedMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from('task_submissions')
+        .update({ cts_submitted_at: new Date().toISOString() })
+        .in('id', chosen.map((s) => s.id))
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contributor'] })
+      queryClient.invalidateQueries({ queryKey: ['task-submissions'] })
+      onClose()
+    },
+  })
 
   function toggle(id: number) {
     setSelected((prev) => {
@@ -36,12 +56,52 @@ export function CtsFormModal({ email, submissions, onClose }: Props) {
     setSelected((prev) => (prev.size === submissions.length ? new Set() : new Set(submissions.map((s) => s.id))))
   }
 
-  function handleContinue() {
-    const chosen = submissions.filter((s) => selected.has(s.id))
+  function openCtsForm() {
     const taskIds = chosen.map((s) => s.task_id ?? '')
     const snipboardUrls = chosen.map((s) => s.snipboard_url ?? '')
     window.open(buildCtsFormUrl(email, taskIds, snipboardUrls), '_blank', 'noopener,noreferrer')
-    onClose()
+  }
+
+  function handleContinue() {
+    openCtsForm()
+    setStep('confirm')
+  }
+
+  if (step === 'confirm') {
+    return (
+      <Modal title="Submitted to CTS?" onClose={onClose} maxWidthClassName="max-w-xl">
+        <p className="mb-4 text-sm text-gray-500">
+          Did you finish submitting these {chosen.length} task{chosen.length === 1 ? '' : 's'} in the CTS Form?
+        </p>
+        {markSubmittedMutation.isError && (
+          <div className="mb-3 rounded-lg bg-status-danger-text px-3 py-2 text-sm text-status-danger-bg">
+            Could not mark these as submitted. Try again.
+          </div>
+        )}
+        <div className="flex items-center justify-between">
+          <button type="button" onClick={openCtsForm} className="text-sm font-medium text-sky-700 hover:underline">
+            Reopen CTS Form
+          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
+            >
+              Not yet
+            </button>
+            <button
+              type="button"
+              onClick={() => markSubmittedMutation.mutate()}
+              disabled={markSubmittedMutation.isPending}
+              className="rounded-lg bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-50"
+            >
+              {markSubmittedMutation.isPending ? 'Saving...' : 'Yes, mark as submitted'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+    )
   }
 
   return (
@@ -86,7 +146,7 @@ export function CtsFormModal({ email, submissions, onClose }: Props) {
                       className="h-4 w-4 rounded border-gray-300"
                     />
                   </td>
-                  <td className="max-w-32 truncate px-3 py-2 font-mono text-xs text-gray-600">{row.task_id ?? '—'}</td>
+                  <td className="whitespace-nowrap px-3 py-2 font-mono text-xs text-gray-600">{row.task_id ?? '—'}</td>
                   <td className="px-3 py-2 text-gray-600">{row.project?.name ?? '—'}</td>
                   <td className="px-3 py-2 uppercase text-gray-600">{row.stage}</td>
                   <td className="px-3 py-2">

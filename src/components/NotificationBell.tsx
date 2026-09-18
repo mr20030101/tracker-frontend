@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
+import { Avatar } from './Avatar'
 
 const MANAGER_ROLES = ['admin', 'lead']
 const MAX_SUBMISSION_ALERTS = 20
@@ -8,6 +10,7 @@ const MAX_SUBMISSION_ALERTS = 20
 interface SubmissionAlert {
   id: string
   name: string
+  email: string
   project: string | null
 }
 
@@ -46,7 +49,7 @@ export function NotificationBell() {
       const name = profileNames?.get(row.cb_email.toLowerCase()) ?? row.cb_email
       const project = row.project_id != null ? (projectNames?.get(row.project_id) ?? null) : null
       const id = `${row.id}-${Date.now()}`
-      setSubmissionAlerts((prev) => [{ id, name, project }, ...prev].slice(0, MAX_SUBMISSION_ALERTS))
+      setSubmissionAlerts((prev) => [{ id, name, email: row.cb_email, project }, ...prev].slice(0, MAX_SUBMISSION_ALERTS))
     }
 
     const channel = supabase
@@ -116,11 +119,17 @@ export function NotificationBell() {
               )}
               {submissionAlerts.map((alert) => (
                 <div key={alert.id} className="group flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-gray-50">
-                  <span className="h-2 w-2 shrink-0 rounded-full bg-status-success-text" />
-                  <div className="min-w-0 flex-1 text-sm">
-                    <div className="truncate font-medium text-gray-900">{alert.name} submitted a task</div>
-                    {alert.project && <div className="truncate text-xs text-gray-400">{alert.project}</div>}
-                  </div>
+                  <Link
+                    to={`/contributors/${encodeURIComponent(alert.email)}`}
+                    onClick={() => setOpen(false)}
+                    className="flex min-w-0 flex-1 items-center gap-2 text-sm"
+                  >
+                    <Avatar name={alert.name || alert.email} size={28} />
+                    <div className="min-w-0">
+                      <div className="truncate font-medium text-gray-900">{alert.name} submitted a task</div>
+                      {alert.project && <div className="truncate text-xs text-gray-400">{alert.project}</div>}
+                    </div>
+                  </Link>
                   <button
                     onClick={() => dismissSubmissionAlert(alert.id)}
                     className="shrink-0 rounded p-1 text-gray-300 hover:bg-gray-200 hover:text-gray-600"
