@@ -170,7 +170,7 @@ function ManagerLeaderboard() {
   const [projectId, setProjectId] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [activityFilter, setActivityFilter] = useState<ActivityFilter>('all')
-  const [progressSort, setProgressSort] = useState<'asc' | 'desc' | null>(null)
+  const [progressSort, setProgressSort] = useState<'asc' | 'desc'>('desc')
 
   function toggleProgressSort() {
     setProgressSort((prev) => (prev === 'desc' ? 'asc' : 'desc'))
@@ -230,12 +230,7 @@ function ManagerLeaderboard() {
 
       return matchesSearch && matchesStatus && matchesActivity
     })
-    .sort((a, b) => {
-      if (progressSort) return progressSort === 'desc' ? b.progress - a.progress : a.progress - b.progress
-      const aFlag = a.is_active && a.tasks_submitted === 0 ? 0 : 1
-      const bFlag = b.is_active && b.tasks_submitted === 0 ? 0 : 1
-      return aFlag - bFlag
-    })
+    .sort((a, b) => (progressSort === 'desc' ? b.progress - a.progress : a.progress - b.progress))
 
   const viewLabel = viewMode === 'day' ? 'Day' : viewMode === 'week' ? 'Week' : 'Month'
   const periodPhrase = viewMode === 'day' ? 'today' : viewMode === 'week' ? 'this week' : 'this month'
@@ -372,12 +367,7 @@ function ManagerLeaderboard() {
               <th className="px-5 py-3">Contributor</th>
               <th className="px-5 py-3">Tasks Submitted</th>
               <th className="px-5 py-3">{viewLabel} Target</th>
-              <SortableHeader
-                label="Progress"
-                active={progressSort !== null}
-                dir={progressSort ?? 'desc'}
-                onClick={toggleProgressSort}
-              />
+              <SortableHeader label="Progress" active dir={progressSort} onClick={toggleProgressSort} />
               <th className="px-5 py-3">Account Status</th>
               <th className="px-5 py-3 text-right">Actions</th>
             </tr>

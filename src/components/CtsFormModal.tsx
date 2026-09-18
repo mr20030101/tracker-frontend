@@ -45,7 +45,7 @@ export function CtsFormModal({ email, submissions, onClose }: Props) {
   }
 
   return (
-    <Modal title="Today's Tasks" onClose={onClose} maxWidthClassName="max-w-2xl">
+    <Modal title="Today's Tasks" onClose={onClose} maxWidthClassName="max-w-4xl">
       <p className="mb-3 text-sm text-gray-500">
         Select the tasks to include, then continue to the CTS Form. Their Task IDs and Snipboard.io links will be
         prefilled for you.

@@ -23,8 +23,10 @@ export function Combobox({
   className = '',
 }: ComboboxProps) {
   const [open, setOpen] = useState(false)
+  const [openUpward, setOpenUpward] = useState(false)
   const [query, setQuery] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
 
   const selected = options.find((o) => o.value === value)
   const filtered = useMemo(
@@ -44,11 +46,21 @@ export function Combobox({
     setOpen(false)
   }
 
+  function toggleOpen() {
+    if (!open && buttonRef.current) {
+      const { bottom, top } = buttonRef.current.getBoundingClientRect()
+      const panelHeight = 280
+      setOpenUpward(window.innerHeight - bottom < panelHeight && top > panelHeight)
+    }
+    setOpen((v) => !v)
+  }
+
   return (
     <div className={`relative ${className}`}>
       <button
+        ref={buttonRef}
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={toggleOpen}
         className="w-full truncate rounded-lg border border-gray-200 bg-white px-2 py-1 text-left text-xs outline-none focus:border-accent"
       >
         {selected?.label ?? emptyLabel}
@@ -57,7 +69,11 @@ export function Combobox({
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 top-full z-20 mt-1 w-56 rounded-lg border border-gray-200 bg-white shadow-lg">
+          <div
+            className={`absolute left-0 z-20 w-56 rounded-lg border border-gray-200 bg-white shadow-lg ${
+              openUpward ? 'bottom-full mb-1' : 'top-full mt-1'
+            }`}
+          >
             <input
               ref={inputRef}
               value={query}
