@@ -122,6 +122,14 @@ export interface DirectoryUser {
   avatar_url: string | null
 }
 
+export interface LeaderboardRow {
+  user_id: string
+  name: string
+  avatar_url: string | null
+  cb_email: string
+  tasks_submitted: number
+}
+
 export interface Message {
   id: number
   sender_id: string

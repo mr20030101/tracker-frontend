@@ -12,6 +12,7 @@ import {
   NotebookText,
   Users as UsersIcon,
   FolderKanban,
+  Trophy,
   type LucideIcon,
 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
@@ -31,6 +32,7 @@ function navSections(isManager: boolean, isAdmin: boolean, ownProfilePath: strin
       label: 'Overview',
       items: [
         isManager ? { to: '/', label: 'Dashboard', icon: LayoutDashboard } : { to: ownProfilePath, label: 'My Profile', icon: UserCircle },
+        { to: '/leaderboard', label: 'Leaderboard', icon: Trophy },
         { to: '/messages', label: 'Messages', icon: MessageCircle },
       ],
     },
@@ -80,7 +82,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   const crumb =
-    location.pathname === '/task-log'
+    location.pathname === '/leaderboard'
+      ? 'Leaderboard'
+      : location.pathname === '/task-log'
       ? 'Task Log'
       : location.pathname === '/resources'
         ? 'Resources'

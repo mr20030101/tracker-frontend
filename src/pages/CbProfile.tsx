@@ -12,6 +12,7 @@ import { Modal } from '../components/Modal'
 import { StatusPill } from '../components/StatusPill'
 import { LevelPill, LEVEL_STYLES } from '../components/LevelPill'
 import { TaskSubmissionForm } from '../components/TaskSubmissionForm'
+import { BulkImportModal } from '../components/BulkImportModal'
 import { SortableHeader } from '../components/SortableHeader'
 import { ProgressRing } from '../components/ProgressRing'
 import { LineChart } from '../components/LineChart'
@@ -37,6 +38,7 @@ export function CbProfile() {
   const isOwnProfile = currentUser?.email.toLowerCase() === decodedEmail.toLowerCase()
 
   const [formTarget, setFormTarget] = useState<'new' | TaskSubmission | null>(null)
+  const [bulkImporting, setBulkImporting] = useState(false)
   const [showWarning, setShowWarning] = useState(true)
   const [editingProfile, setEditingProfile] = useState(false)
   const [profileName, setProfileName] = useState('')
@@ -325,9 +327,11 @@ export function CbProfile() {
 
   return (
     <div>
-      <Link to="/" className="mb-4 inline-block text-sm text-gray-500 hover:text-gray-800">
-        ← Back to Dashboard
-      </Link>
+      {canManageLevels && (
+        <Link to="/" className="mb-4 inline-block text-sm text-gray-500 hover:text-gray-800">
+          ← Back to Dashboard
+        </Link>
+      )}
 
       <div className="mb-6 flex items-center gap-4">
         <Avatar name={displayName} photoUrl={isOwnProfile ? currentUser?.avatar_url : data.user?.avatar_url} size={56} />
@@ -652,6 +656,14 @@ export function CbProfile() {
           </button>
         )}
 
+        {canManageLevels && (
+          <button
+            onClick={() => setBulkImporting(true)}
+            className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+          >
+            Bulk Import
+          </button>
+        )}
         {canEdit && (
           <button
             onClick={() => setFormTarget('new')}
@@ -791,6 +803,15 @@ export function CbProfile() {
         <TaskSubmissionForm
           submission={formTarget === 'new' ? undefined : formTarget}
           onClose={() => setFormTarget(null)}
+        />
+      )}
+
+      {bulkImporting && (
+        <BulkImportModal
+          projects={allProjects}
+          contributorEmail={decodedEmail}
+          contributorName={displayName}
+          onClose={() => setBulkImporting(false)}
         />
       )}
     </div>

@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import type { ActivityEvent, ActivityLog, ContributorProfile, DashboardSummary, DailyReportRow, HouseRule, Paginated, Project, Resource, TaskSubmission, User } from '../types'
+import type { ActivityEvent, ActivityLog, ContributorProfile, DashboardSummary, DailyReportRow, HouseRule, LeaderboardRow, Paginated, Project, Resource, TaskSubmission, User } from '../types'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim() || 'https://ieovepkcseytccagzedg.supabase.co'
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() ||
@@ -182,6 +182,15 @@ async function contributor(params: Record<string, unknown>): Promise<Contributor
   return { user: user as User | null, cb_email: email, week_start: weekStart, week_end: weekEnd, weekly_target: target?.target ?? 50, submitted_this_week: weekRows.filter((row) => row.status === 'submitted').length, total_submitted: submissions.filter((row) => row.status === 'submitted').length, total_logged: submissions.length, stage_breakdown: stageBreakdown, project_breakdown: Object.entries(projectBreakdown).map(([name, total]) => ({ name, total })), week_submissions: weekRows, recent_submissions: submissions.slice(0, 10), all_submissions: submissions }
 }
 
+async function leaderboard(params: Record<string, unknown>): Promise<LeaderboardRow[]> {
+  const { data, error } = await supabase.rpc('leaderboard', {
+    range_start: String(params.range_start),
+    range_end: String(params.range_end),
+  })
+  if (error) throw error
+  return (data ?? []) as LeaderboardRow[]
+}
+
 async function listResources(): Promise<Resource[]> {
   const { data } = await result(supabase.from('resources').select('*').order('sort_order'))
   return withProject(data as Resource[], await projects()) as Resource[]
@@ -234,6 +243,7 @@ export const api = {
     }
     if (path === '/task-submissions') return { data: (await submissions(params)) as T }
     if (path === '/dashboard/summary') return { data: (await dashboard(params)) as T }
+    if (path === '/leaderboard') return { data: (await leaderboard(params)) as T }
     if (path === '/contributor') return { data: (await contributor(params)) as T }
     if (path === '/activity-logs') return { data: (await activityLogs()) as T }
     throw new Error(`Unsupported GET endpoint: ${path}`)

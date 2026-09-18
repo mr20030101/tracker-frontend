@@ -32,17 +32,21 @@
   --color-status-neutral-text: #475467;
 }
 
+:root {
+  color-scheme: light;
+}
+
 body {
   @apply bg-gray-50 text-gray-900 antialiased font-sans;
 }
 
-/* Night mode — overrides the same theme variables consumed by every
-   existing gray-*/white/sky-* utility class, so the whole app repaints
-   without touching individual component classNames. Repeated under both
-   selectors: the media query covers anyone who never explicitly chose a
-   theme (follows the OS), the attribute covers an explicit toggle. */
+/* Night mode: overrides the gray/white/sky theme variables so the whole
+   app repaints without touching component classNames. color-scheme: dark
+   is what makes native controls (select popups, checkboxes, scrollbars)
+   render dark on Windows/Linux Chromium and Firefox. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
+    color-scheme: dark;
     --color-white: #1a1d24;
     --color-gray-50: #12141a;
     --color-gray-100: #1f222a;
@@ -75,6 +79,7 @@ body {
 }
 
 :root[data-theme='dark'] {
+  color-scheme: dark;
   --color-white: #1a1d24;
   --color-gray-50: #12141a;
   --color-gray-100: #1f222a;

@@ -6,6 +6,8 @@ import type { Project, Stage, SubmissionStatus } from '../types'
 interface Props {
   projects: Project[]
   onClose: () => void
+  contributorEmail?: string
+  contributorName?: string
 }
 
 interface ParsedRow {
@@ -64,17 +66,21 @@ function normalizeProjectName(s: string): string {
   return s.replace(/\s+/g, ' ').trim().toLowerCase()
 }
 
-function parseRows(text: string, projects: Project[]): ParsedRow[] {
+function parseRows(text: string, projects: Project[], fixedEmail?: string): ParsedRow[] {
   const projectByName = new Map(projects.map((p) => [normalizeProjectName(p.name), p.id]))
   const lines = text.split('\n').map((l) => l.trimEnd()).filter((l) => l.trim())
+  const hasEmailColumn = !fixedEmail
 
   return lines.map((line) => {
-    const fields = line.split('\t')
-    while (fields.length < 8) fields.push('')
-    const [dateRaw, taskIdRaw, emailRaw, statusRaw, stageRaw, notesRaw, dateSubRaw, projectRaw] = fields
+    const rawFields = line.split('\t')
+    while (rawFields.length < (hasEmailColumn ? 8 : 7)) rawFields.push('')
+    const [dateRaw, taskIdRaw, emailRaw, statusRaw, stageRaw, notesRaw, dateSubRaw, projectRaw] = hasEmailColumn
+      ? rawFields
+      : [rawFields[0], rawFields[1], '', rawFields[2], rawFields[3], rawFields[4], rawFields[5], rawFields[6]]
+    const fields = hasEmailColumn ? rawFields : rawFields.slice(0, 7)
 
     const cleanTaskId = taskIdRaw.trim().replace(/^sub id:\s*/i, '').trim()
-    const cb_email = emailRaw.trim().toUpperCase() === 'NONE' ? '' : emailRaw.trim()
+    const cb_email = fixedEmail ?? (emailRaw.trim().toUpperCase() === 'NONE' ? '' : emailRaw.trim())
     const notes = notesRaw.trim() && notesRaw.trim().toUpperCase() !== 'NONE' ? notesRaw.trim() : null
 
     const date = parseDate(dateRaw)
@@ -105,7 +111,7 @@ function parseRows(text: string, projects: Project[]): ParsedRow[] {
   })
 }
 
-export function BulkImportModal({ projects, onClose }: Props) {
+export function BulkImportModal({ projects, onClose, contributorEmail, contributorName }: Props) {
   const queryClient = useQueryClient()
   const [rawText, setRawText] = useState('')
   const [step, setStep] = useState<'input' | 'preview' | 'done'>('input')
@@ -120,9 +126,13 @@ export function BulkImportModal({ projects, onClose }: Props) {
 
   function handleParse() {
     setError(null)
-    const parsed = parseRows(rawText, projects)
+    const parsed = parseRows(rawText, projects, contributorEmail)
     if (parsed.length === 0) {
-      setError('No rows found. Paste tab-separated data (Date, Task ID, CB Email, Status, Stage, Notes, Date Submitted, Project).')
+      setError(
+        contributorEmail
+          ? 'No rows found. Paste tab-separated data (Date, Task ID, Status, Stage, Notes, Date Submitted, Project).'
+          : 'No rows found. Paste tab-separated data (Date, Task ID, CB Email, Status, Stage, Notes, Date Submitted, Project).',
+      )
       return
     }
     setRows(parsed)
@@ -197,7 +207,9 @@ export function BulkImportModal({ projects, onClose }: Props) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
       <div className="flex max-h-[85vh] w-full max-w-5xl flex-col rounded-2xl bg-white p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">Bulk Import Task Log</h2>
+          <h2 className="text-lg font-semibold text-gray-900">
+            {contributorEmail ? `Bulk Import Submissions — ${contributorName ?? contributorEmail}` : 'Bulk Import Task Log'}
+          </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-700" aria-label="Close">
             ✕
           </button>
@@ -206,14 +218,27 @@ export function BulkImportModal({ projects, onClose }: Props) {
         {step === 'input' && (
           <div className="flex flex-col gap-3">
             <p className="text-sm text-gray-500">
-              Paste tab-separated rows: Date, Task ID, CB Email, Status, Stage, Notes, Date Submitted, Project — one
-              per line (this matches a direct copy-paste from the tracking spreadsheet).
+              {contributorEmail ? (
+                <>
+                  Paste tab-separated rows: Date, Task ID, Status, Stage, Notes, Date Submitted, Project — one per
+                  line. Every row imports under <span className="font-medium text-gray-700">{contributorName ?? contributorEmail}</span>.
+                </>
+              ) : (
+                <>
+                  Paste tab-separated rows: Date, Task ID, CB Email, Status, Stage, Notes, Date Submitted, Project —
+                  one per line (this matches a direct copy-paste from the tracking spreadsheet).
+                </>
+              )}
             </p>
             <textarea
               value={rawText}
               onChange={(e) => setRawText(e.target.value)}
               rows={14}
-              placeholder="09/12/2026&#9;6aa0a04f...&#9;name@email.com&#9;submitted&#9;Attempt&#9;&#9;09/12/2026&#9;Project Name"
+              placeholder={
+                contributorEmail
+                  ? '09/12/2026&#9;6aa0a04f...&#9;submitted&#9;Attempt&#9;&#9;09/12/2026&#9;Project Name'
+                  : '09/12/2026&#9;6aa0a04f...&#9;name@email.com&#9;submitted&#9;Attempt&#9;&#9;09/12/2026&#9;Project Name'
+              }
               className="w-full rounded-lg border border-gray-200 px-3 py-2 font-mono text-xs outline-none focus:border-accent"
             />
             {error && <div className="text-sm text-status-danger-text">{error}</div>}
@@ -248,7 +273,7 @@ export function BulkImportModal({ projects, onClose }: Props) {
                 <thead className="sticky top-0 border-b border-gray-200 bg-gray-50 uppercase tracking-wider text-gray-500">
                   <tr>
                     <th className="px-3 py-2">Task ID</th>
-                    <th className="px-3 py-2">CB Email</th>
+                    {!contributorEmail && <th className="px-3 py-2">CB Email</th>}
                     <th className="px-3 py-2">Status</th>
                     <th className="px-3 py-2">Stage</th>
                     <th className="px-3 py-2">Date</th>
@@ -263,7 +288,9 @@ export function BulkImportModal({ projects, onClose }: Props) {
                     return (
                       <tr key={index} className={excluded ? 'bg-gray-50 opacity-50' : ''}>
                         <td className="max-w-32 truncate px-3 py-2 font-mono text-gray-500">{row.task_id ?? '—'}</td>
-                        <td className="px-3 py-2 text-gray-700">{row.cb_email || <span className="text-status-danger-text">missing</span>}</td>
+                        {!contributorEmail && (
+                          <td className="px-3 py-2 text-gray-700">{row.cb_email || <span className="text-status-danger-text">missing</span>}</td>
+                        )}
                         <td className="px-3 py-2 text-gray-600">{row.status}</td>
                         <td className="px-3 py-2 uppercase text-gray-600">{row.stage}</td>
                         <td className="px-3 py-2">

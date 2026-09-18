@@ -173,6 +173,37 @@ as $$ select id, name, is_active, last_seen_at, avatar_url from public.profiles 
 
 grant execute on function public.directory() to authenticated;
 
+-- Ranks contributors by tasks submitted in a date range for every active
+-- user to see, which the scoped "profiles read own or manager" policy
+-- can't do on its own — same rationale as directory() above, but counting
+-- submissions instead of listing presence. Matches a submission to its
+-- contributor by user_id OR cb_email (case-insensitive), same as the
+-- dashboard summary, since a submission logged for someone else by their
+-- lead/admin carries that contributor's cb_email but the logger's user_id.
+drop function if exists public.leaderboard(date, date);
+create function public.leaderboard(range_start date, range_end date)
+returns table (user_id uuid, name text, avatar_url text, cb_email text, tasks_submitted bigint)
+language sql stable security definer set search_path = public
+as $$
+  select
+    p.id as user_id,
+    p.name,
+    p.avatar_url,
+    p.email as cb_email,
+    (
+      select count(*) from public.task_submissions s
+      where s.status = 'submitted'
+        and s.date >= range_start
+        and s.date <= range_end
+        and (s.user_id = p.id or lower(s.cb_email) = lower(p.email))
+    ) as tasks_submitted
+  from public.profiles p
+  where p.role = 'contributor' and p.is_active
+  order by tasks_submitted desc, p.name asc
+$$;
+
+grant execute on function public.leaderboard(date, date) to authenticated;
+
 create or replace function public.is_active_profile(target_id uuid)
 returns boolean language sql stable security definer set search_path = public
 as $$ select exists (select 1 from public.profiles where id = target_id and is_active) $$;
