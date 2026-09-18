@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
+import { remotasksDiffViewerUrl } from '../lib/remotasks'
 import type { Paginated, Project, Stage, SubmissionStatus, TaskSubmission } from '../types'
 import { StatusPill } from '../components/StatusPill'
 import { Avatar } from '../components/Avatar'
@@ -291,7 +292,18 @@ export function TaskLog() {
                   </Link>
                 </td>
                 <td className="max-w-40 truncate px-5 py-3 font-mono text-xs text-gray-500">
-                  {row.task_id ?? '—'}
+                  {row.task_id ? (
+                    <a
+                      href={remotasksDiffViewerUrl(row.task_id)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-sky-700 hover:underline"
+                    >
+                      {row.task_id}
+                    </a>
+                  ) : (
+                    '—'
+                  )}
                 </td>
                 <td className="px-5 py-3 text-gray-600">{row.project?.name ?? '—'}</td>
                 <td className="px-5 py-3 uppercase text-gray-600">{row.stage}</td>

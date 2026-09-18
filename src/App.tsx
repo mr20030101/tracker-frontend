@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from './lib/auth'
 import { AppShell } from './components/AppShell'
 import { Login } from './pages/Login'
+import { ForcePasswordChange } from './pages/ForcePasswordChange'
 import { Dashboard } from './pages/Dashboard'
 import { TaskLog } from './pages/TaskLog'
 import { Resources } from './pages/Resources'
@@ -24,6 +25,10 @@ function ProtectedLayout() {
 
   if (!user) {
     return <Navigate to="/login" replace />
+  }
+
+  if (user.must_change_password) {
+    return <ForcePasswordChange />
   }
 
   const isManager = MANAGER_ROLES.includes(user.role)

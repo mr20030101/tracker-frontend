@@ -10,6 +10,7 @@ import { Modal } from '../components/Modal'
 import { Avatar } from '../components/Avatar'
 import { Combobox } from '../components/Combobox'
 import { DataTable } from '../components/DataTable'
+import { BulkImportUsersModal } from '../components/BulkImportUsersModal'
 
 const ROLES: User['role'][] = ['contributor', 'lead', 'admin']
 const DEFAULT_PASSWORD = 'password'
@@ -34,6 +35,7 @@ export function Users() {
   const isAdmin = currentUser?.role === 'admin'
   const queryClient = useQueryClient()
   const [adding, setAdding] = useState(false)
+  const [bulkImporting, setBulkImporting] = useState(false)
   const [resetTarget, setResetTarget] = useState<User | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null)
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
@@ -45,6 +47,7 @@ export function Users() {
   const [search, setSearch] = useState(searchParams.get('search') ?? '')
   const [roleFilter, setRoleFilter] = useState<User['role'] | ''>('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('')
+  const [leadFilter, setLeadFilter] = useState<'' | 'none'>('')
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
   const normalizedSearch = search.trim().toLowerCase()
 
@@ -174,15 +177,17 @@ export function Users() {
     .filter((u) => !normalizedSearch || u.name.toLowerCase().includes(normalizedSearch) || u.email.toLowerCase().includes(normalizedSearch))
     .filter((u) => !roleFilter || u.role === roleFilter)
     .filter((u) => !statusFilter || (statusFilter === 'active' ? u.is_active : !u.is_active))
+    .filter((u) => !leadFilter || !u.lead_id)
 
   const selectedIds = Object.keys(rowSelection).filter((id) => rowSelection[id])
 
-  const hasActiveFilters = Boolean(search || roleFilter || statusFilter)
+  const hasActiveFilters = Boolean(search || roleFilter || statusFilter || leadFilter)
 
   function clearFilters() {
     setSearch('')
     setRoleFilter('')
     setStatusFilter('')
+    setLeadFilter('')
   }
 
   const columns = useMemo<ColumnDef<User, any>[]>(
@@ -347,12 +352,20 @@ export function Users() {
           <p className="text-sm text-gray-500">Manage CB logins, roles, and passwords.</p>
           <p className="mt-1 text-xs text-gray-400">New accounts default to: {DEFAULT_PASSWORD}</p>
         </div>
-        <button
-          onClick={() => setAdding(true)}
-          className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
-        >
-          + Add Login
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setBulkImporting(true)}
+            className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+          >
+            Bulk Import
+          </button>
+          <button
+            onClick={() => setAdding(true)}
+            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
+          >
+            + Add Login
+          </button>
+        </div>
       </div>
       {notice && <div className="mb-4 text-sm text-status-success-text">{notice}</div>}
 
@@ -393,6 +406,17 @@ export function Users() {
           <option value="">All Statuses</option>
           <option value="active">Active</option>
           <option value="disabled">Disabled</option>
+        </select>
+        <select
+          value={leadFilter}
+          onChange={(e) => {
+            setLeadFilter(e.target.value as '' | 'none')
+            setRowSelection({})
+          }}
+          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
+        >
+          <option value="">All Leads</option>
+          <option value="none">No Lead Assigned</option>
         </select>
         {hasActiveFilters && (
           <button onClick={clearFilters} className="text-sm font-medium text-sky-700 hover:underline">
@@ -469,9 +493,16 @@ export function Users() {
         onRowSelectionChange={setRowSelection}
         isLoading={isLoading}
         emptyMessage="No users match these filters."
-        pageSize={10}
+        paginate={false}
         rowClassName={(u) => (!u.is_active ? 'opacity-60' : '')}
       />
+
+      {bulkImporting && (
+        <BulkImportUsersModal
+          existingEmails={new Set((data ?? []).map((u) => u.email.toLowerCase()))}
+          onClose={() => setBulkImporting(false)}
+        />
+      )}
 
       {adding && (
         <Modal title="Add Login" onClose={() => setAdding(false)}>

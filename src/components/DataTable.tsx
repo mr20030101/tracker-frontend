@@ -27,6 +27,7 @@ interface DataTableProps<TData> {
   isLoading?: boolean
   emptyMessage?: string
   pageSize?: number
+  paginate?: boolean
   rowClassName?: (row: TData) => string
 }
 
@@ -39,6 +40,7 @@ export function DataTable<TData>({
   isLoading,
   emptyMessage = 'No results.',
   pageSize = 10,
+  paginate = true,
   rowClassName,
 }: DataTableProps<TData>) {
   const [sorting, setSorting] = useState<SortingState>([])
@@ -48,22 +50,23 @@ export function DataTable<TData>({
     data,
     columns,
     getRowId,
-    state: { sorting, pagination, ...(rowSelection ? { rowSelection } : {}) },
+    state: { sorting, ...(paginate ? { pagination } : {}), ...(rowSelection ? { rowSelection } : {}) },
     onSortingChange: setSorting,
     onPaginationChange: setPagination,
     onRowSelectionChange,
     enableRowSelection: Boolean(onRowSelectionChange),
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    ...(paginate ? { getPaginationRowModel: getPaginationRowModel() } : {}),
   })
 
   const pageCount = table.getPageCount()
   useEffect(() => {
+    if (!paginate) return
     if (pagination.pageIndex > 0 && pagination.pageIndex >= pageCount) {
       setPagination((p) => ({ ...p, pageIndex: Math.max(0, pageCount - 1) }))
     }
-  }, [pageCount, pagination.pageIndex])
+  }, [paginate, pageCount, pagination.pageIndex])
 
   const rows = table.getRowModel().rows
   const total = data.length
@@ -139,7 +142,7 @@ export function DataTable<TData>({
             ))}
         </tbody>
       </table>
-      {!isLoading && total > 0 && (
+      {!isLoading && paginate && total > 0 && (
         <div className="flex items-center justify-between border-t border-gray-200 px-5 py-3 text-xs text-gray-500">
           <span>
             Showing {from}–{to} of {total}

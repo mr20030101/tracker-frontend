@@ -9,6 +9,7 @@ export interface User {
   last_seen_at: string | null
   lead_id: string | null
   avatar_url: string | null
+  must_change_password: boolean
 }
 
 export type ActivityEvent = 'login' | 'login_failed' | 'logout'

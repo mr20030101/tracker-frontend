@@ -18,3 +18,8 @@ export async function updateOwnProfile(name: string, avatarUrl: string | null): 
   if (error) throw error
   return data as User
 }
+
+export async function clearMustChangePassword(): Promise<void> {
+  const { error } = await supabase.rpc('clear_must_change_password')
+  if (error) throw error
+}

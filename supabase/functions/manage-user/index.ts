@@ -47,6 +47,9 @@ Deno.serve(async (request) => {
         if (!targetId) return errorResponse('Target Auth user was not found.', 404)
         const { data, error } = await admin.auth.admin.updateUserById(targetId, { password: body.password })
         if (error) return errorResponse(`Password reset failed: ${error.message}`, 400)
+        // An admin/lead setting this password on someone else's behalf, not the user
+        // choosing it themselves — force them to pick their own on next sign-in.
+        await admin.from('profiles').update({ must_change_password: true }).eq('id', data.user.id)
         return Response.json({ id: data.user.id }, { headers: corsHeaders })
     }
 
@@ -85,6 +88,7 @@ Deno.serve(async (request) => {
         role,
         shift: body.shift ?? null,
         is_active: true,
+        must_change_password: true,
         updated_at: new Date().toISOString(),
     })
     if (profileError) return errorResponse(`Profile update failed: ${profileError.message}`, 400)

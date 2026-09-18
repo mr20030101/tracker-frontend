@@ -4,7 +4,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, functionErrorMessage, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { startOfWeek, toISODate, formatRange } from '../lib/week'
-import { updateOwnProfile, uploadAvatar } from '../lib/profile'
+import { clearMustChangePassword, updateOwnProfile, uploadAvatar } from '../lib/profile'
+import { remotasksDiffViewerUrl } from '../lib/remotasks'
 import type { ContributorProfile, ContributorProjectLevel, Project, ProjectLevel, TaskSubmission } from '../types'
 import { Avatar } from '../components/Avatar'
 import { Modal } from '../components/Modal'
@@ -153,6 +154,7 @@ export function CbProfile() {
       if (profilePassword) {
         const { error } = await supabase.auth.updateUser({ password: profilePassword })
         if (error) throw error
+        await clearMustChangePassword()
       }
     },
     onSuccess: async () => {
@@ -711,7 +713,18 @@ export function CbProfile() {
             {pagedSubmissions.map((row) => (
               <tr key={row.id} className="hover:bg-gray-50">
                 <td className="max-w-40 truncate px-5 py-3 font-mono text-xs text-gray-500">
-                  {row.task_id ?? '—'}
+                  {row.task_id ? (
+                    <a
+                      href={remotasksDiffViewerUrl(row.task_id)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-sky-700 hover:underline"
+                    >
+                      {row.task_id}
+                    </a>
+                  ) : (
+                    '—'
+                  )}
                 </td>
                 <td className="px-5 py-3 text-gray-600">{row.project?.name ?? '—'}</td>
                 <td className="px-5 py-3 uppercase text-gray-600">{row.stage}</td>

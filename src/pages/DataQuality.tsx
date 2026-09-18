@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/api'
+import { remotasksDiffViewerUrl } from '../lib/remotasks'
 import { TaskSubmissionForm } from '../components/TaskSubmissionForm'
 import type { TaskSubmission } from '../types'
 
@@ -215,7 +216,20 @@ export function DataQuality() {
               <tbody className="divide-y divide-gray-100">
                 {missingProject.map((row) => (
                   <tr key={row.id}>
-                    <td className="max-w-40 truncate px-5 py-2 font-mono text-xs text-gray-500">{row.task_id}</td>
+                    <td className="max-w-40 truncate px-5 py-2 font-mono text-xs text-gray-500">
+                      {row.task_id ? (
+                        <a
+                          href={remotasksDiffViewerUrl(row.task_id)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-sky-700 hover:underline"
+                        >
+                          {row.task_id}
+                        </a>
+                      ) : (
+                        '—'
+                      )}
+                    </td>
                     <td className="px-5 py-2">
                       <Link
                         to={`/contributors/${encodeURIComponent(row.cb_email)}`}
