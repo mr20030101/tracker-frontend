@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Image } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
@@ -79,7 +80,7 @@ export function TaskLog() {
     try {
       let query = supabase
         .from('task_submissions')
-        .select('date, cb_email, task_id, project_id, stage, status, notes, submitted_at')
+        .select('date, cb_email, task_id, project_id, stage, status, notes, submitted_at, snipboard_url')
         .order(sort.key === 'project' ? 'project_id' : sort.key, { ascending: sort.dir === 'asc' })
       if (stage) query = query.eq('stage', stage)
       if (search) {
@@ -292,18 +293,31 @@ export function TaskLog() {
                   </Link>
                 </td>
                 <td className="max-w-40 truncate px-5 py-3 font-mono text-xs text-gray-500">
-                  {row.task_id ? (
-                    <a
-                      href={remotasksDiffViewerUrl(row.task_id)}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-sky-700 hover:underline"
-                    >
-                      {row.task_id}
-                    </a>
-                  ) : (
-                    '—'
-                  )}
+                  <span className="inline-flex items-center gap-1.5">
+                    {row.task_id ? (
+                      <a
+                        href={remotasksDiffViewerUrl(row.task_id)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-sky-700 hover:underline"
+                      >
+                        {row.task_id}
+                      </a>
+                    ) : (
+                      '—'
+                    )}
+                    {row.snipboard_url && (
+                      <a
+                        href={row.snipboard_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        title="View Snipboard.io screenshot"
+                        className="text-gray-400 hover:text-sky-700"
+                      >
+                        <Image className="h-3.5 w-3.5" strokeWidth={2} />
+                      </a>
+                    )}
+                  </span>
                 </td>
                 <td className="px-5 py-3 text-gray-600">{row.project?.name ?? '—'}</td>
                 <td className="px-5 py-3 uppercase text-gray-600">{row.stage}</td>

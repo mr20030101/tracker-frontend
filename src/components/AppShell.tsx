@@ -3,7 +3,6 @@ import { useState, type KeyboardEvent } from 'react'
 import type { ReactNode } from 'react'
 import {
   LayoutDashboard,
-  UserCircle,
   MessageCircle,
   ClipboardList,
   ShieldCheck,
@@ -26,12 +25,12 @@ import { OnlineUsers } from './OnlineUsers'
 
 const MANAGER_ROLES = ['admin', 'lead']
 
-function navSections(isManager: boolean, isAdmin: boolean, ownProfilePath: string): { label: string; items: { to: string; label: string; icon: LucideIcon }[] }[] {
+function navSections(isManager: boolean, isAdmin: boolean): { label: string; items: { to: string; label: string; icon: LucideIcon }[] }[] {
   return [
     {
       label: 'Overview',
       items: [
-        isManager ? { to: '/', label: 'Dashboard', icon: LayoutDashboard } : { to: ownProfilePath, label: 'My Profile', icon: UserCircle },
+        { to: '/', label: 'Dashboard', icon: LayoutDashboard },
         { to: '/leaderboard', label: 'Leaderboard', icon: Trophy },
         { to: '/messages', label: 'Messages', icon: MessageCircle },
       ],
@@ -123,7 +122,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
 
           <nav className="flex-1 overflow-y-auto px-3 py-2">
-            {navSections(isManager, isAdmin, ownProfilePath).map((section) => (
+            {navSections(isManager, isAdmin).map((section) => (
               <div key={section.label} className="mb-4">
                 <div className="px-2 pb-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-gray-400">
                   {section.label}

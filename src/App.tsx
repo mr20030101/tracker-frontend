@@ -4,6 +4,7 @@ import { AppShell } from './components/AppShell'
 import { Login } from './pages/Login'
 import { ForcePasswordChange } from './pages/ForcePasswordChange'
 import { Dashboard } from './pages/Dashboard'
+import { ContributorDashboard } from './pages/ContributorDashboard'
 import { Leaderboard } from './pages/Leaderboard'
 import { TaskLog } from './pages/TaskLog'
 import { Resources } from './pages/Resources'
@@ -38,10 +39,7 @@ function ProtectedLayout() {
   return (
     <AppShell>
       <Routes>
-        <Route
-          path="/"
-          element={isManager ? <Dashboard /> : <Navigate to={`/contributors/${encodeURIComponent(user.email)}`} replace />}
-        />
+        <Route path="/" element={isManager ? <Dashboard /> : <ContributorDashboard />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/task-log" element={<TaskLog />} />
         <Route path="/resources" element={<Resources />} />
