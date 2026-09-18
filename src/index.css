@@ -20,6 +20,7 @@
 
   --color-accent: #d4a017;
   --color-accent-foreground: #1a1500;
+  --color-accent-bg: #f7ead0;
 
   --color-status-success-bg: #ecfdf3;
   --color-status-success-text: #027a48;
@@ -33,6 +34,75 @@
 
 body {
   @apply bg-gray-50 text-gray-900 antialiased font-sans;
+}
+
+/* Night mode — overrides the same theme variables consumed by every
+   existing gray-*/white/sky-* utility class, so the whole app repaints
+   without touching individual component classNames. Repeated under both
+   selectors: the media query covers anyone who never explicitly chose a
+   theme (follows the OS), the attribute covers an explicit toggle. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --color-white: #1a1d24;
+    --color-gray-50: #12141a;
+    --color-gray-100: #1f222a;
+    --color-gray-200: #2b2f39;
+    --color-gray-300: #3c4150;
+    --color-gray-400: #7a8190;
+    --color-gray-500: #98a0ad;
+    --color-gray-600: #b1b8c4;
+    --color-gray-700: #cdd2db;
+    --color-gray-800: #e2e5eb;
+    --color-gray-900: #f5f6f8;
+
+    --color-sky-100: #163650;
+    --color-sky-600: #38bdf8;
+    --color-sky-700: #5ec9f8;
+    --color-sky-800: #a9e2ff;
+
+    --color-accent: #e0ab1e;
+    --color-accent-bg: #caa23a;
+
+    --color-status-success-bg: #0d1f17;
+    --color-status-success-text: #34d399;
+    --color-status-warning-bg: #241a08;
+    --color-status-warning-text: #fbbf24;
+    --color-status-danger-bg: #241417;
+    --color-status-danger-text: #f87171;
+    --color-status-neutral-bg: #1c1f27;
+    --color-status-neutral-text: #aab2c0;
+  }
+}
+
+:root[data-theme='dark'] {
+  --color-white: #1a1d24;
+  --color-gray-50: #12141a;
+  --color-gray-100: #1f222a;
+  --color-gray-200: #2b2f39;
+  --color-gray-300: #3c4150;
+  --color-gray-400: #7a8190;
+  --color-gray-500: #98a0ad;
+  --color-gray-600: #b1b8c4;
+  --color-gray-700: #cdd2db;
+  --color-gray-800: #e2e5eb;
+  --color-gray-900: #f5f6f8;
+
+  --color-sky-100: #163650;
+  --color-sky-600: #38bdf8;
+  --color-sky-700: #5ec9f8;
+  --color-sky-800: #a9e2ff;
+
+  --color-accent: #e0ab1e;
+    --color-accent-bg: #caa23a;
+
+  --color-status-success-bg: #0d1f17;
+  --color-status-success-text: #34d399;
+  --color-status-warning-bg: #241a08;
+  --color-status-warning-text: #fbbf24;
+  --color-status-danger-bg: #241417;
+  --color-status-danger-text: #f87171;
+  --color-status-neutral-bg: #1c1f27;
+  --color-status-neutral-text: #aab2c0;
 }
 
 @keyframes heartbeat {

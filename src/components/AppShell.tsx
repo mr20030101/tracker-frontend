@@ -19,6 +19,7 @@ import { MessagingProvider } from '../lib/messagingContext'
 import { Avatar } from './Avatar'
 import { NotificationBell } from './NotificationBell'
 import { MessagesButton } from './MessagesButton'
+import { ThemeToggle } from './ThemeToggle'
 import { RealtimeSubmissionToasts } from './RealtimeSubmissionToasts'
 import { OnlineUsers } from './OnlineUsers'
 
@@ -182,6 +183,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 onKeyDown={handleSearch}
                 className="w-64 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm outline-none focus:border-accent"
               />
+              <ThemeToggle />
               {user && <MessagesButton />}
               {user && <NotificationBell />}
               {user && <Avatar name={user.name} photoUrl={user.avatar_url} size={32} />}

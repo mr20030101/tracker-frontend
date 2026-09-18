@@ -9,6 +9,7 @@ import {
   type ChartOptions,
 } from 'chart.js'
 import { Line } from 'react-chartjs-2'
+import { useTheme } from '../lib/theme'
 
 ChartJS.register(LinearScale, PointElement, LineElement, Filler, Tooltip, Decimation)
 
@@ -24,6 +25,9 @@ interface Props {
 }
 
 export function LineChart({ data, color, unitLabel }: Props) {
+  const { theme } = useTheme()
+  const tickColor = theme === 'dark' ? '#7a8190' : '#9ca3af'
+  const gridColor = theme === 'dark' ? '#2b2f39' : '#f3f4f6'
   const labels = data.map((p) => p.date.slice(5))
 
   const chartData = {
@@ -56,15 +60,15 @@ export function LineChart({ data, color, unitLabel }: Props) {
         ticks: {
           autoSkip: true,
           maxRotation: 0,
-          color: '#9ca3af',
+          color: tickColor,
           font: { size: 10 },
           callback: (value) => labels[value as number] ?? '',
         },
       },
       y: {
         beginAtZero: true,
-        grid: { color: '#f3f4f6' },
-        ticks: { color: '#9ca3af', font: { size: 10 }, precision: 0 },
+        grid: { color: gridColor },
+        ticks: { color: tickColor, font: { size: 10 }, precision: 0 },
       },
     },
     plugins: {
