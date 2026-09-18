@@ -7,6 +7,7 @@ import { deleteMessageForMe, markThreadRead, sendMessage } from '../lib/messages
 import type { Message } from '../types'
 import { Avatar } from './Avatar'
 import { MessageBubble } from './MessageBubble'
+import { EmojiPickerButton } from './EmojiPickerButton'
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
@@ -117,6 +118,7 @@ export function MessagesButton() {
                     placeholder="Message..."
                     className="flex-1 rounded-lg border border-gray-200 px-3 py-1.5 text-sm outline-none focus:border-accent"
                   />
+                  <EmojiPickerButton onSelect={(emoji) => setDraft((d) => d + emoji)} />
                   <button
                     type="submit"
                     disabled={!draft.trim() || sendMutation.isPending}
