@@ -327,14 +327,6 @@ export function CbProfile() {
               Edit Profile
             </button>
           )}
-          {isContributorRole && (
-            <button
-              onClick={() => setShowCtsModal(true)}
-              className="animate-heartbeat-soft rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground hover:opacity-90"
-            >
-              CTS Form
-            </button>
-          )}
         </div>
       </div>
 
@@ -562,10 +554,18 @@ export function CbProfile() {
           </button>
         )}
 
+        {isContributorRole && (
+          <button
+            onClick={() => setShowCtsModal(true)}
+            className="ml-auto animate-heartbeat-soft rounded-lg bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600"
+          >
+            CTS Form
+          </button>
+        )}
         {canEdit && (
           <button
             onClick={() => setBulkImporting(true)}
-            className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+            className={`rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50 ${isContributorRole ? '' : 'ml-auto'}`}
           >
             Bulk Import
           </button>
@@ -573,7 +573,7 @@ export function CbProfile() {
         {canEdit && (
           <button
             onClick={() => setFormTarget('new')}
-            className="ml-auto rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
+            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
           >
             + Add Submission
           </button>

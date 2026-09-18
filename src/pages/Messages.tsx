@@ -125,21 +125,23 @@ export function Messages() {
                     No conversations yet. Search above to message someone.
                   </div>
                 )}
-                {conversations.map((c) => (
+                {conversations.map((c) => {
+                  const isSelected = selectedUserId === c.otherUserId
+                  return (
                   <button
                     key={c.otherUserId}
                     onClick={() => navigate(`/messages/${c.otherUserId}`)}
                     className={`flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 ${
-                      selectedUserId === c.otherUserId ? 'bg-accent-bg' : ''
+                      isSelected ? 'bg-accent-bg' : ''
                     }`}
                   >
                     <Avatar name={c.otherUserName} photoUrl={c.otherUserAvatarUrl} size={36} />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="truncate text-sm font-medium text-gray-900">{c.otherUserName}</span>
-                        <span className="shrink-0 text-[10px] text-gray-400">{formatTime(c.lastMessage.created_at)}</span>
+                        <span className={`truncate text-sm font-medium ${isSelected ? 'text-accent-foreground' : 'text-gray-900'}`}>{c.otherUserName}</span>
+                        <span className={`shrink-0 text-[10px] ${isSelected ? 'text-accent-foreground/70' : 'text-gray-400'}`}>{formatTime(c.lastMessage.created_at)}</span>
                       </div>
-                      <div className="truncate text-xs text-gray-500">
+                      <div className={`truncate text-xs ${isSelected ? 'text-accent-foreground/80' : 'text-gray-500'}`}>
                         {c.lastMessage.sender_id === myId ? 'You: ' : ''}
                         {convertEmoticons(c.lastMessage.body)}
                       </div>
@@ -150,7 +152,8 @@ export function Messages() {
                       </span>
                     )}
                   </button>
-                ))}
+                  )
+                })}
               </div>
             </>
           )}

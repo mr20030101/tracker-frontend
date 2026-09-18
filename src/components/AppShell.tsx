@@ -1,5 +1,4 @@
-import { NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { useState, type KeyboardEvent } from 'react'
+import { NavLink, useLocation } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import {
   LayoutDashboard,
@@ -70,18 +69,9 @@ function navSections(isManager: boolean, isAdmin: boolean): { label: string; ite
 export function AppShell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth()
   const location = useLocation()
-  const navigate = useNavigate()
-  const [search, setSearch] = useState('')
   const isManager = Boolean(user && MANAGER_ROLES.includes(user.role))
   const isAdmin = user?.role === 'admin'
   const ownProfilePath = user ? `/contributors/${encodeURIComponent(user.email)}` : '/'
-
-  function handleSearch(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key !== 'Enter' || !search.trim()) return
-    if (isManager) {
-      navigate(`/users?search=${encodeURIComponent(search.trim())}`)
-    }
-  }
 
   const crumb =
     location.pathname === '/leaderboard'
@@ -181,14 +171,6 @@ export function AppShell({ children }: { children: ReactNode }) {
               <span>{crumb}</span>
             </div>
             <div className="flex items-center gap-3">
-              <input
-                type="search"
-                placeholder="Search..."
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                onKeyDown={handleSearch}
-                className="w-64 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm outline-none focus:border-accent"
-              />
               <ThemeToggle />
               {user && <MessagesButton />}
               {user && <NotificationBell />}
