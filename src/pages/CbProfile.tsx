@@ -4,7 +4,7 @@ import { Image } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, functionErrorMessage, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
-import { startOfWeek, toISODate, formatRange } from '../lib/week'
+import { startOfWeek, toISODate, formatRange, formatTime } from '../lib/week'
 import { clearMustChangePassword, updateOwnProfile, uploadAvatar } from '../lib/profile'
 import { remotasksDiffViewerUrl } from '../lib/remotasks'
 import type { ContributorProfile, ContributorProjectLevel, Project, ProjectLevel, TaskSubmission } from '../types'
@@ -760,7 +760,10 @@ export function CbProfile() {
                 <td className="px-5 py-3">
                   <StatusPill status={row.status} />
                 </td>
-                <td className="px-5 py-3 text-gray-500">{row.date?.slice(0, 10) ?? '—'}</td>
+                <td className="px-5 py-3 text-gray-500">
+                  {row.date?.slice(0, 10) ?? '—'}
+                  {row.date && <span className="ml-1.5 text-xs text-gray-400">{formatTime(row.created_at)}</span>}
+                </td>
                 {canEdit && (
                   <td className="px-5 py-3 text-right">
                     <div className="flex justify-end gap-3">

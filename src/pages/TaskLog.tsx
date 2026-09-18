@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { remotasksDiffViewerUrl } from '../lib/remotasks'
+import { formatTime } from '../lib/week'
 import type { Paginated, Project, Stage, SubmissionStatus, TaskSubmission } from '../types'
 import { StatusPill } from '../components/StatusPill'
 import { Avatar } from '../components/Avatar'
@@ -346,7 +347,10 @@ export function TaskLog() {
                     )}
                   </div>
                 </td>
-                <td className="px-5 py-3 text-gray-500">{row.date?.slice(0, 10) ?? '—'}</td>
+                <td className="px-5 py-3 text-gray-500">
+                  {row.date?.slice(0, 10) ?? '—'}
+                  {row.date && <span className="ml-1.5 text-xs text-gray-400">{formatTime(row.created_at)}</span>}
+                </td>
                 <td className="px-5 py-3 text-right">
                   <div className="flex justify-end gap-3 text-xs font-medium">
                     <button onClick={() => setFormTarget(row)} className="text-gray-500 hover:text-gray-900">

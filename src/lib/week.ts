@@ -20,3 +20,7 @@ export function formatRange(start: string, end: string): string {
   const e = new Date(`${end}T00:00:00`)
   return `${s.toLocaleDateString(undefined, opts)} – ${e.toLocaleDateString(undefined, opts)}, ${e.getFullYear()}`
 }
+
+export function formatTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+}

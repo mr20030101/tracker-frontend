@@ -56,6 +56,7 @@ export interface TaskSubmission {
   date: string | null
   submitted_at: string | null
   snipboard_url: string | null
+  created_at: string
 }
 
 export interface Paginated<T> {

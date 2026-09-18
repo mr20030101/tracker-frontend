@@ -5,14 +5,11 @@ import { Search } from 'lucide-react'
 import { useMessaging } from '../lib/messagingContext'
 import { convertEmoticons } from '../lib/emoticons'
 import { deleteMessageForMe, markThreadRead, sendMessage } from '../lib/messages'
+import { formatTime } from '../lib/week'
 import type { Message } from '../types'
 import { Avatar } from '../components/Avatar'
 import { MessageBubble } from '../components/MessageBubble'
 import { EmojiPickerButton } from '../components/EmojiPickerButton'
-
-function formatTime(iso: string) {
-  return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
-}
 
 export function Messages() {
   const { userId: routeUserId } = useParams<{ userId: string }>()
