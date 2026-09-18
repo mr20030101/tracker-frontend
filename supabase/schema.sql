@@ -1,4 +1,9 @@
 create extension if not exists pgcrypto;
+-- Needed to schedule the daily-digest edge function (see the cron.schedule
+-- snippet in the daily-digest deployment notes, run separately since it
+-- embeds the project's service role key).
+create extension if not exists pg_cron;
+create extension if not exists pg_net;
 
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
