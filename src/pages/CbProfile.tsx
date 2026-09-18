@@ -562,7 +562,7 @@ export function CbProfile() {
           </button>
         )}
 
-        {canManageLevels && (
+        {canEdit && (
           <button
             onClick={() => setBulkImporting(true)}
             className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50"
