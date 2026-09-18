@@ -1,6 +1,7 @@
-import { useState, type FormEvent } from 'react'
+import { useMemo, useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { ColumnDef, RowSelectionState } from '@tanstack/react-table'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { isOnline } from '../lib/presence'
@@ -8,12 +9,11 @@ import type { User } from '../types'
 import { Modal } from '../components/Modal'
 import { Avatar } from '../components/Avatar'
 import { Combobox } from '../components/Combobox'
-import { SortableHeader } from '../components/SortableHeader'
+import { DataTable } from '../components/DataTable'
 
 const ROLES: User['role'][] = ['contributor', 'lead', 'admin']
 const DEFAULT_PASSWORD = 'password'
 
-type SortKey = 'name' | 'role' | 'status' | 'session'
 type StatusFilter = '' | 'active' | 'disabled'
 
 function formatLastSeen(lastSeenAt: string | null) {
@@ -36,6 +36,7 @@ export function Users() {
   const [adding, setAdding] = useState(false)
   const [resetTarget, setResetTarget] = useState<User | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null)
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
   const [form, setForm] = useState(emptyForm)
   const [resetPassword, setResetPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -44,12 +45,8 @@ export function Users() {
   const [search, setSearch] = useState(searchParams.get('search') ?? '')
   const [roleFilter, setRoleFilter] = useState<User['role'] | ''>('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('')
-  const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'name', dir: 'asc' })
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
   const normalizedSearch = search.trim().toLowerCase()
-
-  function toggleSort(key: SortKey) {
-    setSort((prev) => (prev.key === key ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }))
-  }
 
   const { data, isLoading } = useQuery({
     queryKey: ['users'],
@@ -106,6 +103,51 @@ export function Users() {
     onError: (mutationError: Error) => setError(mutationError.message || 'Could not reset this password.'),
   })
 
+  const bulkRoleMutation = useMutation({
+    mutationFn: async ({ ids, role }: { ids: string[]; role: User['role'] }) =>
+      Promise.all(ids.map((id) => api.patch(`/users/${id}`, { role }))),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+      setRowSelection({})
+      setError(null)
+    },
+    onError: (mutationError: Error) => setError(mutationError.message || 'Could not update those logins.'),
+  })
+
+  const bulkLeadMutation = useMutation({
+    mutationFn: async ({ ids, leadId }: { ids: string[]; leadId: string | null }) =>
+      Promise.all(ids.map((id) => api.patch(`/users/${id}`, { lead_id: leadId }))),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+      setRowSelection({})
+      setError(null)
+    },
+    onError: (mutationError: Error) => setError(mutationError.message || 'Could not update those logins.'),
+  })
+
+  const bulkActiveMutation = useMutation({
+    mutationFn: async ({ ids, isActive }: { ids: string[]; isActive: boolean }) =>
+      Promise.all(ids.map((id) => api.patch(`/users/${id}`, { is_active: isActive }))),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+      setRowSelection({})
+      setError(null)
+    },
+    onError: (mutationError: Error) => setError(mutationError.message || 'Could not update those logins.'),
+  })
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => Promise.all(ids.map((id) => api.delete(`/users/${id}`))),
+    onSuccess: (_result, ids) => {
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+      setNotice(`${ids.length} login${ids.length === 1 ? '' : 's'} deleted.`)
+      setRowSelection({})
+      setBulkDeleteConfirm(false)
+      setError(null)
+    },
+    onError: (mutationError: Error) => setError(mutationError.message || 'Could not delete those logins.'),
+  })
+
   function handleCreate(e: FormEvent) {
     e.preventDefault()
     setError(null)
@@ -122,25 +164,18 @@ export function Users() {
     if (deleteTarget) deleteMutation.mutate(deleteTarget)
   }
 
+  function handleBulkDelete(e: FormEvent) {
+    e.preventDefault()
+    bulkDeleteMutation.mutate(selectedIds)
+  }
+
   const rows = (data ?? [])
     .filter((u) => u.id !== currentUser?.id)
     .filter((u) => !normalizedSearch || u.name.toLowerCase().includes(normalizedSearch) || u.email.toLowerCase().includes(normalizedSearch))
     .filter((u) => !roleFilter || u.role === roleFilter)
     .filter((u) => !statusFilter || (statusFilter === 'active' ? u.is_active : !u.is_active))
-    .sort((a, b) => {
-      const dir = sort.dir === 'asc' ? 1 : -1
-      switch (sort.key) {
-        case 'role':
-          return a.role.localeCompare(b.role) * dir
-        case 'status':
-          return (Number(a.is_active) - Number(b.is_active)) * dir
-        case 'session':
-          return ((a.last_seen_at ? new Date(a.last_seen_at).getTime() : 0) - (b.last_seen_at ? new Date(b.last_seen_at).getTime() : 0)) * dir
-        case 'name':
-        default:
-          return a.name.localeCompare(b.name) * dir
-      }
-    })
+
+  const selectedIds = Object.keys(rowSelection).filter((id) => rowSelection[id])
 
   const hasActiveFilters = Boolean(search || roleFilter || statusFilter)
 
@@ -149,6 +184,160 @@ export function Users() {
     setRoleFilter('')
     setStatusFilter('')
   }
+
+  const columns = useMemo<ColumnDef<User, any>[]>(
+    () => [
+      {
+        id: 'select',
+        header: ({ table }) => (
+          <input
+            type="checkbox"
+            checked={table.getIsAllRowsSelected()}
+            onChange={table.getToggleAllRowsSelectedHandler()}
+            className="h-4 w-4 rounded border-gray-300 text-accent focus:ring-accent"
+          />
+        ),
+        cell: ({ row }) => (
+          <input
+            type="checkbox"
+            checked={row.getIsSelected()}
+            onChange={row.getToggleSelectedHandler()}
+            className="h-4 w-4 rounded border-gray-300 text-accent focus:ring-accent"
+          />
+        ),
+        enableSorting: false,
+      },
+      {
+        id: 'name',
+        accessorFn: (u) => u.name,
+        header: 'Name',
+        cell: ({ row }) => {
+          const u = row.original
+          return (
+            <Link to={`/contributors/${encodeURIComponent(u.email)}`} className="flex items-center gap-3 hover:underline">
+              <Avatar name={u.name} photoUrl={u.avatar_url} size={28} />
+              <div>
+                <div className="font-medium text-gray-900">{u.name}</div>
+                <div className="text-xs text-gray-400">{u.email}</div>
+              </div>
+            </Link>
+          )
+        },
+      },
+      {
+        id: 'role',
+        accessorFn: (u) => u.role,
+        header: 'Role',
+        cell: ({ row }) => {
+          const u = row.original
+          return isAdmin ? (
+            <select
+              value={u.role}
+              onChange={(e) => roleMutation.mutate({ id: u.id, role: e.target.value as User['role'] })}
+              className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs capitalize outline-none focus:border-accent"
+            >
+              {ROLES.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span className="text-xs capitalize text-gray-600">{u.role}</span>
+          )
+        },
+      },
+      {
+        id: 'lead',
+        header: 'Lead',
+        enableSorting: false,
+        cell: ({ row }) => {
+          const u = row.original
+          return isAdmin ? (
+            <Combobox
+              value={u.lead_id ?? ''}
+              onChange={(leadId) => leadMutation.mutate({ id: u.id, leadId: leadId || null })}
+              options={
+                data
+                  ?.filter((lead) => lead.role === 'lead' && lead.id !== u.id)
+                  .map((lead) => ({ value: lead.id, label: lead.name })) ?? []
+              }
+              placeholder="Search leads..."
+              className="max-w-40"
+            />
+          ) : (
+            <span className="text-xs text-gray-500">{data?.find((lead) => lead.id === u.lead_id)?.name ?? '—'}</span>
+          )
+        },
+      },
+      {
+        id: 'status',
+        accessorFn: (u) => Number(u.is_active),
+        header: 'Status',
+        cell: ({ row }) => {
+          const u = row.original
+          return (
+            <span
+              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                u.is_active ? 'bg-status-success-bg text-status-success-text' : 'bg-status-danger-bg text-status-danger-text'
+              }`}
+            >
+              {u.is_active ? 'Active' : 'Disabled'}
+            </span>
+          )
+        },
+      },
+      {
+        id: 'session',
+        accessorFn: (u) => (u.last_seen_at ? new Date(u.last_seen_at).getTime() : 0),
+        header: 'Session',
+        cell: ({ row }) => {
+          const u = row.original
+          const online = isOnline(u.last_seen_at)
+          return (
+            <span className="inline-flex items-center gap-1.5 text-xs text-gray-500">
+              <span className={`h-2 w-2 rounded-full ${online ? 'bg-status-success-text' : 'bg-gray-300'}`} />
+              {online ? 'Online' : formatLastSeen(u.last_seen_at)}
+            </span>
+          )
+        },
+      },
+      {
+        id: 'actions',
+        header: 'Actions',
+        enableSorting: false,
+        meta: { align: 'right' },
+        cell: ({ row }) => {
+          const u = row.original
+          return (
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => toggleActiveMutation.mutate({ id: u.id, isActive: !u.is_active })}
+                className={`text-xs font-medium hover:underline ${u.is_active ? 'text-status-danger-text' : 'text-sky-700'}`}
+              >
+                {u.is_active ? 'Disable' : 'Enable'}
+              </button>
+              <button onClick={() => setResetTarget(u)} className="text-xs font-medium text-sky-700 hover:underline">
+                Reset Password
+              </button>
+              <button
+                onClick={() => {
+                  setError(null)
+                  setDeleteTarget(u)
+                }}
+                disabled={u.id === currentUser?.id || deleteMutation.isPending}
+                title={u.id === currentUser?.id ? 'You cannot delete your own account.' : undefined}
+                className="text-xs font-medium text-status-danger-text hover:underline disabled:cursor-not-allowed disabled:text-gray-300 disabled:no-underline"
+              >
+                Delete
+              </button>
+            </div>
+          )
+        },
+      },
+    ],
+    [isAdmin, data, currentUser, roleMutation, leadMutation, toggleActiveMutation, deleteMutation],
+  )
 
   return (
     <div>
@@ -172,12 +361,18 @@ export function Users() {
           type="search"
           placeholder="Search by name or email..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value)
+            setRowSelection({})
+          }}
           className="w-64 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
         />
         <select
           value={roleFilter}
-          onChange={(e) => setRoleFilter(e.target.value as User['role'] | '')}
+          onChange={(e) => {
+            setRoleFilter(e.target.value as User['role'] | '')
+            setRowSelection({})
+          }}
           className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm capitalize outline-none focus:border-accent"
         >
           <option value="">All Roles</option>
@@ -189,7 +384,10 @@ export function Users() {
         </select>
         <select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+          onChange={(e) => {
+            setStatusFilter(e.target.value as StatusFilter)
+            setRowSelection({})
+          }}
           className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
         >
           <option value="">All Statuses</option>
@@ -203,137 +401,77 @@ export function Users() {
         )}
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-        <table className="w-full text-left text-sm">
-          <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
-            <tr>
-              <SortableHeader label="Name" active={sort.key === 'name'} dir={sort.dir} onClick={() => toggleSort('name')} />
-              <SortableHeader label="Role" active={sort.key === 'role'} dir={sort.dir} onClick={() => toggleSort('role')} />
-              <th className="px-5 py-3">Lead</th>
-              <SortableHeader label="Status" active={sort.key === 'status'} dir={sort.dir} onClick={() => toggleSort('status')} />
-              <SortableHeader label="Session" active={sort.key === 'session'} dir={sort.dir} onClick={() => toggleSort('session')} />
-              <th className="px-5 py-3 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {isLoading && (
-              <tr>
-                <td colSpan={6} className="px-5 py-6 text-center text-gray-400">
-                  Loading...
-                </td>
-              </tr>
-            )}
-            {!isLoading && rows.length === 0 && (
-              <tr>
-                <td colSpan={6} className="px-5 py-6 text-center text-gray-400">
-                  No users match these filters.
-                </td>
-              </tr>
-            )}
-            {rows.map((u) => (
-              <tr key={u.id} className={`hover:bg-gray-50 ${!u.is_active ? 'opacity-60' : ''}`}>
-                <td className="px-5 py-3">
-                  <Link
-                    to={`/contributors/${encodeURIComponent(u.email)}`}
-                    className="flex items-center gap-3 hover:underline"
-                  >
-                    <Avatar name={u.name} photoUrl={u.avatar_url} size={28} />
-                    <div>
-                      <div className="font-medium text-gray-900">{u.name}</div>
-                      <div className="text-xs text-gray-400">{u.email}</div>
-                    </div>
-                  </Link>
-                </td>
-                <td className="px-5 py-3">
-                  {isAdmin ? (
-                    <select
-                      value={u.role}
-                      onChange={(e) => roleMutation.mutate({ id: u.id, role: e.target.value as User['role'] })}
-                      className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs capitalize outline-none focus:border-accent"
-                    >
-                      {ROLES.map((r) => (
-                        <option key={r} value={r}>
-                          {r}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <span className="text-xs capitalize text-gray-600">{u.role}</span>
-                  )}
-                </td>
-                <td className="px-5 py-3">
-                  {isAdmin ? (
-                    <Combobox
-                      value={u.lead_id ?? ''}
-                      onChange={(leadId) => leadMutation.mutate({ id: u.id, leadId: leadId || null })}
-                      options={
-                        data
-                          ?.filter((lead) => lead.role === 'lead' && lead.id !== u.id)
-                          .map((lead) => ({ value: lead.id, label: lead.name })) ?? []
-                      }
-                      placeholder="Search leads..."
-                      className="max-w-40"
-                    />
-                  ) : (
-                    <span className="text-xs text-gray-500">
-                      {data?.find((lead) => lead.id === u.lead_id)?.name ?? '—'}
-                    </span>
-                  )}
-                </td>
-                <td className="px-5 py-3">
-                  <span
-                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${u.is_active
-                      ? 'bg-status-success-bg text-status-success-text'
-                      : 'bg-status-danger-bg text-status-danger-text'
-                      }`}
-                  >
-                    {u.is_active ? 'Active' : 'Disabled'}
-                  </span>
-                </td>
-                <td className="px-5 py-3">
-                  {(() => {
-                    const online = isOnline(u.last_seen_at)
-                    return (
-                      <span className="inline-flex items-center gap-1.5 text-xs text-gray-500">
-                        <span className={`h-2 w-2 rounded-full ${online ? 'bg-status-success-text' : 'bg-gray-300'}`} />
-                        {online ? 'Online' : formatLastSeen(u.last_seen_at)}
-                      </span>
-                    )
-                  })()}
-                </td>
-                <td className="px-5 py-3 text-right">
-                  <div className="flex justify-end gap-3">
-                    <button
-                      onClick={() => toggleActiveMutation.mutate({ id: u.id, isActive: !u.is_active })}
-                      className={`text-xs font-medium hover:underline ${u.is_active ? 'text-status-danger-text' : 'text-sky-700'
-                        }`}
-                    >
-                      {u.is_active ? 'Disable' : 'Enable'}
-                    </button>
-                    <button
-                      onClick={() => setResetTarget(u)}
-                      className="text-xs font-medium text-sky-700 hover:underline"
-                    >
-                      Reset Password
-                    </button>
-                    <button
-                      onClick={() => {
-                        setError(null)
-                        setDeleteTarget(u)
-                      }}
-                      disabled={u.id === currentUser?.id || deleteMutation.isPending}
-                      title={u.id === currentUser?.id ? 'You cannot delete your own account.' : undefined}
-                      className="text-xs font-medium text-status-danger-text hover:underline disabled:cursor-not-allowed disabled:text-gray-300 disabled:no-underline"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {selectedIds.length > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5">
+          <span className="text-sm font-medium text-gray-700">{selectedIds.length} selected</span>
+          {isAdmin && (
+            <select
+              value=""
+              onChange={(e) => {
+                if (e.target.value) bulkRoleMutation.mutate({ ids: selectedIds, role: e.target.value as User['role'] })
+              }}
+              className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm capitalize outline-none focus:border-accent"
+            >
+              <option value="">Set role...</option>
+              {ROLES.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
+          )}
+          {isAdmin && (
+            <select
+              value=""
+              onChange={(e) => {
+                if (e.target.value === '') return
+                bulkLeadMutation.mutate({ ids: selectedIds, leadId: e.target.value === '__none__' ? null : e.target.value })
+              }}
+              className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm outline-none focus:border-accent"
+            >
+              <option value="">Set lead...</option>
+              <option value="__none__">— No lead —</option>
+              {data
+                ?.filter((lead) => lead.role === 'lead')
+                .map((lead) => (
+                  <option key={lead.id} value={lead.id}>
+                    {lead.name}
+                  </option>
+                ))}
+            </select>
+          )}
+          <button
+            onClick={() => bulkActiveMutation.mutate({ ids: selectedIds, isActive: true })}
+            className="text-sm font-medium text-sky-700 hover:underline"
+          >
+            Enable
+          </button>
+          <button
+            onClick={() => bulkActiveMutation.mutate({ ids: selectedIds, isActive: false })}
+            className="text-sm font-medium text-status-danger-text hover:underline"
+          >
+            Disable
+          </button>
+          <button onClick={() => setBulkDeleteConfirm(true)} className="text-sm font-medium text-status-danger-text hover:underline">
+            Delete
+          </button>
+          <button onClick={() => setRowSelection({})} className="ml-auto text-sm font-medium text-gray-500 hover:underline">
+            Clear selection
+          </button>
+        </div>
+      )}
+
+      <DataTable
+        columns={columns}
+        data={rows}
+        getRowId={(u) => u.id}
+        rowSelection={rowSelection}
+        onRowSelectionChange={setRowSelection}
+        isLoading={isLoading}
+        emptyMessage="No users match these filters."
+        pageSize={10}
+        rowClassName={(u) => (!u.is_active ? 'opacity-60' : '')}
+      />
 
       {adding && (
         <Modal title="Add Login" onClose={() => setAdding(false)}>
@@ -462,6 +600,34 @@ export function Users() {
                 className="rounded-lg bg-status-danger-text px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
               >
                 {deleteMutation.isPending ? 'Deleting...' : 'Delete Login'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {bulkDeleteConfirm && (
+        <Modal title={`Delete ${selectedIds.length} login${selectedIds.length === 1 ? '' : 's'}?`} onClose={() => setBulkDeleteConfirm(false)}>
+          <form onSubmit={handleBulkDelete} className="flex flex-col gap-3">
+            <p className="text-sm text-gray-600">
+              This permanently removes <span className="font-medium text-gray-900">{selectedIds.length}</span> selected login
+              {selectedIds.length === 1 ? '' : 's'}. This cannot be undone.
+            </p>
+            {error && <div className="text-sm text-status-danger-text">{error}</div>}
+            <div className="mt-2 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setBulkDeleteConfirm(false)}
+                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={bulkDeleteMutation.isPending}
+                className="rounded-lg bg-status-danger-text px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              >
+                {bulkDeleteMutation.isPending ? 'Deleting...' : `Delete ${selectedIds.length} Login${selectedIds.length === 1 ? '' : 's'}`}
               </button>
             </div>
           </form>

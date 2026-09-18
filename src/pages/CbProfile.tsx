@@ -41,6 +41,8 @@ export function CbProfile() {
   const [profileName, setProfileName] = useState('')
   const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null)
   const [profilePhotoPreview, setProfilePhotoPreview] = useState<string | null>(null)
+  const [profilePassword, setProfilePassword] = useState('')
+  const [profilePasswordConfirm, setProfilePasswordConfirm] = useState('')
   const [profileError, setProfileError] = useState<string | null>(null)
   const photoInputRef = useRef<HTMLInputElement>(null)
 
@@ -148,6 +150,10 @@ export function CbProfile() {
       let avatarUrl = currentUser.avatar_url
       if (profilePhotoFile) avatarUrl = await uploadAvatar(currentUser.id, profilePhotoFile)
       await updateOwnProfile(profileName.trim(), avatarUrl)
+      if (profilePassword) {
+        const { error } = await supabase.auth.updateUser({ password: profilePassword })
+        if (error) throw error
+      }
     },
     onSuccess: async () => {
       await refreshUser()
@@ -157,6 +163,8 @@ export function CbProfile() {
       setEditingProfile(false)
       setProfilePhotoFile(null)
       setProfilePhotoPreview(null)
+      setProfilePassword('')
+      setProfilePasswordConfirm('')
     },
     onError: (mutationError: Error) => setProfileError(mutationError.message || 'Could not save your profile.'),
   })
@@ -165,6 +173,8 @@ export function CbProfile() {
     setProfileName(currentUser?.name ?? '')
     setProfilePhotoFile(null)
     setProfilePhotoPreview(null)
+    setProfilePassword('')
+    setProfilePasswordConfirm('')
     setProfileError(null)
     setEditingProfile(true)
   }
@@ -176,6 +186,14 @@ export function CbProfile() {
 
   function handleSaveProfile(e: FormEvent) {
     e.preventDefault()
+    if (profilePassword && profilePassword.length < 8) {
+      setProfileError('New password must be at least 8 characters.')
+      return
+    }
+    if (profilePassword !== profilePasswordConfirm) {
+      setProfileError('New password and confirmation do not match.')
+      return
+    }
     setProfileError(null)
     saveProfileMutation.mutate()
   }
@@ -381,6 +399,29 @@ export function CbProfile() {
                 className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500"
               />
             </div>
+            <div className="border-t border-gray-100 pt-4">
+              <label className="mb-1 block text-sm font-medium text-gray-700">New Password</label>
+              <input
+                type="password"
+                minLength={8}
+                placeholder="Leave blank to keep your current password"
+                value={profilePassword}
+                onChange={(e) => setProfilePassword(e.target.value)}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
+              />
+            </div>
+            {profilePassword && (
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Confirm New Password</label>
+                <input
+                  type="password"
+                  minLength={8}
+                  value={profilePasswordConfirm}
+                  onChange={(e) => setProfilePasswordConfirm(e.target.value)}
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
+                />
+              </div>
+            )}
             {profileError && <div className="rounded-lg bg-status-danger-text px-3 py-2 text-sm text-status-danger-bg">{profileError}</div>}
             <div className="mt-2 flex justify-end gap-2">
               <button

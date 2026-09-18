@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { useMessaging } from '../lib/messagingContext'
+import { convertEmoticons } from '../lib/emoticons'
 import { deleteMessageForMe, markThreadRead, sendMessage } from '../lib/messages'
 import type { Message } from '../types'
 import { Avatar } from './Avatar'
@@ -156,7 +157,7 @@ export function MessagesButton() {
                         </div>
                         <div className="truncate text-xs text-gray-500">
                           {c.lastMessage.sender_id === myId ? 'You: ' : ''}
-                          {c.lastMessage.body}
+                          {convertEmoticons(c.lastMessage.body)}
                         </div>
                       </div>
                       {c.unreadCount > 0 && (

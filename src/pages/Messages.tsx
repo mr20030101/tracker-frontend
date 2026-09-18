@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Search } from 'lucide-react'
 import { useMessaging } from '../lib/messagingContext'
+import { convertEmoticons } from '../lib/emoticons'
 import { deleteMessageForMe, markThreadRead, sendMessage } from '../lib/messages'
 import type { Message } from '../types'
 import { Avatar } from '../components/Avatar'
@@ -140,7 +141,7 @@ export function Messages() {
                       </div>
                       <div className="truncate text-xs text-gray-500">
                         {c.lastMessage.sender_id === myId ? 'You: ' : ''}
-                        {c.lastMessage.body}
+                        {convertEmoticons(c.lastMessage.body)}
                       </div>
                     </div>
                     {c.unreadCount > 0 && (
