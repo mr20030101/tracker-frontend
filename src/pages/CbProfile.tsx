@@ -488,7 +488,7 @@ export function CbProfile() {
                   >
                     {LEVEL_OPTIONS.map((option) => (
                       <option key={option} value={option}>
-                        {option === 'contributor' ? 'Contributor' : option.toUpperCase()}
+                        {option === 'contributor' ? 'Attempt' : option.toUpperCase()}
                       </option>
                     ))}
                   </select>

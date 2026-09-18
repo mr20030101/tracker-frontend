@@ -8,7 +8,7 @@ export const LEVEL_STYLES: Record<ProjectLevel, string> = {
 }
 
 const LABELS: Record<ProjectLevel, string> = {
-  contributor: 'Contributor',
+  contributor: 'Attempt',
   l0: 'L0',
   l1: 'L1',
   l10: 'L10',
