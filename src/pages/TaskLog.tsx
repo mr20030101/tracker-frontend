@@ -141,22 +141,20 @@ export function TaskLog() {
         </div>
         <div className="flex gap-2">
           {isManager && (
-            <>
-              <button
-                onClick={handleExport}
-                disabled={exporting}
-                className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-              >
-                {exporting ? 'Exporting...' : 'Export CSV'}
-              </button>
-              <button
-                onClick={() => setBulkImportOpen(true)}
-                className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-              >
-                Bulk Import
-              </button>
-            </>
+            <button
+              onClick={handleExport}
+              disabled={exporting}
+              className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            >
+              {exporting ? 'Exporting...' : 'Export CSV'}
+            </button>
           )}
+          <button
+            onClick={() => setBulkImportOpen(true)}
+            className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+          >
+            Bulk Import
+          </button>
           <button
             onClick={() => setFormTarget('new')}
             className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
@@ -404,7 +402,12 @@ export function TaskLog() {
       )}
 
       {bulkImportOpen && (
-        <BulkImportModal projects={projects ?? []} onClose={() => setBulkImportOpen(false)} />
+        <BulkImportModal
+          projects={projects ?? []}
+          contributorEmail={isManager ? undefined : user?.email}
+          contributorName={isManager ? undefined : user?.name}
+          onClose={() => setBulkImportOpen(false)}
+        />
       )}
     </div>
   )

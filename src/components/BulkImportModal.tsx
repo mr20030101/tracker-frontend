@@ -236,8 +236,8 @@ export function BulkImportModal({ projects, onClose, contributorEmail, contribut
               rows={14}
               placeholder={
                 contributorEmail
-                  ? '09/12/2026&#9;6aa0a04f...&#9;submitted&#9;Attempt&#9;&#9;09/12/2026&#9;Project Name'
-                  : '09/12/2026&#9;6aa0a04f...&#9;name@email.com&#9;submitted&#9;Attempt&#9;&#9;09/12/2026&#9;Project Name'
+                  ? '09/12/2026\t6aa0a04f...\tsubmitted\tAttempt\t\t09/12/2026\tProject Name'
+                  : '09/12/2026\t6aa0a04f...\tname@email.com\tsubmitted\tAttempt\t\t09/12/2026\tProject Name'
               }
               className="w-full rounded-lg border border-gray-200 px-3 py-2 font-mono text-xs outline-none focus:border-accent"
             />

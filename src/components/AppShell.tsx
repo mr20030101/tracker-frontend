@@ -32,7 +32,6 @@ function navSections(isManager: boolean, isAdmin: boolean): { label: string; ite
       items: [
         { to: '/', label: 'Dashboard', icon: LayoutDashboard },
         { to: '/leaderboard', label: 'Leaderboard', icon: Trophy },
-        { to: '/messages', label: 'Messages', icon: MessageCircle },
       ],
     },
     {
@@ -55,11 +54,15 @@ function navSections(isManager: boolean, isAdmin: boolean): { label: string; ite
       // through Users/Projects instead.
       items: isManager
         ? [
+          { to: '/messages', label: 'Messages', icon: MessageCircle },
           ...(isAdmin ? [] : [{ to: '/team', label: 'Team Handbook', icon: NotebookText }]),
           { to: '/users', label: 'Users', icon: UsersIcon },
           { to: '/projects', label: 'Projects', icon: FolderKanban },
         ]
-        : [{ to: '/team', label: 'Team Handbook', icon: NotebookText }],
+        : [
+          { to: '/messages', label: 'Messages', icon: MessageCircle },
+          { to: '/team', label: 'Team Handbook', icon: NotebookText },
+        ],
     },
   ]
 }
