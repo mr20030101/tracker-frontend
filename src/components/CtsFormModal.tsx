@@ -9,7 +9,7 @@ const CTS_FORM_URL =
 function buildCtsFormUrl(email: string, taskIds: string[], snipboardUrls: string[]) {
   const params = new URLSearchParams()
   if (email) params.set('entry.544080514', email)
-  if (taskIds.length) params.set('entry.1598956863', taskIds.join(','))
+  if (taskIds.length) params.set('entry.1598956863', taskIds.join(', '))
   if (snipboardUrls.length) params.set('entry.354206748', snipboardUrls.join(','))
   return `${CTS_FORM_URL}?${params.toString()}`
 }

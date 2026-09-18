@@ -19,7 +19,6 @@ import { Avatar } from './Avatar'
 import { NotificationBell } from './NotificationBell'
 import { MessagesButton } from './MessagesButton'
 import { ThemeToggle } from './ThemeToggle'
-import { RealtimeSubmissionToasts } from './RealtimeSubmissionToasts'
 import { OnlineUsers } from './OnlineUsers'
 
 const MANAGER_ROLES = ['admin', 'lead']
@@ -101,7 +100,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <MessagingProvider>
       <div className="flex h-screen bg-gray-50">
-        {user && <RealtimeSubmissionToasts />}
         {user && !location.pathname.startsWith('/messages') && <OnlineUsers />}
         <aside className="flex w-64 shrink-0 flex-col border-r border-gray-200 bg-white">
           <div className="flex items-center gap-2 px-5 py-5">

@@ -1,127 +1,85 @@
-import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useEffect, useState } from 'react'
 import { supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
-import { toISODate } from '../lib/week'
-import { ALERT_NOTIFICATION_SOUND, playSound } from '../lib/sound'
-import { Avatar } from './Avatar'
 
 const MANAGER_ROLES = ['admin', 'lead']
+const MAX_SUBMISSION_ALERTS = 20
 
-interface MissingContributor {
-  email: string
+interface SubmissionAlert {
+  id: string
   name: string
+  project: string | null
 }
 
-async function fetchManagerAlerts(today: string): Promise<MissingContributor[]> {
-  const [{ data: profiles }, { data: submissions }] = await Promise.all([
-    supabase.from('profiles').select('email, name').eq('role', 'contributor').eq('is_active', true),
-    supabase.from('task_submissions').select('cb_email, status').eq('date', today).eq('status', 'submitted'),
-  ])
-  const submittedEmails = new Set((submissions ?? []).map((s) => s.cb_email?.toLowerCase()))
-  return (profiles ?? [])
-    .filter((p) => !submittedEmails.has(p.email.toLowerCase()))
-    .map((p) => ({ email: p.email, name: p.name }))
-}
-
-async function fetchOwnAlert(email: string, today: string): Promise<boolean> {
-  const { data } = await supabase
-    .from('task_submissions')
-    .select('id')
-    .eq('cb_email', email)
-    .eq('date', today)
-    .eq('status', 'submitted')
-    .limit(1)
-  return (data ?? []).length === 0
-}
-
-function loadDismissed(key: string): Set<string> {
-  try {
-    const raw = localStorage.getItem(key)
-    return new Set(raw ? (JSON.parse(raw) as string[]) : [])
-  } catch {
-    return new Set()
-  }
-}
-
-function saveDismissed(key: string, dismissed: Set<string>) {
-  try {
-    localStorage.setItem(key, JSON.stringify([...dismissed]))
-  } catch {
-    // ignore storage failures (private mode, quota, etc.)
-  }
+interface TaskSubmissionRow {
+  id: number
+  cb_email: string
+  status: string
+  project_id: number | null
 }
 
 export function NotificationBell() {
   const { user } = useAuth()
   const [open, setOpen] = useState(false)
   const isManager = Boolean(user && MANAGER_ROLES.includes(user.role))
-  const today = toISODate(new Date())
-  const dismissedKey = `notif-dismissed-${today}`
 
-  const [dismissed, setDismissed] = useState<Set<string>>(() => loadDismissed(dismissedKey))
+  const [submissionAlerts, setSubmissionAlerts] = useState<SubmissionAlert[]>([])
+  const [profileNames, setProfileNames] = useState<Map<string, string>>()
+  const [projectNames, setProjectNames] = useState<Map<number, string>>()
 
   useEffect(() => {
-    setDismissed(loadDismissed(dismissedKey))
-  }, [dismissedKey])
+    if (!isManager) return
+    supabase
+      .from('profiles')
+      .select('email, name')
+      .then(({ data }) => setProfileNames(new Map((data ?? []).map((p) => [p.email.toLowerCase(), p.name as string]))))
+    supabase
+      .from('projects')
+      .select('id, name')
+      .then(({ data }) => setProjectNames(new Map((data ?? []).map((p) => [p.id as number, p.name as string]))))
+  }, [isManager])
 
-  const { data: missingContributors } = useQuery({
-    queryKey: ['notifications', 'no-submissions-today', today],
-    queryFn: () => fetchManagerAlerts(today),
-    enabled: isManager,
-    refetchInterval: 60000,
-  })
-
-  const { data: ownAlert } = useQuery({
-    queryKey: ['notifications', 'own-no-submission', user?.email, today],
-    queryFn: () => fetchOwnAlert(user!.email, today),
-    enabled: Boolean(user && !isManager),
-    refetchInterval: 60000,
-  })
-
-  const previousMissingKeysRef = useRef<Set<string> | null>(null)
   useEffect(() => {
-    if (!isManager || !missingContributors) return
-    const currentKeys = new Set(missingContributors.map((c) => c.email.toLowerCase()))
-    const previousKeys = previousMissingKeysRef.current
-    if (previousKeys && [...currentKeys].some((key) => !previousKeys.has(key))) {
-      playSound(ALERT_NOTIFICATION_SOUND)
+    if (!isManager) return
+
+    function addSubmissionAlert(row: TaskSubmissionRow) {
+      const name = profileNames?.get(row.cb_email.toLowerCase()) ?? row.cb_email
+      const project = row.project_id != null ? (projectNames?.get(row.project_id) ?? null) : null
+      const id = `${row.id}-${Date.now()}`
+      setSubmissionAlerts((prev) => [{ id, name, project }, ...prev].slice(0, MAX_SUBMISSION_ALERTS))
     }
-    previousMissingKeysRef.current = currentKeys
-  }, [isManager, missingContributors])
 
-  const previousOwnAlertRef = useRef<boolean | null>(null)
-  useEffect(() => {
-    if (isManager || ownAlert === undefined) return
-    if (previousOwnAlertRef.current === false && ownAlert) {
-      playSound(ALERT_NOTIFICATION_SOUND)
+    const channel = supabase
+      .channel('task-submissions-live')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'task_submissions' },
+        (payload) => {
+          const row = payload.new as TaskSubmissionRow
+          if (row.status === 'submitted') addSubmissionAlert(row)
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'task_submissions' },
+        (payload) => {
+          const row = payload.new as TaskSubmissionRow
+          const old = payload.old as Partial<TaskSubmissionRow>
+          if (row.status === 'submitted' && old.status !== 'submitted') addSubmissionAlert(row)
+        },
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
     }
-    previousOwnAlertRef.current = ownAlert
-  }, [isManager, ownAlert])
+  }, [isManager, profileNames, projectNames])
 
-  const visibleContributors = (missingContributors ?? []).filter((c) => !dismissed.has(c.email.toLowerCase()))
-  const ownVisible = Boolean(ownAlert) && !dismissed.has('__own__')
-  const count = isManager ? visibleContributors.length : ownVisible ? 1 : 0
-
-  function dismiss(key: string) {
-    setDismissed((prev) => {
-      const next = new Set(prev)
-      next.add(key)
-      saveDismissed(dismissedKey, next)
-      return next
-    })
+  function dismissSubmissionAlert(id: string) {
+    setSubmissionAlerts((prev) => prev.filter((a) => a.id !== id))
   }
 
-  function clearAll() {
-    setDismissed((prev) => {
-      const next = new Set(prev)
-      for (const c of missingContributors ?? []) next.add(c.email.toLowerCase())
-      if (ownAlert) next.add('__own__')
-      saveDismissed(dismissedKey, next)
-      return next
-    })
-  }
+  const count = isManager ? submissionAlerts.length : 0
 
   return (
     <div className="relative">
@@ -147,64 +105,32 @@ export function NotificationBell() {
             <div className="flex items-center justify-between px-2 py-1.5">
               <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Notifications</span>
               {count > 0 && (
-                <button onClick={clearAll} className="text-xs font-medium text-sky-700 hover:underline">
+                <button onClick={() => setSubmissionAlerts([])} className="text-xs font-medium text-sky-700 hover:underline">
                   Clear all
                 </button>
               )}
             </div>
-            {isManager ? (
-              <div className="flex max-h-80 flex-col gap-1 overflow-y-auto">
-                {visibleContributors.length === 0 && (
-                  <div className="px-2 py-3 text-sm text-gray-400">Nothing to show.</div>
-                )}
-                {visibleContributors.map((c) => (
-                  <div key={c.email} className="group flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-gray-50">
-                    <Link
-                      to={`/contributors/${encodeURIComponent(c.email)}`}
-                      onClick={() => setOpen(false)}
-                      className="flex min-w-0 flex-1 items-center gap-2 text-sm"
-                    >
-                      <Avatar name={c.name || c.email} size={28} />
-                      <div className="min-w-0">
-                        <div className="truncate font-medium text-gray-900">{c.name}</div>
-                        <div className="truncate text-xs text-gray-400">No submission today</div>
-                      </div>
-                    </Link>
-                    <button
-                      onClick={() => dismiss(c.email.toLowerCase())}
-                      className="shrink-0 rounded p-1 text-gray-300 hover:bg-gray-200 hover:text-gray-600"
-                      aria-label={`Dismiss ${c.name}`}
-                    >
-                      ×
-                    </button>
+            <div className="flex max-h-96 flex-col gap-1 overflow-y-auto">
+              {(!isManager || submissionAlerts.length === 0) && (
+                <div className="px-2 py-3 text-sm text-gray-400">Nothing to show.</div>
+              )}
+              {submissionAlerts.map((alert) => (
+                <div key={alert.id} className="group flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-gray-50">
+                  <span className="h-2 w-2 shrink-0 rounded-full bg-status-success-text" />
+                  <div className="min-w-0 flex-1 text-sm">
+                    <div className="truncate font-medium text-gray-900">{alert.name} submitted a task</div>
+                    {alert.project && <div className="truncate text-xs text-gray-400">{alert.project}</div>}
                   </div>
-                ))}
-              </div>
-            ) : ownVisible ? (
-              <div className="flex items-start gap-2 px-2 py-3">
-                <div className="text-sm text-gray-600">
-                  You haven't logged a submission today.{' '}
-                  {user && (
-                    <Link
-                      to={`/contributors/${encodeURIComponent(user.email)}`}
-                      onClick={() => setOpen(false)}
-                      className="font-medium text-sky-700 hover:underline"
-                    >
-                      Add one now
-                    </Link>
-                  )}
+                  <button
+                    onClick={() => dismissSubmissionAlert(alert.id)}
+                    className="shrink-0 rounded p-1 text-gray-300 hover:bg-gray-200 hover:text-gray-600"
+                    aria-label="Dismiss"
+                  >
+                    ×
+                  </button>
                 </div>
-                <button
-                  onClick={() => dismiss('__own__')}
-                  className="shrink-0 rounded p-1 text-gray-300 hover:bg-gray-200 hover:text-gray-600"
-                  aria-label="Dismiss"
-                >
-                  ×
-                </button>
-              </div>
-            ) : (
-              <div className="px-2 py-3 text-sm text-gray-400">Nothing to show.</div>
-            )}
+              ))}
+            </div>
           </div>
         </>
       )}
