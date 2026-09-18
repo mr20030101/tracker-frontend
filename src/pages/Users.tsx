@@ -8,9 +8,13 @@ import type { User } from '../types'
 import { Modal } from '../components/Modal'
 import { Avatar } from '../components/Avatar'
 import { Combobox } from '../components/Combobox'
+import { SortableHeader } from '../components/SortableHeader'
 
 const ROLES: User['role'][] = ['contributor', 'lead', 'admin']
 const DEFAULT_PASSWORD = 'password'
+
+type SortKey = 'name' | 'role' | 'status' | 'session'
+type StatusFilter = '' | 'active' | 'disabled'
 
 function formatLastSeen(lastSeenAt: string | null) {
   if (!lastSeenAt) return 'Never signed in'
@@ -37,7 +41,15 @@ export function Users() {
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [searchParams] = useSearchParams()
-  const search = (searchParams.get('search') ?? '').toLowerCase()
+  const [search, setSearch] = useState(searchParams.get('search') ?? '')
+  const [roleFilter, setRoleFilter] = useState<User['role'] | ''>('')
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('')
+  const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'name', dir: 'asc' })
+  const normalizedSearch = search.trim().toLowerCase()
+
+  function toggleSort(key: SortKey) {
+    setSort((prev) => (prev.key === key ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }))
+  }
 
   const { data, isLoading } = useQuery({
     queryKey: ['users'],
@@ -110,6 +122,34 @@ export function Users() {
     if (deleteTarget) deleteMutation.mutate(deleteTarget)
   }
 
+  const rows = (data ?? [])
+    .filter((u) => u.id !== currentUser?.id)
+    .filter((u) => !normalizedSearch || u.name.toLowerCase().includes(normalizedSearch) || u.email.toLowerCase().includes(normalizedSearch))
+    .filter((u) => !roleFilter || u.role === roleFilter)
+    .filter((u) => !statusFilter || (statusFilter === 'active' ? u.is_active : !u.is_active))
+    .sort((a, b) => {
+      const dir = sort.dir === 'asc' ? 1 : -1
+      switch (sort.key) {
+        case 'role':
+          return a.role.localeCompare(b.role) * dir
+        case 'status':
+          return (Number(a.is_active) - Number(b.is_active)) * dir
+        case 'session':
+          return ((a.last_seen_at ? new Date(a.last_seen_at).getTime() : 0) - (b.last_seen_at ? new Date(b.last_seen_at).getTime() : 0)) * dir
+        case 'name':
+        default:
+          return a.name.localeCompare(b.name) * dir
+      }
+    })
+
+  const hasActiveFilters = Boolean(search || roleFilter || statusFilter)
+
+  function clearFilters() {
+    setSearch('')
+    setRoleFilter('')
+    setStatusFilter('')
+  }
+
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
@@ -127,15 +167,51 @@ export function Users() {
       </div>
       {notice && <div className="mb-4 text-sm text-status-success-text">{notice}</div>}
 
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <input
+          type="search"
+          placeholder="Search by name or email..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-64 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
+        />
+        <select
+          value={roleFilter}
+          onChange={(e) => setRoleFilter(e.target.value as User['role'] | '')}
+          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm capitalize outline-none focus:border-accent"
+        >
+          <option value="">All Roles</option>
+          {ROLES.map((r) => (
+            <option key={r} value={r} className="capitalize">
+              {r}
+            </option>
+          ))}
+        </select>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
+        >
+          <option value="">All Statuses</option>
+          <option value="active">Active</option>
+          <option value="disabled">Disabled</option>
+        </select>
+        {hasActiveFilters && (
+          <button onClick={clearFilters} className="text-sm font-medium text-sky-700 hover:underline">
+            Clear filters
+          </button>
+        )}
+      </div>
+
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
             <tr>
-              <th className="px-5 py-3">Name</th>
-              <th className="px-5 py-3">Role</th>
+              <SortableHeader label="Name" active={sort.key === 'name'} dir={sort.dir} onClick={() => toggleSort('name')} />
+              <SortableHeader label="Role" active={sort.key === 'role'} dir={sort.dir} onClick={() => toggleSort('role')} />
               <th className="px-5 py-3">Lead</th>
-              <th className="px-5 py-3">Status</th>
-              <th className="px-5 py-3">Session</th>
+              <SortableHeader label="Status" active={sort.key === 'status'} dir={sort.dir} onClick={() => toggleSort('status')} />
+              <SortableHeader label="Session" active={sort.key === 'session'} dir={sort.dir} onClick={() => toggleSort('session')} />
               <th className="px-5 py-3 text-right">Actions</th>
             </tr>
           </thead>
@@ -147,10 +223,14 @@ export function Users() {
                 </td>
               </tr>
             )}
-            {data
-              ?.filter((u) => u.id !== currentUser?.id)
-              .filter((u) => !search || u.name.toLowerCase().includes(search) || u.email.toLowerCase().includes(search))
-              .map((u) => (
+            {!isLoading && rows.length === 0 && (
+              <tr>
+                <td colSpan={6} className="px-5 py-6 text-center text-gray-400">
+                  No users match these filters.
+                </td>
+              </tr>
+            )}
+            {rows.map((u) => (
               <tr key={u.id} className={`hover:bg-gray-50 ${!u.is_active ? 'opacity-60' : ''}`}>
                 <td className="px-5 py-3">
                   <Link

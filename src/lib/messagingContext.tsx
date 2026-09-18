@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from './api'
 import { useAuth } from './auth'
 import { buildConversations, fetchAllMessages, fetchDirectory } from './messages'
+import { MESSAGE_NOTIFICATION_SOUND, playSound } from './sound'
 import type { Conversation, DirectoryUser, Message } from '../types'
 
 interface MessagingContextValue {
@@ -56,8 +57,12 @@ export function MessagingProvider({ children }: { children: ReactNode }) {
     if (!myId) return
     const channel = supabase
       .channel('messages-live')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => {
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
         queryClient.invalidateQueries({ queryKey: ['messages', myId] })
+        const row = payload.new as Message
+        if (row.recipient_id === myId && row.sender_id !== myId) {
+          playSound(MESSAGE_NOTIFICATION_SOUND)
+        }
       })
       .subscribe()
     return () => {

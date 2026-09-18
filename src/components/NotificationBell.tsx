@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { toISODate } from '../lib/week'
+import { ALERT_NOTIFICATION_SOUND, playSound } from '../lib/sound'
 import { Avatar } from './Avatar'
 
 const MANAGER_ROLES = ['admin', 'lead']
@@ -78,6 +79,26 @@ export function NotificationBell() {
     enabled: Boolean(user && !isManager),
     refetchInterval: 60000,
   })
+
+  const previousMissingKeysRef = useRef<Set<string> | null>(null)
+  useEffect(() => {
+    if (!isManager || !missingContributors) return
+    const currentKeys = new Set(missingContributors.map((c) => c.email.toLowerCase()))
+    const previousKeys = previousMissingKeysRef.current
+    if (previousKeys && [...currentKeys].some((key) => !previousKeys.has(key))) {
+      playSound(ALERT_NOTIFICATION_SOUND)
+    }
+    previousMissingKeysRef.current = currentKeys
+  }, [isManager, missingContributors])
+
+  const previousOwnAlertRef = useRef<boolean | null>(null)
+  useEffect(() => {
+    if (isManager || ownAlert === undefined) return
+    if (previousOwnAlertRef.current === false && ownAlert) {
+      playSound(ALERT_NOTIFICATION_SOUND)
+    }
+    previousOwnAlertRef.current = ownAlert
+  }, [isManager, ownAlert])
 
   const visibleContributors = (missingContributors ?? []).filter((c) => !dismissed.has(c.email.toLowerCase()))
   const ownVisible = Boolean(ownAlert) && !dismissed.has('__own__')

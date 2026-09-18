@@ -39,7 +39,7 @@ function navSections(isManager: boolean, isAdmin: boolean, ownProfilePath: strin
         ? [
           { to: '/task-log', label: 'Task Log', icon: ClipboardList },
           { to: '/data-quality', label: 'Data Quality', icon: ShieldCheck },
-          { to: '/activity-log', label: 'Activity Log', icon: History },
+          ...(isAdmin ? [{ to: '/activity-log', label: 'Activity Log', icon: History }] : []),
         ]
         : [{ to: '/task-log', label: 'Task Log', icon: ClipboardList }],
     },

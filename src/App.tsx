@@ -27,6 +27,7 @@ function ProtectedLayout() {
   }
 
   const isManager = MANAGER_ROLES.includes(user.role)
+  const isAdmin = user.role === 'admin'
 
   return (
     <AppShell>
@@ -44,7 +45,7 @@ function ProtectedLayout() {
         {isManager && <Route path="/users" element={<Users />} />}
         {isManager && <Route path="/projects" element={<Projects />} />}
         {isManager && <Route path="/data-quality" element={<DataQuality />} />}
-        {isManager && <Route path="/activity-log" element={<ActivityLog />} />}
+        {isAdmin && <Route path="/activity-log" element={<ActivityLog />} />}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AppShell>
