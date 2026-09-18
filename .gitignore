@@ -21,6 +21,9 @@ supabase/import/*.csv
 supabase/import/*.sql
 supabase/import/*.xlsx
 
+# Scratch scripts (never commit test credentials in these)
+.tmp-*
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
