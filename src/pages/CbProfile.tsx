@@ -14,20 +14,12 @@ import { StatusPill } from '../components/StatusPill'
 import { LevelPill, LEVEL_STYLES } from '../components/LevelPill'
 import { TaskSubmissionForm } from '../components/TaskSubmissionForm'
 import { BulkImportModal } from '../components/BulkImportModal'
+import { CtsFormModal } from '../components/CtsFormModal'
 import { SortableHeader } from '../components/SortableHeader'
 
 const LEVEL_OPTIONS: ProjectLevel[] = ['contributor', 'l0', 'l1', 'l10']
 
 const MANAGER_ROLES = ['admin', 'lead']
-
-const CTS_FORM_URL =
-  'https://docs.google.com/forms/d/e/1FAIpQLSfXDNf6MntiYIlJHWBlEz2uKFe7I5aNzcPQHm007bUs2qBe9w/viewform'
-
-function buildCtsFormUrl(email: string) {
-  const params = new URLSearchParams()
-  if (email) params.set('entry.544080514', email)
-  return `${CTS_FORM_URL}?${params.toString()}`
-}
 
 export function CbProfile() {
   const { user: currentUser, refreshUser } = useAuth()
@@ -38,6 +30,7 @@ export function CbProfile() {
 
   const [formTarget, setFormTarget] = useState<'new' | TaskSubmission | null>(null)
   const [bulkImporting, setBulkImporting] = useState(false)
+  const [showCtsModal, setShowCtsModal] = useState(false)
   const [showWarning, setShowWarning] = useState(true)
   const [editingProfile, setEditingProfile] = useState(false)
   const [profileName, setProfileName] = useState('')
@@ -273,6 +266,9 @@ export function CbProfile() {
     const d = row.date?.slice(0, 10)
     return d && d >= rangeStart && d <= rangeEnd
   })
+  const todaysSubmissions = data.all_submissions.filter(
+    (row) => row.date?.slice(0, 10) === toISODate(new Date()) && row.status !== 'in_progress',
+  )
 
   function sortValue(row: TaskSubmission): string {
     switch (sort.key) {
@@ -333,7 +329,7 @@ export function CbProfile() {
           )}
           {isContributorRole && (
             <button
-              onClick={() => window.open(buildCtsFormUrl(decodedEmail), '_blank', 'noopener,noreferrer')}
+              onClick={() => setShowCtsModal(true)}
               className="animate-heartbeat-soft rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground hover:opacity-90"
             >
               CTS Form
@@ -341,6 +337,10 @@ export function CbProfile() {
           )}
         </div>
       </div>
+
+      {showCtsModal && (
+        <CtsFormModal email={decodedEmail} submissions={todaysSubmissions} onClose={() => setShowCtsModal(false)} />
+      )}
 
       {editingProfile && (
         <Modal title="Edit Profile" onClose={() => setEditingProfile(false)}>
