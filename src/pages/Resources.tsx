@@ -4,6 +4,7 @@ import { api, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import type { Resource } from '../types'
 import { Modal } from '../components/Modal'
+import { ActionsMenu } from '../components/ActionsMenu'
 
 const MANAGER_ROLES = ['admin', 'lead']
 
@@ -134,20 +135,21 @@ export function Resources() {
                     {item.project && <div className="text-xs text-gray-400">{item.project.name}</div>}
                   </div>
                   {isManager && (
-                    <div className="flex shrink-0 gap-3 text-xs font-medium">
-                      <button onClick={() => openEdit(item)} className="text-gray-500 hover:text-gray-900">
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (confirm('Delete this resource?')) {
-                            deleteMutation.mutate(item.id)
-                          }
-                        }}
-                        className="text-status-danger-text hover:underline"
-                      >
-                        Delete
-                      </button>
+                    <div className="flex shrink-0">
+                      <ActionsMenu
+                        items={[
+                          { label: 'Edit', onClick: () => openEdit(item) },
+                          {
+                            label: 'Delete',
+                            variant: 'danger',
+                            onClick: () => {
+                              if (confirm('Delete this resource?')) {
+                                deleteMutation.mutate(item.id)
+                              }
+                            },
+                          },
+                        ]}
+                      />
                     </div>
                   )}
                 </li>

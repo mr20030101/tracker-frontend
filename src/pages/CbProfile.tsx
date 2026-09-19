@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Navigate, useParams, Link } from 'react-router-dom'
-import { Image } from 'lucide-react'
+import { Image, ChevronDown, Trophy } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, functionErrorMessage, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
@@ -10,8 +10,9 @@ import { remotasksDiffViewerUrl } from '../lib/remotasks'
 import type { ContributorProfile, ContributorProjectLevel, Project, ProjectLevel, TaskSubmission } from '../types'
 import { Avatar } from '../components/Avatar'
 import { Modal } from '../components/Modal'
+import { ActionsMenu } from '../components/ActionsMenu'
 import { StatusPill } from '../components/StatusPill'
-import { LevelPill, LEVEL_STYLES } from '../components/LevelPill'
+import { LevelPill, LEVEL_TIERS } from '../components/LevelPill'
 import { TaskSubmissionForm } from '../components/TaskSubmissionForm'
 import { BulkImportModal } from '../components/BulkImportModal'
 import { CtsFormModal } from '../components/CtsFormModal'
@@ -22,6 +23,56 @@ import { LineChart } from '../components/LineChart'
 const LEVEL_OPTIONS: ProjectLevel[] = ['contributor', 'l0', 'l1', 'l10']
 
 const MANAGER_ROLES = ['admin', 'lead']
+
+function LevelBadgePicker({ level, onChange }: { level: ProjectLevel; onChange: (level: ProjectLevel) => void }) {
+  const [open, setOpen] = useState(false)
+  const tier = LEVEL_TIERS[level]
+  const Icon = tier.icon
+
+  return (
+    <div className="relative inline-block text-left">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold shadow-sm transition hover:brightness-95 ${tier.badge} ${tier.ring ?? ''}`}
+      >
+        <Icon className="h-3.5 w-3.5" />
+        {tier.label}
+        <ChevronDown className="h-3 w-3 opacity-60" />
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 z-20 mt-1.5 w-40 rounded-xl border border-gray-200 bg-white p-1.5 shadow-lg">
+            {LEVEL_OPTIONS.map((option) => {
+              const optionTier = LEVEL_TIERS[option]
+              const OptionIcon = optionTier.icon
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => {
+                    setOpen(false)
+                    onChange(option)
+                  }}
+                  className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-semibold hover:bg-gray-50 ${
+                    option === level ? 'text-gray-900' : 'text-gray-500'
+                  }`}
+                >
+                  <span className={`flex h-5 w-5 items-center justify-center rounded-full border ${optionTier.badge}`}>
+                    <OptionIcon className="h-3 w-3" />
+                  </span>
+                  {optionTier.label}
+                </button>
+              )
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
 
 export function CbProfile() {
   const { user: currentUser, refreshUser } = useAuth()
@@ -473,25 +524,19 @@ export function CbProfile() {
 
       {isContributorRole && levelProjects.length > 0 && (
         <div className="mb-6 rounded-xl border border-gray-200 bg-white p-5">
-          <div className="mb-3 text-sm font-semibold text-gray-700">Project Levels</div>
-          <div className="flex flex-col gap-3">
+          <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-700">
+            <Trophy className="h-4 w-4 text-amber-500" />
+            Project Levels
+          </div>
+          <div className="divide-y divide-gray-100">
             {levelProjects.map(({ project, level }) => (
-              <div key={project.id} className="flex items-center justify-between gap-3 text-sm">
-                <span className="uppercase text-gray-700">{project.name}</span>
+              <div key={project.id} className="flex items-center justify-between gap-3 py-3 text-sm first:pt-0 last:pb-0">
+                <span className="font-medium uppercase tracking-wide text-gray-700">{project.name}</span>
                 {canManageLevels ? (
-                  <select
-                    value={level}
-                    onChange={(e) =>
-                      levelMutation.mutate({ projectId: project.id, level: e.target.value as ProjectLevel })
-                    }
-                    className={`rounded-full border-none px-2.5 py-1 text-xs font-medium uppercase outline-none focus:ring-2 focus:ring-accent ${LEVEL_STYLES[level]}`}
-                  >
-                    {LEVEL_OPTIONS.map((option) => (
-                      <option key={option} value={option}>
-                        {option === 'contributor' ? 'Attempt' : option.toUpperCase()}
-                      </option>
-                    ))}
-                  </select>
+                  <LevelBadgePicker
+                    level={level}
+                    onChange={(next) => levelMutation.mutate({ projectId: project.id, level: next })}
+                  />
                 ) : (
                   <LevelPill level={level} />
                 )}
@@ -779,23 +824,21 @@ export function CbProfile() {
                 </td>
                 {canEdit && (
                   <td className="px-5 py-3 text-right">
-                    <div className="flex justify-end gap-3">
-                      <button
-                        onClick={() => setFormTarget(row)}
-                        className="text-xs font-medium text-gray-500 hover:text-gray-900"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (confirm('Delete this submission?')) {
-                            deleteMutation.mutate(row.id)
-                          }
-                        }}
-                        className="text-xs font-medium text-status-danger-text hover:underline"
-                      >
-                        Delete
-                      </button>
+                    <div className="flex justify-end">
+                      <ActionsMenu
+                        items={[
+                          { label: 'Edit', onClick: () => setFormTarget(row) },
+                          {
+                            label: 'Delete',
+                            variant: 'danger',
+                            onClick: () => {
+                              if (confirm('Delete this submission?')) {
+                                deleteMutation.mutate(row.id)
+                              }
+                            },
+                          },
+                        ]}
+                      />
                     </div>
                   </td>
                 )}

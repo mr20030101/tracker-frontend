@@ -10,6 +10,7 @@ import { Modal } from '../components/Modal'
 import { Avatar } from '../components/Avatar'
 import { Combobox } from '../components/Combobox'
 import { DataTable } from '../components/DataTable'
+import { ActionsMenu } from '../components/ActionsMenu'
 import { BulkImportUsersModal } from '../components/BulkImportUsersModal'
 
 const ROLES: User['role'][] = ['contributor', 'lead', 'admin']
@@ -314,28 +315,32 @@ export function Users() {
         meta: { align: 'right' },
         cell: ({ row }) => {
           const u = row.original
+          const isSelf = u.id === currentUser?.id
           return (
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => toggleActiveMutation.mutate({ id: u.id, isActive: !u.is_active })}
-                className={`text-xs font-medium hover:underline ${u.is_active ? 'text-status-danger-text' : 'text-sky-700'}`}
-              >
-                {u.is_active ? 'Disable' : 'Enable'}
-              </button>
-              <button onClick={() => setResetTarget(u)} className="text-xs font-medium text-sky-700 hover:underline">
-                Reset Password
-              </button>
-              <button
-                onClick={() => {
-                  setError(null)
-                  setDeleteTarget(u)
-                }}
-                disabled={u.id === currentUser?.id || deleteMutation.isPending}
-                title={u.id === currentUser?.id ? 'You cannot delete your own account.' : undefined}
-                className="text-xs font-medium text-status-danger-text hover:underline disabled:cursor-not-allowed disabled:text-gray-300 disabled:no-underline"
-              >
-                Delete
-              </button>
+            <div className="flex justify-end">
+              <ActionsMenu
+                items={[
+                  {
+                    label: u.is_active ? 'Disable' : 'Enable',
+                    variant: u.is_active ? 'danger' : 'default',
+                    onClick: () => toggleActiveMutation.mutate({ id: u.id, isActive: !u.is_active }),
+                  },
+                  {
+                    label: 'Reset Password',
+                    onClick: () => setResetTarget(u),
+                  },
+                  {
+                    label: 'Delete',
+                    variant: 'danger',
+                    disabled: isSelf || deleteMutation.isPending,
+                    title: isSelf ? 'You cannot delete your own account.' : undefined,
+                    onClick: () => {
+                      setError(null)
+                      setDeleteTarget(u)
+                    },
+                  },
+                ]}
+              />
             </div>
           )
         },

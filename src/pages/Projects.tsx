@@ -5,6 +5,7 @@ import { useAuth } from '../lib/auth'
 import type { Project, User } from '../types'
 import { Modal } from '../components/Modal'
 import { Combobox } from '../components/Combobox'
+import { ActionsMenu } from '../components/ActionsMenu'
 
 interface ProjectLead {
   project_id: number
@@ -220,36 +221,35 @@ export function Projects() {
                     </td>
                   )}
                   <td className="px-5 py-3 text-right">
-                    <div className="flex justify-end gap-3 text-xs font-medium">
-                      {canManage(project) && (
-                        <button
-                          onClick={() => {
-                            setEditTarget(project)
-                            setEditName(project.name)
-                            setError(null)
-                          }}
-                          className="text-sky-700 hover:underline"
-                        >
-                          Rename
-                        </button>
-                      )}
-                      {canManage(project) && (
-                        <button
-                          onClick={() => {
-                            if (
-                              confirm(
-                                `Delete "${project.name}"? Existing task submissions, resources, and house rules linked to it will keep their history but lose this project reference.`,
-                              )
-                            ) {
-                              deleteMutation.mutate(project.id)
-                            }
-                          }}
-                          className="text-status-danger-text hover:underline"
-                        >
-                          Delete
-                        </button>
-                      )}
-                    </div>
+                    {canManage(project) && (
+                      <div className="flex justify-end">
+                        <ActionsMenu
+                          items={[
+                            {
+                              label: 'Rename',
+                              onClick: () => {
+                                setEditTarget(project)
+                                setEditName(project.name)
+                                setError(null)
+                              },
+                            },
+                            {
+                              label: 'Delete',
+                              variant: 'danger',
+                              onClick: () => {
+                                if (
+                                  confirm(
+                                    `Delete "${project.name}"? Existing task submissions, resources, and house rules linked to it will keep their history but lose this project reference.`,
+                                  )
+                                ) {
+                                  deleteMutation.mutate(project.id)
+                                }
+                              },
+                            },
+                          ]}
+                        />
+                      </div>
+                    )}
                   </td>
                 </tr>
               )

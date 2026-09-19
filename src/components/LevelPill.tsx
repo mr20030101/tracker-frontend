@@ -1,23 +1,34 @@
+import { Circle, Shield, Star, Crown, type LucideIcon } from 'lucide-react'
 import type { ProjectLevel } from '../types'
 
-export const LEVEL_STYLES: Record<ProjectLevel, string> = {
-  contributor: 'bg-gray-100 text-gray-600',
-  l0: 'bg-sky-100 text-sky-700',
-  l1: 'bg-violet-100 text-violet-700',
-  l10: 'bg-amber-100 text-amber-700',
+interface LevelTier {
+  label: string
+  icon: LucideIcon
+  badge: string
+  ring?: string
 }
 
-const LABELS: Record<ProjectLevel, string> = {
-  contributor: 'Attempt',
-  l0: 'L0',
-  l1: 'L1',
-  l10: 'L10',
+export const LEVEL_TIERS: Record<ProjectLevel, LevelTier> = {
+  contributor: { label: 'Attempt', icon: Circle, badge: 'border-gray-200 bg-gray-50 text-gray-500' },
+  l0: { label: 'L0', icon: Shield, badge: 'border-sky-200 bg-sky-50 text-sky-700' },
+  l1: { label: 'L1', icon: Star, badge: 'border-violet-200 bg-violet-50 text-violet-700' },
+  l10: {
+    label: 'L10',
+    icon: Crown,
+    badge: 'border-amber-300 bg-gradient-to-br from-amber-50 to-amber-100 text-amber-700',
+    ring: 'ring-2 ring-amber-200',
+  },
 }
 
 export function LevelPill({ level }: { level: ProjectLevel }) {
+  const tier = LEVEL_TIERS[level]
+  const Icon = tier.icon
   return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${LEVEL_STYLES[level]}`}>
-      {LABELS[level]}
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold shadow-sm ${tier.badge} ${tier.ring ?? ''}`}
+    >
+      <Icon className="h-3.5 w-3.5" />
+      {tier.label}
     </span>
   )
 }

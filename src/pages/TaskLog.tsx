@@ -9,6 +9,7 @@ import { formatTime } from '../lib/week'
 import type { Paginated, Project, Stage, SubmissionStatus, TaskSubmission } from '../types'
 import { StatusPill } from '../components/StatusPill'
 import { Avatar } from '../components/Avatar'
+import { ActionsMenu } from '../components/ActionsMenu'
 import { TaskSubmissionForm } from '../components/TaskSubmissionForm'
 import { SortableHeader } from '../components/SortableHeader'
 import { BulkImportModal } from '../components/BulkImportModal'
@@ -352,20 +353,21 @@ export function TaskLog() {
                   {row.date && <span className="ml-1.5 text-xs text-gray-400">{formatTime(row.created_at)}</span>}
                 </td>
                 <td className="px-5 py-3 text-right">
-                  <div className="flex justify-end gap-3 text-xs font-medium">
-                    <button onClick={() => setFormTarget(row)} className="text-gray-500 hover:text-gray-900">
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (confirm('Delete this submission?')) {
-                          deleteMutation.mutate(row.id)
-                        }
-                      }}
-                      className="text-status-danger-text hover:underline"
-                    >
-                      Delete
-                    </button>
+                  <div className="flex justify-end">
+                    <ActionsMenu
+                      items={[
+                        { label: 'Edit', onClick: () => setFormTarget(row) },
+                        {
+                          label: 'Delete',
+                          variant: 'danger',
+                          onClick: () => {
+                            if (confirm('Delete this submission?')) {
+                              deleteMutation.mutate(row.id)
+                            }
+                          },
+                        },
+                      ]}
+                    />
                   </div>
                 </td>
               </tr>
