@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { useAuth } from '../lib/auth'
 import { supabase } from '../lib/api'
 import { clearMustChangePassword } from '../lib/profile'
+import { Logo } from '../components/Logo'
 
 export function ForcePasswordChange() {
   const { refreshUser, logout } = useAuth()
@@ -37,11 +38,8 @@ export function ForcePasswordChange() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
-        <div className="mb-6 flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-accent-foreground font-bold">
-            T
-          </div>
-          <div className="text-lg font-bold">Tracker</div>
+        <div className="mb-6">
+          <Logo />
         </div>
         <h1 className="mb-1 text-base font-semibold text-gray-900">Set a new password</h1>
         <p className="mb-5 text-sm text-gray-500">

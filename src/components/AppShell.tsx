@@ -16,6 +16,7 @@ import {
 import { useAuth } from '../lib/auth'
 import { MessagingProvider } from '../lib/messagingContext'
 import { Avatar } from './Avatar'
+import { Logo } from './Logo'
 import { NotificationBell } from './NotificationBell'
 import { MessagesButton } from './MessagesButton'
 import { ThemeToggle } from './ThemeToggle'
@@ -102,14 +103,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="flex h-screen bg-gray-50">
         {user && !location.pathname.startsWith('/messages') && <OnlineUsers />}
         <aside className="flex w-64 shrink-0 flex-col border-r border-gray-200 bg-white">
-          <div className="flex items-center gap-2 px-5 py-5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-accent-foreground font-bold">
-              T
-            </div>
-            <div>
-              <div className="text-sm font-bold leading-tight">Tracker</div>
-              <div className="text-xs text-gray-400 leading-tight">Ops Console</div>
-            </div>
+          <div className="px-5 py-5">
+            <Logo />
           </div>
 
           <nav className="flex-1 overflow-y-auto px-3 py-2">

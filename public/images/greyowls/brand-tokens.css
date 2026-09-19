@@ -1,0 +1,13 @@
+/* Grey Owls Tracker — brand tokens */
+:root {
+  --go-ink:     #32373F; /* Owl Grey — mark, headings, dark UI */
+  --go-slate:   #5A626D; /* body copy, secondary text */
+  --go-beacon:  #F5B301; /* the one accent — eyes, alerts, fills */
+  --go-ember:   #8A6200; /* yellow that passes contrast on white — links */
+  --go-mist:    #D8DCE1; /* rules, borders, chart grid */
+  --go-paper:   #F6F7F8; /* app background */
+
+  --go-font-display: 'Space Grotesk', system-ui, sans-serif;
+  --go-font-body:    'IBM Plex Sans', system-ui, sans-serif;
+  --go-font-mono:    'IBM Plex Mono', ui-monospace, monospace;
+}

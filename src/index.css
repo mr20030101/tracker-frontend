@@ -159,3 +159,28 @@ body {
   animation: heartbeat-soft 1.4s ease-in-out infinite;
   transform-origin: center;
 }
+
+/* Logo: the light lockup disappears on the dark theme, so <Logo /> renders
+   both artworks and the active theme picks one. Mirrors the two dark-mode
+   selectors above (explicit data-theme, or OS preference with no override). */
+.logo-on-dark {
+  display: none;
+}
+
+:root[data-theme='dark'] .logo-on-light {
+  display: none;
+}
+
+:root[data-theme='dark'] .logo-on-dark {
+  display: block;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .logo-on-light {
+    display: none;
+  }
+
+  :root:not([data-theme='light']) .logo-on-dark {
+    display: block;
+  }
+}
