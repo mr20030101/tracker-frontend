@@ -11,9 +11,11 @@ import { Avatar } from '../components/Avatar'
 import { Combobox } from '../components/Combobox'
 import { DataTable } from '../components/DataTable'
 import { ActionsMenu } from '../components/ActionsMenu'
+import { Select } from '../components/Select'
 import { BulkImportUsersModal } from '../components/BulkImportUsersModal'
 
 const ROLES: User['role'][] = ['contributor', 'lead', 'admin']
+const ROLE_OPTIONS = ROLES.map((r) => ({ value: r, label: r.charAt(0).toUpperCase() + r.slice(1) }))
 const DEFAULT_PASSWORD = 'password'
 
 type StatusFilter = '' | 'active' | 'disabled'
@@ -237,17 +239,12 @@ export function Users() {
         cell: ({ row }) => {
           const u = row.original
           return isAdmin ? (
-            <select
+            <Select
               value={u.role}
-              onChange={(e) => roleMutation.mutate({ id: u.id, role: e.target.value as User['role'] })}
-              className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs capitalize outline-none focus:border-accent"
-            >
-              {ROLES.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </select>
+              onChange={(value) => roleMutation.mutate({ id: u.id, role: value as User['role'] })}
+              options={ROLE_OPTIONS}
+              className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs outline-none focus:border-accent"
+            />
           ) : (
             <span className="text-xs capitalize text-gray-600">{u.role}</span>
           )
@@ -385,44 +382,40 @@ export function Users() {
           }}
           className="w-64 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
         />
-        <select
+        <Select
           value={roleFilter}
-          onChange={(e) => {
-            setRoleFilter(e.target.value as User['role'] | '')
+          onChange={(value) => {
+            setRoleFilter(value as User['role'] | '')
             setRowSelection({})
           }}
-          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm capitalize outline-none focus:border-accent"
-        >
-          <option value="">All Roles</option>
-          {ROLES.map((r) => (
-            <option key={r} value={r} className="capitalize">
-              {r}
-            </option>
-          ))}
-        </select>
-        <select
+          options={[{ value: '', label: 'All Roles' }, ...ROLE_OPTIONS]}
+          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
+        />
+        <Select
           value={statusFilter}
-          onChange={(e) => {
-            setStatusFilter(e.target.value as StatusFilter)
+          onChange={(value) => {
+            setStatusFilter(value as StatusFilter)
             setRowSelection({})
           }}
+          options={[
+            { value: '', label: 'All Statuses' },
+            { value: 'active', label: 'Active' },
+            { value: 'disabled', label: 'Disabled' },
+          ]}
           className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
-        >
-          <option value="">All Statuses</option>
-          <option value="active">Active</option>
-          <option value="disabled">Disabled</option>
-        </select>
-        <select
+        />
+        <Select
           value={leadFilter}
-          onChange={(e) => {
-            setLeadFilter(e.target.value as '' | 'none')
+          onChange={(value) => {
+            setLeadFilter(value as '' | 'none')
             setRowSelection({})
           }}
+          options={[
+            { value: '', label: 'All Leads' },
+            { value: 'none', label: 'No Lead Assigned' },
+          ]}
           className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
-        >
-          <option value="">All Leads</option>
-          <option value="none">No Lead Assigned</option>
-        </select>
+        />
         {hasActiveFilters && (
           <button onClick={clearFilters} className="text-sm font-medium text-sky-700 hover:underline">
             Clear filters
@@ -434,40 +427,27 @@ export function Users() {
         <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5">
           <span className="text-sm font-medium text-gray-700">{selectedIds.length} selected</span>
           {isAdmin && (
-            <select
+            <Select
               value=""
-              onChange={(e) => {
-                if (e.target.value) bulkRoleMutation.mutate({ ids: selectedIds, role: e.target.value as User['role'] })
-              }}
-              className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm capitalize outline-none focus:border-accent"
-            >
-              <option value="">Set role...</option>
-              {ROLES.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </select>
+              placeholder="Set role..."
+              onChange={(value) => bulkRoleMutation.mutate({ ids: selectedIds, role: value as User['role'] })}
+              options={ROLE_OPTIONS}
+              className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm outline-none focus:border-accent"
+            />
           )}
           {isAdmin && (
-            <select
+            <Select
               value=""
-              onChange={(e) => {
-                if (e.target.value === '') return
-                bulkLeadMutation.mutate({ ids: selectedIds, leadId: e.target.value === '__none__' ? null : e.target.value })
-              }}
+              placeholder="Set lead..."
+              onChange={(value) =>
+                bulkLeadMutation.mutate({ ids: selectedIds, leadId: value === '__none__' ? null : value })
+              }
+              options={[
+                { value: '__none__', label: '— No lead —' },
+                ...(data ?? []).filter((lead) => lead.role === 'lead').map((lead) => ({ value: lead.id, label: lead.name })),
+              ]}
               className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm outline-none focus:border-accent"
-            >
-              <option value="">Set lead...</option>
-              <option value="__none__">— No lead —</option>
-              {data
-                ?.filter((lead) => lead.role === 'lead')
-                .map((lead) => (
-                  <option key={lead.id} value={lead.id}>
-                    {lead.name}
-                  </option>
-                ))}
-            </select>
+            />
           )}
           <button
             onClick={() => bulkActiveMutation.mutate({ ids: selectedIds, isActive: true })}
@@ -545,17 +525,13 @@ export function Users() {
             {isAdmin && (
               <div>
                 <label className="mb-1 block text-sm font-medium text-gray-700">Role</label>
-                <select
+                <Select
+                  fullWidth
                   value={form.role}
-                  onChange={(e) => setForm({ ...form, role: e.target.value as User['role'] })}
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm capitalize outline-none focus:border-accent"
-                >
-                  {ROLES.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(value) => setForm({ ...form, role: value as User['role'] })}
+                  options={ROLE_OPTIONS}
+                  className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
+                />
               </div>
             )}
             {error && <div className="text-sm text-status-danger-text">{error}</div>}

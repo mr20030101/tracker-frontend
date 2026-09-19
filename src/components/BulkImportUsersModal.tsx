@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import type { User } from '../types'
+import { Select } from './Select'
 
 interface Props {
   existingEmails: Set<string>
@@ -16,6 +17,7 @@ interface ParsedRow {
 }
 
 const ROLES: User['role'][] = ['contributor', 'lead', 'admin']
+const ROLE_OPTIONS = ROLES.map((r) => ({ value: r, label: r.charAt(0).toUpperCase() + r.slice(1) }))
 const DEFAULT_PASSWORD = 'password'
 
 function deriveName(email: string): string {
@@ -158,18 +160,13 @@ export function BulkImportUsersModal({ existingEmails, onClose }: Props) {
                         />
                       </td>
                       <td className="px-3 py-2">
-                        <select
+                        <Select
                           value={row.role}
                           disabled={row.alreadyExists}
-                          onChange={(e) => updateRow(index, { role: e.target.value as User['role'] })}
-                          className="rounded border border-gray-200 px-1.5 py-1 text-xs capitalize outline-none focus:border-accent disabled:bg-gray-100"
-                        >
-                          {ROLES.map((r) => (
-                            <option key={r} value={r}>
-                              {r}
-                            </option>
-                          ))}
-                        </select>
+                          onChange={(value) => updateRow(index, { role: value as User['role'] })}
+                          options={ROLE_OPTIONS}
+                          className="rounded border border-gray-200 px-1.5 py-1 text-xs outline-none focus:border-accent disabled:bg-gray-100"
+                        />
                       </td>
                     </tr>
                   ))}

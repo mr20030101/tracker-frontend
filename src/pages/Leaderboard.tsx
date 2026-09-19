@@ -7,6 +7,7 @@ import { startOfWeek, endOfWeek, toISODate, formatRange } from '../lib/week'
 import type { DashboardSummary, LeaderboardRow, Project } from '../types'
 import { Avatar } from '../components/Avatar'
 import { ProgressBar } from '../components/ProgressBar'
+import { Select } from '../components/Select'
 import { SortableHeader } from '../components/SortableHeader'
 import { downloadCsv } from '../lib/csv'
 
@@ -294,36 +295,32 @@ function ManagerLeaderboard() {
           onChange={(e) => setSearch(e.target.value)}
           className="w-64 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
         />
-        <select
+        <Select
           value={projectId}
-          onChange={(e) => setProjectId(e.target.value)}
+          onChange={setProjectId}
+          options={[{ value: '', label: 'All Projects' }, ...(projects ?? []).map((p) => ({ value: String(p.id), label: p.name }))]}
           className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
-        >
-          <option value="">All Projects</option>
-          {projects?.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-        <select
+        />
+        <Select
           value={activityFilter}
-          onChange={(e) => setActivityFilter(e.target.value as ActivityFilter)}
+          onChange={(value) => setActivityFilter(value as ActivityFilter)}
+          options={[
+            { value: 'all', label: 'All Activity' },
+            { value: 'submitted', label: `Submitted ${viewLabel === 'Day' ? 'Today' : `This ${viewLabel}`}` },
+            { value: 'no_submissions', label: 'No Submissions' },
+          ]}
           className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
-        >
-          <option value="all">All Activity</option>
-          <option value="submitted">{`Submitted ${viewLabel === 'Day' ? 'Today' : `This ${viewLabel}`}`}</option>
-          <option value="no_submissions">No Submissions</option>
-        </select>
-        <select
+        />
+        <Select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+          onChange={(value) => setStatusFilter(value as StatusFilter)}
+          options={[
+            { value: 'all', label: 'All Statuses' },
+            { value: 'active', label: 'Active' },
+            { value: 'disabled', label: 'Disabled' },
+          ]}
           className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
-        >
-          <option value="all">All Statuses</option>
-          <option value="active">Active</option>
-          <option value="disabled">Disabled</option>
-        </select>
+        />
         {(search || projectId || statusFilter !== 'all' || activityFilter !== 'all') && (
           <button
             onClick={() => {

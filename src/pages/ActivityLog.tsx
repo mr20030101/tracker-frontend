@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import type { ActivityEvent, ActivityLog } from '../types'
 import { Avatar } from '../components/Avatar'
+import { Select } from '../components/Select'
 
 const EVENT_LABELS: Record<ActivityEvent, string> = {
   login: 'Signed in',
@@ -41,16 +42,17 @@ export function ActivityLog() {
           <h1 className="text-2xl font-bold text-gray-900">Activity Log</h1>
           <p className="text-sm text-gray-500">Sign-in and sign-out activity across all logins.</p>
         </div>
-        <select
+        <Select
           value={eventFilter}
-          onChange={(e) => setEventFilter(e.target.value as ActivityEvent | 'all')}
+          onChange={(value) => setEventFilter(value as ActivityEvent | 'all')}
+          options={[
+            { value: 'all', label: 'All events' },
+            { value: 'login', label: 'Signed in' },
+            { value: 'login_failed', label: 'Sign-in failed' },
+            { value: 'logout', label: 'Signed out' },
+          ]}
           className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
-        >
-          <option value="all">All events</option>
-          <option value="login">Signed in</option>
-          <option value="login_failed">Sign-in failed</option>
-          <option value="logout">Signed out</option>
-        </select>
+        />
       </div>
 
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">

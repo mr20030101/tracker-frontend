@@ -822,7 +822,7 @@ export function CbProfile() {
                                 href={row.snipboard_url}
                                 target="_blank"
                                 rel="noreferrer"
-                                title="View Snipboard.io screenshot"
+                                title="View screenshot"
                                 className="text-gray-400 hover:text-sky-700"
                               >
                                 <Image className="h-3.5 w-3.5" strokeWidth={2} />

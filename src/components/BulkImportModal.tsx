@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { supabase, taskIdConflictError } from '../lib/api'
 import type { Project, Stage, SubmissionStatus } from '../types'
+import { Select } from './Select'
 
 interface Props {
   projects: Project[]
@@ -303,27 +304,21 @@ export function BulkImportModal({ projects, onClose, contributorEmail, contribut
                         <td className="px-3 py-2 text-gray-600">{row.submitted_at ?? '—'}</td>
                         <td className="px-3 py-2">
                           {row.project_name_raw ? (
-                            <select
-                              value={effectiveProjectId(row, index) ?? ''}
-                              onChange={(e) =>
+                            <Select
+                              value={String(effectiveProjectId(row, index) ?? '')}
+                              onChange={(value) =>
                                 setOverrides((prev) => ({
                                   ...prev,
-                                  [index]: e.target.value ? Number(e.target.value) : null,
+                                  [index]: value ? Number(value) : null,
                                 }))
                               }
+                              options={[{ value: '', label: '— None —' }, ...projects.map((p) => ({ value: String(p.id), label: p.name }))]}
                               className={`rounded border px-1 py-0.5 text-xs outline-none ${
                                 row.project_unmatched && !(index in overrides)
                                   ? 'border-status-danger-text text-status-danger-text'
                                   : 'border-gray-200 text-gray-600'
                               }`}
-                            >
-                              <option value="">— None —</option>
-                              {projects.map((p) => (
-                                <option key={p.id} value={p.id}>
-                                  {p.name}
-                                </option>
-                              ))}
-                            </select>
+                            />
                           ) : (
                             <span className="text-gray-400">—</span>
                           )}

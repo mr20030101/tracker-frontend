@@ -90,7 +90,7 @@ export function Combobox({
                 type="button"
                 onClick={() => select('')}
                 className={`block w-full px-3 py-1.5 text-left text-xs hover:bg-gray-50 ${
-                  value === '' ? 'font-semibold text-accent-foreground' : 'text-gray-600'
+                  value === '' ? 'font-bold text-gray-900' : 'text-gray-600'
                 }`}
               >
                 {emptyLabel}
@@ -101,7 +101,7 @@ export function Combobox({
                   type="button"
                   onClick={() => select(o.value)}
                   className={`block w-full truncate px-3 py-1.5 text-left text-xs hover:bg-gray-50 ${
-                    value === o.value ? 'font-semibold text-accent-foreground' : 'text-gray-700'
+                    value === o.value ? 'font-bold text-gray-900' : 'text-gray-700'
                   }`}
                 >
                   {o.label}

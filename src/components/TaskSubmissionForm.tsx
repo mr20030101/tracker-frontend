@@ -4,8 +4,23 @@ import { api, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import type { Project, Stage, SubmissionStatus, TaskSubmission } from '../types'
 import { Modal } from './Modal'
+import { Select } from './Select'
 
 const MANAGER_ROLES = ['admin', 'lead']
+
+const STAGE_OPTIONS: { value: Stage; label: string }[] = [
+  { value: 'attempt', label: 'Attempt' },
+  { value: 'l0', label: 'L0' },
+  { value: 'l1', label: 'L1' },
+]
+
+const STATUS_OPTIONS: { value: SubmissionStatus; label: string }[] = [
+  { value: 'submitted', label: 'Submitted' },
+  { value: 'in_progress', label: 'In Progress' },
+  { value: 'empty', label: 'Empty' },
+  { value: 'expired', label: 'Expired' },
+  { value: 'claimed_by_another', label: 'Claimed by Another Person' },
+]
 
 interface Props {
   submission?: TaskSubmission
@@ -111,8 +126,8 @@ export function TaskSubmissionForm({ submission, onClose }: Props) {
       }
 
       const payload = {
-        cb_email: form.cb_email,
-        task_id: form.task_id || null,
+        cb_email: form.cb_email.trim(),
+        task_id: form.task_id.trim(),
         project_id: projectId,
         stage: form.stage,
         status: form.status,
@@ -139,6 +154,10 @@ export function TaskSubmissionForm({ submission, onClose }: Props) {
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
+    if (!form.cb_email.trim() || !form.task_id.trim()) {
+      setError('CB Email and Task ID are required.')
+      return
+    }
     setError(null)
     mutation.mutate()
   }
@@ -161,6 +180,7 @@ export function TaskSubmissionForm({ submission, onClose }: Props) {
         <div>
           <label className="mb-1 block text-sm font-medium text-gray-700">Task ID</label>
           <input
+            required
             value={form.task_id}
             onChange={(e) => setForm({ ...form, task_id: e.target.value })}
             className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
@@ -169,18 +189,13 @@ export function TaskSubmissionForm({ submission, onClose }: Props) {
 
         <div>
           <label className="mb-1 block text-sm font-medium text-gray-700">Project</label>
-          <select
+          <Select
+            fullWidth
             value={form.project_id}
-            onChange={(e) => setForm({ ...form, project_id: e.target.value, new_project: '' })}
-            className="mb-2 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
-          >
-            <option value="">— None —</option>
-            {visibleProjects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
+            onChange={(value) => setForm({ ...form, project_id: value, new_project: '' })}
+            options={[{ value: '', label: '— None —' }, ...visibleProjects.map((p) => ({ value: String(p.id), label: p.name }))]}
+            className="mb-2 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
+          />
           {isAdmin && (
             <input
               placeholder="Or type a new project name..."
@@ -194,29 +209,23 @@ export function TaskSubmissionForm({ submission, onClose }: Props) {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">Stage</label>
-            <select
+            <Select
+              fullWidth
               value={form.stage}
-              onChange={(e) => setForm({ ...form, stage: e.target.value as Stage })}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
-            >
-              <option value="attempt">Attempt</option>
-              <option value="l0">L0</option>
-              <option value="l1">L1</option>
-            </select>
+              onChange={(value) => setForm({ ...form, stage: value as Stage })}
+              options={STAGE_OPTIONS}
+              className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
+            />
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">Status</label>
-            <select
+            <Select
+              fullWidth
               value={form.status}
-              onChange={(e) => setForm({ ...form, status: e.target.value as SubmissionStatus })}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
-            >
-              <option value="submitted">Submitted</option>
-              <option value="in_progress">In Progress</option>
-              <option value="empty">Empty</option>
-              <option value="expired">Expired</option>
-              <option value="claimed_by_another">Claimed by Another Person</option>
-            </select>
+              onChange={(value) => setForm({ ...form, status: value as SubmissionStatus })}
+              options={STATUS_OPTIONS}
+              className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
+            />
           </div>
         </div>
 
@@ -231,10 +240,10 @@ export function TaskSubmissionForm({ submission, onClose }: Props) {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">Snipboard.io</label>
+          <label className="mb-1 block text-sm font-medium text-gray-700">Screenshot link</label>
           <input
             type="url"
-            placeholder="https://snipboard.io/..."
+            placeholder="https://... (Snipboard, Lightshot, etc.)"
             value={form.snipboard_url}
             onChange={(e) => setForm({ ...form, snipboard_url: e.target.value })}
             className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"

@@ -10,6 +10,7 @@ import type { Paginated, Project, Stage, SubmissionStatus, TaskSubmission } from
 import { StatusPill } from '../components/StatusPill'
 import { Avatar } from '../components/Avatar'
 import { ActionsMenu } from '../components/ActionsMenu'
+import { Select } from '../components/Select'
 import { TaskSubmissionForm } from '../components/TaskSubmissionForm'
 import { SortableHeader } from '../components/SortableHeader'
 import { BulkImportModal } from '../components/BulkImportModal'
@@ -179,20 +180,15 @@ export function TaskLog() {
             className="w-64 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
           />
         )}
-        <select
+        <Select
           value={stage}
-          onChange={(e) => {
-            setStage(e.target.value as Stage | '')
+          onChange={(value) => {
+            setStage(value as Stage | '')
             setPage(1)
           }}
+          options={STAGES}
           className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
-        >
-          {STAGES.map((s) => (
-            <option key={s.value} value={s.value}>
-              {s.label}
-            </option>
-          ))}
-        </select>
+        />
         <div className="flex items-center gap-2">
           <input
             type="date"
@@ -311,7 +307,7 @@ export function TaskLog() {
                         href={row.snipboard_url}
                         target="_blank"
                         rel="noreferrer"
-                        title="View Snipboard.io screenshot"
+                        title="View screenshot"
                         className="text-gray-400 hover:text-sky-700"
                       >
                         <Image className="h-3.5 w-3.5" strokeWidth={2} />
@@ -324,23 +320,18 @@ export function TaskLog() {
                 <td className="px-5 py-3">
                   <div className="flex items-center gap-2">
                     {editingStatusId === row.id ? (
-                      <select
+                      <Select
                         aria-label="Change status"
-                        autoFocus
+                        autoOpen
                         value={row.status}
-                        onChange={(e) => {
-                          statusMutation.mutate({ id: row.id, status: e.target.value as SubmissionStatus })
+                        onChange={(value) => {
+                          statusMutation.mutate({ id: row.id, status: value as SubmissionStatus })
                           setEditingStatusId(null)
                         }}
-                        onBlur={() => setEditingStatusId(null)}
+                        onClose={() => setEditingStatusId(null)}
+                        options={STATUS_OPTIONS}
                         className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs outline-none focus:border-accent"
-                      >
-                        {STATUS_OPTIONS.map((opt) => (
-                          <option key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </option>
-                        ))}
-                      </select>
+                      />
                     ) : (
                       <button onClick={() => setEditingStatusId(row.id)}>
                         <StatusPill status={row.status} />

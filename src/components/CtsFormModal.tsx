@@ -107,7 +107,7 @@ export function CtsFormModal({ email, submissions, onClose }: Props) {
   return (
     <Modal title="Today's Tasks" onClose={onClose} maxWidthClassName="max-w-4xl">
       <p className="mb-3 text-sm text-gray-500">
-        Select the tasks to include, then continue to the CTS Form. Their Task IDs and Snipboard.io links will be
+        Select the tasks to include, then continue to the CTS Form. Their Task IDs and screenshot links will be
         prefilled for you.
       </p>
 
@@ -132,7 +132,7 @@ export function CtsFormModal({ email, submissions, onClose }: Props) {
                 <th className="px-3 py-2">Project</th>
                 <th className="px-3 py-2">Stage</th>
                 <th className="px-3 py-2">Status</th>
-                <th className="px-3 py-2">Snipboard.io</th>
+                <th className="px-3 py-2">Screenshot</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
