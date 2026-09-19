@@ -6,6 +6,11 @@ import { Logo } from '../components/Logo'
 import { OwlField } from '../components/OwlField'
 import { useReducedMotion, useReveal } from '../lib/motion'
 
+// Off while Supabase's reset emails aren't being delivered. Until it's back,
+// an admin resets passwords from Users > Reset Password. Flip to true to
+// restore the "Forgot password?" link; the rest of the flow is untouched.
+const FORGOT_PASSWORD_ENABLED = false
+
 export function Login() {
   const { login } = useAuth()
   const navigate = useNavigate()
@@ -163,9 +168,11 @@ export function Login() {
             >
               {submitting ? 'Signing in...' : 'Sign in'}
             </button>
-            <button type="button" onClick={() => { setMode('forgot'); setError(null); setNotice(null) }} className="text-sm text-sky-700 hover:underline">
-              Forgot password?
-            </button>
+            {FORGOT_PASSWORD_ENABLED && (
+              <button type="button" onClick={() => { setMode('forgot'); setError(null); setNotice(null) }} className="text-sm text-sky-700 hover:underline">
+                Forgot password?
+              </button>
+            )}
           </form>
         )}
       </div>
