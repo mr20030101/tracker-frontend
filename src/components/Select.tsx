@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { createPortal } from 'react-dom'
+import { animate } from 'animejs'
 import { Check, ChevronDown } from 'lucide-react'
+import { prefersReducedMotion } from '../lib/motion'
 
 export interface SelectOption {
   value: string
@@ -110,6 +112,23 @@ export function Select({
       maxHeight: Math.min(MAX_PANEL_HEIGHT, Math.max(120, openUp ? above : below)),
     })
   }, [open, options.length])
+
+  const panelVisible = open && pos !== null
+  const openUp = pos?.bottom !== undefined
+  useLayoutEffect(() => {
+    const panel = panelRef.current
+    if (!panelVisible || !panel || prefersReducedMotion()) return
+    const animation = animate(panel, {
+      opacity: [0, 1],
+      translateY: [openUp ? 6 : -6, 0],
+      duration: 140,
+      ease: 'outCubic',
+      onComplete: (a) => a.revert(),
+    })
+    return () => {
+      animation.revert()
+    }
+  }, [panelVisible, openUp])
 
   useEffect(() => {
     if (!open) return

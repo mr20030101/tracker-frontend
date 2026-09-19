@@ -8,6 +8,8 @@ import type { DashboardSummary, LeaderboardRow, Project } from '../types'
 import { Avatar } from '../components/Avatar'
 import { ProgressBar } from '../components/ProgressBar'
 import { Select } from '../components/Select'
+import { Reveal } from '../components/Reveal'
+import { GrowBar } from '../components/GrowBar'
 import { SortableHeader } from '../components/SortableHeader'
 import { downloadCsv } from '../lib/csv'
 
@@ -77,7 +79,7 @@ function ContributorLeaderboard() {
           <div className="px-5 py-6 text-center text-gray-400">No submissions {periodLabel} yet.</div>
         )}
         {!isLoading && rows.length > 0 && (
-          <ul className="divide-y divide-gray-100">
+          <Reveal as="ul" className="divide-y divide-gray-100" step={45}>
             {rows.map((row, index) => {
               const isMe = row.user_id === user?.id
               const barPct = topScore ? Math.round((row.tasks_submitted / topScore) * 100) : 0
@@ -98,7 +100,7 @@ function ContributorLeaderboard() {
                         {isMe && <span className="ml-2 text-xs font-semibold text-accent">You</span>}
                       </div>
                       <div className="mt-1 h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-gray-100">
-                        <div className="h-full rounded-full bg-accent" style={{ width: `${barPct}%` }} />
+                        <GrowBar className="h-full rounded-full bg-accent" pct={barPct} delay={300 + index * 45} />
                       </div>
                     </div>
                     <span className="shrink-0 text-sm font-semibold text-gray-900">
@@ -108,7 +110,7 @@ function ContributorLeaderboard() {
                 </li>
               )
             })}
-          </ul>
+          </Reveal>
         )}
       </div>
     </div>

@@ -19,6 +19,9 @@ import { CtsFormModal } from '../components/CtsFormModal'
 import { SortableHeader } from '../components/SortableHeader'
 import { ProgressRing } from '../components/ProgressRing'
 import { LineChart } from '../components/LineChart'
+import { CountUp } from '../components/CountUp'
+import { GrowBar } from '../components/GrowBar'
+import { Reveal } from '../components/Reveal'
 
 const LEVEL_OPTIONS: ProjectLevel[] = ['contributor', 'l0', 'l1', 'l10']
 
@@ -390,7 +393,7 @@ export function CbProfile() {
   }
 
   return (
-    <div>
+    <Reveal>
       {canManageLevels && (
         <Link to="/" className="mb-4 inline-block text-sm text-gray-500 hover:text-gray-800">
           ← Back to Dashboard
@@ -620,11 +623,15 @@ export function CbProfile() {
                 <div className="flex flex-col gap-3">
                   <div>
                     <div className="text-xs font-medium uppercase tracking-wider text-gray-400">{`Submitted (${viewLabel})`}</div>
-                    <div className="text-xl font-bold text-gray-900">{submittedInRange}</div>
+                    <div className="text-xl font-bold text-gray-900">
+                      <CountUp value={submittedInRange} />
+                    </div>
                   </div>
                   <div>
                     <div className="text-xs font-medium uppercase tracking-wider text-gray-400">{`Logged (${viewLabel})`}</div>
-                    <div className="text-xl font-bold text-gray-900">{loggedInRange}</div>
+                    <div className="text-xl font-bold text-gray-900">
+                      <CountUp value={loggedInRange} />
+                    </div>
                   </div>
                   <div className="text-xs text-gray-400">Minimum goal — submit as much as you want, no upper limit.</div>
                 </div>
@@ -645,14 +652,11 @@ export function CbProfile() {
               <div className="mb-3 text-sm font-semibold text-gray-700">By Stage (all-time)</div>
               <div className="flex flex-col gap-3">
                 {stages.length === 0 && <div className="text-sm text-gray-400">No submissions yet.</div>}
-                {stages.map(([stage, total]) => (
+                {stages.map(([stage, total], index) => (
                   <div key={stage} className="flex items-center gap-3 text-sm">
                     <span className="w-16 shrink-0 uppercase text-gray-600">{stage}</span>
                     <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-100">
-                      <div
-                        className="h-full rounded-full bg-accent"
-                        style={{ width: `${Math.max(4, (total / maxStageTotal) * 100)}%` }}
-                      />
+                      <GrowBar className="h-full rounded-full bg-accent" pct={Math.max(4, (total / maxStageTotal) * 100)} delay={400 + index * 80} />
                     </div>
                     <span className="w-8 shrink-0 text-right font-medium text-gray-900">{total}</span>
                   </div>
@@ -663,16 +667,13 @@ export function CbProfile() {
               <div className="mb-3 text-sm font-semibold text-gray-700">By Project (all-time)</div>
               <div className="flex flex-col gap-3">
                 {data.project_breakdown.length === 0 && <div className="text-sm text-gray-400">No submissions yet.</div>}
-                {data.project_breakdown.map((p) => (
+                {data.project_breakdown.map((p, index) => (
                   <div key={p.name} className="flex items-center gap-3 text-sm">
                     <span className="w-32 shrink-0 truncate text-gray-600" title={p.name}>
                       {p.name}
                     </span>
                     <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-100">
-                      <div
-                        className="h-full rounded-full bg-sky-600"
-                        style={{ width: `${Math.max(4, (p.total / maxProjectTotal) * 100)}%` }}
-                      />
+                      <GrowBar className="h-full rounded-full bg-sky-600" pct={Math.max(4, (p.total / maxProjectTotal) * 100)} delay={400 + index * 80} />
                     </div>
                     <span className="w-8 shrink-0 text-right font-medium text-gray-900">{p.total}</span>
                   </div>
@@ -920,6 +921,6 @@ export function CbProfile() {
           onClose={() => setBulkImporting(false)}
         />
       )}
-    </div>
+    </Reveal>
   )
 }

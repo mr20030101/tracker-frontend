@@ -1,5 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom'
-import type { ReactNode } from 'react'
+import { useLayoutEffect, useRef, type ReactNode } from 'react'
+import { animate } from 'animejs'
 import {
   LayoutDashboard,
   MessageCircle,
@@ -14,6 +15,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
+import { prefersReducedMotion } from '../lib/motion'
 import { MessagingProvider } from '../lib/messagingContext'
 import { Avatar } from './Avatar'
 import { Logo } from './Logo'
@@ -71,6 +73,19 @@ export function AppShell({ children }: { children: ReactNode }) {
   const location = useLocation()
   const isManager = Boolean(user && MANAGER_ROLES.includes(user.role))
   const isAdmin = user?.role === 'admin'
+  const mainRef = useRef<HTMLElement>(null)
+
+  // Fade the page area in on each route change. Opacity only: a transform here
+  // would become the containing block for the page's position: fixed modals.
+  useLayoutEffect(() => {
+    const main = mainRef.current
+    if (!main || prefersReducedMotion()) return
+    const animation = animate(main, { opacity: [0, 1], duration: 220, ease: 'outQuad', onComplete: (a) => a.revert() })
+    return () => {
+      animation.revert()
+    }
+  }, [location.pathname])
+
   const ownProfilePath = user ? `/contributors/${encodeURIComponent(user.email)}` : '/'
 
   const crumb =
@@ -172,6 +187,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </header>
 
           <main
+            ref={mainRef}
             className={`flex-1 overflow-y-auto pl-6 py-6 ${
               user && !location.pathname.startsWith('/messages') ? 'pr-20' : 'pr-6'
             }`}
