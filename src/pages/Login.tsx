@@ -3,10 +3,18 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { supabase } from '../lib/api'
 import { Logo } from '../components/Logo'
+import { OwlField } from '../components/OwlField'
+import { useReducedMotion, useReveal } from '../lib/motion'
 
 export function Login() {
   const { login } = useAuth()
   const navigate = useNavigate()
+  const reducedMotion = useReducedMotion()
+  const cardRef = useReveal<HTMLDivElement>({
+    self: true,
+    selector: ':scope > div:first-child, :scope > form > *',
+    step: 70,
+  })
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -73,8 +81,16 @@ export function Login() {
   }
 
   return (
-    <div className="pattern-owls flex min-h-screen items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
+    <div
+      className={`relative flex min-h-screen items-center justify-center overflow-hidden bg-gray-50 px-4 ${
+        reducedMotion ? 'pattern-owls' : ''
+      }`}
+    >
+      {!reducedMotion && <OwlField />}
+      <div
+        ref={cardRef}
+        className="relative w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-8 shadow-sm"
+      >
         <div className="mb-6">
           <Logo />
         </div>

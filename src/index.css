@@ -203,3 +203,39 @@ body {
     background-image: url('/images/greyowls/pattern/owls-tile-dark.svg');
   }
 }
+
+/* Animated owl background (<OwlField />). Ink matches the static tiles: Owl
+   Grey on light, white on dark, both at 7%. Sparks are the owls that wake up. */
+.owl-field {
+  color: #32373f;
+}
+
+:root[data-theme='dark'] .owl-field {
+  color: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .owl-field {
+    color: #ffffff;
+  }
+}
+
+.owl-field .owl-static {
+  fill: currentColor;
+  fill-opacity: 0.07;
+  fill-rule: evenodd;
+}
+
+.owl-field .owl-spark {
+  opacity: 0;
+}
+
+.owl-field .owl-eye {
+  fill: #f5b301;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.owl-field .owl-halo {
+  fill-opacity: 0.3;
+}
