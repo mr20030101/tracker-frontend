@@ -184,3 +184,22 @@ body {
     display: block;
   }
 }
+
+/* Owl pattern texture for hero-style backgrounds (login). The tiles are
+   transparent, so the element's own background-color shows through. Same
+   two dark-mode selectors as the rules above. */
+.pattern-owls {
+  background-image: url('/images/greyowls/pattern/owls-tile-light.svg');
+  background-repeat: repeat;
+  background-size: 120px 120px;
+}
+
+:root[data-theme='dark'] .pattern-owls {
+  background-image: url('/images/greyowls/pattern/owls-tile-dark.svg');
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .pattern-owls {
+    background-image: url('/images/greyowls/pattern/owls-tile-dark.svg');
+  }
+}
