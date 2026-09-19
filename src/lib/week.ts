@@ -1,9 +1,17 @@
+// The business week runs Tuesday through the following Monday (7 days).
+export const WEEK_LENGTH_DAYS = 7
+
 export function startOfWeek(date: Date): Date {
   const d = new Date(date)
-  const day = d.getDay()
-  const diff = (day === 0 ? -6 : 1) - day // shift so week starts on Monday
+  const daysSinceTuesday = (d.getDay() - 2 + 7) % 7
   d.setHours(0, 0, 0, 0)
-  d.setDate(d.getDate() + diff)
+  d.setDate(d.getDate() - daysSinceTuesday)
+  return d
+}
+
+export function endOfWeek(date: Date): Date {
+  const d = startOfWeek(date)
+  d.setDate(d.getDate() + WEEK_LENGTH_DAYS - 1)
   return d
 }
 

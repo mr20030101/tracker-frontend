@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
-import { startOfWeek, toISODate, formatRange } from '../lib/week'
+import { startOfWeek, endOfWeek, toISODate, formatRange } from '../lib/week'
 import type { DashboardSummary, LeaderboardRow, Project } from '../types'
 import { Avatar } from '../components/Avatar'
 import { ProgressBar } from '../components/ProgressBar'
@@ -20,10 +20,7 @@ const MANAGER_ROLES = ['admin', 'lead']
 function rangeFor(period: Period): { start: string; end: string } {
   const today = new Date()
   if (period === 'week') {
-    const start = startOfWeek(today)
-    const end = new Date(start)
-    end.setDate(end.getDate() + 6)
-    return { start: toISODate(start), end: toISODate(end) }
+    return { start: toISODate(startOfWeek(today)), end: toISODate(endOfWeek(today)) }
   }
   if (period === 'month') {
     const start = new Date(today.getFullYear(), today.getMonth(), 1)
@@ -130,11 +127,7 @@ function ManagerLeaderboard() {
 
   const rangeEnd = useMemo(() => {
     if (viewMode === 'day') return toISODate(anchorDate)
-    if (viewMode === 'week') {
-      const d = startOfWeek(anchorDate)
-      d.setDate(d.getDate() + 6)
-      return toISODate(d)
-    }
+    if (viewMode === 'week') return toISODate(endOfWeek(anchorDate))
     return toISODate(new Date(anchorDate.getFullYear(), anchorDate.getMonth() + 1, 0))
   }, [viewMode, anchorDate])
 
@@ -202,7 +195,7 @@ function ManagerLeaderboard() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] }),
   })
 
-  // Weekly targets are configured per ISO week; edits apply to the week containing
+  // Weekly targets are keyed by the week's Tuesday start; edits apply to the week containing
   // whatever range is currently being viewed (matching the lookup api.ts's dashboard()
   // already does server-side).
   const targetWeekStartIso = useMemo(

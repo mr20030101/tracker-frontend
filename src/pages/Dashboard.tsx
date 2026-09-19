@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { api } from '../lib/api'
-import { startOfWeek, toISODate, formatRange } from '../lib/week'
+import { startOfWeek, endOfWeek, toISODate, formatRange } from '../lib/week'
 import type { DashboardSummary } from '../types'
 import { LineChart } from '../components/LineChart'
 
@@ -18,11 +18,7 @@ export function Dashboard() {
 
   const rangeEnd = useMemo(() => {
     if (viewMode === 'day') return toISODate(anchorDate)
-    if (viewMode === 'week') {
-      const d = startOfWeek(anchorDate)
-      d.setDate(d.getDate() + 6)
-      return toISODate(d)
-    }
+    if (viewMode === 'week') return toISODate(endOfWeek(anchorDate))
     return toISODate(new Date(anchorDate.getFullYear(), anchorDate.getMonth() + 1, 0))
   }, [viewMode, anchorDate])
 

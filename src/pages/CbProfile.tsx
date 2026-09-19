@@ -4,7 +4,7 @@ import { Image, ChevronDown, MessageCircle, Trophy } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, functionErrorMessage, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
-import { startOfWeek, toISODate, formatRange, formatTime } from '../lib/week'
+import { startOfWeek, endOfWeek, toISODate, formatRange, formatTime } from '../lib/week'
 import { clearMustChangePassword, updateOwnProfile, uploadAvatar } from '../lib/profile'
 import { remotasksDiffViewerUrl } from '../lib/remotasks'
 import type { ContributorProfile, ContributorProjectLevel, Project, ProjectLevel, TaskSubmission } from '../types'
@@ -255,11 +255,7 @@ export function CbProfile() {
 
   const rangeEnd = useMemo(() => {
     if (viewMode === 'day') return toISODate(anchorDate)
-    if (viewMode === 'week') {
-      const d = startOfWeek(anchorDate)
-      d.setDate(d.getDate() + 6)
-      return toISODate(d)
-    }
+    if (viewMode === 'week') return toISODate(endOfWeek(anchorDate))
     return toISODate(new Date(anchorDate.getFullYear(), anchorDate.getMonth() + 1, 0))
   }, [viewMode, anchorDate])
 

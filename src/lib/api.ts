@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { WEEK_LENGTH_DAYS } from './week'
 import type { ActivityEvent, ActivityLog, ContributorProfile, DashboardSummary, DailyReportRow, HouseRule, LeaderboardRow, Paginated, Project, ProjectBreakdown, ProjectLevel, Resource, Stage, TaskSubmission, User } from '../types'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim() || 'https://ieovepkcseytccagzedg.supabase.co'
@@ -91,6 +92,7 @@ async function submissions(params: Record<string, unknown> = {}): Promise<Pagina
   return { data: rows, current_page: page, last_page: Math.max(1, Math.ceil(total / 25)), total, from: total ? from + 1 : null, to: total ? Math.min(to + 1, total) : null }
 }
 
+// Daily target assumes 5 working days per week, independent of the 7-day week span.
 const TARGET_MULTIPLIER: Record<string, number> = { day: 1 / 5, week: 1, month: 4 }
 
 async function dashboard(params: Record<string, unknown>): Promise<DashboardSummary> {
@@ -99,16 +101,16 @@ async function dashboard(params: Record<string, unknown>): Promise<DashboardSumm
     params.range_end ??
       (() => {
         const d = new Date(`${rangeStart}T00:00:00Z`)
-        d.setUTCDate(d.getUTCDate() + 6)
+        d.setUTCDate(d.getUTCDate() + WEEK_LENGTH_DAYS - 1)
         return d.toISOString().slice(0, 10)
       })(),
   )
   const view = typeof params.view === 'string' ? params.view : 'week'
   const multiplier = TARGET_MULTIPLIER[view] ?? 1
-  // Weekly targets are configured per ISO week; use the week containing the range's start as the basis.
+  // Weekly targets are keyed by the week's Tuesday (see startOfWeek in lib/week.ts,
+  // which this mirrors in UTC); use the week containing the range's start as the basis.
   const targetWeekStart = new Date(`${rangeStart}T00:00:00Z`)
-  const isoDay = targetWeekStart.getUTCDay()
-  targetWeekStart.setUTCDate(targetWeekStart.getUTCDate() - (isoDay === 0 ? 6 : isoDay - 1))
+  targetWeekStart.setUTCDate(targetWeekStart.getUTCDate() - ((targetWeekStart.getUTCDay() - 2 + 7) % 7))
   const targetWeekStartIso = targetWeekStart.toISOString().slice(0, 10)
 
   const [{ data: users }, { data: submissions }, { data: targets }] = await Promise.all([
@@ -165,7 +167,7 @@ async function contributor(params: Record<string, unknown>): Promise<Contributor
   const email = String(params.email)
   const weekStart = String(params.week_start)
   const weekEndDate = new Date(`${weekStart}T00:00:00Z`)
-  weekEndDate.setUTCDate(weekEndDate.getUTCDate() + 6)
+  weekEndDate.setUTCDate(weekEndDate.getUTCDate() + WEEK_LENGTH_DAYS - 1)
   const weekEnd = weekEndDate.toISOString().slice(0, 10)
   const { data: user } = await supabase.from('profiles').select('*').eq('email', email).maybeSingle()
 
