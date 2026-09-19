@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Navigate, useParams, Link } from 'react-router-dom'
-import { Image, ChevronDown, Trophy } from 'lucide-react'
+import { Image, ChevronDown, MessageCircle, Trophy } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, functionErrorMessage, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
@@ -114,7 +114,7 @@ export function CbProfile() {
   const [page, setPage] = useState(1)
   const pageSize = 10
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ['contributor', decodedEmail, thisWeekIso],
     queryFn: async () =>
       (
@@ -297,6 +297,14 @@ export function CbProfile() {
     return anchorDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
   }
 
+  if (isError) {
+    return (
+      <div className="rounded-xl border border-status-danger-text bg-status-danger-bg px-5 py-4 text-sm text-status-danger-text">
+        Could not load this profile: {(error as Error).message}
+      </div>
+    )
+  }
+
   if (isLoading || !data) {
     return <div className="text-gray-400">Loading...</div>
   }
@@ -305,10 +313,19 @@ export function CbProfile() {
     return <Navigate to="/" replace />
   }
 
-  const canEdit = isOwnProfile || Boolean(currentUser && MANAGER_ROLES.includes(currentUser.role))
+  // data.is_public_view reflects whether the backend actually let us read the
+  // privileged (per-row) data — role alone isn't reliable here, since e.g. a
+  // lead who isn't THIS contributor's assigned lead still gets RLS-blocked
+  // despite having the "lead" role. Gating on the role would show broken,
+  // silently-empty edit UI for that case instead of correctly falling back.
+  const canEdit = !data.is_public_view && (isOwnProfile || Boolean(currentUser && MANAGER_ROLES.includes(currentUser.role)))
   const isContributorRole = !data.user || data.user.role === 'contributor'
-  const canManageLevels = Boolean(currentUser && MANAGER_ROLES.includes(currentUser.role))
-  const levelByProjectId = new Map(projectLevels.map((row) => [row.project_id, row.level]))
+  const canManageLevels = !data.is_public_view && Boolean(currentUser && MANAGER_ROLES.includes(currentUser.role))
+  // The direct table read below is RLS-scoped to self/lead/admin, so it
+  // silently comes back empty for a peer contributor viewing someone else —
+  // fall back to the levels bundled in the public stats RPC response instead.
+  const effectiveProjectLevels = data.is_public_view ? (data.project_levels ?? []) : projectLevels
+  const levelByProjectId = new Map(effectiveProjectLevels.map((row) => [row.project_id, row.level]))
   const levelProjects = leadProjectIds
     .map((id) => allProjects.find((project) => project.id === id))
     .filter((project): project is Project => Boolean(project))
@@ -320,13 +337,15 @@ export function CbProfile() {
   const maxProjectTotal = Math.max(1, ...data.project_breakdown.map((p) => p.total))
 
   const TREND_DAYS = 30
-  const trendData = Array.from({ length: TREND_DAYS }, (_, i) => {
-    const d = new Date()
-    d.setDate(d.getDate() - (TREND_DAYS - 1 - i))
-    const iso = toISODate(d)
-    const value = data.all_submissions.filter((r) => r.date?.slice(0, 10) === iso && r.status === 'submitted').length
-    return { date: iso, value }
-  })
+  const trendData =
+    data.submission_trend ??
+    Array.from({ length: TREND_DAYS }, (_, i) => {
+      const d = new Date()
+      d.setDate(d.getDate() - (TREND_DAYS - 1 - i))
+      const iso = toISODate(d)
+      const value = data.all_submissions.filter((r) => r.date?.slice(0, 10) === iso && r.status === 'submitted').length
+      return { date: iso, value }
+    })
   const visibleSubmissions = data.all_submissions.filter((row) => {
     const d = row.date?.slice(0, 10)
     return d && d >= rangeStart && d <= rangeEnd
@@ -396,6 +415,15 @@ export function CbProfile() {
           <p className="text-sm text-gray-500">{decodedEmail}</p>
         </div>
         <div className="ml-auto flex items-center gap-2">
+          {!isOwnProfile && contributorId && (
+            <Link
+              to={`/messages/${contributorId}`}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            >
+              <MessageCircle className="h-4 w-4" />
+              Message
+            </Link>
+          )}
           {isOwnProfile && (
             <button
               onClick={openEditProfile}
@@ -494,7 +522,7 @@ export function CbProfile() {
         </Modal>
       )}
 
-      {isContributorRole && showWarning && data.submitted_this_week === 0 && (!data.user || data.user.is_active) && (
+      {canEdit && isContributorRole && showWarning && data.submitted_this_week === 0 && (!data.user || data.user.is_active) && (
         <div className="mb-6 flex items-center gap-3 rounded-xl border-2 border-status-danger-text bg-status-danger-text px-5 py-4 text-sm font-semibold text-white shadow-sm">
           <span className="animate-heartbeat text-lg leading-none">⚠</span>
           <span>WARNING: No submissions logged yet this week.</span>
@@ -508,7 +536,7 @@ export function CbProfile() {
         </div>
       )}
 
-      {data.user?.shift && (
+      {canEdit && data.user?.shift && (
         <div className="mb-6 rounded-xl border border-gray-200 bg-white px-5 py-4 text-sm text-gray-600">
           <span className="font-medium text-gray-700">Shift:</span> {data.user.shift}
           {data.user.meet_link && (
@@ -581,30 +609,33 @@ export function CbProfile() {
       )}
 
       {isContributorRole && (
-      <>
-      {canManageLevels && (
         <>
           <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
-            <div className="flex items-center gap-5 rounded-xl border border-gray-200 bg-white p-5 lg:col-span-1">
-              <ProgressRing
-                value={rangeProgress}
-                label={`${viewLabel} Goal`}
-                sublabel={`${submittedInRange} / ${rangeTarget}`}
-              />
-              <div className="flex flex-col gap-3">
-                <div>
-                  <div className="text-xs font-medium uppercase tracking-wider text-gray-400">{`Submitted (${viewLabel})`}</div>
-                  <div className="text-xl font-bold text-gray-900">{submittedInRange}</div>
+            {/* Day/Week/Month Goal is derived from raw per-row submissions,
+                which are deliberately empty in the public view — showing it
+                there would just be a permanent, misleading 0. */}
+            {!data.is_public_view && (
+              <div className="flex items-center gap-5 rounded-xl border border-gray-200 bg-white p-5 lg:col-span-1">
+                <ProgressRing
+                  value={rangeProgress}
+                  label={`${viewLabel} Goal`}
+                  sublabel={`${submittedInRange} / ${rangeTarget}`}
+                />
+                <div className="flex flex-col gap-3">
+                  <div>
+                    <div className="text-xs font-medium uppercase tracking-wider text-gray-400">{`Submitted (${viewLabel})`}</div>
+                    <div className="text-xl font-bold text-gray-900">{submittedInRange}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs font-medium uppercase tracking-wider text-gray-400">{`Logged (${viewLabel})`}</div>
+                    <div className="text-xl font-bold text-gray-900">{loggedInRange}</div>
+                  </div>
+                  <div className="text-xs text-gray-400">Minimum goal — submit as much as you want, no upper limit.</div>
                 </div>
-                <div>
-                  <div className="text-xs font-medium uppercase tracking-wider text-gray-400">{`Logged (${viewLabel})`}</div>
-                  <div className="text-xl font-bold text-gray-900">{loggedInRange}</div>
-                </div>
-                <div className="text-xs text-gray-400">Minimum goal — submit as much as you want, no upper limit.</div>
               </div>
-            </div>
+            )}
 
-            <div className="rounded-xl border border-gray-200 bg-white p-5 lg:col-span-2">
+            <div className={`rounded-xl border border-gray-200 bg-white p-5 ${data.is_public_view ? 'lg:col-span-3' : 'lg:col-span-2'}`}>
               <div className="mb-3 flex items-center justify-between">
                 <div className="text-sm font-semibold text-gray-700">Submission Trend</div>
                 <span className="text-xs text-gray-400">last {TREND_DAYS} days</span>
@@ -653,226 +684,229 @@ export function CbProfile() {
               </div>
             </div>
           </div>
-        </>
-      )}
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <div className="flex rounded-lg border border-gray-200 bg-white p-1">
-          {(['day', 'week', 'month'] as const).map((mode) => (
-            <button
-              key={mode}
-              onClick={() => {
-                setViewMode(mode)
-                setPage(1)
-              }}
-              className={`rounded-md px-3 py-1 text-sm font-medium capitalize ${viewMode === mode ? 'bg-accent text-accent-foreground' : 'text-gray-600'}`}
-            >
-              {mode}
-            </button>
-          ))}
-        </div>
 
-        <button
-          onClick={() => shiftRange(-1)}
-          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
-        >
-          ← Prev
-        </button>
-        <div className="min-w-48 rounded-lg border border-gray-200 bg-white px-4 py-2 text-center text-sm font-medium text-gray-700">
-          {rangeLabel()}
-        </div>
-        <button
-          onClick={() => shiftRange(1)}
-          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
-        >
-          Next →
-        </button>
-        {!isCurrentRange && (
-          <button
-            onClick={() => {
-              setAnchorDate(new Date())
-              setPage(1)
-            }}
-            className="text-sm font-medium text-sky-700 hover:underline"
-          >
-            Back to {viewMode === 'day' ? 'today' : viewMode === 'week' ? 'this week' : 'this month'}
-          </button>
-        )}
+          {canEdit && (
+            <>
+              <div className="mb-4 flex flex-wrap items-center gap-3">
+                <div className="flex rounded-lg border border-gray-200 bg-white p-1">
+                  {(['day', 'week', 'month'] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      onClick={() => {
+                        setViewMode(mode)
+                        setPage(1)
+                      }}
+                      className={`rounded-md px-3 py-1 text-sm font-medium capitalize ${viewMode === mode ? 'bg-accent text-accent-foreground' : 'text-gray-600'}`}
+                    >
+                      {mode}
+                    </button>
+                  ))}
+                </div>
 
-        {isContributorRole && (
-          <button
-            onClick={() => setShowCtsModal(true)}
-            className="ml-auto animate-heartbeat-soft rounded-lg bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600"
-          >
-            CTS Form
-          </button>
-        )}
-        {canEdit && (
-          <button
-            onClick={() => setBulkImporting(true)}
-            className={`rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50 ${isContributorRole ? '' : 'ml-auto'}`}
-          >
-            Bulk Import
-          </button>
-        )}
-        {canEdit && (
-          <button
-            onClick={() => setFormTarget('new')}
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
-          >
-            + Add Submission
-          </button>
-        )}
-      </div>
-
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-        <div className="border-b border-gray-200 bg-gray-50 px-5 py-3 text-sm font-semibold text-gray-700">
-          Submissions — {rangeLabel()}
-        </div>
-        <table className="w-full text-left text-sm">
-          <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
-            <tr>
-              <SortableHeader
-                label="Task ID"
-                active={sort.key === 'task_id'}
-                dir={sort.dir}
-                onClick={() => toggleSort('task_id')}
-              />
-              <SortableHeader
-                label="Project"
-                active={sort.key === 'project'}
-                dir={sort.dir}
-                onClick={() => toggleSort('project')}
-              />
-              <SortableHeader
-                label="Stage"
-                active={sort.key === 'stage'}
-                dir={sort.dir}
-                onClick={() => toggleSort('stage')}
-              />
-              <SortableHeader
-                label="Status"
-                active={sort.key === 'status'}
-                dir={sort.dir}
-                onClick={() => toggleSort('status')}
-              />
-              <th className="px-5 py-3">CTS</th>
-              <SortableHeader
-                label="Date"
-                active={sort.key === 'date'}
-                dir={sort.dir}
-                onClick={() => toggleSort('date')}
-              />
-              {canEdit && <th className="px-5 py-3 text-right">Actions</th>}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {pagedSubmissions.length === 0 && (
-              <tr>
-                <td colSpan={canEdit ? 7 : 6} className="px-5 py-6 text-center text-gray-400">
-                  No submissions for this {viewMode}.
-                </td>
-              </tr>
-            )}
-            {pagedSubmissions.map((row) => (
-              <tr key={row.id} className="hover:bg-gray-50">
-                <td className="max-w-40 truncate px-5 py-3 font-mono text-xs text-gray-500">
-                  <span className="inline-flex items-center gap-1.5">
-                    {row.task_id ? (
-                      <a
-                        href={remotasksDiffViewerUrl(row.task_id)}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-sky-700 hover:underline"
-                      >
-                        {row.task_id}
-                      </a>
-                    ) : (
-                      '—'
-                    )}
-                    {row.snipboard_url && (
-                      <a
-                        href={row.snipboard_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        title="View Snipboard.io screenshot"
-                        className="text-gray-400 hover:text-sky-700"
-                      >
-                        <Image className="h-3.5 w-3.5" strokeWidth={2} />
-                      </a>
-                    )}
-                  </span>
-                </td>
-                <td className="px-5 py-3 text-gray-600">{row.project?.name ?? '—'}</td>
-                <td className="px-5 py-3 uppercase text-gray-600">{row.stage}</td>
-                <td className="px-5 py-3">
-                  <StatusPill status={row.status} />
-                </td>
-                <td className="px-5 py-3">
-                  {row.cts_submitted_at ? (
-                    <span className="inline-flex items-center rounded-full bg-status-success-bg px-2.5 py-0.5 text-xs font-medium text-status-success-text">
-                      Sent
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center rounded-full bg-status-neutral-bg px-2.5 py-0.5 text-xs font-medium text-status-neutral-text">
-                      Pending
-                    </span>
-                  )}
-                </td>
-                <td className="px-5 py-3 text-gray-500">
-                  {row.date?.slice(0, 10) ?? '—'}
-                  {row.date && <span className="ml-1.5 text-xs text-gray-400">{formatTime(row.created_at)}</span>}
-                </td>
-                {canEdit && (
-                  <td className="px-5 py-3 text-right">
-                    <div className="flex justify-end">
-                      <ActionsMenu
-                        items={[
-                          { label: 'Edit', onClick: () => setFormTarget(row) },
-                          {
-                            label: 'Delete',
-                            variant: 'danger',
-                            onClick: () => {
-                              if (confirm('Delete this submission?')) {
-                                deleteMutation.mutate(row.id)
-                              }
-                            },
-                          },
-                        ]}
-                      />
-                    </div>
-                  </td>
+                <button
+                  onClick={() => shiftRange(-1)}
+                  className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+                >
+                  ← Prev
+                </button>
+                <div className="min-w-48 rounded-lg border border-gray-200 bg-white px-4 py-2 text-center text-sm font-medium text-gray-700">
+                  {rangeLabel()}
+                </div>
+                <button
+                  onClick={() => shiftRange(1)}
+                  className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+                >
+                  Next →
+                </button>
+                {!isCurrentRange && (
+                  <button
+                    onClick={() => {
+                      setAnchorDate(new Date())
+                      setPage(1)
+                    }}
+                    className="text-sm font-medium text-sky-700 hover:underline"
+                  >
+                    Back to {viewMode === 'day' ? 'today' : viewMode === 'week' ? 'this week' : 'this month'}
+                  </button>
                 )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
 
-        {sortedSubmissions.length > 0 && (
-          <div className="flex items-center justify-between border-t border-gray-200 px-5 py-3 text-sm text-gray-500">
-            <span>
-              Showing {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, sortedSubmissions.length)} of{' '}
-              {sortedSubmissions.length}
-            </span>
-            <div className="flex gap-2">
-              <button
-                disabled={page <= 1}
-                onClick={() => setPage((p) => p - 1)}
-                className="rounded-lg border border-gray-200 px-3 py-1 disabled:opacity-40"
-              >
-                Prev
-              </button>
-              <button
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
-                className="rounded-lg border border-gray-200 px-3 py-1 disabled:opacity-40"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-      </>
+                {isContributorRole && (
+                  <button
+                    onClick={() => setShowCtsModal(true)}
+                    className="ml-auto animate-heartbeat-soft rounded-lg bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600"
+                  >
+                    CTS Form
+                  </button>
+                )}
+                {canEdit && (
+                  <button
+                    onClick={() => setBulkImporting(true)}
+                    className={`rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50 ${isContributorRole ? '' : 'ml-auto'}`}
+                  >
+                    Bulk Import
+                  </button>
+                )}
+                {canEdit && (
+                  <button
+                    onClick={() => setFormTarget('new')}
+                    className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
+                  >
+                    + Add Submission
+                  </button>
+                )}
+              </div>
+
+              <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+                <div className="border-b border-gray-200 bg-gray-50 px-5 py-3 text-sm font-semibold text-gray-700">
+                  Submissions — {rangeLabel()}
+                </div>
+                <table className="w-full text-left text-sm">
+                  <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
+                    <tr>
+                      <SortableHeader
+                        label="Task ID"
+                        active={sort.key === 'task_id'}
+                        dir={sort.dir}
+                        onClick={() => toggleSort('task_id')}
+                      />
+                      <SortableHeader
+                        label="Project"
+                        active={sort.key === 'project'}
+                        dir={sort.dir}
+                        onClick={() => toggleSort('project')}
+                      />
+                      <SortableHeader
+                        label="Stage"
+                        active={sort.key === 'stage'}
+                        dir={sort.dir}
+                        onClick={() => toggleSort('stage')}
+                      />
+                      <SortableHeader
+                        label="Status"
+                        active={sort.key === 'status'}
+                        dir={sort.dir}
+                        onClick={() => toggleSort('status')}
+                      />
+                      <th className="px-5 py-3">CTS</th>
+                      <SortableHeader
+                        label="Date"
+                        active={sort.key === 'date'}
+                        dir={sort.dir}
+                        onClick={() => toggleSort('date')}
+                      />
+                      {canEdit && <th className="px-5 py-3 text-right">Actions</th>}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {pagedSubmissions.length === 0 && (
+                      <tr>
+                        <td colSpan={canEdit ? 7 : 6} className="px-5 py-6 text-center text-gray-400">
+                          No submissions for this {viewMode}.
+                        </td>
+                      </tr>
+                    )}
+                    {pagedSubmissions.map((row) => (
+                      <tr key={row.id} className="hover:bg-gray-50">
+                        <td className="max-w-40 truncate px-5 py-3 font-mono text-xs text-gray-500">
+                          <span className="inline-flex items-center gap-1.5">
+                            {row.task_id ? (
+                              <a
+                                href={remotasksDiffViewerUrl(row.task_id)}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-sky-700 hover:underline"
+                              >
+                                {row.task_id}
+                              </a>
+                            ) : (
+                              '—'
+                            )}
+                            {row.snipboard_url && (
+                              <a
+                                href={row.snipboard_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                title="View Snipboard.io screenshot"
+                                className="text-gray-400 hover:text-sky-700"
+                              >
+                                <Image className="h-3.5 w-3.5" strokeWidth={2} />
+                              </a>
+                            )}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3 text-gray-600">{row.project?.name ?? '—'}</td>
+                        <td className="px-5 py-3 uppercase text-gray-600">{row.stage}</td>
+                        <td className="px-5 py-3">
+                          <StatusPill status={row.status} />
+                        </td>
+                        <td className="px-5 py-3">
+                          {row.cts_submitted_at ? (
+                            <span className="inline-flex items-center rounded-full bg-status-success-bg px-2.5 py-0.5 text-xs font-medium text-status-success-text">
+                              Sent
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center rounded-full bg-status-neutral-bg px-2.5 py-0.5 text-xs font-medium text-status-neutral-text">
+                              Pending
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-5 py-3 text-gray-500">
+                          {row.date?.slice(0, 10) ?? '—'}
+                          {row.date && <span className="ml-1.5 text-xs text-gray-400">{formatTime(row.created_at)}</span>}
+                        </td>
+                        {canEdit && (
+                          <td className="px-5 py-3 text-right">
+                            <div className="flex justify-end">
+                              <ActionsMenu
+                                items={[
+                                  { label: 'Edit', onClick: () => setFormTarget(row) },
+                                  {
+                                    label: 'Delete',
+                                    variant: 'danger',
+                                    onClick: () => {
+                                      if (confirm('Delete this submission?')) {
+                                        deleteMutation.mutate(row.id)
+                                      }
+                                    },
+                                  },
+                                ]}
+                              />
+                            </div>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                {sortedSubmissions.length > 0 && (
+                  <div className="flex items-center justify-between border-t border-gray-200 px-5 py-3 text-sm text-gray-500">
+                    <span>
+                      Showing {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, sortedSubmissions.length)} of{' '}
+                      {sortedSubmissions.length}
+                    </span>
+                    <div className="flex gap-2">
+                      <button
+                        disabled={page <= 1}
+                        onClick={() => setPage((p) => p - 1)}
+                        className="rounded-lg border border-gray-200 px-3 py-1 disabled:opacity-40"
+                      >
+                        Prev
+                      </button>
+                      <button
+                        disabled={page >= totalPages}
+                        onClick={() => setPage((p) => p + 1)}
+                        className="rounded-lg border border-gray-200 px-3 py-1 disabled:opacity-40"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </>
       )}
 
       {formTarget && (

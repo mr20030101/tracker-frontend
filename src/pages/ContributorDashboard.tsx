@@ -9,6 +9,15 @@ import { LineChart } from '../components/LineChart'
 
 const TREND_DAYS = 30
 
+const ATTENDANCE_FORM_URL =
+  'https://docs.google.com/forms/d/e/1FAIpQLSdItgT4AYcL14m0A3t5Rx7nGaySxDe64J1VZtInYD0ukepAfg/viewform'
+
+function buildAttendanceFormUrl(email: string) {
+  const params = new URLSearchParams()
+  if (email) params.set('entry.787543998', email)
+  return `${ATTENDANCE_FORM_URL}?${params.toString()}`
+}
+
 export function ContributorDashboard() {
   const { user } = useAuth()
   const email = user?.email ?? ''
@@ -49,9 +58,19 @@ export function ContributorDashboard() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-sm text-gray-500">Welcome back, {data.user?.name ?? email}.</p>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-sm text-gray-500">Welcome back, {data.user?.name ?? email}.</p>
+        </div>
+        <a
+          href={buildAttendanceFormUrl(email)}
+          target="_blank"
+          rel="noreferrer"
+          className="animate-heartbeat-soft rounded-lg bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600"
+        >
+          Attendance Form
+        </a>
       </div>
 
       <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">

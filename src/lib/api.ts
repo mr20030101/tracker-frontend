@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import type { ActivityEvent, ActivityLog, ContributorProfile, DashboardSummary, DailyReportRow, HouseRule, LeaderboardRow, Paginated, Project, Resource, TaskSubmission, User } from '../types'
+import type { ActivityEvent, ActivityLog, ContributorProfile, DashboardSummary, DailyReportRow, HouseRule, LeaderboardRow, Paginated, Project, ProjectBreakdown, ProjectLevel, Resource, Stage, TaskSubmission, User } from '../types'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim() || 'https://ieovepkcseytccagzedg.supabase.co'
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() ||
@@ -168,6 +168,53 @@ async function contributor(params: Record<string, unknown>): Promise<Contributor
   weekEndDate.setUTCDate(weekEndDate.getUTCDate() + 6)
   const weekEnd = weekEndDate.toISOString().slice(0, 10)
   const { data: user } = await supabase.from('profiles').select('*').eq('email', email).maybeSingle()
+
+  if (!user) {
+    // RLS only lets self, the contributor's lead, or an admin read their
+    // profiles/task_submissions rows directly — a peer contributor viewing
+    // someone else falls back to this security-definer RPC, which exposes
+    // rollups only (never raw task IDs, links, or per-row status).
+    const { data: rows, error } = await supabase.rpc('contributor_public_stats', {
+      p_target_email: email,
+      p_week_start: weekStart,
+    })
+    if (error) throw error
+    const stats = rows?.[0]
+    const publicUser: User | null = stats
+      ? {
+          id: stats.id,
+          name: stats.name,
+          email,
+          role: stats.role as User['role'],
+          shift: null,
+          meet_link: null,
+          is_active: stats.is_active,
+          last_seen_at: null,
+          lead_id: stats.lead_id,
+          avatar_url: stats.avatar_url,
+          must_change_password: false,
+        }
+      : null
+    return {
+      user: publicUser,
+      cb_email: email,
+      week_start: weekStart,
+      week_end: weekEnd,
+      weekly_target: stats?.weekly_target ?? 50,
+      submitted_this_week: Number(stats?.submitted_this_week ?? 0),
+      total_submitted: 0,
+      total_logged: 0,
+      stage_breakdown: (stats?.stage_breakdown ?? {}) as Partial<Record<Stage, number>>,
+      project_breakdown: (stats?.project_breakdown ?? []) as ProjectBreakdown[],
+      week_submissions: [],
+      recent_submissions: [],
+      all_submissions: [],
+      submission_trend: (stats?.trend ?? []) as { date: string; value: number }[],
+      project_levels: (stats?.levels ?? []) as { project_id: number; level: ProjectLevel }[],
+      is_public_view: true,
+    }
+  }
+
   const [{ data: rows }, { data: target }] = await Promise.all([
     supabase.from('task_submissions').select('*').eq('cb_email', email).order('date', { ascending: false }),
     supabase.from('weekly_targets').select('target').eq('user_id', user?.id ?? '').eq('week_start', weekStart).maybeSingle(),
@@ -179,7 +226,7 @@ async function contributor(params: Record<string, unknown>): Promise<Contributor
     const name = row.project?.name ?? 'Unassigned'
     return { ...counts, [name]: (counts[name] ?? 0) + 1 }
   }, {})
-  return { user: user as User | null, cb_email: email, week_start: weekStart, week_end: weekEnd, weekly_target: target?.target ?? 50, submitted_this_week: weekRows.filter((row) => row.status === 'submitted').length, total_submitted: submissions.filter((row) => row.status === 'submitted').length, total_logged: submissions.length, stage_breakdown: stageBreakdown, project_breakdown: Object.entries(projectBreakdown).map(([name, total]) => ({ name, total })), week_submissions: weekRows, recent_submissions: submissions.slice(0, 10), all_submissions: submissions }
+  return { user: user as User | null, cb_email: email, week_start: weekStart, week_end: weekEnd, weekly_target: target?.target ?? 50, submitted_this_week: weekRows.filter((row) => row.status === 'submitted').length, total_submitted: submissions.filter((row) => row.status === 'submitted').length, total_logged: submissions.length, stage_breakdown: stageBreakdown, project_breakdown: Object.entries(projectBreakdown).map(([name, total]) => ({ name, total })), week_submissions: weekRows, recent_submissions: submissions.slice(0, 10), all_submissions: submissions, is_public_view: false }
 }
 
 async function leaderboard(params: Record<string, unknown>): Promise<LeaderboardRow[]> {

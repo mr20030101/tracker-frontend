@@ -76,26 +76,26 @@ export function AppShell({ children }: { children: ReactNode }) {
     location.pathname === '/leaderboard'
       ? 'Leaderboard'
       : location.pathname === '/task-log'
-      ? 'Task Log'
-      : location.pathname === '/resources'
-        ? 'Resources'
-        : location.pathname.startsWith('/messages')
-          ? 'Messages'
-          : location.pathname === '/team'
-          ? 'Team'
-          : location.pathname === '/users'
-            ? 'Users'
-            : location.pathname === '/projects'
-              ? 'Projects'
-              : location.pathname === '/data-quality'
-                ? 'Data Quality'
-                : location.pathname === '/activity-log'
-                  ? 'Activity Log'
-                  : location.pathname.startsWith('/contributors/')
-                    ? isManager
-                      ? 'CB Profile'
-                      : 'My Profile'
-                    : 'Dashboard'
+        ? 'Task Log'
+        : location.pathname === '/resources'
+          ? 'Resources'
+          : location.pathname.startsWith('/messages')
+            ? 'Messages'
+            : location.pathname === '/team'
+              ? 'Team'
+              : location.pathname === '/users'
+                ? 'Users'
+                : location.pathname === '/projects'
+                  ? 'Projects'
+                  : location.pathname === '/data-quality'
+                    ? 'Data Quality'
+                    : location.pathname === '/activity-log'
+                      ? 'Activity Log'
+                      : location.pathname.startsWith('/contributors/')
+                        ? isManager
+                          ? 'CB Profile'
+                          : 'My Profile'
+                        : 'Dashboard'
 
   return (
     <MessagingProvider>
@@ -176,7 +176,13 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
           </header>
 
-          <main className="flex-1 overflow-y-auto p-6">{children}</main>
+          <main
+            className={`flex-1 overflow-y-auto pl-6 py-6 ${
+              user && !location.pathname.startsWith('/messages') ? 'pr-20' : 'pr-6'
+            }`}
+          >
+            {children}
+          </main>
         </div>
       </div>
     </MessagingProvider>

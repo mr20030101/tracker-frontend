@@ -166,4 +166,16 @@ export interface ContributorProfile {
   week_submissions: TaskSubmission[]
   recent_submissions: TaskSubmission[]
   all_submissions: TaskSubmission[]
+  // True when RLS blocked the direct profile/submissions read and the
+  // contributor_public_stats RPC fallback was used instead — the caller's
+  // role isn't a reliable signal for this (e.g. a lead who isn't this
+  // contributor's assigned lead is still RLS-blocked despite the role).
+  // CbProfile.tsx must gate on this, not on currentUser.role, to decide
+  // whether the raw per-row queries (submissions table, project levels)
+  // will actually return anything.
+  is_public_view: boolean
+  // Only set on the peer-view fallback (contributor_public_stats RPC), where
+  // all_submissions is deliberately empty — see contributor() in lib/api.ts.
+  submission_trend?: { date: string; value: number }[]
+  project_levels?: { project_id: number; level: ProjectLevel }[]
 }

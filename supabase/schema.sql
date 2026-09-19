@@ -213,6 +213,93 @@ $$;
 
 grant execute on function public.leaderboard(date, date) to authenticated;
 
+-- Lets any active user open a peer contributor's profile and see their
+-- identity plus aggregate progress (goal, 30-day trend, stage/project
+-- breakdown, project levels) — same rationale as directory()/leaderboard()
+-- above. The scoped "users read permitted submissions"/"users read
+-- permitted project levels" policies still govern everything this
+-- deliberately leaves out: task IDs, diff-viewer links, per-row status,
+-- and editing — those stay restricted to the owner, their lead, or an admin.
+drop function if exists public.contributor_public_stats(text, date);
+create function public.contributor_public_stats(p_target_email text, p_week_start date)
+returns table (
+  id uuid,
+  name text,
+  avatar_url text,
+  role text,
+  lead_id uuid,
+  is_active boolean,
+  weekly_target integer,
+  submitted_this_week bigint,
+  stage_breakdown jsonb,
+  project_breakdown jsonb,
+  trend jsonb,
+  levels jsonb
+)
+language sql stable security definer set search_path = public
+as $$
+  with target as (
+    select * from public.profiles p where lower(p.email) = lower(p_target_email) and p.role = 'contributor'
+  ),
+  target_submissions as (
+    select s.* from public.task_submissions s, target t
+    where lower(s.cb_email) = lower(t.email) or s.user_id = t.id
+  ),
+  stage_agg as (
+    select coalesce(jsonb_object_agg(stage, cnt), '{}'::jsonb) as j
+    from (select stage, count(*) as cnt from target_submissions group by stage) x
+  ),
+  project_agg as (
+    select coalesce(jsonb_agg(jsonb_build_object('name', pname, 'total', cnt) order by cnt desc), '[]'::jsonb) as j
+    from (
+      select coalesce(p.name, 'Unassigned') as pname, count(*) as cnt
+      from target_submissions ts
+      left join public.projects p on p.id = ts.project_id
+      group by coalesce(p.name, 'Unassigned')
+    ) x
+  ),
+  trend_days as (
+    select gs::date as d from generate_series(current_date - interval '29 days', current_date, interval '1 day') gs
+  ),
+  trend_agg as (
+    select coalesce(
+      jsonb_agg(jsonb_build_object('date', to_char(td.d, 'YYYY-MM-DD'), 'value', coalesce(c.cnt, 0)) order by td.d),
+      '[]'::jsonb
+    ) as j
+    from trend_days td
+    left join (
+      select date as d, count(*) as cnt from target_submissions where status = 'submitted' group by date
+    ) c on c.d = td.d
+  ),
+  levels_agg as (
+    select coalesce(
+      jsonb_agg(jsonb_build_object('project_id', cpl.project_id, 'level', cpl.level)),
+      '[]'::jsonb
+    ) as j
+    from public.contributor_project_levels cpl, target t
+    where cpl.user_id = t.id
+  )
+  select
+    t.id,
+    t.name,
+    t.avatar_url,
+    t.role,
+    t.lead_id,
+    t.is_active,
+    coalesce((select wt.target from public.weekly_targets wt where wt.user_id = t.id and wt.week_start = p_week_start), 50) as weekly_target,
+    (
+      select count(*) from target_submissions ts
+      where ts.status = 'submitted' and ts.date >= p_week_start and ts.date <= (p_week_start + 6)
+    ) as submitted_this_week,
+    (select j from stage_agg) as stage_breakdown,
+    (select j from project_agg) as project_breakdown,
+    (select j from trend_agg) as trend,
+    (select j from levels_agg) as levels
+  from target t
+$$;
+
+grant execute on function public.contributor_public_stats(text, date) to authenticated;
+
 create or replace function public.is_active_profile(target_id uuid)
 returns boolean language sql stable security definer set search_path = public
 as $$ select exists (select 1 from public.profiles where id = target_id and is_active) $$;

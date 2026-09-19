@@ -85,23 +85,28 @@ function ContributorLeaderboard() {
               const barPct = topScore ? Math.round((row.tasks_submitted / topScore) * 100) : 0
 
               return (
-                <li key={row.user_id} className={`flex items-center gap-3 px-5 py-3 ${isMe ? 'bg-accent-bg/40' : ''}`}>
-                  <span className="w-8 shrink-0 text-center text-lg font-semibold text-gray-400">
-                    {MEDALS[index] ?? index + 1}
-                  </span>
-                  <Avatar name={row.name} photoUrl={row.avatar_url} size={36} />
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium text-gray-900">
-                      {row.name}
-                      {isMe && <span className="ml-2 text-xs font-semibold text-accent">You</span>}
+                <li key={row.user_id}>
+                  <Link
+                    to={`/contributors/${encodeURIComponent(row.cb_email)}`}
+                    className={`flex items-center gap-3 px-5 py-3 hover:bg-gray-50 ${isMe ? 'bg-accent-bg/40' : ''}`}
+                  >
+                    <span className="w-8 shrink-0 text-center text-lg font-semibold text-gray-400">
+                      {MEDALS[index] ?? index + 1}
+                    </span>
+                    <Avatar name={row.name} photoUrl={row.avatar_url} size={36} />
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-medium text-gray-900">
+                        {row.name}
+                        {isMe && <span className="ml-2 text-xs font-semibold text-accent">You</span>}
+                      </div>
+                      <div className="mt-1 h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-gray-100">
+                        <div className="h-full rounded-full bg-accent" style={{ width: `${barPct}%` }} />
+                      </div>
                     </div>
-                    <div className="mt-1 h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-gray-100">
-                      <div className="h-full rounded-full bg-accent" style={{ width: `${barPct}%` }} />
-                    </div>
-                  </div>
-                  <span className="shrink-0 text-sm font-semibold text-gray-900">
-                    {row.tasks_submitted} <span className="font-normal text-gray-400">tasks</span>
-                  </span>
+                    <span className="shrink-0 text-sm font-semibold text-gray-900">
+                      {row.tasks_submitted} <span className="font-normal text-gray-400">tasks</span>
+                    </span>
+                  </Link>
                 </li>
               )
             })}
