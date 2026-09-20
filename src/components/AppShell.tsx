@@ -8,7 +8,6 @@ import {
   ShieldCheck,
   History,
   BookOpen,
-  NotebookText,
   Users as UsersIcon,
   FolderKanban,
   Trophy,
@@ -51,19 +50,13 @@ function navSections(isManager: boolean, isAdmin: boolean): { label: string; ite
     },
     {
       label: 'Team',
-      // Team Handbook is a lead/contributor thing — admins manage the team
-      // through Users/Projects instead.
       items: isManager
         ? [
           { to: '/messages', label: 'Messages', icon: MessageCircle },
-          ...(isAdmin ? [] : [{ to: '/team', label: 'Team Handbook', icon: NotebookText }]),
           { to: '/users', label: 'Users', icon: UsersIcon },
           { to: '/projects', label: 'Projects', icon: FolderKanban },
         ]
-        : [
-          { to: '/messages', label: 'Messages', icon: MessageCircle },
-          { to: '/team', label: 'Team Handbook', icon: NotebookText },
-        ],
+        : [{ to: '/messages', label: 'Messages', icon: MessageCircle }],
     },
   ]
 }
@@ -97,16 +90,16 @@ export function AppShell({ children }: { children: ReactNode }) {
           ? 'Resources'
           : location.pathname.startsWith('/messages')
             ? 'Messages'
-            : location.pathname === '/team'
-              ? 'Team'
-              : location.pathname === '/users'
-                ? 'Users'
-                : location.pathname === '/projects'
-                  ? 'Projects'
-                  : location.pathname === '/data-quality'
-                    ? 'Data Quality'
-                    : location.pathname === '/activity-log'
-                      ? 'Activity Log'
+            : location.pathname === '/users'
+              ? 'Users'
+              : location.pathname === '/projects'
+                ? 'Projects'
+                : location.pathname === '/data-quality'
+                  ? 'Data Quality'
+                  : location.pathname === '/activity-log'
+                    ? 'Activity Log'
+                    : location.pathname.startsWith('/leads/')
+                      ? 'Lead Team'
                       : location.pathname.startsWith('/contributors/')
                         ? isManager
                           ? 'CB Profile'

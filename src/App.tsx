@@ -8,10 +8,10 @@ import { ContributorDashboard } from './pages/ContributorDashboard'
 import { Leaderboard } from './pages/Leaderboard'
 import { TaskLog } from './pages/TaskLog'
 import { Resources } from './pages/Resources'
-import { Team } from './pages/Team'
 import { Messages } from './pages/Messages'
 import { CbProfile } from './pages/CbProfile'
 import { Users } from './pages/Users'
+import { LeadTeam } from './pages/LeadTeam'
 import { Projects } from './pages/Projects'
 import { DataQuality } from './pages/DataQuality'
 import { ActivityLog } from './pages/ActivityLog'
@@ -43,7 +43,6 @@ function ProtectedLayout() {
         <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/task-log" element={<TaskLog />} />
         <Route path="/resources" element={<Resources />} />
-        <Route path="/team" element={<Team />} />
         <Route path="/messages" element={<Messages />} />
         <Route path="/messages/:userId" element={<Messages />} />
         <Route path="/contributors/:email" element={<CbProfile />} />
@@ -51,6 +50,7 @@ function ProtectedLayout() {
         {isManager && <Route path="/projects" element={<Projects />} />}
         {isManager && <Route path="/data-quality" element={<DataQuality />} />}
         {isAdmin && <Route path="/activity-log" element={<ActivityLog />} />}
+        {isAdmin && <Route path="/leads/:leadId" element={<LeadTeam />} />}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AppShell>

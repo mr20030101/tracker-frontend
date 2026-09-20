@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ColumnDef, RowSelectionState } from '@tanstack/react-table'
@@ -19,6 +19,18 @@ const ROLE_OPTIONS = ROLES.map((r) => ({ value: r, label: r.charAt(0).toUpperCas
 const DEFAULT_PASSWORD = 'password'
 
 type StatusFilter = '' | 'active' | 'disabled'
+type Notice = { tone: 'success' | 'error'; text: string }
+type BulkJob = { ids: string[]; label: string; apply: (id: string) => Promise<unknown> }
+
+const NOTICE_CLASSES: Record<Notice['tone'], string> = {
+  success: 'border-status-success-text/30 bg-status-success-bg text-status-success-text',
+  error: 'border-status-danger-text/30 bg-status-danger-bg text-status-danger-text',
+}
+
+const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`
+// api.ts throws Supabase's own error objects, which aren't always Error instances.
+const errorMessage = (reason: unknown, fallback: string) =>
+  (typeof reason === 'object' && reason !== null && 'message' in reason && String(reason.message)) || fallback
 
 function formatLastSeen(lastSeenAt: string | null) {
   if (!lastSeenAt) return 'Never signed in'
@@ -44,13 +56,13 @@ export function Users() {
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
   const [form, setForm] = useState(emptyForm)
   const [resetPassword, setResetPassword] = useState('')
+  // Modal forms report their own failures inline; everything else reports here.
   const [error, setError] = useState<string | null>(null)
-  const [notice, setNotice] = useState<string | null>(null)
-  const [searchParams] = useSearchParams()
+  const [notice, setNotice] = useState<Notice | null>(null)
+  const [searchParams, setSearchParams] = useSearchParams()
+  // Search stays local (it changes per keystroke); the other filters live in the
+  // URL so a reload or a shared link keeps the view.
   const [search, setSearch] = useState(searchParams.get('search') ?? '')
-  const [roleFilter, setRoleFilter] = useState<User['role'] | ''>('')
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('')
-  const [leadFilter, setLeadFilter] = useState<'' | 'none'>('')
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
   const normalizedSearch = search.trim().toLowerCase()
 
@@ -60,10 +72,49 @@ export function Users() {
     refetchInterval: 30_000,
   })
 
+  const people = useMemo(() => (data ?? []).filter((u) => u.id !== currentUser?.id), [data, currentUser?.id])
+  const leads = useMemo(() => (data ?? []).filter((u) => u.role === 'lead'), [data])
+  const leadOptions = useMemo(() => leads.map((lead) => ({ value: lead.id, label: lead.name })), [leads])
+  const leadNameById = useMemo(() => new Map((data ?? []).map((u) => [u.id, u.name])), [data])
+
+  const roleParam = searchParams.get('role')
+  // A lead only ever sees their own contributors, so role and lead filters (and any
+  // stale ?role= / ?lead= in the URL) are admin-only.
+  const roleFilter = isAdmin ? (ROLES.find((r) => r === roleParam) ?? '') : ''
+  const statusParam = searchParams.get('status')
+  const statusFilter: StatusFilter = statusParam === 'active' || statusParam === 'disabled' ? statusParam : ''
+  const leadParam = searchParams.get('lead') ?? ''
+  const leadFilter = isAdmin && (leadParam === 'none' || leads.some((lead) => lead.id === leadParam)) ? leadParam : ''
+
+  function setFilter(key: 'role' | 'status' | 'lead', value: string) {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        if (value) next.set(key, value)
+        else next.delete(key)
+        return next
+      },
+      { replace: true },
+    )
+    setRowSelection({})
+  }
+
+  function notifyError(reason: unknown, fallback: string) {
+    setNotice({ tone: 'error', text: errorMessage(reason, fallback) })
+  }
+
+  // Success notices fade on their own; errors stay until dismissed.
+  useEffect(() => {
+    if (notice?.tone !== 'success') return
+    const timer = window.setTimeout(() => setNotice(null), 6000)
+    return () => window.clearTimeout(timer)
+  }, [notice])
+
   const createMutation = useMutation({
     mutationFn: async () => api.post('/users', form),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
+      setNotice({ tone: 'success', text: `Added ${form.name}. They'll be asked to choose a new password when they first sign in.` })
       setAdding(false)
       setForm(emptyForm)
       setError(null)
@@ -74,25 +125,28 @@ export function Users() {
   const roleMutation = useMutation({
     mutationFn: async ({ id, role }: { id: string; role: User['role'] }) => api.patch(`/users/${id}`, { role }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
+    onError: (mutationError: Error) => notifyError(mutationError, 'Could not change that role.'),
   })
 
   const leadMutation = useMutation({
     mutationFn: async ({ id, leadId }: { id: string; leadId: string | null }) =>
       api.patch(`/users/${id}`, { lead_id: leadId }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
+    onError: (mutationError: Error) => notifyError(mutationError, 'Could not change that lead.'),
   })
 
   const toggleActiveMutation = useMutation({
     mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) =>
       api.patch(`/users/${id}`, { is_active: isActive }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
+    onError: (mutationError: Error) => notifyError(mutationError, 'Could not update that login.'),
   })
 
   const deleteMutation = useMutation({
     mutationFn: async (u: User) => api.delete(`/users/${u.id}`),
     onSuccess: (_result, u) => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
-      setNotice(`${u.name}'s login was deleted.`)
+      setNotice({ tone: 'success', text: `${u.name}'s login was deleted.` })
       setError(null)
       setDeleteTarget(null)
     },
@@ -103,60 +157,90 @@ export function Users() {
     mutationFn: async () => api.patch(`/users/${resetTarget!.id}`, { password: resetPassword, email: resetTarget!.email }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
+      setNotice({ tone: 'success', text: `Password reset for ${resetTarget!.name}. They'll be asked to choose a new one when they next sign in.` })
       setResetTarget(null)
       setResetPassword('')
+      setError(null)
     },
     onError: (mutationError: Error) => setError(mutationError.message || 'Could not reset this password.'),
   })
 
-  const bulkRoleMutation = useMutation({
-    mutationFn: async ({ ids, role }: { ids: string[]; role: User['role'] }) =>
-      Promise.all(ids.map((id) => api.patch(`/users/${id}`, { role }))),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] })
-      setRowSelection({})
-      setError(null)
+  // Every bulk action goes through here so a partial failure is reported rather
+  // than lost: the logins that failed stay selected for a retry.
+  const bulkMutation = useMutation({
+    mutationFn: async ({ ids, apply }: BulkJob) => {
+      const results = await Promise.allSettled(ids.map(apply))
+      const failedIds = ids.filter((_, i) => results[i].status === 'rejected')
+      const firstFailure = results.find((r): r is PromiseRejectedResult => r.status === 'rejected')
+      return { failedIds, reason: firstFailure ? errorMessage(firstFailure.reason, '') : '' }
     },
-    onError: (mutationError: Error) => setError(mutationError.message || 'Could not update those logins.'),
-  })
-
-  const bulkLeadMutation = useMutation({
-    mutationFn: async ({ ids, leadId }: { ids: string[]; leadId: string | null }) =>
-      Promise.all(ids.map((id) => api.patch(`/users/${id}`, { lead_id: leadId }))),
-    onSuccess: () => {
+    onSuccess: ({ failedIds, reason }, { ids, label }) => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
-      setRowSelection({})
-      setError(null)
-    },
-    onError: (mutationError: Error) => setError(mutationError.message || 'Could not update those logins.'),
-  })
-
-  const bulkActiveMutation = useMutation({
-    mutationFn: async ({ ids, isActive }: { ids: string[]; isActive: boolean }) =>
-      Promise.all(ids.map((id) => api.patch(`/users/${id}`, { is_active: isActive }))),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] })
-      setRowSelection({})
-      setError(null)
-    },
-    onError: (mutationError: Error) => setError(mutationError.message || 'Could not update those logins.'),
-  })
-
-  const bulkDeleteMutation = useMutation({
-    mutationFn: async (ids: string[]) => Promise.all(ids.map((id) => api.delete(`/users/${id}`))),
-    onSuccess: (_result, ids) => {
-      queryClient.invalidateQueries({ queryKey: ['users'] })
-      setNotice(`${ids.length} login${ids.length === 1 ? '' : 's'} deleted.`)
-      setRowSelection({})
+      const done = ids.length - failedIds.length
+      setRowSelection(Object.fromEntries(failedIds.map((id) => [id, true])))
       setBulkDeleteConfirm(false)
       setError(null)
+      setNotice(
+        failedIds.length === 0
+          ? { tone: 'success', text: `${label} ${plural(done, 'login')}.` }
+          : {
+              tone: 'error',
+              text: `${label} ${done} of ${plural(ids.length, 'login')}. ${failedIds.length} failed${reason ? `: ${reason}` : ''}. They're still selected so you can retry.`,
+            },
+      )
     },
-    onError: (mutationError: Error) => setError(mutationError.message || 'Could not delete those logins.'),
+    onError: (mutationError: Error) => {
+      setBulkDeleteConfirm(false)
+      notifyError(mutationError, 'Could not update those logins.')
+    },
   })
+
+  function bulkSetRole(role: User['role']) {
+    bulkMutation.mutate({
+      ids: selectedIds,
+      label: `Set role to ${role} for`,
+      apply: (id) => api.patch(`/users/${id}`, { role }),
+    })
+  }
+
+  function bulkSetLead(leadId: string | null) {
+    bulkMutation.mutate({
+      ids: selectedIds,
+      label: leadId ? `Assigned ${leadNameById.get(leadId) ?? 'the lead'} to` : 'Removed the lead from',
+      apply: (id) => api.patch(`/users/${id}`, { lead_id: leadId }),
+    })
+  }
+
+  function bulkSetActive(isActive: boolean) {
+    bulkMutation.mutate({
+      ids: selectedIds,
+      label: isActive ? 'Enabled' : 'Disabled',
+      apply: (id) => api.patch(`/users/${id}`, { is_active: isActive }),
+    })
+  }
+
+  function openAdd() {
+    setError(null)
+    setAdding(true)
+  }
+
+  function openReset(u: User) {
+    setError(null)
+    setResetPassword('')
+    setResetTarget(u)
+  }
 
   function handleCreate(e: FormEvent) {
     e.preventDefault()
     setError(null)
+    // manage-user upserts by email, so an existing address would silently have
+    // its password, name and role overwritten. Stop that here.
+    const email = form.email.trim().toLowerCase()
+    const existing = (data ?? []).find((u) => u.email.toLowerCase() === email)
+    if (existing) {
+      setError(`${existing.name} already has a login with this email. Use Reset Password from their row instead.`)
+      return
+    }
     createMutation.mutate()
   }
 
@@ -172,25 +256,32 @@ export function Users() {
 
   function handleBulkDelete(e: FormEvent) {
     e.preventDefault()
-    bulkDeleteMutation.mutate(selectedIds)
+    bulkMutation.mutate({ ids: selectedIds, label: 'Deleted', apply: (id) => api.delete(`/users/${id}`) })
   }
 
-  const rows = (data ?? [])
-    .filter((u) => u.id !== currentUser?.id)
+  const rows = people
     .filter((u) => !normalizedSearch || u.name.toLowerCase().includes(normalizedSearch) || u.email.toLowerCase().includes(normalizedSearch))
     .filter((u) => !roleFilter || u.role === roleFilter)
     .filter((u) => !statusFilter || (statusFilter === 'active' ? u.is_active : !u.is_active))
-    .filter((u) => !leadFilter || !u.lead_id)
+    .filter((u) => !leadFilter || (leadFilter === 'none' ? !u.lead_id : u.lead_id === leadFilter))
 
-  const selectedIds = Object.keys(rowSelection).filter((id) => rowSelection[id])
+  // Drop ids that vanished on a refetch (e.g. deleted elsewhere) so the count and bulk actions match what's on screen.
+  const visibleIds = new Set(rows.map((u) => u.id))
+  const selectedIds = Object.keys(rowSelection).filter((id) => rowSelection[id] && visibleIds.has(id))
 
   const hasActiveFilters = Boolean(search || roleFilter || statusFilter || leadFilter)
 
+  const activeCount = people.filter((u) => u.is_active).length
+  const statusTabs: { value: StatusFilter; label: string; count: number }[] = [
+    { value: '', label: 'All', count: people.length },
+    { value: 'active', label: 'Active', count: activeCount },
+    { value: 'disabled', label: 'Disabled', count: people.length - activeCount },
+  ]
+
   function clearFilters() {
     setSearch('')
-    setRoleFilter('')
-    setStatusFilter('')
-    setLeadFilter('')
+    setSearchParams({}, { replace: true })
+    setRowSelection({})
   }
 
   const columns = useMemo<ColumnDef<User, any>[]>(
@@ -200,7 +291,11 @@ export function Users() {
         header: ({ table }) => (
           <input
             type="checkbox"
+            aria-label="Select all shown logins"
             checked={table.getIsAllRowsSelected()}
+            ref={(el) => {
+              if (el) el.indeterminate = table.getIsSomeRowsSelected()
+            }}
             onChange={table.getToggleAllRowsSelectedHandler()}
             className="h-4 w-4 rounded border-gray-300 text-accent focus:ring-accent"
           />
@@ -208,6 +303,7 @@ export function Users() {
         cell: ({ row }) => (
           <input
             type="checkbox"
+            aria-label={`Select ${row.original.name}`}
             checked={row.getIsSelected()}
             onChange={row.getToggleSelectedHandler()}
             className="h-4 w-4 rounded border-gray-300 text-accent focus:ring-accent"
@@ -221,8 +317,13 @@ export function Users() {
         header: 'Name',
         cell: ({ row }) => {
           const u = row.original
+          const opensTeam = isAdmin && u.role === 'lead'
           return (
-            <Link to={`/contributors/${encodeURIComponent(u.email)}`} className="flex items-center gap-3 hover:underline">
+            <Link
+              to={opensTeam ? `/leads/${u.id}` : `/contributors/${encodeURIComponent(u.email)}`}
+              title={opensTeam ? `View ${u.name}'s team` : undefined}
+              className="flex items-center gap-3 hover:underline"
+            >
               <Avatar name={u.name} photoUrl={u.avatar_url} size={28} />
               <div>
                 <div className="font-medium text-gray-900">{u.name}</div>
@@ -232,47 +333,46 @@ export function Users() {
           )
         },
       },
-      {
-        id: 'role',
-        accessorFn: (u) => u.role,
-        header: 'Role',
-        cell: ({ row }) => {
-          const u = row.original
-          return isAdmin ? (
-            <Select
-              value={u.role}
-              onChange={(value) => roleMutation.mutate({ id: u.id, role: value as User['role'] })}
-              options={ROLE_OPTIONS}
-              className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs outline-none focus:border-accent"
-            />
-          ) : (
-            <span className="text-xs capitalize text-gray-600">{u.role}</span>
-          )
-        },
-      },
-      {
-        id: 'lead',
-        header: 'Lead',
-        enableSorting: false,
-        cell: ({ row }) => {
-          const u = row.original
-          return isAdmin ? (
-            <Combobox
-              value={u.lead_id ?? ''}
-              onChange={(leadId) => leadMutation.mutate({ id: u.id, leadId: leadId || null })}
-              options={
-                data
-                  ?.filter((lead) => lead.role === 'lead' && lead.id !== u.id)
-                  .map((lead) => ({ value: lead.id, label: lead.name })) ?? []
-              }
-              placeholder="Search leads..."
-              className="max-w-40"
-            />
-          ) : (
-            <span className="text-xs text-gray-500">{data?.find((lead) => lead.id === u.lead_id)?.name ?? '—'}</span>
-          )
-        },
-      },
+      // A lead's list is only their own contributors, so a Role or Lead column would
+      // repeat the same value on every row. Only admins get them.
+      ...(isAdmin
+        ? [
+            {
+              id: 'role',
+              accessorFn: (u: User) => u.role,
+              header: 'Role',
+              cell: ({ row }) => {
+                const u = row.original
+                return (
+                  <Select
+                    value={u.role}
+                    onChange={(value) => roleMutation.mutate({ id: u.id, role: value as User['role'] })}
+                    options={ROLE_OPTIONS}
+                    className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs outline-none focus:border-accent"
+                  />
+                )
+              },
+            } satisfies ColumnDef<User, any>,
+            {
+              id: 'lead',
+              // Unassigned sorts first, so one click brings the logins that need a lead to the top.
+              accessorFn: (u: User) => (u.lead_id ? (leadNameById.get(u.lead_id) ?? '') : ''),
+              header: 'Lead',
+              cell: ({ row }) => {
+                const u = row.original
+                return (
+                  <Combobox
+                    value={u.lead_id ?? ''}
+                    onChange={(leadId) => leadMutation.mutate({ id: u.id, leadId: leadId || null })}
+                    options={leadOptions.filter((lead) => lead.value !== u.id)}
+                    placeholder="Search leads..."
+                    className="max-w-40"
+                  />
+                )
+              },
+            } satisfies ColumnDef<User, any>,
+          ]
+        : []),
       {
         id: 'status',
         accessorFn: (u) => Number(u.is_active),
@@ -324,7 +424,7 @@ export function Users() {
                   },
                   {
                     label: 'Reset Password',
-                    onClick: () => setResetTarget(u),
+                    onClick: () => openReset(u),
                   },
                   {
                     label: 'Delete',
@@ -343,15 +443,21 @@ export function Users() {
         },
       },
     ],
-    [isAdmin, data, currentUser, roleMutation, leadMutation, toggleActiveMutation, deleteMutation],
+    [isAdmin, leadOptions, leadNameById, currentUser, roleMutation, leadMutation, toggleActiveMutation, deleteMutation],
   )
+
+  const bulkBusy = bulkMutation.isPending
+  const selectClass = 'rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent'
+  const bulkSelectClass = 'rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm outline-none focus:border-accent'
 
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Users</h1>
-          <p className="text-sm text-gray-500">Manage CB logins, roles, and passwords.</p>
+          <p className="text-sm text-gray-500">
+            {isAdmin ? 'Manage CB logins, roles, and passwords.' : "Manage your team's logins and passwords."}
+          </p>
           <p className="mt-1 text-xs text-gray-400">New accounts default to: {DEFAULT_PASSWORD}</p>
         </div>
         <div className="flex items-center gap-2">
@@ -361,109 +467,131 @@ export function Users() {
           >
             Bulk Import
           </button>
-          <button
-            onClick={() => setAdding(true)}
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
-          >
+          <button onClick={openAdd} className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground">
             + Add Login
           </button>
         </div>
       </div>
-      {notice && <div className="mb-4 text-sm text-status-success-text">{notice}</div>}
+
+      {notice && (
+        <div
+          role={notice.tone === 'error' ? 'alert' : 'status'}
+          className={`mb-4 flex items-start justify-between gap-3 rounded-lg border px-4 py-2.5 text-sm ${NOTICE_CLASSES[notice.tone]}`}
+        >
+          <span>{notice.text}</span>
+          <button onClick={() => setNotice(null)} className="opacity-60 hover:opacity-100" aria-label="Dismiss">
+            ✕
+          </button>
+        </div>
+      )}
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
+        <div role="tablist" aria-label="Filter by status" className="inline-flex rounded-lg border border-gray-200 bg-white p-0.5">
+          {statusTabs.map((tab) => (
+            <button
+              key={tab.value}
+              role="tab"
+              aria-selected={statusFilter === tab.value}
+              onClick={() => setFilter('status', tab.value)}
+              className={`rounded-md px-3 py-1.5 text-sm font-medium ${
+                statusFilter === tab.value ? 'bg-accent-bg text-accent-foreground' : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              {tab.label} <span className={statusFilter === tab.value ? 'opacity-70' : 'text-gray-400'}>{tab.count}</span>
+            </button>
+          ))}
+        </div>
         <input
           type="search"
           placeholder="Search by name or email..."
+          aria-label="Search logins"
           value={search}
           onChange={(e) => {
             setSearch(e.target.value)
             setRowSelection({})
           }}
-          className="w-64 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
+          className={`w-64 ${selectClass}`}
         />
-        <Select
-          value={roleFilter}
-          onChange={(value) => {
-            setRoleFilter(value as User['role'] | '')
-            setRowSelection({})
-          }}
-          options={[{ value: '', label: 'All Roles' }, ...ROLE_OPTIONS]}
-          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
-        />
-        <Select
-          value={statusFilter}
-          onChange={(value) => {
-            setStatusFilter(value as StatusFilter)
-            setRowSelection({})
-          }}
-          options={[
-            { value: '', label: 'All Statuses' },
-            { value: 'active', label: 'Active' },
-            { value: 'disabled', label: 'Disabled' },
-          ]}
-          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
-        />
-        <Select
-          value={leadFilter}
-          onChange={(value) => {
-            setLeadFilter(value as '' | 'none')
-            setRowSelection({})
-          }}
-          options={[
-            { value: '', label: 'All Leads' },
-            { value: 'none', label: 'No Lead Assigned' },
-          ]}
-          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
-        />
+        {isAdmin && (
+          <>
+            <Select
+              value={roleFilter}
+              aria-label="Filter by role"
+              onChange={(value) => setFilter('role', value)}
+              options={[{ value: '', label: 'All Roles' }, ...ROLE_OPTIONS]}
+              className={selectClass}
+            />
+            <Select
+              value={leadFilter}
+              aria-label="Filter by lead"
+              onChange={(value) => setFilter('lead', value)}
+              options={[{ value: '', label: 'All Leads' }, { value: 'none', label: 'No Lead Assigned' }, ...leadOptions]}
+              className={selectClass}
+            />
+          </>
+        )}
         {hasActiveFilters && (
           <button onClick={clearFilters} className="text-sm font-medium text-sky-700 hover:underline">
             Clear filters
           </button>
         )}
+        {!isLoading && (
+          <span className="ml-auto text-xs text-gray-400">
+            {rows.length === people.length ? plural(people.length, 'login') : `${rows.length} of ${plural(people.length, 'login')}`}
+          </span>
+        )}
       </div>
 
       {selectedIds.length > 0 && (
-        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5">
+        <div className="sticky top-0 z-10 mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 shadow-sm">
           <span className="text-sm font-medium text-gray-700">{selectedIds.length} selected</span>
           {isAdmin && (
             <Select
               value=""
               placeholder="Set role..."
-              onChange={(value) => bulkRoleMutation.mutate({ ids: selectedIds, role: value as User['role'] })}
+              aria-label="Set role for selected logins"
+              disabled={bulkBusy}
+              onChange={(value) => bulkSetRole(value as User['role'])}
               options={ROLE_OPTIONS}
-              className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm outline-none focus:border-accent"
+              className={bulkSelectClass}
             />
           )}
           {isAdmin && (
             <Select
               value=""
               placeholder="Set lead..."
-              onChange={(value) =>
-                bulkLeadMutation.mutate({ ids: selectedIds, leadId: value === '__none__' ? null : value })
-              }
-              options={[
-                { value: '__none__', label: '— No lead —' },
-                ...(data ?? []).filter((lead) => lead.role === 'lead').map((lead) => ({ value: lead.id, label: lead.name })),
-              ]}
-              className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm outline-none focus:border-accent"
+              aria-label="Set lead for selected logins"
+              disabled={bulkBusy}
+              onChange={(value) => bulkSetLead(value === '__none__' ? null : value)}
+              options={[{ value: '__none__', label: '— No lead —' }, ...leadOptions]}
+              className={bulkSelectClass}
             />
           )}
           <button
-            onClick={() => bulkActiveMutation.mutate({ ids: selectedIds, isActive: true })}
-            className="text-sm font-medium text-sky-700 hover:underline"
+            onClick={() => bulkSetActive(true)}
+            disabled={bulkBusy}
+            className="text-sm font-medium text-sky-700 hover:underline disabled:opacity-50"
           >
             Enable
           </button>
           <button
-            onClick={() => bulkActiveMutation.mutate({ ids: selectedIds, isActive: false })}
-            className="text-sm font-medium text-status-danger-text hover:underline"
+            onClick={() => bulkSetActive(false)}
+            disabled={bulkBusy}
+            className="text-sm font-medium text-status-danger-text hover:underline disabled:opacity-50"
           >
             Disable
           </button>
-          <button onClick={() => setBulkDeleteConfirm(true)} className="text-sm font-medium text-status-danger-text hover:underline">
+          <button
+            onClick={() => {
+              setError(null)
+              setBulkDeleteConfirm(true)
+            }}
+            disabled={bulkBusy}
+            className="text-sm font-medium text-status-danger-text hover:underline disabled:opacity-50"
+          >
             Delete
           </button>
+          {bulkBusy && <span className="text-xs text-gray-500">Working...</span>}
           <button onClick={() => setRowSelection({})} className="ml-auto text-sm font-medium text-gray-500 hover:underline">
             Clear selection
           </button>
@@ -477,7 +605,13 @@ export function Users() {
         rowSelection={rowSelection}
         onRowSelectionChange={setRowSelection}
         isLoading={isLoading}
-        emptyMessage="No users match these filters."
+        emptyMessage={
+          people.length > 0
+            ? 'No users match these filters.'
+            : isAdmin
+              ? 'No users yet.'
+              : 'No one is assigned to you yet. New logins you add will appear here once they are on your team.'
+        }
         paginate={false}
         rowClassName={(u) => (!u.is_active ? 'opacity-60' : '')}
       />
@@ -485,6 +619,7 @@ export function Users() {
       {bulkImporting && (
         <BulkImportUsersModal
           existingEmails={new Set((data ?? []).map((u) => u.email.toLowerCase()))}
+          canSetRole={isAdmin}
           onClose={() => setBulkImporting(false)}
         />
       )}
@@ -636,10 +771,10 @@ export function Users() {
               </button>
               <button
                 type="submit"
-                disabled={bulkDeleteMutation.isPending}
+                disabled={bulkMutation.isPending}
                 className="rounded-lg bg-status-danger-text px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
               >
-                {bulkDeleteMutation.isPending ? 'Deleting...' : `Delete ${selectedIds.length} Login${selectedIds.length === 1 ? '' : 's'}`}
+                {bulkMutation.isPending ? 'Deleting...' : `Delete ${selectedIds.length} Login${selectedIds.length === 1 ? '' : 's'}`}
               </button>
             </div>
           </form>

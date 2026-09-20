@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { WEEK_LENGTH_DAYS } from './week'
-import type { ActivityEvent, ActivityLog, ContributorProfile, DashboardSummary, DailyReportRow, HouseRule, LeaderboardRow, Paginated, Project, ProjectBreakdown, ProjectLevel, Resource, Stage, TaskSubmission, User } from '../types'
+import type { ActivityEvent, ActivityLog, ContributorProfile, DashboardSummary, DailyReportRow, LeaderboardRow, Paginated, Project, ProjectBreakdown, ProjectLevel, Resource, Stage, TaskSubmission, User } from '../types'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim() || 'https://ieovepkcseytccagzedg.supabase.co'
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() ||
@@ -245,11 +245,6 @@ async function listResources(): Promise<Resource[]> {
   return withProject(data as Resource[], await projects()) as Resource[]
 }
 
-async function listHouseRules(): Promise<HouseRule[]> {
-  const { data } = await result(supabase.from('house_rules').select('*').order('sort_order'))
-  return withProject(data as HouseRule[], await projects()) as HouseRule[]
-}
-
 async function activityLogs(): Promise<ActivityLog[]> {
   await currentProfile()
   const { data, error } = await supabase
@@ -284,7 +279,6 @@ export const api = {
     if (path === '/me') return { data: { user: await currentProfile() } as T }
     if (path === '/projects') return { data: (await projects()) as T }
     if (path === '/resources') return { data: (await listResources()) as T }
-    if (path === '/house-rules') return { data: (await listHouseRules()) as T }
     if (path === '/users') {
       await currentProfile()
       const { data } = await result(supabase.from('profiles').select('*').order('name'))
@@ -304,7 +298,7 @@ export const api = {
       if (error) throw await functionErrorMessage(error)
       return { data: data as T }
     }
-    const table = path.slice(1).replace('task-submissions', 'task_submissions').replace('house-rules', 'house_rules')
+    const table = path.slice(1).replace('task-submissions', 'task_submissions')
     const row = path === '/task-submissions' ? { ...payload, user_id: (await supabase.auth.getUser()).data.user?.id } : payload
     const { data, error } = await supabase.from(table).insert(row).select().single()
     if (error) throw taskIdConflictError(table, error)
@@ -318,7 +312,7 @@ export const api = {
       if (error) throw await functionErrorMessage(error)
       return { data: data as T }
     }
-    const table = resource === 'users' ? 'profiles' : resource.replace('task-submissions', 'task_submissions').replace('house-rules', 'house_rules')
+    const table = resource === 'users' ? 'profiles' : resource.replace('task-submissions', 'task_submissions')
     const { data, error } = await supabase.from(table).update(payload).eq('id', id).select().single()
     if (error) throw taskIdConflictError(table, error)
     return { data: data as T }
@@ -331,7 +325,7 @@ export const api = {
       if (error) throw await functionErrorMessage(error)
       return { data: null }
     }
-    const table = resource.replace('task-submissions', 'task_submissions').replace('house-rules', 'house_rules')
+    const table = resource.replace('task-submissions', 'task_submissions')
     const { error } = await supabase.from(table).delete().eq('id', id)
     if (error) throw error
     return { data: null }

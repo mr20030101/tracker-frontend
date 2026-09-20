@@ -78,15 +78,6 @@ export interface Resource {
   project: Project | null
 }
 
-export interface HouseRule {
-  id: number
-  project_id: number | null
-  type: 'info' | 'rule'
-  title: string | null
-  body: string
-  project: Project | null
-}
-
 export interface DashboardRow {
   user_id: string
   cb_email: string

@@ -6,6 +6,8 @@ import { Select } from './Select'
 
 interface Props {
   existingEmails: Set<string>
+  /** Only admins can hand out non-contributor roles; the server forces everyone else's imports to contributor. */
+  canSetRole?: boolean
   onClose: () => void
 }
 
@@ -45,7 +47,7 @@ function parseEmails(text: string, existingEmails: Set<string>): ParsedRow[] {
   return rows
 }
 
-export function BulkImportUsersModal({ existingEmails, onClose }: Props) {
+export function BulkImportUsersModal({ existingEmails, canSetRole = true, onClose }: Props) {
   const queryClient = useQueryClient()
   const [rawText, setRawText] = useState('')
   const [step, setStep] = useState<'input' | 'preview' | 'done'>('input')
@@ -105,7 +107,7 @@ export function BulkImportUsersModal({ existingEmails, onClose }: Props) {
           <div className="flex flex-col gap-3">
             <p className="text-sm text-gray-500">
               Paste one email per line. New logins default to the "{DEFAULT_PASSWORD}" password and the Contributor
-              role — both editable per row before importing.
+              role{canSetRole ? ' — both editable per row before importing' : ''}.
             </p>
             <textarea
               value={rawText}
@@ -142,7 +144,7 @@ export function BulkImportUsersModal({ existingEmails, onClose }: Props) {
                   <tr>
                     <th className="px-3 py-2">Email</th>
                     <th className="px-3 py-2">Name</th>
-                    <th className="px-3 py-2">Role</th>
+                    {canSetRole && <th className="px-3 py-2">Role</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -159,15 +161,17 @@ export function BulkImportUsersModal({ existingEmails, onClose }: Props) {
                           className="w-full rounded border border-gray-200 px-1.5 py-1 text-xs outline-none focus:border-accent disabled:bg-gray-100"
                         />
                       </td>
-                      <td className="px-3 py-2">
-                        <Select
-                          value={row.role}
-                          disabled={row.alreadyExists}
-                          onChange={(value) => updateRow(index, { role: value as User['role'] })}
-                          options={ROLE_OPTIONS}
-                          className="rounded border border-gray-200 px-1.5 py-1 text-xs outline-none focus:border-accent disabled:bg-gray-100"
-                        />
-                      </td>
+                      {canSetRole && (
+                        <td className="px-3 py-2">
+                          <Select
+                            value={row.role}
+                            disabled={row.alreadyExists}
+                            onChange={(value) => updateRow(index, { role: value as User['role'] })}
+                            options={ROLE_OPTIONS}
+                            className="rounded border border-gray-200 px-1.5 py-1 text-xs outline-none focus:border-accent disabled:bg-gray-100"
+                          />
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>

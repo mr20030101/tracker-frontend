@@ -239,7 +239,7 @@ export function Projects() {
                               onClick: () => {
                                 if (
                                   confirm(
-                                    `Delete "${project.name}"? Existing task submissions, resources, and house rules linked to it will keep their history but lose this project reference.`,
+                                    `Delete "${project.name}"? Existing task submissions and resources linked to it will keep their history but lose this project reference.`,
                                   )
                                 ) {
                                   deleteMutation.mutate(project.id)
