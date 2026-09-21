@@ -11,6 +11,7 @@ import {
   Users as UsersIcon,
   FolderKanban,
   Trophy,
+  UserPlus,
   type LucideIcon,
 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
@@ -55,6 +56,7 @@ function navSections(isManager: boolean, isAdmin: boolean): { label: string; ite
           { to: '/messages', label: 'Messages', icon: MessageCircle },
           { to: '/users', label: 'Users', icon: UsersIcon },
           { to: '/projects', label: 'Projects', icon: FolderKanban },
+          { to: '/hiring', label: 'Hiring', icon: UserPlus },
         ]
         : [{ to: '/messages', label: 'Messages', icon: MessageCircle }],
     },
@@ -104,7 +106,9 @@ export function AppShell({ children }: { children: ReactNode }) {
                         ? isManager
                           ? 'CB Profile'
                           : 'My Profile'
-                        : 'Dashboard'
+                        : location.pathname === '/hiring'
+                          ? 'Hiring'
+                          : 'Dashboard'
 
   return (
     <MessagingProvider>

@@ -29,6 +29,10 @@ interface DataTableProps<TData> {
   pageSize?: number
   paginate?: boolean
   rowClassName?: (row: TData) => string
+  /** Scroll sideways when the columns are wider than the container, instead of clipping them. */
+  scrollX?: boolean
+  /** Called when a row is clicked anywhere except on a button, link or other control inside it. */
+  onRowClick?: (row: TData) => void
 }
 
 export function DataTable<TData>({
@@ -42,6 +46,8 @@ export function DataTable<TData>({
   pageSize = 10,
   paginate = true,
   rowClassName,
+  scrollX = false,
+  onRowClick,
 }: DataTableProps<TData>) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize })
@@ -74,7 +80,7 @@ export function DataTable<TData>({
   const to = Math.min(total, from + pagination.pageSize - 1)
 
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+    <div className={`${scrollX ? 'overflow-x-auto' : 'overflow-hidden'} rounded-xl border border-gray-200 bg-white`}>
       <table className="w-full text-left text-sm">
         <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
           {table.getHeaderGroups().map((headerGroup) => (
@@ -125,7 +131,17 @@ export function DataTable<TData>({
           )}
           {!isLoading &&
             rows.map((row) => (
-              <tr key={row.id} className={`hover:bg-gray-50 ${rowClassName?.(row.original) ?? ''}`}>
+              <tr
+                key={row.id}
+                onClick={
+                  onRowClick
+                    ? (e) => {
+                        if (!(e.target as HTMLElement).closest('a, button, input, select, textarea, label')) onRowClick(row.original)
+                      }
+                    : undefined
+                }
+                className={`hover:bg-gray-50 ${onRowClick ? 'cursor-pointer' : ''} ${rowClassName?.(row.original) ?? ''}`}
+              >
                 {row.getVisibleCells().map((cell) => {
                   const align = cell.column.columnDef.meta?.align
                   const isSelectCol = cell.column.id === 'select'

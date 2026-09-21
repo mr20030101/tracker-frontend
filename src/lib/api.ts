@@ -195,6 +195,7 @@ async function contributor(params: Record<string, unknown>): Promise<Contributor
           lead_id: stats.lead_id,
           avatar_url: stats.avatar_url,
           must_change_password: false,
+          accepting_applications: true,
         }
       : null
     return {

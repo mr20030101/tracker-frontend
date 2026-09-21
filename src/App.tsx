@@ -15,6 +15,8 @@ import { LeadTeam } from './pages/LeadTeam'
 import { Projects } from './pages/Projects'
 import { DataQuality } from './pages/DataQuality'
 import { ActivityLog } from './pages/ActivityLog'
+import { Apply } from './pages/Apply'
+import { Hiring } from './pages/Hiring'
 
 const MANAGER_ROLES = ['admin', 'lead']
 
@@ -48,6 +50,7 @@ function ProtectedLayout() {
         <Route path="/contributors/:email" element={<CbProfile />} />
         {isManager && <Route path="/users" element={<Users />} />}
         {isManager && <Route path="/projects" element={<Projects />} />}
+        {isManager && <Route path="/hiring" element={<Hiring />} />}
         {isManager && <Route path="/data-quality" element={<DataQuality />} />}
         {isAdmin && <Route path="/activity-log" element={<ActivityLog />} />}
         {isAdmin && <Route path="/leads/:leadId" element={<LeadTeam />} />}
@@ -61,6 +64,8 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      {/* Public: applicants aren't signed in. */}
+      <Route path="/apply/:leadId" element={<Apply />} />
       <Route path="/*" element={<ProtectedLayout />} />
     </Routes>
   )
