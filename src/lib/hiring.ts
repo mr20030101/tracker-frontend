@@ -156,9 +156,65 @@ export interface EmailResult {
   failed: { id: number; name: string; error: string }[]
 }
 
-/** Emails the chosen accepted applicants (at most 50). One failing address doesn't stop the others; `failed` says who missed out. */
-export async function emailApplicants(ids: number[]): Promise<EmailResult> {
-  const { data, error } = await supabase.functions.invoke('manage-user', { body: { action: 'email-applicants', ids } })
+/** What the lead fills in for the bootcamp email. `date` is YYYY-MM-DD and `time` is 24-hour HH:MM (Philippine time). */
+export interface BootcampDetails {
+  date: string
+  time: string
+  project: string
+  meetUrl: string
+}
+
+/** The Google Meet stops letting people in this long after the start; the function works out the cutoff the email states. */
+export const LATE_GRACE_MINUTES = 10
+
+// What the form starts with the very first time. After a send, the last details used are remembered on this device instead.
+const FIRST_BOOTCAMP_DETAILS: BootcampDetails = {
+  date: '2026-09-22',
+  time: '09:00',
+  project: 'ALOHA OTS',
+  meetUrl: 'https://meet.google.com/azw-dsgv-hpd?authuser=0&hl=en',
+}
+const BOOTCAMP_DETAILS_KEY = 'hiring-bootcamp-details'
+
+const localToday = () => {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+}
+
+/** The details to start the form with. A remembered date that has already passed is cleared, so an old one can't be sent by accident. */
+export function loadBootcampDetails(): BootcampDetails {
+  let details = FIRST_BOOTCAMP_DETAILS
+  try {
+    const stored = JSON.parse(localStorage.getItem(BOOTCAMP_DETAILS_KEY) ?? 'null')
+    if (stored && typeof stored === 'object') {
+      const text = (value: unknown, fallback: string) => (typeof value === 'string' ? value : fallback)
+      details = {
+        date: text(stored.date, ''),
+        time: text(stored.time, FIRST_BOOTCAMP_DETAILS.time),
+        project: text(stored.project, ''),
+        meetUrl: text(stored.meetUrl, ''),
+      }
+    }
+  } catch {
+    // Storage can be unavailable or hold something unreadable: start from the defaults.
+  }
+  return details.date && details.date < localToday() ? { ...details, date: '' } : details
+}
+
+export function saveBootcampDetails(details: BootcampDetails) {
+  try {
+    localStorage.setItem(BOOTCAMP_DETAILS_KEY, JSON.stringify(details))
+  } catch {
+    // Not remembering is fine.
+  }
+}
+
+/**
+ * Emails the chosen accepted applicants (at most 50) about the bootcamp described by `details`.
+ * One failing address doesn't stop the others; `failed` says who missed out.
+ */
+export async function emailApplicants(ids: number[], details: BootcampDetails): Promise<EmailResult> {
+  const { data, error } = await supabase.functions.invoke('manage-user', { body: { action: 'email-applicants', ids, details } })
   if (error) throw await functionErrorMessage(error)
   return data as EmailResult
 }

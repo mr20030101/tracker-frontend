@@ -50,43 +50,118 @@ const REPLY_NOTE = 'Questions? Just reply to this email and it will go to {lead}
 
 /**
  * What an accepted applicant receives: the Remotasks Bootcamp orientation notice.
- * This is announcement text (a date, a time and a Google Meet link), so it has to
- * be edited here, and the function redeployed, for each new bootcamp.
- *
- * Any text can use these variables, replaced wherever they appear:
- *   {name}       the applicant's full name
- *   {firstName}  the first word of their name
- *   {lead}       the name of the lead they applied to
- *   {email}      the email they sign in with (their Remotasks email)
- *   {loginUrl}   the address of the sign-in page
+ * The lead fills in the date, time, project and Google Meet link each time they send it
+ * (see bootcampVars below); the wording around them stays the same. These are replaced
+ * wherever they appear:
+ *   {date}      the day, like "September 22, 2026"       {weekday}  like "Tuesday"
+ *   {time}      the start, like "9:00 AM" (Philippine time)
+ *   {cutoff}    the last moment to join, LATE_GRACE_MINUTES after the start
+ *   {project}   the project name                         {meetUrl}  the Google Meet link
+ *   {lead}      the lead the applicant applied to (this is who the email comes from)
+ *   {name}  {firstName}  the applicant's full name / first word of it
  * While this is null the function refuses to send anything.
  */
 export const APPLICANT_EMAIL: EmailTemplate | null = {
-    subject: 'Remotasks Bootcamp: Free Orientation on September 22, 2026, 9:00 AM PH Time',
+    subject: 'Remotasks Bootcamp: Free Orientation on {date}, {time} PH Time',
     headline: 'Free Orientation Bootcamp',
-    preview: 'Starts tomorrow, September 22, 2026 at 9:00 AM PH Time. Please join on time.',
+    preview: 'Starts {weekday}, {date} at {time} PH Time. Please join on time.',
     blocks: [
         { kind: 'greeting', text: "Good day, Ma'am/Sir!" },
         {
             kind: 'text',
-            text: 'This is Jay-Anne from Remotasks Bootcamp. I would like to inform you that our Free Orientation Bootcamp will begin tomorrow, September 22, 2026 (Tuesday), 9:00 AM PH Time.',
+            text: 'This is {lead} from Remotasks Bootcamp. I would like to inform you that our Free Orientation Bootcamp will begin on {date} ({weekday}), {time} PH Time.',
         },
         {
             kind: 'details',
             rows: [
-                { label: 'When', value: 'Tuesday, September 22, 2026 · 9:00 AM PH Time' },
-                { label: 'Project', value: 'ALOHA OTS' },
+                { label: 'When', value: '{weekday}, {date} · {time} PH Time' },
+                { label: 'Project', value: '{project}' },
                 { label: 'Where', value: 'Training Google Meet' },
             ],
-            button: { label: 'Join the Google Meet', url: 'https://meet.google.com/azw-dsgv-hpd?authuser=0&hl=en' },
+            button: { label: 'Join the Google Meet', url: '{meetUrl}' },
         },
         {
             kind: 'notice',
-            text: '**Please make sure to join on time.** The Google Meet will only accept participants until 9:10 AM. Late submissions/attendance will not be accepted.',
+            text: '**Please make sure to join on time.** The Google Meet will only accept participants until {cutoff}. Late submissions/attendance will not be accepted.',
         },
-        { kind: 'text', text: 'Thank you, and see you tomorrow!\nJay-Anne' },
+        { kind: 'text', text: 'Thank you, and see you there!\n{lead}' },
     ],
     footer: ["Sent by Grey Owls Tracker. You're receiving this because you applied and were accepted.", REPLY_NOTE],
+}
+
+/** What the lead fills in for a bootcamp. `date` is YYYY-MM-DD and `time` is 24-hour HH:MM, as a browser's date and time inputs give them. */
+export interface BootcampDetails {
+    date: string
+    time: string
+    project: string
+    meetUrl: string
+}
+
+/** How long after the start the Google Meet stops letting people in. */
+export const LATE_GRACE_MINUTES = 10
+
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
+/** 0-23 and 0-59 as a 12-hour time: "9:00 AM", "12:30 PM", "12:05 AM". Written out by hand so it can't vary with the server's locale. */
+function clock(hours: number, minutes: number): string {
+    return `${hours % 12 === 0 ? 12 : hours % 12}:${String(minutes).padStart(2, '0')} ${hours < 12 ? 'AM' : 'PM'}`
+}
+
+export type BootcampVarsResult = { ok: true; vars: Record<string, string> } | { ok: false; error: string }
+
+/**
+ * Checks what the lead entered and turns it into the {date}, {weekday}, {time}, {cutoff},
+ * {project} and {meetUrl} values for the email. Says what is wrong in plain words, so it can be
+ * shown to the lead as it is. A day that has already passed (in the Philippines) is refused.
+ */
+export function bootcampVars(input: unknown, now: Date = new Date()): BootcampVarsResult {
+    const raw = (input && typeof input === 'object' ? input : {}) as Record<string, unknown>
+    const text = (key: string) => (typeof raw[key] === 'string' ? (raw[key] as string).trim() : '')
+    const date = text('date')
+    const time = text('time')
+    const project = text('project').replace(/\s+/g, ' ')
+    const meetUrl = text('meetUrl')
+
+    if (!date || !time || !project || !meetUrl) return { ok: false, error: 'Enter the date, time, project and Google Meet link.' }
+
+    const dateParts = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date)
+    const day = dateParts ? new Date(Date.UTC(Number(dateParts[1]), Number(dateParts[2]) - 1, Number(dateParts[3]))) : null
+    if (!dateParts || !day || day.getUTCFullYear() !== Number(dateParts[1]) || day.getUTCMonth() !== Number(dateParts[2]) - 1 || day.getUTCDate() !== Number(dateParts[3])) {
+        return { ok: false, error: 'Enter a real date.' }
+    }
+    const todayInPhilippines = new Date(now.getTime() + 8 * 60 * 60 * 1000).toISOString().slice(0, 10)
+    if (date < todayInPhilippines) return { ok: false, error: 'That date has already passed. Choose today or a later day.' }
+
+    const timeParts = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(time)
+    if (!timeParts) return { ok: false, error: 'Enter a real time.' }
+    const hours = Number(timeParts[1])
+    const minutes = Number(timeParts[2])
+
+    if (project.length > 100) return { ok: false, error: 'The project name is too long (100 characters at most).' }
+
+    let link: URL | null = null
+    try {
+        link = new URL(meetUrl)
+    } catch {
+        // handled below
+    }
+    if (!link || !/^https?:$/.test(link.protocol) || /\s/.test(meetUrl) || meetUrl.length > 500) {
+        return { ok: false, error: 'The Google Meet link must be a web address starting with https://.' }
+    }
+
+    const cutoffMinutes = (hours * 60 + minutes + LATE_GRACE_MINUTES) % (24 * 60)
+    return {
+        ok: true,
+        vars: {
+            date: `${MONTHS[day.getUTCMonth()]} ${day.getUTCDate()}, ${day.getUTCFullYear()}`,
+            weekday: WEEKDAYS[day.getUTCDay()],
+            time: clock(hours, minutes),
+            cutoff: clock(Math.floor(cutoffMinutes / 60), cutoffMinutes % 60),
+            project,
+            meetUrl,
+        },
+    }
 }
 
 /** The address of a site as typed into the SITE_URL secret: adds https:// if it was left off and drops trailing slashes. '' when there is none. */
@@ -274,6 +349,8 @@ export interface Deps {
     applications: ApplicationRow[]
     leads: Map<string, { name: string; email: string }>
     template: EmailTemplate | null
+    /** Values the email needs beyond the applicant's own, such as the bootcamp's date and link (see bootcampVars). */
+    vars?: Record<string, string>
     loginUrl: string
     /** Full address of the owl image for the header; '' when the site address isn't known. */
     logoUrl?: string
@@ -319,6 +396,7 @@ export async function emailApplicants(requestedIds: number[], caller: Caller, de
     async function deliver(row: ApplicationRow) {
         const lead = deps.leads.get(row.lead_id)
         const vars = {
+            ...deps.vars,
             name: row.full_name,
             firstName: row.full_name.trim().split(/\s+/)[0] ?? row.full_name,
             lead: lead?.name ?? 'Grey Owls Tracker',

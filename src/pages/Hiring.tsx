@@ -11,12 +11,16 @@ import {
   describeIssues,
   emailApplicants,
   fetchApplications,
+  LATE_GRACE_MINUTES,
+  loadBootcampDetails,
   MAX_EMAIL_RECIPIENTS,
   MIN_GPU_MEMORY_GB,
   requirementIssues,
   reviewApplication,
   safeExternalHref,
+  saveBootcampDetails,
   setAcceptingApplications,
+  type BootcampDetails,
 } from '../lib/hiring'
 import type { HiringApplication, HiringStatus, User } from '../types'
 import { DataTable } from '../components/DataTable'
@@ -43,6 +47,7 @@ const NOTICE_CLASSES: Record<Notice['tone'], string> = {
 
 const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`
 
+const inputClass = 'w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent'
 const selectClass = 'rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent'
 const pillClass = 'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium'
 
@@ -145,6 +150,8 @@ export function Hiring() {
   const [details, setDetails] = useState<HiringApplication | null>(null)
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
   const [emailing, setEmailing] = useState<HiringApplication[] | null>(null)
+  // The bootcamp the email is about. Remembered on this device after each send.
+  const [bootcamp, setBootcamp] = useState<BootcampDetails>(loadBootcampDetails)
   const [creating, setCreating] = useState<HiringApplication | null>(null)
   const [credentials, setCredentials] = useState<Credentials | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -232,9 +239,10 @@ export function Hiring() {
   })
 
   const emailMutation = useMutation({
-    mutationFn: (ids: number[]) => emailApplicants(ids),
-    onSuccess: (result, ids) => {
+    mutationFn: ({ ids, details }: { ids: number[]; details: BootcampDetails }) => emailApplicants(ids, details),
+    onSuccess: (result, { ids, details }) => {
       queryClient.invalidateQueries({ queryKey: ['hiring-applications'] })
+      saveBootcampDetails(details)
       setEmailing(null)
       setError(null)
       // Anyone the email didn't reach stays selected, so it can be tried again.
@@ -735,9 +743,67 @@ export function Hiring() {
         <Modal title={`Send email to ${plural(emailing.length, 'applicant')}?`} onClose={() => setEmailing(null)}>
           <div className="flex flex-col gap-3">
             <p className="text-sm text-gray-600">
-              Each person is emailed at their active email address. Replies go to their lead.
+              Each person is emailed at their active email address, from their lead. Replies go to their lead.
             </p>
-            <ul className="max-h-56 divide-y divide-gray-100 overflow-y-auto rounded-lg border border-gray-200 text-sm">
+            <fieldset className="rounded-lg border border-gray-200 px-3 pb-3 pt-1">
+              <legend className="px-1 text-xs font-semibold uppercase tracking-wider text-gray-400">Bootcamp details</legend>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="bootcamp-date" className="mb-1 block text-xs font-medium text-gray-600">
+                    Date
+                  </label>
+                  <input
+                    id="bootcamp-date"
+                    type="date"
+                    value={bootcamp.date}
+                    onChange={(e) => setBootcamp({ ...bootcamp, date: e.target.value })}
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="bootcamp-time" className="mb-1 block text-xs font-medium text-gray-600">
+                    Start time (PH time)
+                  </label>
+                  <input
+                    id="bootcamp-time"
+                    type="time"
+                    value={bootcamp.time}
+                    onChange={(e) => setBootcamp({ ...bootcamp, time: e.target.value })}
+                    className={inputClass}
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label htmlFor="bootcamp-project" className="mb-1 block text-xs font-medium text-gray-600">
+                    Project
+                  </label>
+                  <input
+                    id="bootcamp-project"
+                    type="text"
+                    maxLength={100}
+                    value={bootcamp.project}
+                    onChange={(e) => setBootcamp({ ...bootcamp, project: e.target.value })}
+                    className={inputClass}
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label htmlFor="bootcamp-link" className="mb-1 block text-xs font-medium text-gray-600">
+                    Google Meet link
+                  </label>
+                  <input
+                    id="bootcamp-link"
+                    type="url"
+                    placeholder="https://meet.google.com/..."
+                    value={bootcamp.meetUrl}
+                    onChange={(e) => setBootcamp({ ...bootcamp, meetUrl: e.target.value })}
+                    className={inputClass}
+                  />
+                </div>
+              </div>
+              <p className="mt-2 text-xs text-gray-400">
+                The email tells them the Meet stops letting people in {LATE_GRACE_MINUTES} minutes after the start.
+              </p>
+            </fieldset>
+            <ul className="max-h-40 divide-y divide-gray-100 overflow-y-auto rounded-lg border border-gray-200 text-sm">
               {emailing.map((applicant) => (
                 <li key={applicant.id} className="flex items-center justify-between gap-3 px-3 py-2">
                   <div className="min-w-0">
@@ -775,8 +841,15 @@ export function Hiring() {
               </button>
               <button
                 type="button"
-                disabled={emailMutation.isPending || emailing.length > MAX_EMAIL_RECIPIENTS}
-                onClick={() => emailMutation.mutate(emailing.map((applicant) => applicant.id))}
+                disabled={
+                  emailMutation.isPending ||
+                  emailing.length > MAX_EMAIL_RECIPIENTS ||
+                  !bootcamp.date ||
+                  !bootcamp.time ||
+                  !bootcamp.project.trim() ||
+                  !bootcamp.meetUrl.trim()
+                }
+                onClick={() => emailMutation.mutate({ ids: emailing.map((applicant) => applicant.id), details: bootcamp })}
                 className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
               >
                 {emailMutation.isPending ? 'Sending...' : `Send ${plural(emailing.length, 'email')}`}

@@ -1,7 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { accountEmail, type AccountEmailInput } from './account-email.ts'
 import { createAccount } from './create-account.ts'
-import { APPLICANT_EMAIL, emailApplicants, logoFrom, siteFrom, type OutgoingEmail } from './applicant-email.ts'
+import { APPLICANT_EMAIL, bootcampVars, emailApplicants, logoFrom, siteFrom, type OutgoingEmail } from './applicant-email.ts'
 import { resendError, resendRequest, type Sender } from './resend.ts'
 
 const corsHeaders = {
@@ -187,6 +187,10 @@ Deno.serve(async (request) => {
         const apiKey = Deno.env.get('RESEND_API_KEY')
         if (!apiKey) return errorResponse('Email sending is not set up yet: the RESEND_API_KEY secret is missing on this function.', 503)
 
+        // The lead fills in the date, time, project and Google Meet link for each send.
+        const details = bootcampVars(body.details)
+        if (!details.ok) return errorResponse(details.error, 400)
+
         const ids: number[] = Array.isArray(body.ids) ? body.ids.map(Number).filter(Number.isInteger) : []
         const { data: applications, error: loadError } = await admin
             .from('hiring_applications')
@@ -206,6 +210,7 @@ Deno.serve(async (request) => {
             applications: applications ?? [],
             leads: new Map((leadRows ?? []).map((lead) => [lead.id, { name: lead.name, email: lead.email }])),
             template: APPLICANT_EMAIL,
+            vars: details.vars,
             loginUrl: site ? `${site}/login` : '',
             logoUrl: logoFrom(site),
             send: (email) => sendMail(apiKey, sender, email),
