@@ -6,6 +6,7 @@ import './index.css'
 import App from './App.tsx'
 import { AuthProvider } from './lib/auth.tsx'
 import { ThemeProvider } from './lib/theme.tsx'
+import { SpeedInsightsTracker } from './components/SpeedInsightsTracker.tsx'
 import './lib/sound.ts'
 
 const queryClient = new QueryClient()
@@ -18,6 +19,7 @@ createRoot(document.getElementById('root')!).render(
           <AuthProvider>
             <App />
           </AuthProvider>
+          <SpeedInsightsTracker />
         </BrowserRouter>
       </QueryClientProvider>
     </ThemeProvider>
