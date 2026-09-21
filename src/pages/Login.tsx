@@ -6,10 +6,12 @@ import { Logo } from '../components/Logo'
 import { OwlField } from '../components/OwlField'
 import { useReducedMotion, useReveal } from '../lib/motion'
 
-// Off while Supabase's reset emails aren't being delivered. Until it's back,
-// an admin resets passwords from Users > Reset Password. Flip to true to
-// restore the "Forgot password?" link; the rest of the flow is untouched.
-const FORGOT_PASSWORD_ENABLED = false
+// Shows the "Forgot password?" link. It relies on Supabase delivering the reset
+// email, which needs custom SMTP under Authentication > SMTP (the built-in sender
+// only reaches team members, at 2 an hour) and this site's address in Authentication
+// > URL Configuration. If emails stop arriving, set this to false and an admin can
+// reset passwords from Users > Reset Password instead.
+const FORGOT_PASSWORD_ENABLED = true
 
 export function Login() {
   const { login } = useAuth()
