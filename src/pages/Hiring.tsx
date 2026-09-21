@@ -309,12 +309,13 @@ export function Hiring() {
               header: ({ table }) => (
                 <input
                   type="checkbox"
-                  aria-label="Select all accepted applicants"
-                  checked={table.getIsAllRowsSelected()}
+                  // The rows on this page only, so "50 per page, select all" fits an email's 50-person limit.
+                  aria-label="Select all accepted applicants on this page"
+                  checked={table.getIsAllPageRowsSelected()}
                   ref={(el) => {
-                    if (el) el.indeterminate = table.getIsSomeRowsSelected()
+                    if (el) el.indeterminate = table.getIsSomePageRowsSelected()
                   }}
-                  onChange={table.getToggleAllRowsSelectedHandler()}
+                  onChange={table.getToggleAllPageRowsSelectedHandler()}
                   className="h-4 w-4 rounded border-gray-300 text-accent focus:ring-accent"
                 />
               ),

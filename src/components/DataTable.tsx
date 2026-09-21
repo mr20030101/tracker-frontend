@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   flexRender,
   getCoreRowModel,
@@ -11,12 +11,16 @@ import {
   type RowSelectionState,
   type SortingState,
 } from '@tanstack/react-table'
+import { Select } from './Select'
 
 declare module '@tanstack/react-table' {
   interface ColumnMeta<TData, TValue> {
     align?: 'left' | 'right'
   }
 }
+
+// How many rows a page can show. The table's own default (the pageSize prop) is added if it isn't one of these.
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100, 500]
 
 interface DataTableProps<TData> {
   columns: ColumnDef<TData, any>[]
@@ -26,6 +30,7 @@ interface DataTableProps<TData> {
   onRowSelectionChange?: OnChangeFn<RowSelectionState>
   isLoading?: boolean
   emptyMessage?: string
+  /** The number of rows shown per page to start with. The viewer can change it from the footer. */
   pageSize?: number
   paginate?: boolean
   rowClassName?: (row: TData) => string
@@ -65,6 +70,11 @@ export function DataTable<TData>({
     getSortedRowModel: getSortedRowModel(),
     ...(paginate ? { getPaginationRowModel: getPaginationRowModel() } : {}),
   })
+
+  const pageSizeOptions = useMemo(
+    () => [...new Set([...PAGE_SIZE_OPTIONS, pageSize])].sort((a, b) => a - b).map((n) => ({ value: String(n), label: String(n) })),
+    [pageSize],
+  )
 
   const pageCount = table.getPageCount()
   useEffect(() => {
@@ -159,28 +169,43 @@ export function DataTable<TData>({
         </tbody>
       </table>
       {!isLoading && paginate && total > 0 && (
-        <div className="flex items-center justify-between border-t border-gray-200 px-5 py-3 text-xs text-gray-500">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-gray-200 px-5 py-3 text-xs text-gray-500">
           <span>
             Showing {from}–{to} of {total}
           </span>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
-              className="rounded-lg border border-gray-200 px-3 py-1.5 font-medium text-gray-600 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Previous
-            </button>
-            <span>
-              Page {pagination.pageIndex + 1} of {Math.max(1, pageCount)}
-            </span>
-            <button
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
-              className="rounded-lg border border-gray-200 px-3 py-1.5 font-medium text-gray-600 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Next
-            </button>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            {/* Pointless when everything already fits on the smallest page. */}
+            {total > Number(pageSizeOptions[0].value) && (
+              <div className="flex items-center gap-2">
+                <span>Rows per page</span>
+                <Select
+                  value={String(pagination.pageSize)}
+                  onChange={(value) => table.setPageSize(Number(value))}
+                  options={pageSizeOptions}
+                  aria-label="Rows per page"
+                  className="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-600 outline-none focus:border-accent"
+                />
+              </div>
+            )}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => table.previousPage()}
+                disabled={!table.getCanPreviousPage()}
+                className="rounded-lg border border-gray-200 px-3 py-1.5 font-medium text-gray-600 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Previous
+              </button>
+              <span>
+                Page {pagination.pageIndex + 1} of {Math.max(1, pageCount)}
+              </span>
+              <button
+                onClick={() => table.nextPage()}
+                disabled={!table.getCanNextPage()}
+                className="rounded-lg border border-gray-200 px-3 py-1.5 font-medium text-gray-600 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Next
+              </button>
+            </div>
           </div>
         </div>
       )}
