@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { accountEmail, type AccountEmailInput } from './account-email.ts'
 import { APPLICANT_EMAIL, emailApplicants, siteFrom, type OutgoingEmail } from './applicant-email.ts'
 import { resendError, resendRequest, type Sender } from './resend.ts'
 
@@ -28,6 +29,33 @@ async function sendMail(apiKey: string, sender: Sender, email: OutgoingEmail) {
     }
 }
 
+// Until a domain is verified in Resend, only its own onboarding@resend.dev sender can be used, and it
+// delivers only to the address of the Resend account owner. Set MAIL_FROM_EMAIL once a domain is verified.
+const mailSender = (): Sender => ({
+    name: Deno.env.get('MAIL_FROM_NAME') ?? 'Grey Owls Tracker',
+    email: Deno.env.get('MAIL_FROM_EMAIL') ?? 'onboarding@resend.dev',
+})
+
+const siteOrigin = (request: Request) => siteFrom(Deno.env.get('SITE_URL') ?? request.headers.get('origin') ?? '')
+
+/**
+ * Emails someone their new or reset password. It never fails the request it belongs to: the account
+ * already exists (or the password is already changed), so this only reports whether the email went and,
+ * if not, why, and the person who did it can pass the details on themselves.
+ */
+async function emailAccount(request: Request, input: Omit<AccountEmailInput, 'loginUrl'>): Promise<{ emailed_to?: string; email_error?: string }> {
+    const apiKey = Deno.env.get('RESEND_API_KEY')
+    if (!apiKey) return { email_error: 'Email sending is not set up yet.' }
+    if (!input.to) return { email_error: 'There is no email address on file to send it to.' }
+    const origin = siteOrigin(request)
+    try {
+        await sendMail(apiKey, mailSender(), accountEmail({ ...input, loginUrl: origin ? `${origin}/login` : '' }))
+        return { emailed_to: input.to }
+    } catch (error) {
+        return { email_error: error instanceof Error ? error.message : String(error) }
+    }
+}
+
 Deno.serve(async (request) => {
     if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
@@ -41,7 +69,7 @@ Deno.serve(async (request) => {
     const { data: caller } = await admin.auth.getUser(token)
     if (!caller.user) return errorResponse('Unauthorized: invalid access token.', 401)
 
-    const { data: profile } = await admin.from('profiles').select('role, is_active').eq('id', caller.user.id).single()
+    const { data: profile } = await admin.from('profiles').select('role, is_active, name, email').eq('id', caller.user.id).single()
     if (!profile?.is_active || !['admin', 'lead'].includes(profile.role)) {
         return errorResponse('Forbidden: only active admins or leads can manage users.', 403)
     }
@@ -121,8 +149,19 @@ Deno.serve(async (request) => {
                 : errorResponse('This application was already reviewed.', 409)
         }
 
+        // Tell them, from the lead they applied to. The account exists whether or not this goes out.
+        const { data: leadProfile } = await admin.from('profiles').select('name, email').eq('id', application.lead_id).maybeSingle()
+        const emailStatus = await emailAccount(request, {
+            kind: 'activation',
+            to: application.active_email,
+            name: application.full_name,
+            loginEmail: email,
+            password: temporaryPassword,
+            from: { name: leadProfile?.name ?? profile.name, email: leadProfile?.email ?? profile.email },
+        })
+
         return Response.json(
-            { id: application.id, status: 'accepted', user_id: userId, email, temporary_password: temporaryPassword },
+            { id: application.id, status: 'accepted', user_id: userId, email, temporary_password: temporaryPassword, ...emailStatus },
             { headers: corsHeaders },
         )
     }
@@ -142,13 +181,8 @@ Deno.serve(async (request) => {
             ? await admin.from('profiles').select('id, name, email').in('id', leadIds)
             : { data: [] }
 
-        // Until a domain is verified in Resend, only its own onboarding@resend.dev sender can be used, and it
-        // delivers only to the address of the Resend account owner. Set MAIL_FROM_EMAIL once a domain is verified.
-        const sender = {
-            name: Deno.env.get('MAIL_FROM_NAME') ?? 'Grey Owls Tracker',
-            email: Deno.env.get('MAIL_FROM_EMAIL') ?? 'onboarding@resend.dev',
-        }
-        const site = siteFrom(Deno.env.get('SITE_URL') ?? request.headers.get('origin') ?? '')
+        const sender = mailSender()
+        const site = siteOrigin(request)
 
         // Who may be emailed, and the per-recipient results, are decided in applicant-email.ts.
         const outcome = await emailApplicants(ids, { id: caller.user.id, role: profile.role }, {
@@ -188,7 +222,26 @@ Deno.serve(async (request) => {
         // An admin/lead setting this password on someone else's behalf, not the user
         // choosing it themselves — force them to pick their own on next sign-in.
         await admin.from('profiles').update({ must_change_password: true }).eq('id', data.user.id)
-        return Response.json({ id: data.user.id }, { headers: corsHeaders })
+
+        // Email them the new password. Someone hired through the tracker gave a contact address on
+        // their application, which is the one they read; anyone else is emailed at their login address.
+        const { data: target } = await admin.from('profiles').select('name, email').eq('id', data.user.id).maybeSingle()
+        const { data: hiredAs } = await admin
+            .from('hiring_applications')
+            .select('active_email')
+            .eq('user_id', data.user.id)
+            .order('reviewed_at', { ascending: false })
+            .limit(1)
+        const loginEmail = data.user.email ?? target?.email ?? ''
+        const emailStatus = await emailAccount(request, {
+            kind: 'reset',
+            to: hiredAs?.[0]?.active_email ?? loginEmail,
+            name: target?.name ?? '',
+            loginEmail,
+            password: body.password,
+            from: { name: profile.name, email: profile.email },
+        })
+        return Response.json({ id: data.user.id, ...emailStatus }, { headers: corsHeaders })
     }
 
     if (!body.email || !body.password || !body.name) return errorResponse('Name, email, and password are required.', 400)

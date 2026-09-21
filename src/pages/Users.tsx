@@ -154,10 +154,22 @@ export function Users() {
   })
 
   const resetMutation = useMutation({
-    mutationFn: async () => api.patch(`/users/${resetTarget!.id}`, { password: resetPassword, email: resetTarget!.email }),
-    onSuccess: () => {
+    mutationFn: async () =>
+      (await api.patch<{ id: string; emailed_to?: string; email_error?: string }>(`/users/${resetTarget!.id}`, { password: resetPassword, email: resetTarget!.email })).data,
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
-      setNotice({ tone: 'success', text: `Password reset for ${resetTarget!.name}. They'll be asked to choose a new one when they next sign in.` })
+      // The password is changed either way; the notice says whether the new one was also emailed to them.
+      setNotice(
+        result.email_error
+          ? {
+              tone: 'error',
+              text: `Password reset for ${resetTarget!.name}, but the email couldn't be sent (${result.email_error}) Tell them the new password yourself.`,
+            }
+          : {
+              tone: 'success',
+              text: `Password reset for ${resetTarget!.name}.${result.emailed_to ? ` We emailed the new password to ${result.emailed_to}.` : ''} They'll be asked to choose a new one when they next sign in.`,
+            },
+      )
       setResetTarget(null)
       setResetPassword('')
       setError(null)

@@ -22,6 +22,9 @@ export interface ReviewResult {
   // Only present on an accept: the login that was created, and its one-time password.
   email?: string
   temporary_password?: string
+  // Whether the new hire was also emailed their details: the address it went to, or why it didn't.
+  emailed_to?: string
+  email_error?: string
 }
 
 /** The stated requirement for the role: a personal computer, stable internet, Ryzen 3 / Intel i5 and a 4 GB GPU. */

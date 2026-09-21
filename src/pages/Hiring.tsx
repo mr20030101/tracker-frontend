@@ -26,7 +26,7 @@ import { Select } from '../components/Select'
 type StatusFilter = HiringStatus | 'all'
 type Notice = { tone: 'success' | 'error'; text: string }
 type Review = { application: HiringApplication; decision: 'accept' | 'deny' }
-type Credentials = { name: string; email: string; password: string }
+type Credentials = { name: string; email: string; password: string; emailedTo?: string; emailError?: string }
 
 const STATUS_FILTERS: StatusFilter[] = ['pending', 'accepted', 'denied', 'all']
 const STATUS_LABELS: Record<StatusFilter, string> = { pending: 'Pending', accepted: 'Accepted', denied: 'Denied', all: 'All' }
@@ -202,7 +202,13 @@ export function Hiring() {
       if (decision === 'accept' && result.email && result.temporary_password) {
         // The new login shows up on the Users page (and the lead's team) straight away.
         queryClient.invalidateQueries({ queryKey: ['users'] })
-        setCredentials({ name: application.full_name, email: result.email, password: result.temporary_password })
+        setCredentials({
+          name: application.full_name,
+          email: result.email,
+          password: result.temporary_password,
+          emailedTo: result.emailed_to,
+          emailError: result.email_error,
+        })
       } else {
         setNotice({ tone: 'success', text: `${application.full_name}'s application was denied.` })
       }
@@ -774,9 +780,20 @@ export function Hiring() {
         <Modal title="Login created" onClose={() => setCredentials(null)}>
           <div className="flex flex-col gap-3">
             <p className="text-sm text-gray-600">
-              <span className="font-medium text-gray-900">{credentials.name}</span> has been accepted and added to the team. Send them
-              these details — they'll choose their own password when they first sign in.
+              <span className="font-medium text-gray-900">{credentials.name}</span> has been accepted and added to the team.{' '}
+              {credentials.emailedTo
+                ? "They'll choose their own password when they first sign in."
+                : "Send them these details — they'll choose their own password when they first sign in."}
             </p>
+            {credentials.emailedTo ? (
+              <p role="status" className="rounded-lg bg-status-success-bg px-3 py-2 text-sm text-status-success-text">
+                We emailed these details to {credentials.emailedTo}.
+              </p>
+            ) : credentials.emailError ? (
+              <p role="alert" className="rounded-lg bg-status-warning-bg px-3 py-2 text-sm text-status-warning-text">
+                We couldn't email them: {credentials.emailError} Send them the details yourself.
+              </p>
+            ) : null}
             <dl className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm">
               <dt className="text-xs font-semibold uppercase tracking-wider text-gray-400">Email</dt>
               <dd className="mb-2 break-all font-medium text-gray-900">{credentials.email}</dd>

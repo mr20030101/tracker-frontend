@@ -65,18 +65,26 @@ export interface RenderedEmail {
  * light or dark theme applies, exactly as it does to a message someone typed.
  */
 export function renderEmail(template: EmailTemplate, vars: Record<string, string>): RenderedEmail {
+    // Values are dropped in LAST, after all formatting, so nothing in a value is ever treated as
+    // formatting: a password like "a**b**c" or "https://x" reaches the reader exactly as it is.
     // Unknown {placeholders} are left as written, so a typo in the template is visible rather than silently blank.
-    const fill = (text: string, clean: (value: string) => string) =>
-        text.replace(/\{(\w+)\}/g, (whole, key: string) => (key in vars ? clean(vars[key]) : whole))
-    // Escape first, then fill: the braces survive escaping, and each value is escaped as it goes in.
+    const fill = (text: string, clean: (value: string, key: string) => string) =>
+        text.replace(/\{(\w+)\}/g, (whole, key: string) => (key in vars ? clean(vars[key], key) : whole))
+    const isWebAddress = (value: string) => /^https?:\/\/\S+$/i.test(value)
+    // In the HTML a value is escaped, and a web address in a *Url variable (like {loginUrl}) becomes a link.
+    const htmlValue = (value: string, key: string) =>
+        key.endsWith('Url') && isWebAddress(value) ? `<a href="${escapeHtml(value)}">${escapeHtml(value)}</a>` : escapeHtml(value)
     const rich = (text: string) =>
-        fill(escapeHtml(text), escapeHtml)
-            .replace(/(https?:\/\/[^\s<]+[^\s<.,;:!?)])/g, '<a href="$1">$1</a>')
-            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\n/g, '<br>')
+        fill(
+            escapeHtml(text)
+                .replace(/(https?:\/\/[^\s<]+[^\s<.,;:!?)])/g, '<a href="$1">$1</a>')
+                .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\n/g, '<br>'),
+            htmlValue,
+        )
 
     const subject = fill(template.subject, (value) => value.replace(/[\r\n]+/g, ' ')).trim()
-    const text = fill(template.body, (value) => value).replace(/\*\*(.+?)\*\*/g, '$1')
+    const text = fill(template.body.replace(/\*\*(.+?)\*\*/g, '$1'), (value) => value)
     const paragraphs = template.body
         .split(/\n{2,}/)
         .map((paragraph) => paragraph.trim())

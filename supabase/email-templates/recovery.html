@@ -1,0 +1,14 @@
+<!--
+  Supabase Auth "Reset Password" email (the one sent by the "Forgot password?" link on the login page).
+  Paste this into: Supabase dashboard > Authentication > Email Templates > Reset Password > Message body.
+  Set the Subject there to:  Reset your Grey Owls Tracker password
+  {{ .Email }} and {{ .ConfirmationURL }} are filled in by Supabase; keep them exactly as written.
+  The wording matches the other emails: a plain note, no banner, no buttons, no footer.
+-->
+<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.55;max-width:640px">
+<p style="margin:0 0 15px">Hi,</p>
+<p style="margin:0 0 15px">We got a request to reset the password for your Grey Owls Tracker account (<strong>{{ .Email }}</strong>).</p>
+<p style="margin:0 0 15px">To choose a new password, use this link: <a href="{{ .ConfirmationURL }}"><strong>Reset my password</strong></a></p>
+<p style="margin:0 0 15px">The link can only be used once and stops working after a short while. If you didn't ask for this, you can ignore this email and your password will stay the same.</p>
+<p style="margin:0">Grey Owls Tracker</p>
+</div>
