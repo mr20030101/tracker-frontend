@@ -1,4 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { APPLICANT_EMAIL, emailApplicants, siteFrom, type OutgoingEmail } from './applicant-email.ts'
+import { resendError, resendRequest, type Sender } from './resend.ts'
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -15,6 +17,15 @@ const PASSWORD_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456
 function generateTemporaryPassword(length = 12) {
     const bytes = crypto.getRandomValues(new Uint8Array(length))
     return Array.from(bytes, (byte) => PASSWORD_ALPHABET[byte % PASSWORD_ALPHABET.length]).join('')
+}
+
+async function sendMail(apiKey: string, sender: Sender, email: OutgoingEmail) {
+    const mail = resendRequest(apiKey, sender, email)
+    const response = await fetch(mail.url, { method: 'POST', headers: mail.headers, body: mail.body })
+    if (!response.ok) {
+        const detail = await response.json().catch(() => null)
+        throw new Error(resendError(response.status, detail))
+    }
 }
 
 Deno.serve(async (request) => {
@@ -114,6 +125,45 @@ Deno.serve(async (request) => {
             { id: application.id, status: 'accepted', user_id: userId, email, temporary_password: temporaryPassword },
             { headers: corsHeaders },
         )
+    }
+
+    if (body.action === 'email-applicants') {
+        const apiKey = Deno.env.get('RESEND_API_KEY')
+        if (!apiKey) return errorResponse('Email sending is not set up yet: the RESEND_API_KEY secret is missing on this function.', 503)
+
+        const ids: number[] = Array.isArray(body.ids) ? body.ids.map(Number).filter(Number.isInteger) : []
+        const { data: applications, error: loadError } = await admin
+            .from('hiring_applications')
+            .select('id, lead_id, full_name, active_email, remotasks_email, status')
+            .in('id', ids)
+        if (loadError) return errorResponse(`Could not load those applications: ${loadError.message}`, 400)
+        const leadIds = [...new Set((applications ?? []).map((application) => application.lead_id))]
+        const { data: leadRows } = leadIds.length
+            ? await admin.from('profiles').select('id, name, email').in('id', leadIds)
+            : { data: [] }
+
+        // Until a domain is verified in Resend, only its own onboarding@resend.dev sender can be used, and it
+        // delivers only to the address of the Resend account owner. Set MAIL_FROM_EMAIL once a domain is verified.
+        const sender = {
+            name: Deno.env.get('MAIL_FROM_NAME') ?? 'Grey Owls Tracker',
+            email: Deno.env.get('MAIL_FROM_EMAIL') ?? 'onboarding@resend.dev',
+        }
+        const site = siteFrom(Deno.env.get('SITE_URL') ?? request.headers.get('origin') ?? '')
+
+        // Who may be emailed, and the per-recipient results, are decided in applicant-email.ts.
+        const outcome = await emailApplicants(ids, { id: caller.user.id, role: profile.role }, {
+            applications: applications ?? [],
+            leads: new Map((leadRows ?? []).map((lead) => [lead.id, { name: lead.name, email: lead.email }])),
+            template: APPLICANT_EMAIL,
+            loginUrl: site ? `${site}/login` : '',
+            send: (email) => sendMail(apiKey, sender, email),
+        })
+        if (!outcome.ok) return errorResponse(outcome.error, outcome.status)
+
+        if (outcome.sent.length) {
+            await admin.from('hiring_applications').update({ emailed_at: new Date().toISOString() }).in('id', outcome.sent)
+        }
+        return Response.json({ sent: outcome.sent, failed: outcome.failed }, { headers: corsHeaders })
     }
 
     if (body.action === 'delete-user') {

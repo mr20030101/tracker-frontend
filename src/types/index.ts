@@ -194,6 +194,8 @@ export interface HiringApplication {
   status: HiringStatus
   reviewed_by: string | null
   reviewed_at: string | null
+  // When the applicant was last emailed from the Accepted tab; null if never.
+  emailed_at: string | null
   // The login created when the application was accepted.
   user_id: string | null
   created_at: string

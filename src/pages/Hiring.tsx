@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import type { ColumnDef } from '@tanstack/react-table'
+import type { ColumnDef, RowSelectionState } from '@tanstack/react-table'
 import { Check, Copy, ExternalLink } from 'lucide-react'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import {
   applicationLink,
   describeIssues,
+  emailApplicants,
   fetchApplications,
+  MAX_EMAIL_RECIPIENTS,
   MIN_GPU_MEMORY_GB,
   requirementIssues,
   reviewApplication,
@@ -38,6 +40,8 @@ const NOTICE_CLASSES: Record<Notice['tone'], string> = {
   success: 'border-status-success-text/30 bg-status-success-bg text-status-success-text',
   error: 'border-status-danger-text/30 bg-status-danger-bg text-status-danger-text',
 }
+
+const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`
 
 const selectClass = 'rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent'
 const pillClass = 'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium'
@@ -139,6 +143,8 @@ export function Hiring() {
   const [search, setSearch] = useState('')
   const [review, setReview] = useState<Review | null>(null)
   const [details, setDetails] = useState<HiringApplication | null>(null)
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
+  const [emailing, setEmailing] = useState<HiringApplication[] | null>(null)
   const [credentials, setCredentials] = useState<Credentials | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<Notice | null>(null)
@@ -168,6 +174,7 @@ export function Hiring() {
   const leadFilter = isAdmin && leads.some((lead) => lead.id === leadParam) ? leadParam : ''
 
   function setFilter(key: 'status' | 'lead', value: string) {
+    setRowSelection({})
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev)
@@ -203,6 +210,26 @@ export function Hiring() {
     onError: (mutationError: Error) => setError(mutationError.message || 'Could not review this application.'),
   })
 
+  const emailMutation = useMutation({
+    mutationFn: (ids: number[]) => emailApplicants(ids),
+    onSuccess: (result, ids) => {
+      queryClient.invalidateQueries({ queryKey: ['hiring-applications'] })
+      setEmailing(null)
+      setError(null)
+      // Anyone the email didn't reach stays selected, so it can be tried again.
+      setRowSelection(Object.fromEntries(result.failed.map((failure) => [String(failure.id), true])))
+      setNotice(
+        result.failed.length === 0
+          ? { tone: 'success', text: `Email sent to ${plural(result.sent.length, 'applicant')}.` }
+          : {
+              tone: 'error',
+              text: `Sent to ${result.sent.length} of ${ids.length}. Not sent: ${result.failed.map((failure) => `${failure.name} (${failure.error})`).join('; ')}. They're still selected so you can try again.`,
+            },
+      )
+    },
+    onError: (mutationError: Error) => setError(mutationError.message || 'Could not send the email.'),
+  })
+
   const acceptingMutation = useMutation({
     mutationFn: (accepting: boolean) => setAcceptingApplications(effectiveLinkLeadId, accepting),
     onSuccess: async () => {
@@ -217,6 +244,11 @@ export function Hiring() {
   function openReview(next: Review) {
     setError(null)
     setReview(next)
+  }
+
+  function openEmail() {
+    setError(null)
+    setEmailing(selected)
   }
 
   // Whose application link to show: a lead's own, or (for an admin) the one they pick.
@@ -239,8 +271,40 @@ export function Hiring() {
         [a.full_name, a.remotasks_email, a.active_email, a.remotasks_id].some((v) => v.toLowerCase().includes(normalizedSearch)),
     )
 
+  // Only rows that are showing count, so a search or filter can't leave someone hidden but still selected.
+  const selected = rows.filter((a) => rowSelection[String(a.id)])
+
   const columns = useMemo<ColumnDef<HiringApplication, any>[]>(
     () => [
+      ...(statusFilter === 'accepted'
+        ? [
+            {
+              id: 'select',
+              header: ({ table }) => (
+                <input
+                  type="checkbox"
+                  aria-label="Select all accepted applicants"
+                  checked={table.getIsAllRowsSelected()}
+                  ref={(el) => {
+                    if (el) el.indeterminate = table.getIsSomeRowsSelected()
+                  }}
+                  onChange={table.getToggleAllRowsSelectedHandler()}
+                  className="h-4 w-4 rounded border-gray-300 text-accent focus:ring-accent"
+                />
+              ),
+              cell: ({ row }) => (
+                <input
+                  type="checkbox"
+                  aria-label={`Select ${row.original.full_name}`}
+                  checked={row.getIsSelected()}
+                  onChange={row.getToggleSelectedHandler()}
+                  className="h-4 w-4 rounded border-gray-300 text-accent focus:ring-accent"
+                />
+              ),
+              enableSorting: false,
+            } satisfies ColumnDef<HiringApplication, any>,
+          ]
+        : []),
       {
         id: 'applicant',
         accessorFn: (a) => a.full_name,
@@ -275,6 +339,23 @@ export function Hiring() {
         header: 'Applied',
         cell: ({ row }) => <span className="whitespace-nowrap text-gray-500">{formatDate(row.original.created_at)}</span>,
       },
+      ...(statusFilter === 'accepted'
+        ? [
+            {
+              id: 'emailed',
+              accessorFn: (a: HiringApplication) => (a.emailed_at ? new Date(a.emailed_at).getTime() : 0),
+              header: 'Emailed',
+              cell: ({ row }) =>
+                row.original.emailed_at ? (
+                  <span title={new Date(row.original.emailed_at).toLocaleString()} className="whitespace-nowrap text-status-success-text">
+                    {formatDate(row.original.emailed_at)}
+                  </span>
+                ) : (
+                  <span className="text-xs text-gray-400">Not yet</span>
+                ),
+            } satisfies ColumnDef<HiringApplication, any>,
+          ]
+        : []),
       // A lead only ever sees their own applicants, so a Lead column would repeat one value.
       ...(isAdmin
         ? [
@@ -453,7 +534,10 @@ export function Hiring() {
           placeholder="Search by name, email or ID..."
           aria-label="Search applicants"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value)
+            setRowSelection({})
+          }}
           className={`w-64 ${selectClass}`}
         />
         {isAdmin && (
@@ -473,10 +557,27 @@ export function Hiring() {
         </div>
       )}
 
+      {statusFilter === 'accepted' && selected.length > 0 && (
+        <div className="sticky top-0 z-10 mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 shadow-sm">
+          <span className="text-sm font-medium text-gray-700">{selected.length} selected</span>
+          <button onClick={openEmail} className="rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground">
+            Send email
+          </button>
+          <button onClick={() => setRowSelection({})} className="ml-auto text-sm font-medium text-gray-500 hover:underline">
+            Clear selection
+          </button>
+        </div>
+      )}
+      {statusFilter === 'accepted' && selected.length === 0 && rows.length > 0 && (
+        <p className="mb-3 text-xs text-gray-400">Tick one or more applicants to send them an email.</p>
+      )}
+
       <DataTable
         columns={columns}
         data={rows}
         getRowId={(a) => String(a.id)}
+        rowSelection={statusFilter === 'accepted' ? rowSelection : undefined}
+        onRowSelectionChange={statusFilter === 'accepted' ? setRowSelection : undefined}
         scrollX
         onRowClick={setDetails}
         isLoading={isLoading}
@@ -504,6 +605,9 @@ export function Hiring() {
                 <Detail label="Applied">{new Date(details.created_at).toLocaleString()}</Detail>
                 {isAdmin && <Detail label="Lead">{leadNameById.get(details.lead_id) ?? 'Unknown'}</Detail>}
                 {details.reviewed_at && <Detail label="Reviewed">{new Date(details.reviewed_at).toLocaleString()}</Detail>}
+                {details.status === 'accepted' && (
+                  <Detail label="Emailed">{details.emailed_at ? new Date(details.emailed_at).toLocaleString() : 'Not yet'}</Detail>
+                )}
               </dl>
             </section>
             <section>
@@ -559,6 +663,61 @@ export function Hiring() {
                   </>
                 )}
               </div>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {emailing && (
+        <Modal title={`Send email to ${plural(emailing.length, 'applicant')}?`} onClose={() => setEmailing(null)}>
+          <div className="flex flex-col gap-3">
+            <p className="text-sm text-gray-600">
+              Each person is emailed at their active email address. Replies go to their lead.
+            </p>
+            <ul className="max-h-56 divide-y divide-gray-100 overflow-y-auto rounded-lg border border-gray-200 text-sm">
+              {emailing.map((applicant) => (
+                <li key={applicant.id} className="flex items-center justify-between gap-3 px-3 py-2">
+                  <div className="min-w-0">
+                    <div className="truncate font-medium text-gray-900">{applicant.full_name}</div>
+                    <div className="truncate text-xs text-gray-400">{applicant.active_email}</div>
+                  </div>
+                  {applicant.emailed_at && (
+                    <span className={`${pillClass} shrink-0 bg-status-warning-bg text-status-warning-text`}>Already emailed</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+            {emailing.some((applicant) => applicant.emailed_at) && (
+              <p className="text-xs text-status-warning-text">
+                {plural(emailing.filter((applicant) => applicant.emailed_at).length, 'person')} already received this email and will get it again.
+              </p>
+            )}
+            {emailing.length > MAX_EMAIL_RECIPIENTS && (
+              <div role="alert" className="text-sm text-status-danger-text">
+                You can email at most {MAX_EMAIL_RECIPIENTS} people at a time. Untick some and send again.
+              </div>
+            )}
+            {error && (
+              <div role="alert" className="text-sm text-status-danger-text">
+                {error}
+              </div>
+            )}
+            <div className="mt-2 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setEmailing(null)}
+                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={emailMutation.isPending || emailing.length > MAX_EMAIL_RECIPIENTS}
+                onClick={() => emailMutation.mutate(emailing.map((applicant) => applicant.id))}
+                className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+              >
+                {emailMutation.isPending ? 'Sending...' : `Send ${plural(emailing.length, 'email')}`}
+              </button>
             </div>
           </div>
         </Modal>

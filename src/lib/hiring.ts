@@ -131,3 +131,18 @@ export async function reviewApplication(id: number, decision: 'accept' | 'deny')
   if (error) throw await functionErrorMessage(error)
   return data as ReviewResult
 }
+
+/** The most applicants one send can go to; the function enforces the same limit. */
+export const MAX_EMAIL_RECIPIENTS = 50
+
+export interface EmailResult {
+  sent: number[]
+  failed: { id: number; name: string; error: string }[]
+}
+
+/** Emails the chosen accepted applicants (at most 50). One failing address doesn't stop the others; `failed` says who missed out. */
+export async function emailApplicants(ids: number[]): Promise<EmailResult> {
+  const { data, error } = await supabase.functions.invoke('manage-user', { body: { action: 'email-applicants', ids } })
+  if (error) throw await functionErrorMessage(error)
+  return data as EmailResult
+}

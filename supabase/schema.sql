@@ -614,6 +614,9 @@ alter table public.hiring_applications add column if not exists cpu text check (
 alter table public.hiring_applications add column if not exists gpu text check (char_length(gpu) between 1 and 200);
 alter table public.hiring_applications add column if not exists gpu_memory_gb numeric(5, 1) check (gpu_memory_gb >= 0 and gpu_memory_gb <= 256);
 
+-- When the applicant was last emailed, set by the manage-user function after a send.
+alter table public.hiring_applications add column if not exists emailed_at timestamptz;
+
 create index if not exists hiring_applications_lead_idx on public.hiring_applications(lead_id, status, created_at desc);
 -- One live application per applicant per lead; a denied applicant may re-apply.
 create unique index if not exists hiring_applications_open_key
