@@ -163,6 +163,12 @@ export function Login() {
               />
             </div>
             {error && <div className="text-sm text-status-danger-text">{error}</div>}
+            {/* e.g. "Password updated" after resetting: they land back here, so it has to show here. */}
+            {notice && (
+              <div role="status" className="text-sm text-status-success-text">
+                {notice}
+              </div>
+            )}
             <button
               type="submit"
               disabled={submitting}
