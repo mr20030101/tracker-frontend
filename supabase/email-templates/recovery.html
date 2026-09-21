@@ -1,14 +1,36 @@
-<!--
-  Supabase Auth "Reset Password" email (the one sent by the "Forgot password?" link on the login page).
-  Paste this into: Supabase dashboard > Authentication > Email Templates > Reset Password > Message body.
-  Set the Subject there to:  Reset your Grey Owls Tracker password
-  {{ .Email }} and {{ .ConfirmationURL }} are filled in by Supabase; keep them exactly as written.
-  The wording matches the other emails: a plain note, no banner, no buttons, no footer.
--->
-<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.55;max-width:640px">
-<p style="margin:0 0 15px">Hi,</p>
-<p style="margin:0 0 15px">We got a request to reset the password for your Grey Owls Tracker account (<strong>{{ .Email }}</strong>).</p>
-<p style="margin:0 0 15px">To choose a new password, use this link: <a href="{{ .ConfirmationURL }}"><strong>Reset my password</strong></a></p>
-<p style="margin:0 0 15px">The link can only be used once and stops working after a short while. If you didn't ask for this, you can ignore this email and your password will stay the same.</p>
-<p style="margin:0">Grey Owls Tracker</p>
-</div>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light only">
+<meta name="supported-color-schemes" content="light only">
+<title>Reset your Grey Owls Tracker password</title>
+<style>
+@media (max-width:440px) {
+  .outer { padding:16px 8px !important }
+  .pad { padding:24px 20px 26px !important }
+  .row-label, .row-value { display:block !important; width:auto !important }
+  .row-label { padding-bottom:0 !important }
+  .row-value { padding-bottom:8px !important }
+}
+</style>
+</head>
+<body style="margin:0;padding:0;background:#F3F4F6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all">Use the button to choose a new password. The link works once.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F3F4F6"><tr><td class="outer" align="center" style="padding:32px 12px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#FFFFFF;border:1px solid #DCDFE4;border-radius:12px;border-collapse:separate;overflow:hidden">
+<tr><td style="background:#32373F;border-bottom:3px solid #F5B301;padding:16px 24px"><table role="presentation" cellpadding="0" cellspacing="0"><tr><td width="28" style="padding-right:12px"><img src="{{ .SiteURL }}/images/greyowls/icons/icon-192.png" width="28" height="28" alt="" style="display:block;border:0;border-radius:6px"></td><td style="font-size:15px;font-weight:700;color:#FFFFFF">Grey Owls Tracker</td></tr></table></td></tr>
+<tr><td class="pad" style="padding:28px 30px 14px">
+<h1 style="margin:0 0 20px;font-size:24px;line-height:1.25;font-weight:700;color:#32373F">Reset your password</h1>
+<p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:#32373F;font-weight:700">Hi,</p>
+<p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:#32373F">We got a request to reset the password for your Grey Owls Tracker account. Use the button below to choose a new one.</p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px"><tr><td style="background:#FEF6D8;border-left:3px solid #F5B301;border-radius:8px;padding:16px 16px 18px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td class="row-label" width="53" valign="top" style="padding:6px 10px 4px 0;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#5A626D">Account</td><td class="row-value" valign="top" style="padding:3px 0;font-size:13px;line-height:1.5;font-weight:600;color:#32373F;word-break:break-all">{{ .Email }}</td></tr></table><table role="presentation" cellpadding="0" cellspacing="0" style="margin:18px 0 0"><tr><td style="background:#F5B301;border-radius:8px"><a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:12px 22px;font-size:14px;font-weight:700;color:#1A1500;text-decoration:none">Reset my password</a></td></tr></table><p style="margin:12px 0 0;font-size:11px;line-height:1.5;color:#5A626D">Or paste this link into your browser:<br><a href="{{ .ConfirmationURL }}" style="color:#8A6200;word-break:break-all">{{ .ConfirmationURL }}</a></p></td></tr></table>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px"><tr><td style="background:#FFEDEA;border-left:3px solid #E5534B;border-radius:8px;padding:14px 18px;font-size:14px;line-height:1.6;color:#32373F"><strong>Didn't ask for this?</strong> You can ignore this email and your password will stay the same.</td></tr></table>
+<p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:#32373F">The link can only be used once and stops working after a short while.</p>
+</td></tr>
+</table>
+<p style="max-width:480px;margin:18px auto 0;font-size:11px;line-height:1.6;color:#5A626D;text-align:center">Sent by Grey Owls Tracker. You're receiving this because a password reset was requested for this address.</p>
+</td></tr></table>
+</body>
+</html>

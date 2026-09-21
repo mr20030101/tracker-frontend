@@ -594,12 +594,13 @@ create table if not exists public.hiring_applications (
   remotasks_id text not null check (char_length(remotasks_id) between 1 and 200),
   full_name text not null check (char_length(full_name) between 1 and 200),
   active_email text not null check (char_length(active_email) between 3 and 254),
-  facebook_url text not null check (char_length(facebook_url) <= 500 and facebook_url ~* '^https?://\S+$'),
+  facebook_url text not null check (char_length(facebook_url) between 1 and 500),
   has_robotics_background boolean not null,
   status text not null default 'pending' check (status in ('pending', 'accepted', 'denied')),
   reviewed_by uuid references public.profiles(id) on delete set null,
   reviewed_at timestamptz,
-  -- The login created when the application was accepted.
+  -- The login created for this applicant. Accepting doesn't create it: an accepted applicant
+  -- gets an account in a separate step (manage-user, create-account), so this is null until then.
   user_id uuid references public.profiles(id) on delete set null,
   created_at timestamptz not null default now()
 );
@@ -613,6 +614,25 @@ alter table public.hiring_applications add column if not exists has_stable_inter
 alter table public.hiring_applications add column if not exists cpu text check (char_length(cpu) between 1 and 200);
 alter table public.hiring_applications add column if not exists gpu text check (char_length(gpu) between 1 and 200);
 alter table public.hiring_applications add column if not exists gpu_memory_gb numeric(5, 1) check (gpu_memory_gb >= 0 and gpu_memory_gb <= 256);
+
+-- The profile answer used to have to be an https link. Applications brought over from the
+-- old Google Form include answers that aren't (a name, "Nil"), so the table only limits the
+-- length; submit_hiring_application() below still requires a real link from the public form,
+-- and the Hiring page shows anything that isn't a link as plain text. This drops the old
+-- check from a database created before this change (and re-adds the current one).
+do $$
+declare c record;
+begin
+  for c in
+    select conname from pg_constraint
+    where conrelid = 'public.hiring_applications'::regclass and contype = 'c'
+      and pg_get_constraintdef(oid) ilike '%facebook_url%'
+  loop
+    execute format('alter table public.hiring_applications drop constraint %I', c.conname);
+  end loop;
+  alter table public.hiring_applications
+    add constraint hiring_applications_facebook_url_check check (char_length(facebook_url) between 1 and 500);
+end $$;
 
 -- When the applicant was last emailed, set by the manage-user function after a send.
 alter table public.hiring_applications add column if not exists emailed_at timestamptz;

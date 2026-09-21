@@ -19,9 +19,15 @@ export interface ApplicationInput {
 export interface ReviewResult {
   id: number
   status: 'accepted' | 'denied'
-  // Only present on an accept: the login that was created, and its one-time password.
-  email?: string
-  temporary_password?: string
+}
+
+// What creating an accepted applicant's account returns.
+export interface AccountResult {
+  id: number
+  user_id: string
+  // The login that was created, and its one-time password.
+  email: string
+  temporary_password: string
   // Whether the new hire was also emailed their details: the address it went to, or why it didn't.
   emailed_to?: string
   email_error?: string
@@ -133,6 +139,13 @@ export async function reviewApplication(id: number, decision: 'accept' | 'deny')
   })
   if (error) throw await functionErrorMessage(error)
   return data as ReviewResult
+}
+
+/** Creates the login for an accepted applicant. Accepting doesn't do this; it is its own step. */
+export async function createAccount(id: number): Promise<AccountResult> {
+  const { data, error } = await supabase.functions.invoke('manage-user', { body: { action: 'create-account', id } })
+  if (error) throw await functionErrorMessage(error)
+  return data as AccountResult
 }
 
 /** The most applicants one send can go to; the function enforces the same limit. */

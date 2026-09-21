@@ -7,6 +7,7 @@ import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import {
   applicationLink,
+  createAccount,
   describeIssues,
   emailApplicants,
   fetchApplications,
@@ -16,7 +17,6 @@ import {
   reviewApplication,
   safeExternalHref,
   setAcceptingApplications,
-  type ReviewResult,
 } from '../lib/hiring'
 import type { HiringApplication, HiringStatus, User } from '../types'
 import { DataTable } from '../components/DataTable'
@@ -145,6 +145,7 @@ export function Hiring() {
   const [details, setDetails] = useState<HiringApplication | null>(null)
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
   const [emailing, setEmailing] = useState<HiringApplication[] | null>(null)
+  const [creating, setCreating] = useState<HiringApplication | null>(null)
   const [credentials, setCredentials] = useState<Credentials | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<Notice | null>(null)
@@ -195,25 +196,39 @@ export function Hiring() {
 
   const reviewMutation = useMutation({
     mutationFn: ({ application, decision }: Review) => reviewApplication(application.id, decision),
-    onSuccess: (result: ReviewResult, { application, decision }) => {
+    onSuccess: (_result, { application, decision }) => {
       queryClient.invalidateQueries({ queryKey: ['hiring-applications'] })
       setReview(null)
       setError(null)
-      if (decision === 'accept' && result.email && result.temporary_password) {
-        // The new login shows up on the Users page (and the lead's team) straight away.
-        queryClient.invalidateQueries({ queryKey: ['users'] })
-        setCredentials({
-          name: application.full_name,
-          email: result.email,
-          password: result.temporary_password,
-          emailedTo: result.emailed_to,
-          emailError: result.email_error,
-        })
-      } else {
-        setNotice({ tone: 'success', text: `${application.full_name}'s application was denied.` })
-      }
+      setNotice({
+        tone: 'success',
+        text:
+          decision === 'accept'
+            ? `${application.full_name} was accepted. Create their account from the Accepted tab when you're ready.`
+            : `${application.full_name}'s application was denied.`,
+      })
     },
     onError: (mutationError: Error) => setError(mutationError.message || 'Could not review this application.'),
+  })
+
+  // A separate step from accepting: only an accepted applicant can be given an account.
+  const createAccountMutation = useMutation({
+    mutationFn: (application: HiringApplication) => createAccount(application.id),
+    onSuccess: (result, application) => {
+      queryClient.invalidateQueries({ queryKey: ['hiring-applications'] })
+      // The new login shows up on the Users page (and the lead's team) straight away.
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+      setCreating(null)
+      setError(null)
+      setCredentials({
+        name: application.full_name,
+        email: result.email,
+        password: result.temporary_password,
+        emailedTo: result.emailed_to,
+        emailError: result.email_error,
+      })
+    },
+    onError: (mutationError: Error) => setError(mutationError.message || 'Could not create this account.'),
   })
 
   const emailMutation = useMutation({
@@ -250,6 +265,11 @@ export function Hiring() {
   function openReview(next: Review) {
     setError(null)
     setReview(next)
+  }
+
+  function openCreate(application: HiringApplication) {
+    setError(null)
+    setCreating(application)
   }
 
   function openEmail() {
@@ -362,6 +382,21 @@ export function Hiring() {
             } satisfies ColumnDef<HiringApplication, any>,
           ]
         : []),
+      ...(statusFilter === 'accepted'
+        ? [
+            {
+              id: 'account',
+              accessorFn: (a: HiringApplication) => (a.user_id ? 1 : 0),
+              header: 'Account',
+              cell: ({ row }) =>
+                row.original.user_id ? (
+                  <span className={`${pillClass} bg-status-success-bg text-status-success-text`}>Created</span>
+                ) : (
+                  <span className="text-xs text-gray-400">Not created</span>
+                ),
+            } satisfies ColumnDef<HiringApplication, any>,
+          ]
+        : []),
       // A lead only ever sees their own applicants, so a Lead column would repeat one value.
       ...(isAdmin
         ? [
@@ -426,14 +461,22 @@ export function Hiring() {
                   </button>
                 </>
               )}
-              {application.status === 'accepted' && (
-                <Link
-                  to={`/contributors/${encodeURIComponent(application.remotasks_email)}`}
-                  className="text-sm font-medium text-sky-700 hover:underline"
-                >
-                  Profile
-                </Link>
-              )}
+              {application.status === 'accepted' &&
+                (application.user_id ? (
+                  <Link
+                    to={`/contributors/${encodeURIComponent(application.remotasks_email)}`}
+                    className="text-sm font-medium text-sky-700 hover:underline"
+                  >
+                    Profile
+                  </Link>
+                ) : (
+                  <button
+                    onClick={() => openCreate(application)}
+                    className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground"
+                  >
+                    Create account
+                  </button>
+                ))}
             </div>
           )
         },
@@ -513,7 +556,7 @@ export function Hiring() {
         )}
         <p className="mt-2 text-xs text-gray-400">
           {accepting
-            ? `Anyone with this link can apply to ${isAdmin ? "that lead's" : 'your'} team. Accepting an applicant creates their login on the team.`
+            ? `Anyone with this link can apply to ${isAdmin ? "that lead's" : 'your'} team. Accepting an applicant doesn't create their account; you do that from the Accepted tab.`
             : 'The form is switched off: anyone opening this link is told applications are closed. Applications you have already received stay below.'}
         </p>
       </div>
@@ -614,6 +657,7 @@ export function Hiring() {
                 {details.status === 'accepted' && (
                   <Detail label="Emailed">{details.emailed_at ? new Date(details.emailed_at).toLocaleString() : 'Not yet'}</Detail>
                 )}
+                {details.status === 'accepted' && <Detail label="Account">{details.user_id ? 'Created' : 'Not created yet'}</Detail>}
               </dl>
             </section>
             <section>
@@ -644,6 +688,18 @@ export function Hiring() {
                 >
                   Close
                 </button>
+                {details.status === 'accepted' && !details.user_id && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDetails(null)
+                      openCreate(details)
+                    }}
+                    className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
+                  >
+                    Create account
+                  </button>
+                )}
                 {details.status === 'pending' && (
                   <>
                     <button
@@ -729,6 +785,42 @@ export function Hiring() {
         </Modal>
       )}
 
+      {creating && (
+        <Modal title={`Create an account for ${creating.full_name}?`} onClose={() => setCreating(null)}>
+          <div className="flex flex-col gap-3">
+            <p className="text-sm text-gray-600">
+              This creates a login for <span className="font-medium text-gray-900">{creating.full_name}</span> with the Remotasks email{' '}
+              <span className="font-medium text-gray-900">{creating.remotasks_email}</span>, on{' '}
+              {isAdmin ? `${leadNameById.get(creating.lead_id) ?? "the lead's"} team` : 'your team'}. A temporary password is emailed to{' '}
+              <span className="font-medium text-gray-900">{creating.active_email}</span> and shown to you once. They'll choose their own
+              password when they first sign in.
+            </p>
+            {error && (
+              <div role="alert" className="text-sm text-status-danger-text">
+                {error}
+              </div>
+            )}
+            <div className="mt-2 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setCreating(null)}
+                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={createAccountMutation.isPending}
+                onClick={() => createAccountMutation.mutate(creating)}
+                className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+              >
+                {createAccountMutation.isPending ? 'Creating...' : 'Create account'}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
       {review && (
         <Modal
           title={review.decision === 'accept' ? `Accept ${review.application.full_name}?` : `Deny ${review.application.full_name}?`}
@@ -737,10 +829,8 @@ export function Hiring() {
           <div className="flex flex-col gap-3">
             {review.decision === 'accept' ? (
               <p className="text-sm text-gray-600">
-                This creates a login for <span className="font-medium text-gray-900">{review.application.full_name}</span> with the
-                Remotasks email <span className="font-medium text-gray-900">{review.application.remotasks_email}</span>, on{' '}
-                {isAdmin ? `${leadNameById.get(review.application.lead_id) ?? "the lead's"} team` : 'your team'}. You'll be given a
-                temporary password to send them.
+                <span className="font-medium text-gray-900">{review.application.full_name}</span>'s application will be marked
+                accepted. No account is created yet: you can do that afterwards, from the Accepted tab, when you're ready.
               </p>
             ) : (
               <p className="text-sm text-gray-600">
@@ -769,7 +859,7 @@ export function Hiring() {
                   review.decision === 'accept' ? 'bg-accent text-accent-foreground' : 'bg-status-danger-text text-white'
                 }`}
               >
-                {reviewMutation.isPending ? 'Saving...' : review.decision === 'accept' ? 'Accept & create login' : 'Deny application'}
+                {reviewMutation.isPending ? 'Saving...' : review.decision === 'accept' ? 'Accept application' : 'Deny application'}
               </button>
             </div>
           </div>
@@ -777,10 +867,10 @@ export function Hiring() {
       )}
 
       {credentials && (
-        <Modal title="Login created" onClose={() => setCredentials(null)}>
+        <Modal title="Account created" onClose={() => setCredentials(null)}>
           <div className="flex flex-col gap-3">
             <p className="text-sm text-gray-600">
-              <span className="font-medium text-gray-900">{credentials.name}</span> has been accepted and added to the team.{' '}
+              <span className="font-medium text-gray-900">{credentials.name}</span>'s account has been created and added to the team.{' '}
               {credentials.emailedTo
                 ? "They'll choose their own password when they first sign in."
                 : "Send them these details — they'll choose their own password when they first sign in."}

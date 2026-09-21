@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { accountEmail, type AccountEmailInput } from './account-email.ts'
-import { APPLICANT_EMAIL, emailApplicants, siteFrom, type OutgoingEmail } from './applicant-email.ts'
+import { createAccount } from './create-account.ts'
+import { APPLICANT_EMAIL, emailApplicants, logoFrom, siteFrom, type OutgoingEmail } from './applicant-email.ts'
 import { resendError, resendRequest, type Sender } from './resend.ts'
 
 const corsHeaders = {
@@ -43,13 +44,13 @@ const siteOrigin = (request: Request) => siteFrom(Deno.env.get('SITE_URL') ?? re
  * already exists (or the password is already changed), so this only reports whether the email went and,
  * if not, why, and the person who did it can pass the details on themselves.
  */
-async function emailAccount(request: Request, input: Omit<AccountEmailInput, 'loginUrl'>): Promise<{ emailed_to?: string; email_error?: string }> {
+async function emailAccount(request: Request, input: Omit<AccountEmailInput, 'loginUrl' | 'logoUrl'>): Promise<{ emailed_to?: string; email_error?: string }> {
     const apiKey = Deno.env.get('RESEND_API_KEY')
     if (!apiKey) return { email_error: 'Email sending is not set up yet.' }
     if (!input.to) return { email_error: 'There is no email address on file to send it to.' }
     const origin = siteOrigin(request)
     try {
-        await sendMail(apiKey, mailSender(), accountEmail({ ...input, loginUrl: origin ? `${origin}/login` : '' }))
+        await sendMail(apiKey, mailSender(), accountEmail({ ...input, loginUrl: origin ? `${origin}/login` : '', logoUrl: logoFrom(origin) }))
         return { emailed_to: input.to }
     } catch (error) {
         return { email_error: error instanceof Error ? error.message : String(error) }
@@ -102,68 +103,84 @@ Deno.serve(async (request) => {
             return Response.json({ id: application.id, status: 'denied' }, { headers: corsHeaders })
         }
 
-        // The login is the applicant's Remotasks email: tasks are matched to a contributor
-        // by profiles.email = cb_email, so their submissions attach to this account.
-        // createUser (not the upsert used below) so an existing login is never overwritten.
-        const email = application.remotasks_email
-        const temporaryPassword = generateTemporaryPassword()
-        const { data: created, error: createError } = await admin.auth.admin.createUser({
-            email,
-            password: temporaryPassword,
-            email_confirm: true,
-            user_metadata: { name: application.full_name, role: 'contributor' },
-        })
-        if (createError) {
-            return errorResponse(`Could not create a login for ${email}: ${createError.message}`, 422)
-        }
-        const userId = created.user.id
-
-        // If either write below fails, remove the login again so accepting can simply be retried.
-        const rollback = () => admin.auth.admin.deleteUser(userId)
-
-        const { error: profileError } = await admin.from('profiles').upsert({
-            id: userId,
-            name: application.full_name,
-            email,
-            role: 'contributor',
-            lead_id: application.lead_id,
-            is_active: true,
-            must_change_password: true,
-            updated_at: reviewedAt,
-        })
-        if (profileError) {
-            await rollback()
-            return errorResponse(`Profile creation failed: ${profileError.message}`, 400)
-        }
-
+        // Accepting only records the decision. The account is created separately, later, by the
+        // 'create-account' action below, so accepting someone never creates or emails a login.
         const { data: accepted, error: acceptError } = await admin
             .from('hiring_applications')
-            .update({ status: 'accepted', reviewed_by: caller.user.id, reviewed_at: reviewedAt, user_id: userId })
+            .update({ status: 'accepted', reviewed_by: caller.user.id, reviewed_at: reviewedAt })
             .eq('id', application.id)
             .eq('status', 'pending')
             .select('id')
-        if (acceptError || !accepted?.length) {
-            await rollback()
-            return acceptError
-                ? errorResponse(`Could not accept this application: ${acceptError.message}`, 400)
-                : errorResponse('This application was already reviewed.', 409)
-        }
+        if (acceptError) return errorResponse(`Could not accept this application: ${acceptError.message}`, 400)
+        if (!accepted?.length) return errorResponse('This application was already reviewed.', 409)
+        return Response.json({ id: application.id, status: 'accepted' }, { headers: corsHeaders })
+    }
 
-        // Tell them, from the lead they applied to. The account exists whether or not this goes out.
-        const { data: leadProfile } = await admin.from('profiles').select('name, email').eq('id', application.lead_id).maybeSingle()
-        const emailStatus = await emailAccount(request, {
-            kind: 'activation',
-            to: application.active_email,
-            name: application.full_name,
-            loginEmail: email,
-            password: temporaryPassword,
-            from: { name: leadProfile?.name ?? profile.name, email: leadProfile?.email ?? profile.email },
+    // Creates the login and profile for an applicant who has already been accepted.
+    if (body.action === 'create-account') {
+        if (!body.id) return errorResponse('An application id is required.', 400)
+        const { data: application } = await admin
+            .from('hiring_applications')
+            .select('id, lead_id, full_name, active_email, remotasks_email, status, user_id')
+            .eq('id', body.id)
+            .maybeSingle()
+        // The email goes out in the name of the lead the applicant applied to.
+        const { data: leadProfile } = application
+            ? await admin.from('profiles').select('name, email').eq('id', application.lead_id).maybeSingle()
+            : { data: null }
+
+        const outcome = await createAccount({ id: caller.user.id, role: profile.role }, {
+            application,
+            newPassword: generateTemporaryPassword,
+            // createUser (not an upsert) so an existing login is never overwritten.
+            createLogin: async ({ email, password, name }) => {
+                const { data: created, error } = await admin.auth.admin.createUser({
+                    email,
+                    password,
+                    email_confirm: true,
+                    user_metadata: { name, role: 'contributor' },
+                })
+                return error || !created.user ? { error: error?.message ?? 'No user was returned.' } : { id: created.user.id }
+            },
+            removeLogin: async (userId) => {
+                await admin.auth.admin.deleteUser(userId)
+            },
+            saveProfile: async ({ id, name, email, lead_id }) => {
+                const { error } = await admin.from('profiles').upsert({
+                    id,
+                    name,
+                    email,
+                    role: 'contributor',
+                    lead_id,
+                    is_active: true,
+                    must_change_password: true,
+                    updated_at: new Date().toISOString(),
+                })
+                return error?.message ?? null
+            },
+            linkApplication: async (applicationId, userId) => {
+                const { data: linked, error } = await admin
+                    .from('hiring_applications')
+                    .update({ user_id: userId })
+                    .eq('id', applicationId)
+                    .eq('status', 'accepted')
+                    .is('user_id', null)
+                    .select('id')
+                return error ? { error: error.message } : { linked: Boolean(linked?.length) }
+            },
+            notify: ({ to, name, loginEmail, password }) =>
+                emailAccount(request, {
+                    kind: 'activation',
+                    to,
+                    name,
+                    loginEmail,
+                    password,
+                    from: { name: leadProfile?.name ?? profile.name, email: leadProfile?.email ?? profile.email },
+                }),
         })
-
-        return Response.json(
-            { id: application.id, status: 'accepted', user_id: userId, email, temporary_password: temporaryPassword, ...emailStatus },
-            { headers: corsHeaders },
-        )
+        if (!outcome.ok) return errorResponse(outcome.error, outcome.status)
+        const { ok: _ok, ...result } = outcome
+        return Response.json(result, { headers: corsHeaders })
     }
 
     if (body.action === 'email-applicants') {
@@ -190,6 +207,7 @@ Deno.serve(async (request) => {
             leads: new Map((leadRows ?? []).map((lead) => [lead.id, { name: lead.name, email: lead.email }])),
             template: APPLICANT_EMAIL,
             loginUrl: site ? `${site}/login` : '',
+            logoUrl: logoFrom(site),
             send: (email) => sendMail(apiKey, sender, email),
         })
         if (!outcome.ok) return errorResponse(outcome.error, outcome.status)
