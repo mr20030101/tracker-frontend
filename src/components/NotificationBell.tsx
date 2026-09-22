@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
@@ -6,6 +7,10 @@ import { Avatar } from './Avatar'
 
 const MANAGER_ROLES = ['admin', 'lead']
 const MAX_SUBMISSION_ALERTS = 20
+const PANEL_WIDTH = 320
+const EDGE_GAP = 8
+// Above Modal's z-50, so a panel opened inside a modal isn't covered by it.
+const PANEL_Z_INDEX = 60
 
 interface SubmissionAlert {
   id: string
@@ -24,7 +29,23 @@ interface TaskSubmissionRow {
 export function NotificationBell() {
   const { user } = useAuth()
   const [open, setOpen] = useState(false)
+  const [pos, setPos] = useState<{ top?: number; bottom?: number; right: number } | null>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
   const isManager = Boolean(user && MANAGER_ROLES.includes(user.role))
+
+  // Fixed-position panel, measured against the button: never clipped by an ancestor's
+  // overflow-hidden, and flips upward if there isn't room below.
+  useLayoutEffect(() => {
+    const button = buttonRef.current
+    if (!open || !button) return
+    const rect = button.getBoundingClientRect()
+    const below = window.innerHeight - rect.bottom - EDGE_GAP
+    const openUp = below < 300 && rect.top > below
+    setPos({
+      ...(openUp ? { bottom: window.innerHeight - rect.top + 8 } : { top: rect.bottom + 8 }),
+      right: window.innerWidth - rect.right,
+    })
+  }, [open])
 
   const [submissionAlerts, setSubmissionAlerts] = useState<SubmissionAlert[]>([])
   const [profileNames, setProfileNames] = useState<Map<string, string>>()
@@ -84,9 +105,15 @@ export function NotificationBell() {
 
   const count = isManager ? submissionAlerts.length : 0
 
+  function close() {
+    setOpen(false)
+    setPos(null)
+  }
+
   return (
     <div className="relative">
       <button
+        ref={buttonRef}
         onClick={() => setOpen((v) => !v)}
         className="relative rounded-lg border border-gray-200 bg-white p-2 text-gray-500 hover:bg-gray-50"
         aria-label="Notifications"
@@ -101,48 +128,54 @@ export function NotificationBell() {
         )}
       </button>
 
-      {open && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 z-20 mt-2 w-80 rounded-xl border border-gray-200 bg-white p-2 shadow-lg">
-            <div className="flex items-center justify-between px-2 py-1.5">
-              <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Notifications</span>
-              {count > 0 && (
-                <button onClick={() => setSubmissionAlerts([])} className="text-xs font-medium text-sky-700 hover:underline">
-                  Clear all
-                </button>
-              )}
-            </div>
-            <div className="flex max-h-96 flex-col gap-1 overflow-y-auto">
-              {(!isManager || submissionAlerts.length === 0) && (
-                <div className="px-2 py-3 text-sm text-gray-400">Nothing to show.</div>
-              )}
-              {submissionAlerts.map((alert) => (
-                <div key={alert.id} className="group flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-gray-50">
-                  <Link
-                    to={`/contributors/${encodeURIComponent(alert.email)}`}
-                    onClick={() => setOpen(false)}
-                    className="flex min-w-0 flex-1 items-center gap-2 text-sm"
-                  >
-                    <Avatar name={alert.name || alert.email} size={28} />
-                    <div className="min-w-0">
-                      <div className="truncate font-medium text-gray-900">{alert.name} submitted a task</div>
-                      {alert.project && <div className="truncate text-xs text-gray-400">{alert.project}</div>}
-                    </div>
-                  </Link>
-                  <button
-                    onClick={() => dismissSubmissionAlert(alert.id)}
-                    className="shrink-0 rounded p-1 text-gray-300 hover:bg-gray-200 hover:text-gray-600"
-                    aria-label="Dismiss"
-                  >
-                    ×
+      {open &&
+        pos &&
+        createPortal(
+          <>
+            <div className="fixed inset-0" style={{ zIndex: PANEL_Z_INDEX }} onClick={close} />
+            <div
+              style={{ position: 'fixed', zIndex: PANEL_Z_INDEX + 1, width: PANEL_WIDTH, ...pos }}
+              className="rounded-xl border border-gray-200 bg-white p-2 shadow-lg"
+            >
+              <div className="flex items-center justify-between px-2 py-1.5">
+                <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Notifications</span>
+                {count > 0 && (
+                  <button onClick={() => setSubmissionAlerts([])} className="text-xs font-medium text-sky-700 hover:underline">
+                    Clear all
                   </button>
-                </div>
-              ))}
+                )}
+              </div>
+              <div className="flex max-h-96 flex-col gap-1 overflow-y-auto">
+                {(!isManager || submissionAlerts.length === 0) && (
+                  <div className="px-2 py-3 text-sm text-gray-400">Nothing to show.</div>
+                )}
+                {submissionAlerts.map((alert) => (
+                  <div key={alert.id} className="group flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-gray-50">
+                    <Link
+                      to={`/contributors/${encodeURIComponent(alert.email)}`}
+                      onClick={close}
+                      className="flex min-w-0 flex-1 items-center gap-2 text-sm"
+                    >
+                      <Avatar name={alert.name || alert.email} size={28} />
+                      <div className="min-w-0">
+                        <div className="truncate font-medium text-gray-900">{alert.name} submitted a task</div>
+                        {alert.project && <div className="truncate text-xs text-gray-400">{alert.project}</div>}
+                      </div>
+                    </Link>
+                    <button
+                      onClick={() => dismissSubmissionAlert(alert.id)}
+                      className="shrink-0 rounded p-1 text-gray-300 hover:bg-gray-200 hover:text-gray-600"
+                      aria-label="Dismiss"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        </>
-      )}
+          </>,
+          document.body,
+        )}
     </div>
   )
 }

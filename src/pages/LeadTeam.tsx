@@ -279,7 +279,6 @@ export function LeadTeam() {
             columns={columns}
             data={members}
             getRowId={(m) => m.user.id}
-            paginate={false}
             emptyMessage="No team members."
             rowClassName={(m) => (m.user.is_active ? '' : 'opacity-60')}
           />

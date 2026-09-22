@@ -390,22 +390,25 @@ function ManagerTaskLog() {
         </table>
 
         {data && (
-          <div className="flex items-center justify-between border-t border-gray-200 px-5 py-3 text-sm text-gray-500">
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-gray-200 px-5 py-3 text-xs text-gray-500">
             <span>
               Showing {data.from ?? 0}–{data.to ?? 0} of {data.total}
             </span>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-3">
               <button
                 disabled={page <= 1}
                 onClick={() => setPage((p) => p - 1)}
-                className="rounded-lg border border-gray-200 px-3 py-1 disabled:opacity-40"
+                className="rounded-lg border border-gray-200 px-3 py-1.5 font-medium text-gray-600 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                Prev
+                Previous
               </button>
+              <span>
+                Page {page} of {Math.max(1, data.last_page)}
+              </span>
               <button
                 disabled={page >= data.last_page}
                 onClick={() => setPage((p) => p + 1)}
-                className="rounded-lg border border-gray-200 px-3 py-1 disabled:opacity-40"
+                className="rounded-lg border border-gray-200 px-3 py-1.5 font-medium text-gray-600 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Next
               </button>

@@ -489,6 +489,10 @@ create policy "users log own auth events" on public.activity_logs for insert to 
 -- unauthenticated (anon) and are restricted to that one event type with no user_id.
 create policy "anon logs failed logins" on public.activity_logs for insert to anon
   with check (user_id is null and event = 'login_failed');
+-- The Activity Log page's "Clear log" is admin-only at the route level; this
+-- mirrors that so the delete isn't silently dropped by RLS.
+create policy "admins clear activity logs" on public.activity_logs for delete
+  using (public.is_admin());
 
 create policy "active users read projects" on public.projects for select using (public.is_active_user());
 -- Admin creates and owns the master project list; a lead may only rename or

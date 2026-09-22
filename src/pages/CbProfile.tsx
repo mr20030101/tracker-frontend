@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { Navigate, useParams, Link } from 'react-router-dom'
 import { ChevronDown, MessageCircle, Trophy } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -16,14 +17,41 @@ const LEVEL_OPTIONS: ProjectLevel[] = ['contributor', 'l0', 'l1', 'l10']
 
 const MANAGER_ROLES = ['admin', 'lead']
 
+const LEVEL_PANEL_WIDTH = 160
+const LEVEL_PANEL_EDGE_GAP = 8
+// Above Modal's z-50, so a panel opened inside a modal isn't covered by it.
+const LEVEL_PANEL_Z_INDEX = 60
+
 function LevelBadgePicker({ level, onChange }: { level: ProjectLevel; onChange: (level: ProjectLevel) => void }) {
   const [open, setOpen] = useState(false)
+  const [pos, setPos] = useState<{ top?: number; bottom?: number; right: number } | null>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
   const tier = LEVEL_TIERS[level]
   const Icon = tier.icon
 
+  // Fixed-position panel, measured against the button: never clipped by a card's
+  // overflow-hidden edge, and flips upward if there isn't room below.
+  useLayoutEffect(() => {
+    const button = buttonRef.current
+    if (!open || !button) return
+    const rect = button.getBoundingClientRect()
+    const below = window.innerHeight - rect.bottom - LEVEL_PANEL_EDGE_GAP
+    const openUp = below < 200 && rect.top > below
+    setPos({
+      ...(openUp ? { bottom: window.innerHeight - rect.top + 6 } : { top: rect.bottom + 6 }),
+      right: window.innerWidth - rect.right,
+    })
+  }, [open])
+
+  function close() {
+    setOpen(false)
+    setPos(null)
+  }
+
   return (
-    <div className="relative inline-block text-left">
+    <div className="inline-block text-left">
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold shadow-sm transition hover:brightness-95 ${tier.badge} ${tier.ring ?? ''}`}
@@ -33,35 +61,41 @@ function LevelBadgePicker({ level, onChange }: { level: ProjectLevel; onChange: 
         <ChevronDown className="h-3 w-3 opacity-60" />
       </button>
 
-      {open && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 z-20 mt-1.5 w-40 rounded-xl border border-gray-200 bg-white p-1.5 shadow-lg">
-            {LEVEL_OPTIONS.map((option) => {
-              const optionTier = LEVEL_TIERS[option]
-              const OptionIcon = optionTier.icon
-              return (
-                <button
-                  key={option}
-                  type="button"
-                  onClick={() => {
-                    setOpen(false)
-                    onChange(option)
-                  }}
-                  className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-semibold hover:bg-gray-50 ${
-                    option === level ? 'text-gray-900' : 'text-gray-500'
-                  }`}
-                >
-                  <span className={`flex h-5 w-5 items-center justify-center rounded-full border ${optionTier.badge}`}>
-                    <OptionIcon className="h-3 w-3" />
-                  </span>
-                  {optionTier.label}
-                </button>
-              )
-            })}
-          </div>
-        </>
-      )}
+      {open &&
+        pos &&
+        createPortal(
+          <>
+            <div className="fixed inset-0" style={{ zIndex: LEVEL_PANEL_Z_INDEX }} onClick={close} />
+            <div
+              style={{ position: 'fixed', zIndex: LEVEL_PANEL_Z_INDEX + 1, width: LEVEL_PANEL_WIDTH, ...pos }}
+              className="rounded-xl border border-gray-200 bg-white p-1.5 shadow-lg"
+            >
+              {LEVEL_OPTIONS.map((option) => {
+                const optionTier = LEVEL_TIERS[option]
+                const OptionIcon = optionTier.icon
+                return (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => {
+                      close()
+                      onChange(option)
+                    }}
+                    className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-semibold hover:bg-gray-50 ${
+                      option === level ? 'text-gray-900' : 'text-gray-500'
+                    }`}
+                  >
+                    <span className={`flex h-5 w-5 items-center justify-center rounded-full border ${optionTier.badge}`}>
+                      <OptionIcon className="h-3 w-3" />
+                    </span>
+                    {optionTier.label}
+                  </button>
+                )
+              })}
+            </div>
+          </>,
+          document.body,
+        )}
     </div>
   )
 }

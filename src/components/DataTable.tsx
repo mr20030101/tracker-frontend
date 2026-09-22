@@ -38,6 +38,8 @@ interface DataTableProps<TData> {
   scrollX?: boolean
   /** Called when a row is clicked anywhere except on a button, link or other control inside it. */
   onRowClick?: (row: TData) => void
+  /** Skip the outer rounded border/background, for embedding inside a card that already has one. */
+  bare?: boolean
 }
 
 export function DataTable<TData>({
@@ -53,6 +55,7 @@ export function DataTable<TData>({
   rowClassName,
   scrollX = false,
   onRowClick,
+  bare = false,
 }: DataTableProps<TData>) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize })
@@ -90,7 +93,7 @@ export function DataTable<TData>({
   const to = Math.min(total, from + pagination.pageSize - 1)
 
   return (
-    <div className={`${scrollX ? 'overflow-x-auto' : 'overflow-hidden'} rounded-xl border border-gray-200 bg-white`}>
+    <div className={bare ? '' : `${scrollX ? 'overflow-x-auto' : 'overflow-hidden'} rounded-xl border border-gray-200 bg-white`}>
       <table className="w-full text-left text-sm">
         <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
           {table.getHeaderGroups().map((headerGroup) => (

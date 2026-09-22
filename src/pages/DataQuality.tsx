@@ -1,9 +1,11 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { ColumnDef } from '@tanstack/react-table'
 import { supabase } from '../lib/api'
 import { remotasksDiffViewerUrl } from '../lib/remotasks'
 import { TaskSubmissionForm } from '../components/TaskSubmissionForm'
+import { DataTable } from '../components/DataTable'
 import type { TaskSubmission } from '../types'
 
 const HIGH_VOLUME_THRESHOLD = 20
@@ -16,6 +18,12 @@ interface Row {
   date: string | null
   status: string
   stage: string
+}
+
+interface HighVolumeRow {
+  cb_email: string
+  date: string
+  count: number
 }
 
 async function fetchAll(): Promise<Row[]> {
@@ -104,12 +112,16 @@ export function DataQuality() {
     return [...groups.entries()].filter(([, list]) => list.length > 1)
   }, [all])
   const duplicateRowCount = duplicates.reduce((sum, [, list]) => sum + list.length, 0)
+  const duplicateRows = useMemo(
+    () => duplicates.flatMap(([, group]) => group.map((row, i) => ({ ...row, firstInGroup: i === 0 }))),
+    [duplicates],
+  )
 
   const missingProject = useMemo(() => all.filter((r) => r.task_id && r.project_id == null), [all])
   const missingTaskId = useMemo(() => all.filter((r) => !r.task_id && r.cb_email), [all])
 
   const highVolume = useMemo(() => {
-    const groups = new Map<string, { cb_email: string; date: string; count: number }>()
+    const groups = new Map<string, HighVolumeRow>()
     for (const row of all) {
       if (!row.date) continue
       const key = `${row.cb_email}|${row.date}`
@@ -133,15 +145,192 @@ export function DataQuality() {
     },
   })
 
-  function handleDelete(id: number) {
-    if (confirm('Delete this submission?')) deleteMutation.mutate(id)
-  }
+  const handleDelete = useCallback(
+    (id: number) => {
+      if (confirm('Delete this submission?')) deleteMutation.mutate(id)
+    },
+    [deleteMutation],
+  )
 
   function handleDeleteAll(ids: number[]) {
     if (confirm(`Delete all ${ids.length} submissions with no Task ID? This cannot be undone.`)) {
       deleteAllMutation.mutate(ids)
     }
   }
+
+  const duplicateColumns = useMemo<ColumnDef<Row & { firstInGroup: boolean }, any>[]>(
+    () => [
+      {
+        id: 'task_id',
+        accessorFn: (r) => r.task_id ?? '',
+        header: 'Task ID',
+        cell: ({ row }) => <span className="block max-w-40 truncate font-mono text-xs text-gray-500">{row.original.task_id}</span>,
+      },
+      {
+        id: 'cb_email',
+        accessorFn: (r) => r.cb_email,
+        header: 'CB Email',
+        cell: ({ row }) => (
+          <Link to={`/contributors/${encodeURIComponent(row.original.cb_email)}`} className="text-sky-700 hover:underline">
+            {row.original.cb_email}
+          </Link>
+        ),
+      },
+      {
+        id: 'date',
+        accessorFn: (r) => r.date ?? '',
+        header: 'Date',
+        cell: ({ row }) => <span className="text-gray-500">{row.original.date ?? '—'}</span>,
+      },
+      {
+        id: 'status',
+        accessorFn: (r) => r.status,
+        header: 'Status',
+        cell: ({ row }) => <span className="text-gray-600">{row.original.status}</span>,
+      },
+      {
+        id: 'actions',
+        header: 'Actions',
+        enableSorting: false,
+        meta: { align: 'right' },
+        cell: ({ row }) => (
+          <div className="flex justify-end">
+            <button
+              onClick={() => handleDelete(row.original.id)}
+              className="text-xs font-medium text-status-danger-text hover:underline"
+            >
+              Delete
+            </button>
+          </div>
+        ),
+      },
+    ],
+    [handleDelete],
+  )
+
+  const missingProjectColumns = useMemo<ColumnDef<Row, any>[]>(
+    () => [
+      {
+        id: 'task_id',
+        accessorFn: (r) => r.task_id ?? '',
+        header: 'Task ID',
+        enableSorting: false,
+        cell: ({ row }) =>
+          row.original.task_id ? (
+            <a
+              href={remotasksDiffViewerUrl(row.original.task_id)}
+              target="_blank"
+              rel="noreferrer"
+              className="block max-w-40 truncate font-mono text-xs text-sky-700 hover:underline"
+            >
+              {row.original.task_id}
+            </a>
+          ) : (
+            <span className="text-gray-500">—</span>
+          ),
+      },
+      {
+        id: 'cb_email',
+        accessorFn: (r) => r.cb_email,
+        header: 'CB Email',
+        cell: ({ row }) => (
+          <Link to={`/contributors/${encodeURIComponent(row.original.cb_email)}`} className="text-sky-700 hover:underline">
+            {row.original.cb_email}
+          </Link>
+        ),
+      },
+      {
+        id: 'date',
+        accessorFn: (r) => r.date ?? '',
+        header: 'Date',
+        cell: ({ row }) => <span className="text-gray-500">{row.original.date ?? '—'}</span>,
+      },
+      {
+        id: 'actions',
+        header: 'Actions',
+        enableSorting: false,
+        meta: { align: 'right' },
+        cell: ({ row }) => (
+          <div className="flex justify-end">
+            <button
+              onClick={() => setEditTarget(row.original as unknown as TaskSubmission)}
+              className="text-xs font-medium text-gray-500 hover:text-gray-900"
+            >
+              Edit
+            </button>
+          </div>
+        ),
+      },
+    ],
+    [],
+  )
+
+  const missingTaskIdColumns = useMemo<ColumnDef<Row, any>[]>(
+    () => [
+      {
+        id: 'cb_email',
+        accessorFn: (r) => r.cb_email,
+        header: 'CB Email',
+        cell: ({ row }) => (
+          <Link to={`/contributors/${encodeURIComponent(row.original.cb_email)}`} className="text-sky-700 hover:underline">
+            {row.original.cb_email}
+          </Link>
+        ),
+      },
+      {
+        id: 'date',
+        accessorFn: (r) => r.date ?? '',
+        header: 'Date',
+        cell: ({ row }) => <span className="text-gray-500">{row.original.date ?? '—'}</span>,
+      },
+      {
+        id: 'status',
+        accessorFn: (r) => r.status,
+        header: 'Status',
+        cell: ({ row }) => <span className="text-gray-600">{row.original.status}</span>,
+      },
+      {
+        id: 'actions',
+        header: 'Actions',
+        enableSorting: false,
+        meta: { align: 'right' },
+        cell: ({ row }) => (
+          <div className="flex justify-end">
+            <button
+              onClick={() => handleDelete(row.original.id)}
+              className="text-xs font-medium text-status-danger-text hover:underline"
+            >
+              Delete
+            </button>
+          </div>
+        ),
+      },
+    ],
+    [handleDelete],
+  )
+
+  const highVolumeColumns = useMemo<ColumnDef<HighVolumeRow, any>[]>(
+    () => [
+      {
+        id: 'cb_email',
+        accessorFn: (r) => r.cb_email,
+        header: 'CB Email',
+        cell: ({ row }) => (
+          <Link to={`/contributors/${encodeURIComponent(row.original.cb_email)}`} className="text-sky-700 hover:underline">
+            {row.original.cb_email}
+          </Link>
+        ),
+      },
+      { id: 'date', accessorFn: (r) => r.date, header: 'Date', cell: ({ row }) => <span className="text-gray-500">{row.original.date}</span> },
+      {
+        id: 'count',
+        accessorFn: (r) => r.count,
+        header: 'Count',
+        cell: ({ row }) => <span className="font-semibold text-gray-900">{row.original.count}</span>,
+      },
+    ],
+    [],
+  )
 
   return (
     <div>
@@ -159,44 +348,13 @@ export function DataQuality() {
             count={duplicateRowCount}
             description="The same Task ID appears in more than one submission."
           >
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
-                <tr>
-                  <th className="px-5 py-2">Task ID</th>
-                  <th className="px-5 py-2">CB Email</th>
-                  <th className="px-5 py-2">Date</th>
-                  <th className="px-5 py-2">Status</th>
-                  <th className="px-5 py-2 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {duplicates.map(([taskId, group]) =>
-                  group.map((row, i) => (
-                    <tr key={row.id} className={i === 0 ? 'bg-status-warning-bg/40' : ''}>
-                      <td className="max-w-40 truncate px-5 py-2 font-mono text-xs text-gray-500">{taskId}</td>
-                      <td className="px-5 py-2">
-                        <Link
-                          to={`/contributors/${encodeURIComponent(row.cb_email)}`}
-                          className="text-sky-700 hover:underline"
-                        >
-                          {row.cb_email}
-                        </Link>
-                      </td>
-                      <td className="px-5 py-2 text-gray-500">{row.date ?? '—'}</td>
-                      <td className="px-5 py-2 text-gray-600">{row.status}</td>
-                      <td className="px-5 py-2 text-right">
-                        <button
-                          onClick={() => handleDelete(row.id)}
-                          className="text-xs font-medium text-status-danger-text hover:underline"
-                        >
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  )),
-                )}
-              </tbody>
-            </table>
+            <DataTable
+              bare
+              columns={duplicateColumns}
+              data={duplicateRows}
+              getRowId={(r) => String(r.id)}
+              rowClassName={(r) => (r.firstInGroup ? 'bg-status-warning-bg/40' : '')}
+            />
           </Section>
 
           <Section
@@ -204,53 +362,7 @@ export function DataQuality() {
             count={missingProject.length}
             description="Submissions with a Task ID but no project assigned."
           >
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
-                <tr>
-                  <th className="px-5 py-2">Task ID</th>
-                  <th className="px-5 py-2">CB Email</th>
-                  <th className="px-5 py-2">Date</th>
-                  <th className="px-5 py-2 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {missingProject.map((row) => (
-                  <tr key={row.id}>
-                    <td className="max-w-40 truncate px-5 py-2 font-mono text-xs text-gray-500">
-                      {row.task_id ? (
-                        <a
-                          href={remotasksDiffViewerUrl(row.task_id)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-sky-700 hover:underline"
-                        >
-                          {row.task_id}
-                        </a>
-                      ) : (
-                        '—'
-                      )}
-                    </td>
-                    <td className="px-5 py-2">
-                      <Link
-                        to={`/contributors/${encodeURIComponent(row.cb_email)}`}
-                        className="text-sky-700 hover:underline"
-                      >
-                        {row.cb_email}
-                      </Link>
-                    </td>
-                    <td className="px-5 py-2 text-gray-500">{row.date ?? '—'}</td>
-                    <td className="px-5 py-2 text-right">
-                      <button
-                        onClick={() => setEditTarget(row as unknown as TaskSubmission)}
-                        className="text-xs font-medium text-gray-500 hover:text-gray-900"
-                      >
-                        Edit
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <DataTable bare columns={missingProjectColumns} data={missingProject} getRowId={(r) => String(r.id)} />
           </Section>
 
           <Section
@@ -269,40 +381,7 @@ export function DataQuality() {
               )
             }
           >
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
-                <tr>
-                  <th className="px-5 py-2">CB Email</th>
-                  <th className="px-5 py-2">Date</th>
-                  <th className="px-5 py-2">Status</th>
-                  <th className="px-5 py-2 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {missingTaskId.map((row) => (
-                  <tr key={row.id}>
-                    <td className="px-5 py-2">
-                      <Link
-                        to={`/contributors/${encodeURIComponent(row.cb_email)}`}
-                        className="text-sky-700 hover:underline"
-                      >
-                        {row.cb_email}
-                      </Link>
-                    </td>
-                    <td className="px-5 py-2 text-gray-500">{row.date ?? '—'}</td>
-                    <td className="px-5 py-2 text-gray-600">{row.status}</td>
-                    <td className="px-5 py-2 text-right">
-                      <button
-                        onClick={() => handleDelete(row.id)}
-                        className="text-xs font-medium text-status-danger-text hover:underline"
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <DataTable bare columns={missingTaskIdColumns} data={missingTaskId} getRowId={(r) => String(r.id)} />
           </Section>
 
           <Section
@@ -310,31 +389,7 @@ export function DataQuality() {
             count={highVolume.length}
             description={`More than ${HIGH_VOLUME_THRESHOLD} submissions from one contributor on a single day — possible bulk-entry error.`}
           >
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
-                <tr>
-                  <th className="px-5 py-2">CB Email</th>
-                  <th className="px-5 py-2">Date</th>
-                  <th className="px-5 py-2">Count</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {highVolume.map((g) => (
-                  <tr key={`${g.cb_email}-${g.date}`}>
-                    <td className="px-5 py-2">
-                      <Link
-                        to={`/contributors/${encodeURIComponent(g.cb_email)}`}
-                        className="text-sky-700 hover:underline"
-                      >
-                        {g.cb_email}
-                      </Link>
-                    </td>
-                    <td className="px-5 py-2 text-gray-500">{g.date}</td>
-                    <td className="px-5 py-2 font-semibold text-gray-900">{g.count}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <DataTable bare columns={highVolumeColumns} data={highVolume} getRowId={(g) => `${g.cb_email}|${g.date}`} />
           </Section>
 
           {duplicateRowCount === 0 &&

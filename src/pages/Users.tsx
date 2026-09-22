@@ -303,7 +303,7 @@ export function Users() {
         header: ({ table }) => (
           <input
             type="checkbox"
-            aria-label="Select all shown logins"
+            aria-label="Select all logins matching these filters"
             checked={table.getIsAllRowsSelected()}
             ref={(el) => {
               if (el) el.indeterminate = table.getIsSomeRowsSelected()
@@ -624,7 +624,6 @@ export function Users() {
               ? 'No users yet.'
               : 'No one is assigned to you yet. New logins you add will appear here once they are on your team.'
         }
-        paginate={false}
         rowClassName={(u) => (!u.is_active ? 'opacity-60' : '')}
       />
 
