@@ -6,12 +6,13 @@ import { useAuth } from '../lib/auth'
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, yearMonth, toISODate, formatRange, formatTime } from '../lib/week'
 import { remotasksDiffViewerUrl } from '../lib/remotasks'
 import {
+  buildBadVideoRequestFormUrl,
   buildExtensionRequestFormUrl,
   requestExtension,
-  reviewExtensionRequest,
-  withdrawExtensionRequest,
-} from '../lib/extensionRequests'
-import type { ContributorProfile, ExtensionRequest, Project, TaskSubmission } from '../types'
+  reviewTaskRequest,
+  deleteTaskRequest,
+} from '../lib/taskRequests'
+import type { ContributorProfile, Project, TaskRequest, TaskSubmission } from '../types'
 import { ProgressRing } from './ProgressRing'
 import { LineChart } from './LineChart'
 import { CountUp } from './CountUp'
@@ -22,6 +23,7 @@ import { SortableHeader } from './SortableHeader'
 import { CtsFormModal } from './CtsFormModal'
 import { TaskSubmissionForm } from './TaskSubmissionForm'
 import { BulkImportModal } from './BulkImportModal'
+import { BadVideoReportModal } from './BadVideoReportModal'
 import { Modal } from './Modal'
 
 const TREND_DAYS = 30
@@ -62,6 +64,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit }: Props)
   const [bulkImporting, setBulkImporting] = useState(false)
   const [requestingExtensionFor, setRequestingExtensionFor] = useState<TaskSubmission | null>(null)
   const [extensionReason, setExtensionReason] = useState('')
+  const [reportingBadVideoFor, setReportingBadVideoFor] = useState<TaskSubmission | null>(null)
   const pageSize = 10
 
   const thisWeekIso = useMemo(() => toISODate(startOfWeek(new Date())), [])
@@ -86,22 +89,22 @@ export function ContributorWorkPanel({ email, contributorName, canEdit }: Props)
   // `data` reloads with a same-content-but-new-reference all_submissions array.
   const submissionIds = (data?.all_submissions ?? []).map((s) => s.id)
   const submissionIdsKey = submissionIds.join(',')
-  const { data: extensionRequests = [] } = useQuery({
-    queryKey: ['extension-requests', submissionIdsKey],
+  const { data: taskRequests = [] } = useQuery({
+    queryKey: ['task-requests', submissionIdsKey],
     queryFn: async () => {
       const { data: rows, error } = await supabase
-        .from('task_extension_requests')
+        .from('task_requests')
         .select('*')
         .in('task_submission_id', submissionIds)
         .order('requested_at', { ascending: false })
       if (error) throw error
-      return rows as ExtensionRequest[]
+      return rows as TaskRequest[]
     },
     enabled: submissionIds.length > 0,
   })
 
-  function extensionRequestFor(submissionId: number): ExtensionRequest | undefined {
-    return extensionRequests.find((request) => request.task_submission_id === submissionId)
+  function extensionRequestFor(submissionId: number): TaskRequest | undefined {
+    return taskRequests.find((request) => request.task_submission_id === submissionId && request.type === 'extension')
   }
 
   const deleteMutation = useMutation({
@@ -119,28 +122,28 @@ export function ContributorWorkPanel({ email, contributorName, canEdit }: Props)
       await requestExtension(submissionId, currentUser.id, reason)
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['extension-requests'] })
+      queryClient.invalidateQueries({ queryKey: ['task-requests'] })
       setRequestingExtensionFor(null)
       setExtensionReason('')
     },
   })
 
-  const withdrawExtensionMutation = useMutation({
-    mutationFn: withdrawExtensionRequest,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['extension-requests'] }),
+  const withdrawRequestMutation = useMutation({
+    mutationFn: deleteTaskRequest,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['task-requests'] }),
   })
 
-  const reviewExtensionMutation = useMutation({
+  const reviewRequestMutation = useMutation({
     mutationFn: ({ id, status }: { id: number; status: 'approved' | 'denied' }) => {
       if (!currentUser) throw new Error('Unauthenticated')
-      return reviewExtensionRequest(id, status, currentUser.id)
+      return reviewTaskRequest(id, status, currentUser.id)
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['extension-requests'] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['task-requests'] }),
   })
 
   // Opens the actual Scale "Reclaim / Extend" form, prefilled from this request, then marks it
   // approved here — filing that form is what approving really means.
-  function handleRequestExtension(request: ExtensionRequest, submission: TaskSubmission | undefined) {
+  function handleRequestExtension(request: TaskRequest, submission: TaskSubmission | undefined) {
     window.open(
       buildExtensionRequestFormUrl({
         taskId: submission?.task_id ?? null,
@@ -152,7 +155,26 @@ export function ContributorWorkPanel({ email, contributorName, canEdit }: Props)
       '_blank',
       'noopener,noreferrer',
     )
-    reviewExtensionMutation.mutate({ id: request.id, status: 'approved' })
+    reviewRequestMutation.mutate({ id: request.id, status: 'approved' })
+  }
+
+  // Same mechanism, pointed at the Bad Video Validation/Removal form instead.
+  function handleFileBadVideoReport(request: TaskRequest, submission: TaskSubmission | undefined) {
+    if (request.type !== 'bad_video') return
+    window.open(
+      buildBadVideoRequestFormUrl({
+        cbEmail: submission?.cb_email ?? null,
+        taskId: submission?.task_id ?? null,
+        category: request.bad_video_category,
+        frame: request.bad_video_frame,
+        workforce: request.bad_video_workforce,
+        workforceName: request.bad_video_workforce_name,
+        supportName: currentUser?.name ?? '',
+      }),
+      '_blank',
+      'noopener,noreferrer',
+    )
+    reviewRequestMutation.mutate({ id: request.id, status: 'approved' })
   }
 
   const rangeStart = useMemo(() => {
@@ -277,68 +299,97 @@ export function ContributorWorkPanel({ email, contributorName, canEdit }: Props)
 
   // Independent of whichever day/week/month is currently being browsed below, so a pending
   // request for a submission outside that range is never hidden.
-  const pendingExtensionRequests = extensionRequests.filter((request) => request.status === 'pending')
+  const pendingRequests = taskRequests.filter((request) => request.status === 'pending')
 
   return (
     <>
-      {pendingExtensionRequests.length > 0 && (
+      {pendingRequests.length > 0 && (
         <div className="mb-6 rounded-xl border-2 border-status-warning-text bg-status-warning-bg p-5">
           <div className="mb-3 text-sm font-semibold text-status-warning-text">
-            {pendingExtensionRequests.length === 1 ? '1 extension request' : `${pendingExtensionRequests.length} extension requests`}{' '}
-            awaiting review
+            {pendingRequests.length === 1 ? '1 request' : `${pendingRequests.length} requests`} awaiting review
           </div>
           <div className="divide-y divide-status-warning-text/20">
-            {pendingExtensionRequests.map((request) => {
+            {pendingRequests.map((request) => {
               const submission = data.all_submissions.find((s) => s.id === request.task_submission_id)
+              // A contributor can act (withdraw) on a request only if it's their own — either
+              // their extension request, or a bad_video report they flagged themselves. A
+              // bad_video report someone else (their lead) filed about their work is view-only.
+              const canAct = isManager || request.requested_by === currentUser?.id
               return (
                 <div key={request.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm first:pt-0 last:pb-0">
                   <div className="min-w-0">
-                    <div className="font-mono font-medium text-gray-900">{submission?.task_id ?? `Submission #${request.task_submission_id}`}</div>
-                    {request.reason && <div className="mt-0.5 text-xs text-gray-600">{request.reason}</div>}
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                          request.type === 'extension' ? 'bg-sky-100 text-sky-700' : 'bg-violet-100 text-violet-700'
+                        }`}
+                      >
+                        {request.type === 'extension' ? 'Extension' : 'Bad Video'}
+                      </span>
+                      <span className="font-mono font-medium text-gray-900">
+                        {submission?.task_id ?? `Submission #${request.task_submission_id}`}
+                      </span>
+                    </div>
+                    {request.type === 'extension' ? (
+                      request.reason && <div className="mt-0.5 text-xs text-gray-600">{request.reason}</div>
+                    ) : (
+                      <div className="mt-0.5 text-xs text-gray-600">
+                        {request.bad_video_category} · frame {request.bad_video_frame}
+                      </div>
+                    )}
                     <div className="mt-0.5 text-xs text-gray-400">
                       Requested {new Date(request.requested_at).toLocaleString()}
                       {submission?.date && ` — for ${submission.date.slice(0, 10)}`}
                     </div>
                   </div>
                   <div className="flex shrink-0 gap-2">
-                    {isManager ? (
-                      <>
-                        <button
-                          onClick={() => handleRequestExtension(request, submission)}
-                          disabled={reviewExtensionMutation.isPending}
-                          title="Opens the Reclaim / Extend form, prefilled, and marks this approved"
-                          className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground disabled:opacity-50"
-                        >
-                          Request
-                        </button>
-                        <button
-                          onClick={() => reviewExtensionMutation.mutate({ id: request.id, status: 'denied' })}
-                          disabled={reviewExtensionMutation.isPending}
-                          className="rounded-lg border border-status-danger-text/30 px-3 py-1.5 text-xs font-semibold text-status-danger-text hover:bg-status-danger-bg disabled:opacity-50"
-                        >
-                          Deny
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (confirm('Delete this extension request? This cannot be undone.')) {
-                              withdrawExtensionMutation.mutate(request.id)
+                    {canAct &&
+                      (isManager ? (
+                        <>
+                          <button
+                            onClick={() =>
+                              request.type === 'extension'
+                                ? handleRequestExtension(request, submission)
+                                : handleFileBadVideoReport(request, submission)
                             }
-                          }}
-                          disabled={withdrawExtensionMutation.isPending}
+                            disabled={reviewRequestMutation.isPending}
+                            title={
+                              request.type === 'extension'
+                                ? 'Opens the Reclaim / Extend form, prefilled, and marks this approved'
+                                : 'Opens the Bad Video Validation/Removal form, prefilled, and marks this approved'
+                            }
+                            className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground disabled:opacity-50"
+                          >
+                            Request
+                          </button>
+                          <button
+                            onClick={() => reviewRequestMutation.mutate({ id: request.id, status: 'denied' })}
+                            disabled={reviewRequestMutation.isPending}
+                            className="rounded-lg border border-status-danger-text/30 px-3 py-1.5 text-xs font-semibold text-status-danger-text hover:bg-status-danger-bg disabled:opacity-50"
+                          >
+                            Deny
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (confirm('Delete this request? This cannot be undone.')) {
+                                withdrawRequestMutation.mutate(request.id)
+                              }
+                            }}
+                            disabled={withdrawRequestMutation.isPending}
+                            className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+                          >
+                            Delete
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => withdrawRequestMutation.mutate(request.id)}
+                          disabled={withdrawRequestMutation.isPending}
                           className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
                         >
-                          Delete
+                          Withdraw
                         </button>
-                      </>
-                    ) : (
-                      <button
-                        onClick={() => withdrawExtensionMutation.mutate(request.id)}
-                        disabled={withdrawExtensionMutation.isPending}
-                        className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
-                      >
-                        Withdraw
-                      </button>
-                    )}
+                      ))}
                   </div>
                 </div>
               )
@@ -522,6 +573,9 @@ export function ContributorWorkPanel({ email, contributorName, canEdit }: Props)
                 {pagedSubmissions.map((row) => {
                   const extension = extensionRequestFor(row.id)
                   const canRequestExtension = !isManager && EXTENSION_ELIGIBLE_STATUSES.includes(row.status)
+                  const badVideoPending = taskRequests.some(
+                    (r) => r.task_submission_id === row.id && r.type === 'bad_video' && r.status === 'pending',
+                  )
                   return (
                   <tr key={row.id} className="hover:bg-gray-50">
                     <td className="max-w-40 truncate px-5 py-3 font-mono text-xs text-gray-500">
@@ -585,7 +639,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit }: Props)
                             { label: 'Edit', onClick: () => setFormTarget(row) },
                             ...(canRequestExtension
                               ? extension?.status === 'pending'
-                                ? [{ label: 'Withdraw extension request', onClick: () => withdrawExtensionMutation.mutate(extension.id) }]
+                                ? [{ label: 'Withdraw extension request', onClick: () => withdrawRequestMutation.mutate(extension.id) }]
                                 : [
                                     {
                                       label: 'Request extension',
@@ -602,7 +656,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit }: Props)
                                   {
                                     label: 'Deny extension',
                                     variant: 'danger' as const,
-                                    onClick: () => reviewExtensionMutation.mutate({ id: extension.id, status: 'denied' }),
+                                    onClick: () => reviewRequestMutation.mutate({ id: extension.id, status: 'denied' }),
                                   },
                                 ]
                               : []),
@@ -613,12 +667,15 @@ export function ContributorWorkPanel({ email, contributorName, canEdit }: Props)
                                     variant: 'danger' as const,
                                     onClick: () => {
                                       if (confirm('Delete this extension request? This cannot be undone.')) {
-                                        withdrawExtensionMutation.mutate(extension.id)
+                                        withdrawRequestMutation.mutate(extension.id)
                                       }
                                     },
                                   },
                                 ]
                               : []),
+                            badVideoPending
+                              ? { label: 'Bad video report pending', disabled: true, onClick: () => {} }
+                              : { label: 'Report bad video', onClick: () => setReportingBadVideoFor(row) },
                             {
                               label: 'Delete',
                               variant: 'danger',
@@ -721,6 +778,17 @@ export function ContributorWorkPanel({ email, contributorName, canEdit }: Props)
             </div>
           </div>
         </Modal>
+      )}
+
+      {reportingBadVideoFor && (
+        <BadVideoReportModal
+          submission={{
+            id: reportingBadVideoFor.id,
+            task_id: reportingBadVideoFor.task_id,
+            cb_email: reportingBadVideoFor.cb_email,
+          }}
+          onClose={() => setReportingBadVideoFor(null)}
+        />
       )}
     </>
   )

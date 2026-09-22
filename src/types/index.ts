@@ -64,19 +64,37 @@ export interface TaskSubmission {
   created_at: string
 }
 
-export type ExtensionRequestStatus = 'pending' | 'approved' | 'denied'
+export type RequestType = 'extension' | 'bad_video'
+export type RequestStatus = 'pending' | 'approved' | 'denied'
 
-// A contributor asking their lead for more time before a submission is marked expired.
-export interface ExtensionRequest {
+interface BaseTaskRequest {
   id: number
   task_submission_id: number
   requested_by: string
   reason: string | null
-  status: ExtensionRequestStatus
+  status: RequestStatus
   requested_at: string
   reviewed_by: string | null
   reviewed_at: string | null
 }
+
+// A contributor asking their lead for more time before a submission is marked expired.
+export interface ExtensionTaskRequest extends BaseTaskRequest {
+  type: 'extension'
+}
+
+// A lead/admin flagging a claimed task's video as bad, needing validation/removal
+// (the ALOHA | URSA | YAM QA flow) — same pending/approved/denied lifecycle as an
+// extension request, but not self-service and not tied to team attachment.
+export interface BadVideoTaskRequest extends BaseTaskRequest {
+  type: 'bad_video'
+  bad_video_category: string
+  bad_video_frame: string
+  bad_video_workforce: 'REMOTE' | 'ONSITE'
+  bad_video_workforce_name: string
+}
+
+export type TaskRequest = ExtensionTaskRequest | BadVideoTaskRequest
 
 export interface Paginated<T> {
   data: T[]

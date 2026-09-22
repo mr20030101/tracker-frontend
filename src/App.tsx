@@ -17,7 +17,7 @@ import { DataQuality } from './pages/DataQuality'
 import { ActivityLog } from './pages/ActivityLog'
 import { Apply } from './pages/Apply'
 import { Hiring } from './pages/Hiring'
-import { ExtensionRequests } from './pages/ExtensionRequests'
+import { Requests } from './pages/Requests'
 
 const MANAGER_ROLES = ['admin', 'lead']
 
@@ -45,7 +45,7 @@ function ProtectedLayout() {
         <Route path="/" element={isManager ? <Dashboard /> : <ContributorDashboard />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/task-log" element={<TaskLog />} />
-        <Route path="/extension-requests" element={<ExtensionRequests />} />
+        <Route path="/requests" element={<Requests />} />
         <Route path="/resources" element={<Resources />} />
         <Route path="/messages" element={<Messages />} />
         <Route path="/messages/:userId" element={<Messages />} />

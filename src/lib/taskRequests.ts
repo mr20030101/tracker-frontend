@@ -1,7 +1,7 @@
 import { supabase } from './api'
-import type { ExtensionRequest, ExtensionRequestStatus } from '../types'
+import type { RequestStatus, TaskRequest } from '../types'
 
-export interface ExtensionRequestWithContext extends ExtensionRequest {
+export interface TaskRequestWithContext extends TaskRequest {
   task_submission: {
     id: number
     task_id: string | null
@@ -14,22 +14,27 @@ export interface ExtensionRequestWithContext extends ExtensionRequest {
 }
 
 /**
- * Every extension request the caller can see: RLS scopes this to their own (a contributor),
- * their attached contributors' (a lead), or everyone's (an admin) — same rule as task_submissions.
+ * Every request (extension or bad video) the caller can see: RLS scopes this to their own (a
+ * contributor's extension requests), their attached contributors' (a lead), whichever task's
+ * contributor they're attached to (a bad video report about that contributor's work), or
+ * everyone's (an admin).
  */
-export async function fetchExtensionRequests(): Promise<ExtensionRequestWithContext[]> {
+export async function fetchTaskRequests(): Promise<TaskRequestWithContext[]> {
   const { data, error } = await supabase
-    .from('task_extension_requests')
+    .from('task_requests')
     .select(
+      // The FK constraint keeps its pre-rename name (task_extension_requests_requested_by_fkey) —
+      // renaming DB constraint names was deliberately left out of the table rename for minimal risk.
       '*, task_submission:task_submissions(id, task_id, date, status, cb_email, project:projects(name)), requester:profiles!task_extension_requests_requested_by_fkey(id, name, email, remotasks_id)',
     )
     .order('requested_at', { ascending: false })
   if (error) throw error
-  return data as ExtensionRequestWithContext[]
+  return data as TaskRequestWithContext[]
 }
 
 export async function requestExtension(submissionId: number, requestedBy: string, reason: string): Promise<void> {
-  const { error } = await supabase.from('task_extension_requests').insert({
+  const { error } = await supabase.from('task_requests').insert({
+    type: 'extension',
     task_submission_id: submissionId,
     requested_by: requestedBy,
     reason: reason.trim() || null,
@@ -37,19 +42,39 @@ export async function requestExtension(submissionId: number, requestedBy: string
   if (error) throw error
 }
 
-/** Only while still pending — enforced by RLS as well, this just avoids a confusing round-trip. */
-export async function withdrawExtensionRequest(id: number): Promise<void> {
-  const { error } = await supabase.from('task_extension_requests').delete().eq('id', id)
+export async function reportBadVideo(params: {
+  submissionId: number
+  requestedBy: string
+  category: string
+  frame: string
+  workforce: 'REMOTE' | 'ONSITE'
+  workforceName: string
+}): Promise<void> {
+  const { error } = await supabase.from('task_requests').insert({
+    type: 'bad_video',
+    task_submission_id: params.submissionId,
+    requested_by: params.requestedBy,
+    bad_video_category: params.category,
+    bad_video_frame: params.frame,
+    bad_video_workforce: params.workforce,
+    bad_video_workforce_name: params.workforceName,
+  })
   if (error) throw error
 }
 
-export async function reviewExtensionRequest(
+/** Only while still pending — enforced by RLS as well, this just avoids a confusing round-trip. */
+export async function deleteTaskRequest(id: number): Promise<void> {
+  const { error } = await supabase.from('task_requests').delete().eq('id', id)
+  if (error) throw error
+}
+
+export async function reviewTaskRequest(
   id: number,
-  status: Extract<ExtensionRequestStatus, 'approved' | 'denied'>,
+  status: Extract<RequestStatus, 'approved' | 'denied'>,
   reviewedBy: string,
 ): Promise<void> {
   const { error } = await supabase
-    .from('task_extension_requests')
+    .from('task_requests')
     .update({ status, reviewed_by: reviewedBy, reviewed_at: new Date().toISOString() })
     .eq('id', id)
   if (error) throw error
@@ -75,17 +100,17 @@ async function runBulk(ids: number[], run: (id: number) => Promise<void>): Promi
 }
 
 /** Approves or denies several requests at once. See runBulk. */
-export async function reviewExtensionRequestsBulk(
+export async function reviewTaskRequestsBulk(
   ids: number[],
-  status: Extract<ExtensionRequestStatus, 'approved' | 'denied'>,
+  status: Extract<RequestStatus, 'approved' | 'denied'>,
   reviewedBy: string,
 ): Promise<BulkResult> {
-  return runBulk(ids, (id) => reviewExtensionRequest(id, status, reviewedBy))
+  return runBulk(ids, (id) => reviewTaskRequest(id, status, reviewedBy))
 }
 
 /** Deletes (a lead/admin) or withdraws (a contributor's own pending ones) several requests at once. See runBulk. */
-export async function deleteExtensionRequestsBulk(ids: number[]): Promise<BulkResult> {
-  return runBulk(ids, withdrawExtensionRequest)
+export async function deleteTaskRequestsBulk(ids: number[]): Promise<BulkResult> {
+  return runBulk(ids, deleteTaskRequest)
 }
 
 // The Scale "Reclaim / Extend Request Form" a lead files with Remotasks itself once they've
@@ -117,4 +142,39 @@ export function buildExtensionRequestFormUrl(params: {
   if (params.reason) query.set(EXTENSION_FORM_ENTRY.reason, params.reason)
   if (params.supportName) query.set(EXTENSION_FORM_ENTRY.supportName, params.supportName)
   return `${EXTENSION_REQUEST_FORM_URL}?${query.toString()}`
+}
+
+// The "Bad Video Validation/Removal" form (ALOHA | URSA | YAM) a lead/admin files once they've
+// decided a flagged task's video really does need removal/validation — same mechanism as the
+// extension form above: open it prefilled, in a new tab, and mark the request approved here.
+const BAD_VIDEO_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSf6hU9Vif1-aTiohFR05MFrY2eGL_ssGAZ3AyE9z4Pz_p31hA/viewform'
+const BAD_VIDEO_FORM_ENTRY = {
+  cbEmail: 'entry.1465994475',
+  taskId: 'entry.717075657',
+  category: 'entry.1032488088',
+  frame: 'entry.1882040546',
+  supportName: 'entry.221862037',
+  workforceName: 'entry.701886437',
+  workforce: 'entry.8749894',
+}
+
+/** A link to the Bad Video Validation/Removal form with this report's details prefilled. */
+export function buildBadVideoRequestFormUrl(params: {
+  cbEmail: string | null
+  taskId: string | null
+  category: string
+  frame: string
+  workforce: 'REMOTE' | 'ONSITE'
+  workforceName: string
+  supportName: string
+}): string {
+  const query = new URLSearchParams({ usp: 'pp_url' })
+  if (params.cbEmail) query.set(BAD_VIDEO_FORM_ENTRY.cbEmail, params.cbEmail)
+  if (params.taskId) query.set(BAD_VIDEO_FORM_ENTRY.taskId, params.taskId)
+  query.set(BAD_VIDEO_FORM_ENTRY.category, params.category)
+  query.set(BAD_VIDEO_FORM_ENTRY.frame, params.frame)
+  query.set(BAD_VIDEO_FORM_ENTRY.workforce, params.workforce)
+  query.set(BAD_VIDEO_FORM_ENTRY.workforceName, params.workforceName)
+  if (params.supportName) query.set(BAD_VIDEO_FORM_ENTRY.supportName, params.supportName)
+  return `${BAD_VIDEO_FORM_URL}?${query.toString()}`
 }

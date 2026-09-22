@@ -41,13 +41,13 @@ function navSections(isManager: boolean, isAdmin: boolean): { label: string; ite
       items: isManager
         ? [
           { to: '/task-log', label: 'Task Log', icon: ClipboardList },
-          { to: '/extension-requests', label: 'Extension Requests', icon: Hourglass },
+          { to: '/requests', label: 'Requests', icon: Hourglass },
           { to: '/data-quality', label: 'Data Quality', icon: ShieldCheck },
           ...(isAdmin ? [{ to: '/activity-log', label: 'Activity Log', icon: History }] : []),
         ]
         : [
           { to: '/task-log', label: 'Task Log', icon: ClipboardList },
-          { to: '/extension-requests', label: 'Extension Requests', icon: Hourglass },
+          { to: '/requests', label: 'Requests', icon: Hourglass },
         ],
     },
     {
