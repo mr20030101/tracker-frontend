@@ -31,6 +31,9 @@ const ATTENDANCE_FORM_URL =
 const ATTENDANCE_OPENS_MIN = 6 * 60
 const ATTENDANCE_CLOSES_MIN = 13 * 60 + 30
 
+// Cleared when the browser tab/session ends, so the warning comes back the next time they sign in fresh.
+const WARNING_DISMISSED_KEY = 'dashboard-week-warning-dismissed'
+
 function buildAttendanceFormUrl(email: string) {
   const params = new URLSearchParams()
   if (email) params.set('entry.787543998', email)
@@ -42,17 +45,33 @@ export function ContributorDashboard() {
   const email = user?.email ?? ''
   const [showCtsModal, setShowCtsModal] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const [showWarning, setShowWarning] = useState(true)
+  // Shown at most once per browser session: once dismissed (or faded on its own), a reload won't bring it back.
+  const [showWarning, setShowWarning] = useState(() => {
+    try {
+      return sessionStorage.getItem(WARNING_DISMISSED_KEY) !== 'true'
+    } catch {
+      return true
+    }
+  })
   const [showAttendanceEnded, setShowAttendanceEnded] = useState(false)
   const thisWeekIso = useMemo(() => toISODate(startOfWeek(new Date())), [])
   const today = useMemo(() => toISODate(new Date()), [])
 
-  // Fades on its own after a while, like the same warning on the profile page.
+  function dismissWarning() {
+    setShowWarning(false)
+    try {
+      sessionStorage.setItem(WARNING_DISMISSED_KEY, 'true')
+    } catch {
+      // Not remembering is fine — it'll just show again next reload.
+    }
+  }
+
+  // Fades on its own after a while, same as a dismiss.
   useEffect(() => {
-    setShowWarning(true)
-    const timer = setTimeout(() => setShowWarning(false), 10000)
+    if (!showWarning) return
+    const timer = setTimeout(dismissWarning, 10000)
     return () => clearTimeout(timer)
-  }, [])
+  }, [showWarning])
 
   const { data, isLoading } = useQuery({
     queryKey: ['contributor', email, thisWeekIso],
@@ -211,12 +230,12 @@ export function ContributorDashboard() {
       )}
 
       {showWarning && data.submitted_this_week === 0 && (
-        <div className="mb-6 flex items-center gap-3 rounded-xl border-2 border-status-danger-text bg-status-danger-text px-5 py-4 text-sm font-semibold text-white shadow-sm">
+        <div className="fixed right-6 top-20 z-40 flex max-w-sm items-start gap-3 rounded-xl border-2 border-status-danger-text bg-status-danger-text px-5 py-4 text-sm font-semibold text-white shadow-lg">
           <span className="animate-heartbeat text-lg leading-none">⚠</span>
-          <span>WARNING: No submissions logged yet this week.</span>
+          <span className="flex-1">WARNING: No submissions logged yet this week.</span>
           <button
-            onClick={() => setShowWarning(false)}
-            className="ml-auto text-lg leading-none text-white/80 hover:text-white"
+            onClick={dismissWarning}
+            className="text-lg leading-none text-white/80 hover:text-white"
             aria-label="Dismiss"
           >
             ×

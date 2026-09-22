@@ -74,8 +74,7 @@ export function CbProfile() {
   const isOwnProfile = currentUser?.email.toLowerCase() === decodedEmail.toLowerCase()
 
   const [showWarning, setShowWarning] = useState(true)
-  const [editingProfile, setEditingProfile] = useState(false)
-  const [profileName, setProfileName] = useState('')
+  const [profileName, setProfileName] = useState(() => currentUser?.name ?? '')
   const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null)
   const [profilePhotoPreview, setProfilePhotoPreview] = useState<string | null>(null)
   const [profilePassword, setProfilePassword] = useState('')
@@ -183,7 +182,6 @@ export function CbProfile() {
       queryClient.invalidateQueries({ queryKey: ['contributor'] })
       queryClient.invalidateQueries({ queryKey: ['users'] })
       queryClient.invalidateQueries({ queryKey: ['directory'] })
-      setEditingProfile(false)
       setProfilePhotoFile(null)
       setProfilePhotoPreview(null)
       setProfilePassword('')
@@ -191,16 +189,6 @@ export function CbProfile() {
     },
     onError: (mutationError: Error) => setProfileError(mutationError.message || 'Could not save your profile.'),
   })
-
-  function openEditProfile() {
-    setProfileName(currentUser?.name ?? '')
-    setProfilePhotoFile(null)
-    setProfilePhotoPreview(null)
-    setProfilePassword('')
-    setProfilePasswordConfirm('')
-    setProfileError(null)
-    setEditingProfile(true)
-  }
 
   function handlePhotoChange(file: File | null) {
     setProfilePhotoFile(file)
@@ -288,18 +276,10 @@ export function CbProfile() {
               Message
             </Link>
           )}
-          {isOwnProfile && (
-            <button
-              onClick={openEditProfile}
-              className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-            >
-              Edit Profile
-            </button>
-          )}
         </div>
       </div>
 
-      {editingProfile && (
+      {isOwnProfile && (
         <div className="mb-6 rounded-xl border border-gray-200 bg-white p-5">
           <h2 className="mb-4 text-sm font-semibold text-gray-700">Edit Profile</h2>
           <form onSubmit={handleSaveProfile} className="flex flex-col gap-4">
@@ -364,13 +344,6 @@ export function CbProfile() {
             )}
             {profileError && <div className="rounded-lg bg-status-danger-text px-3 py-2 text-sm text-status-danger-bg">{profileError}</div>}
             <div className="mt-2 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setEditingProfile(false)}
-                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
-              >
-                Cancel
-              </button>
               <button
                 type="submit"
                 disabled={saveProfileMutation.isPending || !profileName.trim()}
