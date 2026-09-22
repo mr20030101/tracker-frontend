@@ -198,7 +198,7 @@ export function ContributorDashboard() {
             type="button"
             onClick={handleAttendanceClick}
             disabled={attendanceNotYetOpen}
-            title={attendanceNotYetOpen ? 'Opens at 6:00 AM (Singapore time)' : undefined}
+            title={attendanceNotYetOpen ? 'Opens at 6:00 AM' : undefined}
             className={`rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold ${
               attendanceNotYetOpen
                 ? 'cursor-not-allowed bg-gray-100 text-gray-400'
@@ -214,7 +214,7 @@ export function ContributorDashboard() {
         <Modal title="Attendance has ended" onClose={() => setShowAttendanceEnded(false)}>
           <div className="flex flex-col gap-4">
             <p className="text-sm text-gray-600">
-              Today's attendance window closes at 1:30 PM (Singapore time), and it's already past that.
+              Today's attendance window closes at 1:30 PM, and it's already past that.
             </p>
             <div className="flex justify-end">
               <button
