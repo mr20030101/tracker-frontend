@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { BookOpen, ClipboardList, MessageCircle, Trophy, User, type LucideIcon } from 'lucide-react'
 import { api, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
-import { startOfWeek, toISODate } from '../lib/week'
+import { startOfWeek, toISODate, sgMinutesSinceMidnight } from '../lib/week'
 import type { ContributorProfile, ContributorProjectLevel, Project, ProjectLevel } from '../types'
 import { ProgressRing } from '../components/ProgressRing'
 import { LineChart } from '../components/LineChart'
@@ -14,6 +14,7 @@ import { Reveal } from '../components/Reveal'
 import { CtsFormModal } from '../components/CtsFormModal'
 import { TaskSubmissionForm } from '../components/TaskSubmissionForm'
 import { LevelPill } from '../components/LevelPill'
+import { Modal } from '../components/Modal'
 
 const TREND_DAYS = 30
 
@@ -25,6 +26,10 @@ interface QuickLink {
 
 const ATTENDANCE_FORM_URL =
   'https://docs.google.com/forms/d/e/1FAIpQLSdItgT4AYcL14m0A3t5Rx7nGaySxDe64J1VZtInYD0ukepAfg/viewform'
+
+// Attendance is only taken 6:00 AM – 1:30 PM, Singapore time.
+const ATTENDANCE_OPENS_MIN = 6 * 60
+const ATTENDANCE_CLOSES_MIN = 13 * 60 + 30
 
 function buildAttendanceFormUrl(email: string) {
   const params = new URLSearchParams()
@@ -38,6 +43,7 @@ export function ContributorDashboard() {
   const [showCtsModal, setShowCtsModal] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [showWarning, setShowWarning] = useState(true)
+  const [showAttendanceEnded, setShowAttendanceEnded] = useState(false)
   const thisWeekIso = useMemo(() => toISODate(startOfWeek(new Date())), [])
   const today = useMemo(() => toISODate(new Date()), [])
 
@@ -134,6 +140,19 @@ export function ContributorDashboard() {
     (row) => row.date?.slice(0, 10) === today && row.status !== 'in_progress' && !row.cts_submitted_at,
   )
 
+  const nowMinutesSGT = sgMinutesSinceMidnight(new Date())
+  const attendanceNotYetOpen = nowMinutesSGT < ATTENDANCE_OPENS_MIN
+  const attendanceOpen = nowMinutesSGT >= ATTENDANCE_OPENS_MIN && nowMinutesSGT < ATTENDANCE_CLOSES_MIN
+
+  function handleAttendanceClick() {
+    if (attendanceOpen) {
+      window.open(buildAttendanceFormUrl(email), '_blank', 'noopener,noreferrer')
+    } else {
+      // Only reachable once it's opened for the day (the button is disabled before 6 AM), so this is the "already closed" case.
+      setShowAttendanceEnded(true)
+    }
+  }
+
   return (
     <Reveal>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -156,16 +175,40 @@ export function ContributorDashboard() {
           >
             CTS Form
           </button>
-          <a
-            href={buildAttendanceFormUrl(email)}
-            target="_blank"
-            rel="noreferrer"
-            className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+          <button
+            type="button"
+            onClick={handleAttendanceClick}
+            disabled={attendanceNotYetOpen}
+            title={attendanceNotYetOpen ? 'Opens at 6:00 AM (Singapore time)' : undefined}
+            className={`rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold ${
+              attendanceNotYetOpen
+                ? 'cursor-not-allowed bg-gray-100 text-gray-400'
+                : 'bg-white text-gray-700 hover:bg-gray-50'
+            }`}
           >
             Attendance Form
-          </a>
+          </button>
         </div>
       </div>
+
+      {showAttendanceEnded && (
+        <Modal title="Attendance has ended" onClose={() => setShowAttendanceEnded(false)}>
+          <div className="flex flex-col gap-4">
+            <p className="text-sm text-gray-600">
+              Today's attendance window closes at 1:30 PM (Singapore time), and it's already past that.
+            </p>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowAttendanceEnded(false)}
+                className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {showWarning && data.submitted_this_week === 0 && (
         <div className="mb-6 flex items-center gap-3 rounded-xl border-2 border-status-danger-text bg-status-danger-text px-5 py-4 text-sm font-semibold text-white shadow-sm">

@@ -81,6 +81,12 @@ export function yearMonth(date: Date): [number, number] {
   return [sg.getUTCFullYear(), sg.getUTCMonth()]
 }
 
+/** Minutes since midnight, read as Asia/Singapore's wall clock — for "is it within this time window" checks. */
+export function sgMinutesSinceMidnight(date: Date): number {
+  const sg = toSG(date)
+  return sg.getUTCHours() * 60 + sg.getUTCMinutes()
+}
+
 export function toISODate(date: Date): string {
   const sg = toSG(date)
   const year = sg.getUTCFullYear()
