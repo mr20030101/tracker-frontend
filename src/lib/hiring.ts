@@ -141,6 +141,33 @@ export async function reviewApplication(id: number, decision: 'accept' | 'deny')
   return data as ReviewResult
 }
 
+export interface BulkResult {
+  updated: number[]
+  failed: { id: number; name: string; error: string }[]
+}
+
+/**
+ * Runs `run` on each application (in parallel) for a "select all, then..." bulk action. One
+ * failing application doesn't stop the rest; `failed` says who was skipped and why, so the set
+ * that didn't go through can be retried on its own.
+ */
+async function runBulk(applications: HiringApplication[], run: (application: HiringApplication) => Promise<unknown>): Promise<BulkResult> {
+  const results = await Promise.allSettled(applications.map(run))
+  const updated: number[] = []
+  const failed: { id: number; name: string; error: string }[] = []
+  results.forEach((result, index) => {
+    const application = applications[index]
+    if (result.status === 'fulfilled') updated.push(application.id)
+    else failed.push({ id: application.id, name: application.full_name, error: result.reason instanceof Error ? result.reason.message : String(result.reason) })
+  })
+  return { updated, failed }
+}
+
+/** Reviews several applications at once (bulk accept/deny). See runBulk. */
+export async function reviewApplications(applications: HiringApplication[], decision: 'accept' | 'deny'): Promise<BulkResult> {
+  return runBulk(applications, (application) => reviewApplication(application.id, decision))
+}
+
 /** Creates the login for an accepted applicant. Accepting doesn't do this; it is its own step. */
 export async function createAccount(id: number): Promise<AccountResult> {
   const { data, error } = await supabase.functions.invoke('manage-user', { body: { action: 'create-account', id } })
@@ -160,6 +187,27 @@ export async function setOnboarded(id: number, onboarded: boolean): Promise<Onbo
   })
   if (error) throw await functionErrorMessage(error)
   return data as OnboardResult
+}
+
+/** Marks several accepted applicants onboarded at once (or un-marks them). See runBulk. */
+export async function setOnboardedBulk(applications: HiringApplication[], onboarded: boolean): Promise<BulkResult> {
+  return runBulk(applications, (application) => setOnboarded(application.id, onboarded))
+}
+
+/** Permanently deletes one hiring application. A lead may only delete their own; an admin anyone's. */
+export async function deleteApplication(id: number): Promise<{ id: number }> {
+  const { data, error } = await supabase.functions.invoke('manage-user', { body: { action: 'delete-application', id } })
+  if (error) throw await functionErrorMessage(error)
+  return data as { id: number }
+}
+
+/**
+ * Deletes several chosen applications at once, for "select all, then delete". Doesn't touch any
+ * contributor account already created from one of them — accounts live in profiles/auth, not
+ * here. See runBulk.
+ */
+export async function deleteApplications(applications: HiringApplication[]): Promise<BulkResult> {
+  return runBulk(applications, (application) => deleteApplication(application.id))
 }
 
 export interface ClearHiringResult {

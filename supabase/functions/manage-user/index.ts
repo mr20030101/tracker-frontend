@@ -206,6 +206,22 @@ Deno.serve(async (request) => {
         return Response.json(updated, { headers: corsHeaders })
     }
 
+    // Permanently deletes one chosen application (e.g. a duplicate or a mistake), unlike
+    // clear-hiring below which wipes everything. A lead may only delete their own; an admin
+    // anyone's. This only removes the application row — a contributor account already created
+    // from it lives in profiles/auth, not here, so it is untouched.
+    if (body.action === 'delete-application') {
+        if (!body.id) return errorResponse('An application id is required.', 400)
+        const { data: application } = await admin.from('hiring_applications').select('id, lead_id').eq('id', body.id).maybeSingle()
+        if (!application) return errorResponse('Application not found.', 404)
+        if (profile.role !== 'admin' && application.lead_id !== caller.user.id) {
+            return errorResponse('Forbidden: this application belongs to another lead.', 403)
+        }
+        const { error } = await admin.from('hiring_applications').delete().eq('id', application.id)
+        if (error) return errorResponse(`Could not delete this application: ${error.message}`, 400)
+        return Response.json({ id: application.id }, { headers: corsHeaders })
+    }
+
     // Admin-only hard reset: permanently deletes every hiring application, any lead, any status.
     // This only clears the application history — a contributor account already created from one
     // lives in profiles/auth, not in this table, so it is untouched.

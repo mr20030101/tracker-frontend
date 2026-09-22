@@ -9,6 +9,7 @@ import {
   applicationLink,
   clearHiring,
   createAccount,
+  deleteApplications,
   describeIssues,
   emailApplicants,
   fetchApplications,
@@ -17,11 +18,12 @@ import {
   MAX_EMAIL_RECIPIENTS,
   MIN_GPU_MEMORY_GB,
   requirementIssues,
-  reviewApplication,
+  reviewApplications,
   safeExternalHref,
   saveBootcampDetails,
   setAcceptingApplications,
   setOnboarded,
+  setOnboardedBulk,
   type BootcampDetails,
 } from '../lib/hiring'
 import type { HiringApplication, HiringStatus, User } from '../types'
@@ -33,7 +35,8 @@ import { Select } from '../components/Select'
 
 type StatusFilter = HiringStatus | 'all'
 type Notice = { tone: 'success' | 'error'; text: string }
-type Review = { application: HiringApplication; decision: 'accept' | 'deny' }
+// One applicant (a row's own Accept/Deny) or several at once (bulk, from "select all").
+type Review = { applications: HiringApplication[]; decision: 'accept' | 'deny' }
 type Credentials = { name: string; email: string; password: string; emailedTo?: string; emailError?: string }
 
 const STATUS_FILTERS: StatusFilter[] = ['pending', 'accepted', 'denied', 'all']
@@ -166,6 +169,8 @@ export function Hiring() {
   const [linkLeadId, setLinkLeadId] = useState('')
   const [clearingHiring, setClearingHiring] = useState(false)
   const [clearConfirmText, setClearConfirmText] = useState('')
+  // One applicant (a row's own Delete) or several at once (bulk, from "select all").
+  const [deleting, setDeleting] = useState<HiringApplication[] | null>(null)
   const normalizedSearch = search.trim().toLowerCase()
 
   const { data: applications = [], isLoading, error: loadError } = useQuery({
@@ -211,17 +216,39 @@ export function Hiring() {
   }, [notice])
 
   const reviewMutation = useMutation({
-    mutationFn: ({ application, decision }: Review) => reviewApplication(application.id, decision),
-    onSuccess: (_result, { application, decision }) => {
+    mutationFn: ({ applications, decision }: Review) => reviewApplications(applications, decision),
+    onSuccess: (result, { applications, decision }) => {
       queryClient.invalidateQueries({ queryKey: ['hiring-applications'] })
+      const verb = decision === 'accept' ? 'accepted' : 'denied'
+      if (result.failed.length === 0) {
+        setReview(null)
+        setError(null)
+        setRowSelection({})
+        setNotice({
+          tone: 'success',
+          text:
+            applications.length === 1
+              ? decision === 'accept'
+                ? `${applications[0].full_name} was accepted. Create their account from the Accepted tab when you're ready.`
+                : `${applications[0].full_name}'s application was denied.`
+              : `${plural(result.updated.length, 'application')} ${verb}.`,
+        })
+        return
+      }
+      // A single review just failed outright: keep the modal open so it can be retried, like before.
+      if (applications.length === 1) {
+        setError(result.failed[0].error)
+        return
+      }
+      // Bulk, partial failure: close the modal, and leave only the ones that failed selected.
       setReview(null)
       setError(null)
+      setRowSelection(Object.fromEntries(result.failed.map((failure) => [String(failure.id), true])))
       setNotice({
-        tone: 'success',
-        text:
-          decision === 'accept'
-            ? `${application.full_name} was accepted. Create their account from the Accepted tab when you're ready.`
-            : `${application.full_name}'s application was denied.`,
+        tone: 'error',
+        text: `${result.updated.length} of ${applications.length} ${verb}. Not done: ${result.failed
+          .map((failure) => `${failure.name} (${failure.error})`)
+          .join('; ')}. They're still selected so you can try again.`,
       })
     },
     onError: (mutationError: Error) => setError(mutationError.message || 'Could not review this application.'),
@@ -256,6 +283,62 @@ export function Hiring() {
       setDetails((current) => (current && current.id === result.id ? { ...current, onboarded_at: result.onboarded_at } : current))
     },
     onError: (mutationError: Error) => setNotice({ tone: 'error', text: mutationError.message || 'Could not update onboarding status.' }),
+  })
+
+  // The bulk version, for "select all, then mark onboarded" on the Accepted tab.
+  const onboardBulkMutation = useMutation({
+    mutationFn: ({ applications, onboarded }: { applications: HiringApplication[]; onboarded: boolean }) =>
+      setOnboardedBulk(applications, onboarded),
+    onSuccess: (result, { onboarded }) => {
+      queryClient.invalidateQueries({ queryKey: ['hiring-applications'] })
+      const verb = onboarded ? 'onboarded' : 'not onboarded'
+      const total = result.updated.length + result.failed.length
+      if (result.failed.length === 0) {
+        setRowSelection({})
+        setNotice({ tone: 'success', text: `${plural(result.updated.length, 'applicant')} marked ${verb}.` })
+        return
+      }
+      setRowSelection(Object.fromEntries(result.failed.map((failure) => [String(failure.id), true])))
+      setNotice({
+        tone: 'error',
+        text: `${result.updated.length} of ${total} marked ${verb}. Not done: ${result.failed
+          .map((failure) => `${failure.name} (${failure.error})`)
+          .join('; ')}. They're still selected so you can try again.`,
+      })
+    },
+    onError: (mutationError: Error) => setNotice({ tone: 'error', text: mutationError.message || 'Could not update onboarding status.' }),
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (applications: HiringApplication[]) => deleteApplications(applications),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['hiring-applications'] })
+      const total = result.updated.length + result.failed.length
+      if (result.failed.length === 0) {
+        setDeleting(null)
+        setError(null)
+        setRowSelection({})
+        setDetails((current) => (current && result.updated.includes(current.id) ? null : current))
+        setNotice({ tone: 'success', text: `Deleted ${plural(result.updated.length, 'application')}.` })
+        return
+      }
+      // Total failure (e.g. every one belonged to another lead): keep the modal open to retry.
+      if (result.updated.length === 0) {
+        setError(result.failed[0].error)
+        return
+      }
+      // Partial: close the modal, and leave only the ones that failed selected.
+      setDeleting(null)
+      setError(null)
+      setRowSelection(Object.fromEntries(result.failed.map((failure) => [String(failure.id), true])))
+      setNotice({
+        tone: 'error',
+        text: `Deleted ${result.updated.length} of ${total}. Not deleted: ${result.failed
+          .map((failure) => `${failure.name} (${failure.error})`)
+          .join('; ')}. They're still selected so you can try again.`,
+      })
+    },
+    onError: (mutationError: Error) => setError(mutationError.message || 'Could not delete those applications.'),
   })
 
   const clearHiringMutation = useMutation({
@@ -321,6 +404,11 @@ export function Hiring() {
     setError(null)
     setClearConfirmText('')
     setClearingHiring(true)
+  }
+
+  function openDelete(applications: HiringApplication[]) {
+    setError(null)
+    setDeleting(applications)
   }
 
   // Every question the applicant answered, plus how their review turned out. Used for both
@@ -442,64 +530,46 @@ export function Hiring() {
         header: 'Applied',
         cell: ({ row }) => <span className="whitespace-nowrap text-gray-500">{formatDate(row.original.created_at)}</span>,
       },
+      // Emailed, account and onboarded used to be three separate columns; one compact "Progress"
+      // column reads faster and leaves less to scroll sideways for. Onboarded stays clickable.
       ...(statusFilter === 'accepted'
         ? [
             {
-              id: 'emailed',
-              accessorFn: (a: HiringApplication) => (a.emailed_at ? new Date(a.emailed_at).getTime() : 0),
-              header: 'Emailed',
-              cell: ({ row }) =>
-                row.original.emailed_at ? (
-                  <span title={new Date(row.original.emailed_at).toLocaleString()} className="whitespace-nowrap text-status-success-text">
-                    {formatDate(row.original.emailed_at)}
-                  </span>
-                ) : (
-                  <span className="text-xs text-gray-400">Not yet</span>
-                ),
-            } satisfies ColumnDef<HiringApplication, any>,
-          ]
-        : []),
-      ...(statusFilter === 'accepted'
-        ? [
-            {
-              id: 'account',
-              accessorFn: (a: HiringApplication) => (a.user_id ? 1 : 0),
-              header: 'Account',
-              cell: ({ row }) =>
-                row.original.user_id ? (
-                  <span className={`${pillClass} bg-status-success-bg text-status-success-text`}>Created</span>
-                ) : (
-                  <span className="text-xs text-gray-400">Not created</span>
-                ),
-            } satisfies ColumnDef<HiringApplication, any>,
-          ]
-        : []),
-      ...(statusFilter === 'accepted'
-        ? [
-            {
-              id: 'onboarded',
-              accessorFn: (a: HiringApplication) => (a.onboarded_at ? 1 : 0),
-              header: 'Onboarded',
+              id: 'progress',
+              header: 'Progress',
+              enableSorting: false,
               cell: ({ row }) => {
                 const application = row.original
-                return (
-                  <button
-                    type="button"
-                    onClick={() => onboardMutation.mutate({ id: application.id, onboarded: !application.onboarded_at })}
-                    disabled={onboardMutation.isPending}
-                    title={
-                      application.onboarded_at
-                        ? `Onboarded ${new Date(application.onboarded_at).toLocaleString()}. Click to unmark.`
-                        : 'Click to mark onboarded'
-                    }
-                    className={`${pillClass} disabled:opacity-50 ${
-                      application.onboarded_at
-                        ? 'bg-status-success-bg text-status-success-text hover:opacity-80'
-                        : 'border border-gray-200 text-gray-400 hover:bg-gray-50'
-                    }`}
+                const badge = (label: string, on: boolean, title: string) => (
+                  <span
+                    title={title}
+                    className={`${pillClass} ${on ? 'bg-status-success-bg text-status-success-text' : 'border border-gray-200 text-gray-400'}`}
                   >
-                    {application.onboarded_at ? 'Onboarded' : 'Not onboarded'}
-                  </button>
+                    {label}
+                  </span>
+                )
+                return (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {badge('Emailed', Boolean(application.emailed_at), application.emailed_at ? `Emailed ${new Date(application.emailed_at).toLocaleString()}` : 'Not emailed yet')}
+                    {badge('Account', Boolean(application.user_id), application.user_id ? 'Account created' : 'Account not created yet')}
+                    <button
+                      type="button"
+                      onClick={() => onboardMutation.mutate({ id: application.id, onboarded: !application.onboarded_at })}
+                      disabled={onboardMutation.isPending}
+                      title={
+                        application.onboarded_at
+                          ? `Onboarded ${new Date(application.onboarded_at).toLocaleString()}. Click to unmark.`
+                          : 'Click to mark onboarded'
+                      }
+                      className={`${pillClass} disabled:opacity-50 ${
+                        application.onboarded_at
+                          ? 'bg-status-success-bg text-status-success-text hover:opacity-80'
+                          : 'border border-gray-200 text-gray-400 hover:bg-gray-50'
+                      }`}
+                    >
+                      Onboarded
+                    </button>
+                  </div>
                 )
               },
             } satisfies ColumnDef<HiringApplication, any>,
@@ -551,8 +621,12 @@ export function Hiring() {
                   { label: 'View', onClick: () => setDetails(application) },
                   ...(application.status === 'pending'
                     ? [
-                        { label: 'Accept', onClick: () => openReview({ application, decision: 'accept' }) },
-                        { label: 'Deny', variant: 'danger' as const, onClick: () => openReview({ application, decision: 'deny' }) },
+                        { label: 'Accept', onClick: () => openReview({ applications: [application], decision: 'accept' }) },
+                        {
+                          label: 'Deny',
+                          variant: 'danger' as const,
+                          onClick: () => openReview({ applications: [application], decision: 'deny' }),
+                        },
                       ]
                     : []),
                   ...(application.status === 'accepted'
@@ -565,6 +639,7 @@ export function Hiring() {
                         ]
                       : [{ label: 'Create account', onClick: () => openCreate(application) }]
                     : []),
+                  { label: 'Delete', variant: 'danger' as const, onClick: () => openDelete([application]) },
                 ]}
               />
             </div>
@@ -718,10 +793,42 @@ export function Hiring() {
       {selected.length > 0 && (
         <div className="sticky top-0 z-10 mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 shadow-sm">
           <span className="text-sm font-medium text-gray-700">{selected.length} selected</span>
+          {statusFilter === 'pending' && (
+            <>
+              <button
+                onClick={() => openReview({ applications: selected, decision: 'accept' })}
+                className="rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground"
+              >
+                Accept selected
+              </button>
+              <button
+                onClick={() => openReview({ applications: selected, decision: 'deny' })}
+                className="rounded-lg border border-status-danger-text/30 px-3 py-1.5 text-sm font-semibold text-status-danger-text hover:bg-status-danger-bg"
+              >
+                Deny selected
+              </button>
+            </>
+          )}
           {statusFilter === 'accepted' && (
-            <button onClick={openEmail} className="rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground">
-              Send email
-            </button>
+            <>
+              <button onClick={openEmail} className="rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground">
+                Send email
+              </button>
+              <button
+                onClick={() => onboardBulkMutation.mutate({ applications: selected, onboarded: true })}
+                disabled={onboardBulkMutation.isPending}
+                className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                Mark onboarded
+              </button>
+              <button
+                onClick={() => onboardBulkMutation.mutate({ applications: selected, onboarded: false })}
+                disabled={onboardBulkMutation.isPending}
+                className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                Mark not onboarded
+              </button>
+            </>
           )}
           <button
             onClick={() => exportApplications(selected, `hiring-selected-${todayStamp()}.csv`)}
@@ -729,13 +836,29 @@ export function Hiring() {
           >
             Export selected
           </button>
+          <button
+            onClick={() => openDelete(selected)}
+            className="rounded-lg border border-status-danger-text/30 px-3 py-1.5 text-sm font-semibold text-status-danger-text hover:bg-status-danger-bg"
+          >
+            Delete selected
+          </button>
           <button onClick={() => setRowSelection({})} className="ml-auto text-sm font-medium text-gray-500 hover:underline">
             Clear selection
           </button>
         </div>
       )}
+      {statusFilter === 'pending' && selected.length === 0 && rows.length > 0 && (
+        <p className="mb-3 text-xs text-gray-400">
+          Tick one or more applicants to accept, deny, export or delete them together.
+        </p>
+      )}
       {statusFilter === 'accepted' && selected.length === 0 && rows.length > 0 && (
-        <p className="mb-3 text-xs text-gray-400">Tick one or more applicants to send them an email, or to export just them.</p>
+        <p className="mb-3 text-xs text-gray-400">
+          Tick one or more applicants to email, mark onboarded, export or delete them together.
+        </p>
+      )}
+      {(statusFilter === 'denied' || statusFilter === 'all') && selected.length === 0 && rows.length > 0 && (
+        <p className="mb-3 text-xs text-gray-400">Tick one or more applicants to export or delete them together.</p>
       )}
 
       <DataTable
@@ -756,48 +879,50 @@ export function Hiring() {
       />
 
       {details && (
-        <Modal title={details.full_name} onClose={() => setDetails(null)} maxWidthClassName="max-w-lg">
+        <Modal title={details.full_name} onClose={() => setDetails(null)} maxWidthClassName="max-w-4xl">
           <div className="flex flex-col gap-5">
-            <section>
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">Personal information</h3>
-              <dl className="grid grid-cols-[9rem_1fr] gap-x-4 gap-y-2 text-sm">
-                <Detail label="Active email">{details.active_email}</Detail>
-                <Detail label="Remotasks email">{details.remotasks_email}</Detail>
-                <Detail label="Remotasks ID">{details.remotasks_id}</Detail>
-                <Detail label="Facebook">
-                  <ProfileLink url={details.facebook_url}>Open profile</ProfileLink>
-                </Detail>
-                <Detail label="Robotics background">{yesNo(details.has_robotics_background)}</Detail>
-                <Detail label="Applied">{new Date(details.created_at).toLocaleString()}</Detail>
-                {isAdmin && <Detail label="Lead">{leadNameById.get(details.lead_id) ?? 'Unknown'}</Detail>}
-                {details.reviewed_at && <Detail label="Reviewed">{new Date(details.reviewed_at).toLocaleString()}</Detail>}
-                {details.status === 'accepted' && (
-                  <Detail label="Emailed">{details.emailed_at ? new Date(details.emailed_at).toLocaleString() : 'Not yet'}</Detail>
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              <section>
+                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">Personal information</h3>
+                <dl className="grid grid-cols-[9rem_1fr] gap-x-4 gap-y-2 text-sm">
+                  <Detail label="Active email">{details.active_email}</Detail>
+                  <Detail label="Remotasks email">{details.remotasks_email}</Detail>
+                  <Detail label="Remotasks ID">{details.remotasks_id}</Detail>
+                  <Detail label="Facebook">
+                    <ProfileLink url={details.facebook_url}>Open profile</ProfileLink>
+                  </Detail>
+                  <Detail label="Robotics background">{yesNo(details.has_robotics_background)}</Detail>
+                  <Detail label="Applied">{new Date(details.created_at).toLocaleString()}</Detail>
+                  {isAdmin && <Detail label="Lead">{leadNameById.get(details.lead_id) ?? 'Unknown'}</Detail>}
+                  {details.reviewed_at && <Detail label="Reviewed">{new Date(details.reviewed_at).toLocaleString()}</Detail>}
+                  {details.status === 'accepted' && (
+                    <Detail label="Emailed">{details.emailed_at ? new Date(details.emailed_at).toLocaleString() : 'Not yet'}</Detail>
+                  )}
+                  {details.status === 'accepted' && <Detail label="Account">{details.user_id ? 'Created' : 'Not created yet'}</Detail>}
+                  {details.status === 'accepted' && (
+                    <Detail label="Onboarded">{details.onboarded_at ? new Date(details.onboarded_at).toLocaleString() : 'Not yet'}</Detail>
+                  )}
+                </dl>
+              </section>
+              <section>
+                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">Computer</h3>
+                <p className="mb-2 text-xs text-gray-400">
+                  Requires a personal computer, stable internet, and Ryzen 3 / Intel i5 with at least {MIN_GPU_MEMORY_GB}GB GPU.
+                </p>
+                {requirementIssues(details).length > 0 && (
+                  <div role="alert" className="mb-3 rounded-lg bg-status-danger-bg px-3 py-2 text-sm text-status-danger-text">
+                    Below requirements: {describeIssues(requirementIssues(details))}.
+                  </div>
                 )}
-                {details.status === 'accepted' && <Detail label="Account">{details.user_id ? 'Created' : 'Not created yet'}</Detail>}
-                {details.status === 'accepted' && (
-                  <Detail label="Onboarded">{details.onboarded_at ? new Date(details.onboarded_at).toLocaleString() : 'Not yet'}</Detail>
-                )}
-              </dl>
-            </section>
-            <section>
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">Computer</h3>
-              <p className="mb-2 text-xs text-gray-400">
-                Requires a personal computer, stable internet, and Ryzen 3 / Intel i5 with at least {MIN_GPU_MEMORY_GB}GB GPU.
-              </p>
-              {requirementIssues(details).length > 0 && (
-                <div role="alert" className="mb-3 rounded-lg bg-status-danger-bg px-3 py-2 text-sm text-status-danger-text">
-                  Below requirements: {describeIssues(requirementIssues(details))}.
-                </div>
-              )}
-              <dl className="grid grid-cols-[9rem_1fr] gap-x-4 gap-y-2 text-sm">
-                <Detail label="Personal computer">{yesNo(details.has_personal_computer)}</Detail>
-                <Detail label="Stable internet">{yesNo(details.has_stable_internet)}</Detail>
-                <Detail label="Processor">{details.cpu}</Detail>
-                <Detail label="Graphics card">{details.gpu}</Detail>
-                <Detail label="GPU memory">{details.gpu_memory_gb === null ? null : `${Number(details.gpu_memory_gb)} GB`}</Detail>
-              </dl>
-            </section>
+                <dl className="grid grid-cols-[9rem_1fr] gap-x-4 gap-y-2 text-sm">
+                  <Detail label="Personal computer">{yesNo(details.has_personal_computer)}</Detail>
+                  <Detail label="Stable internet">{yesNo(details.has_stable_internet)}</Detail>
+                  <Detail label="Processor">{details.cpu}</Detail>
+                  <Detail label="Graphics card">{details.gpu}</Detail>
+                  <Detail label="GPU memory">{details.gpu_memory_gb === null ? null : `${Number(details.gpu_memory_gb)} GB`}</Detail>
+                </dl>
+              </section>
+            </div>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className={`${pillClass} ${STATUS_STYLES[details.status]}`}>{STATUS_LABELS[details.status]}</span>
               <div className="flex gap-2">
@@ -836,7 +961,7 @@ export function Hiring() {
                       type="button"
                       onClick={() => {
                         setDetails(null)
-                        openReview({ application: details, decision: 'deny' })
+                        openReview({ applications: [details], decision: 'deny' })
                       }}
                       className="rounded-lg border border-status-danger-text/30 px-4 py-2 text-sm font-semibold text-status-danger-text hover:bg-status-danger-bg"
                     >
@@ -846,7 +971,7 @@ export function Hiring() {
                       type="button"
                       onClick={() => {
                         setDetails(null)
-                        openReview({ application: details, decision: 'accept' })
+                        openReview({ applications: [details], decision: 'accept' })
                       }}
                       className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
                     >
@@ -854,6 +979,16 @@ export function Hiring() {
                     </button>
                   </>
                 )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDetails(null)
+                    openDelete([details])
+                  }}
+                  className="rounded-lg border border-status-danger-text/30 px-4 py-2 text-sm font-semibold text-status-danger-text hover:bg-status-danger-bg"
+                >
+                  Delete
+                </button>
               </div>
             </div>
           </div>
@@ -1016,50 +1151,75 @@ export function Hiring() {
         </Modal>
       )}
 
-      {review && (
-        <Modal
-          title={review.decision === 'accept' ? `Accept ${review.application.full_name}?` : `Deny ${review.application.full_name}?`}
-          onClose={() => setReview(null)}
-        >
-          <div className="flex flex-col gap-3">
-            {review.decision === 'accept' ? (
-              <p className="text-sm text-gray-600">
-                <span className="font-medium text-gray-900">{review.application.full_name}</span>'s application will be marked
-                accepted. No account is created yet: you can do that afterwards, from the Accepted tab, when you're ready.
-              </p>
-            ) : (
-              <p className="text-sm text-gray-600">
-                <span className="font-medium text-gray-900">{review.application.full_name}</span>'s application will be marked
-                denied and no login is created. They can apply again through the link.
-              </p>
-            )}
-            {error && (
-              <div role="alert" className="text-sm text-status-danger-text">
-                {error}
+      {review &&
+        (() => {
+          const isSingle = review.applications.length === 1
+          const person = review.applications[0]
+          const verb = review.decision === 'accept' ? 'accepted' : 'denied'
+          return (
+            <Modal
+              title={
+                isSingle
+                  ? `${review.decision === 'accept' ? 'Accept' : 'Deny'} ${person.full_name}?`
+                  : `${review.decision === 'accept' ? 'Accept' : 'Deny'} ${plural(review.applications.length, 'application')}?`
+              }
+              onClose={() => setReview(null)}
+            >
+              <div className="flex flex-col gap-3">
+                {isSingle ? (
+                  <p className="text-sm text-gray-600">
+                    <span className="font-medium text-gray-900">{person.full_name}</span>'s application will be marked {verb}.{' '}
+                    {review.decision === 'accept'
+                      ? "No account is created yet: you can do that afterwards, from the Accepted tab, when you're ready."
+                      : 'No login is created. They can apply again through the link.'}
+                  </p>
+                ) : (
+                  <>
+                    <p className="text-sm text-gray-600">
+                      {plural(review.applications.length, 'application')} will be marked {verb}.{' '}
+                      {review.decision === 'accept'
+                        ? "No accounts are created yet: you can do that afterwards, from the Accepted tab, when you're ready."
+                        : 'No logins are created. They can apply again through the link.'}
+                    </p>
+                    <ul className="max-h-40 divide-y divide-gray-100 overflow-y-auto rounded-lg border border-gray-200 text-sm">
+                      {review.applications.map((application) => (
+                        <li key={application.id} className="truncate px-3 py-2 font-medium text-gray-900">
+                          {application.full_name}
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+                {error && (
+                  <div role="alert" className="text-sm text-status-danger-text">
+                    {error}
+                  </div>
+                )}
+                <div className="mt-2 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setReview(null)}
+                    className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={reviewMutation.isPending}
+                    onClick={() => reviewMutation.mutate(review)}
+                    className={`rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-50 ${
+                      review.decision === 'accept' ? 'bg-accent text-accent-foreground' : 'bg-status-danger-text text-white'
+                    }`}
+                  >
+                    {reviewMutation.isPending
+                      ? 'Saving...'
+                      : `${review.decision === 'accept' ? 'Accept' : 'Deny'}${isSingle ? ' application' : ` ${review.applications.length}`}`}
+                  </button>
+                </div>
               </div>
-            )}
-            <div className="mt-2 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setReview(null)}
-                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={reviewMutation.isPending}
-                onClick={() => reviewMutation.mutate(review)}
-                className={`rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-50 ${
-                  review.decision === 'accept' ? 'bg-accent text-accent-foreground' : 'bg-status-danger-text text-white'
-                }`}
-              >
-                {reviewMutation.isPending ? 'Saving...' : review.decision === 'accept' ? 'Accept application' : 'Deny application'}
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
+            </Modal>
+          )
+        })()}
 
       {credentials && (
         <Modal title="Account created" onClose={() => setCredentials(null)}>
@@ -1096,6 +1256,46 @@ export function Hiring() {
                 className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
               >
                 Done
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {deleting && (
+        <Modal title={`Delete ${plural(deleting.length, 'application')}?`} onClose={() => setDeleting(null)}>
+          <div className="flex flex-col gap-3">
+            <p className="text-sm text-gray-600">
+              This permanently deletes {plural(deleting.length, 'application')}. It cannot be undone. Any contributor account already
+              created from one of them is not affected; only the application record is removed.
+            </p>
+            <ul className="max-h-40 divide-y divide-gray-100 overflow-y-auto rounded-lg border border-gray-200 text-sm">
+              {deleting.map((application) => (
+                <li key={application.id} className="truncate px-3 py-2 font-medium text-gray-900">
+                  {application.full_name}
+                </li>
+              ))}
+            </ul>
+            {error && (
+              <div role="alert" className="text-sm text-status-danger-text">
+                {error}
+              </div>
+            )}
+            <div className="mt-2 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setDeleting(null)}
+                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={deleteMutation.isPending}
+                onClick={() => deleteMutation.mutate(deleting)}
+                className="rounded-lg bg-status-danger-text px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              >
+                {deleteMutation.isPending ? 'Deleting...' : `Delete ${plural(deleting.length, 'application')}`}
               </button>
             </div>
           </div>
