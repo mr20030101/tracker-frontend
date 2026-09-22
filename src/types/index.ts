@@ -196,6 +196,8 @@ export interface HiringApplication {
   reviewed_at: string | null
   // When the applicant was last emailed from the Accepted tab; null if never.
   emailed_at: string | null
+  // When an accepted applicant was marked onboarded (after the bootcamp); null until someone flips it.
+  onboarded_at: string | null
   // The login created for this applicant. Accepting doesn't create it; a separate step does, so it is null until then.
   user_id: string | null
   created_at: string

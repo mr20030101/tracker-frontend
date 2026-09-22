@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ColumnDef, RowSelectionState } from '@tanstack/react-table'
 import { Check, Copy, ExternalLink } from 'lucide-react'
@@ -7,6 +7,7 @@ import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import {
   applicationLink,
+  clearHiring,
   createAccount,
   describeIssues,
   emailApplicants,
@@ -20,10 +21,13 @@ import {
   safeExternalHref,
   saveBootcampDetails,
   setAcceptingApplications,
+  setOnboarded,
   type BootcampDetails,
 } from '../lib/hiring'
 import type { HiringApplication, HiringStatus, User } from '../types'
+import { ActionsMenu } from '../components/ActionsMenu'
 import { DataTable } from '../components/DataTable'
+import { downloadCsv } from '../lib/csv'
 import { Modal } from '../components/Modal'
 import { Select } from '../components/Select'
 
@@ -46,6 +50,8 @@ const NOTICE_CLASSES: Record<Notice['tone'], string> = {
 }
 
 const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`
+// For an export filename, like "2026-09-22".
+const todayStamp = () => new Date().toISOString().slice(0, 10)
 
 const inputClass = 'w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent'
 const selectClass = 'rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent'
@@ -144,6 +150,7 @@ export function Hiring() {
   const { user: currentUser, refreshUser } = useAuth()
   const isAdmin = currentUser?.role === 'admin'
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [search, setSearch] = useState('')
   const [review, setReview] = useState<Review | null>(null)
@@ -157,6 +164,8 @@ export function Hiring() {
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<Notice | null>(null)
   const [linkLeadId, setLinkLeadId] = useState('')
+  const [clearingHiring, setClearingHiring] = useState(false)
+  const [clearConfirmText, setClearConfirmText] = useState('')
   const normalizedSearch = search.trim().toLowerCase()
 
   const { data: applications = [], isLoading, error: loadError } = useQuery({
@@ -238,6 +247,29 @@ export function Hiring() {
     onError: (mutationError: Error) => setError(mutationError.message || 'Could not create this account.'),
   })
 
+  // A simple toggle, not a confirmed step like accept/deny: it just flips onboarded_at.
+  const onboardMutation = useMutation({
+    mutationFn: ({ id, onboarded }: { id: number; onboarded: boolean }) => setOnboarded(id, onboarded),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['hiring-applications'] })
+      // Keep the details modal in sync if it's open on the applicant that was just toggled.
+      setDetails((current) => (current && current.id === result.id ? { ...current, onboarded_at: result.onboarded_at } : current))
+    },
+    onError: (mutationError: Error) => setNotice({ tone: 'error', text: mutationError.message || 'Could not update onboarding status.' }),
+  })
+
+  const clearHiringMutation = useMutation({
+    mutationFn: clearHiring,
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['hiring-applications'] })
+      setClearingHiring(false)
+      setClearConfirmText('')
+      setRowSelection({})
+      setNotice({ tone: 'success', text: `Cleared ${plural(result.deleted, 'application')}.` })
+    },
+    onError: (mutationError: Error) => setError(mutationError.message || 'Could not clear hiring data.'),
+  })
+
   const emailMutation = useMutation({
     mutationFn: ({ ids, details }: { ids: number[]; details: BootcampDetails }) => emailApplicants(ids, details),
     onSuccess: (result, { ids, details }) => {
@@ -285,6 +317,40 @@ export function Hiring() {
     setEmailing(selected)
   }
 
+  function openClearHiring() {
+    setError(null)
+    setClearConfirmText('')
+    setClearingHiring(true)
+  }
+
+  // Every question the applicant answered, plus how their review turned out. Used for both
+  // "Export all" (whatever the current filters show) and "Export selected".
+  function exportApplications(list: HiringApplication[], filename: string) {
+    downloadCsv(
+      filename,
+      list.map((a) => ({
+        full_name: a.full_name,
+        active_email: a.active_email,
+        remotasks_email: a.remotasks_email,
+        remotasks_id: a.remotasks_id,
+        facebook_url: a.facebook_url,
+        has_robotics_background: yesNo(a.has_robotics_background) ?? '',
+        has_personal_computer: yesNo(a.has_personal_computer) ?? '',
+        has_stable_internet: yesNo(a.has_stable_internet) ?? '',
+        cpu: a.cpu ?? '',
+        gpu: a.gpu ?? '',
+        gpu_memory_gb: a.gpu_memory_gb ?? '',
+        status: a.status,
+        ...(isAdmin ? { lead: leadNameById.get(a.lead_id) ?? '' } : {}),
+        applied_at: a.created_at,
+        reviewed_at: a.reviewed_at ?? '',
+        emailed_at: a.emailed_at ?? '',
+        onboarded_at: a.onboarded_at ?? '',
+        account_created: a.user_id ? 'yes' : 'no',
+      })),
+    )
+  }
+
   // Whose application link to show: a lead's own, or (for an admin) the one they pick.
   const effectiveLinkLeadId = isAdmin
     ? leads.some((lead) => lead.id === linkLeadId)
@@ -310,36 +376,32 @@ export function Hiring() {
 
   const columns = useMemo<ColumnDef<HiringApplication, any>[]>(
     () => [
-      ...(statusFilter === 'accepted'
-        ? [
-            {
-              id: 'select',
-              header: ({ table }) => (
-                <input
-                  type="checkbox"
-                  // The rows on this page only, so "50 per page, select all" fits an email's 50-person limit.
-                  aria-label="Select all accepted applicants on this page"
-                  checked={table.getIsAllPageRowsSelected()}
-                  ref={(el) => {
-                    if (el) el.indeterminate = table.getIsSomePageRowsSelected()
-                  }}
-                  onChange={table.getToggleAllPageRowsSelectedHandler()}
-                  className="h-4 w-4 rounded border-gray-300 text-accent focus:ring-accent"
-                />
-              ),
-              cell: ({ row }) => (
-                <input
-                  type="checkbox"
-                  aria-label={`Select ${row.original.full_name}`}
-                  checked={row.getIsSelected()}
-                  onChange={row.getToggleSelectedHandler()}
-                  className="h-4 w-4 rounded border-gray-300 text-accent focus:ring-accent"
-                />
-              ),
-              enableSorting: false,
-            } satisfies ColumnDef<HiringApplication, any>,
-          ]
-        : []),
+      {
+        id: 'select',
+        header: ({ table }) => (
+          <input
+            type="checkbox"
+            // The rows on this page only, so "50 per page, select all" fits an email's 50-person limit.
+            aria-label="Select all applicants on this page"
+            checked={table.getIsAllPageRowsSelected()}
+            ref={(el) => {
+              if (el) el.indeterminate = table.getIsSomePageRowsSelected()
+            }}
+            onChange={table.getToggleAllPageRowsSelectedHandler()}
+            className="h-4 w-4 rounded border-gray-300 text-accent focus:ring-accent"
+          />
+        ),
+        cell: ({ row }) => (
+          <input
+            type="checkbox"
+            aria-label={`Select ${row.original.full_name}`}
+            checked={row.getIsSelected()}
+            onChange={row.getToggleSelectedHandler()}
+            className="h-4 w-4 rounded border-gray-300 text-accent focus:ring-accent"
+          />
+        ),
+        enableSorting: false,
+      } satisfies ColumnDef<HiringApplication, any>,
       {
         id: 'applicant',
         accessorFn: (a) => a.full_name,
@@ -367,6 +429,12 @@ export function Hiring() {
             </div>
           )
         },
+      },
+      {
+        id: 'facebook',
+        header: 'Facebook',
+        enableSorting: false,
+        cell: ({ row }) => <ProfileLink url={row.original.facebook_url}>Profile</ProfileLink>,
       },
       {
         id: 'applied',
@@ -403,6 +471,37 @@ export function Hiring() {
                 ) : (
                   <span className="text-xs text-gray-400">Not created</span>
                 ),
+            } satisfies ColumnDef<HiringApplication, any>,
+          ]
+        : []),
+      ...(statusFilter === 'accepted'
+        ? [
+            {
+              id: 'onboarded',
+              accessorFn: (a: HiringApplication) => (a.onboarded_at ? 1 : 0),
+              header: 'Onboarded',
+              cell: ({ row }) => {
+                const application = row.original
+                return (
+                  <button
+                    type="button"
+                    onClick={() => onboardMutation.mutate({ id: application.id, onboarded: !application.onboarded_at })}
+                    disabled={onboardMutation.isPending}
+                    title={
+                      application.onboarded_at
+                        ? `Onboarded ${new Date(application.onboarded_at).toLocaleString()}. Click to unmark.`
+                        : 'Click to mark onboarded'
+                    }
+                    className={`${pillClass} disabled:opacity-50 ${
+                      application.onboarded_at
+                        ? 'bg-status-success-bg text-status-success-text hover:opacity-80'
+                        : 'border border-gray-200 text-gray-400 hover:bg-gray-50'
+                    }`}
+                  >
+                    {application.onboarded_at ? 'Onboarded' : 'Not onboarded'}
+                  </button>
+                )
+              },
             } satisfies ColumnDef<HiringApplication, any>,
           ]
         : []),
@@ -445,53 +544,35 @@ export function Hiring() {
         cell: ({ row }) => {
           const application = row.original
           return (
-            <div className="flex items-center justify-end gap-2 whitespace-nowrap">
-              <button
-                type="button"
-                onClick={() => setDetails(application)}
-                aria-label={`View details for ${application.full_name}`}
-                className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50"
-              >
-                View
-              </button>
-              {application.status === 'pending' && (
-                <>
-                  <button
-                    onClick={() => openReview({ application, decision: 'accept' })}
-                    className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground"
-                  >
-                    Accept
-                  </button>
-                  <button
-                    onClick={() => openReview({ application, decision: 'deny' })}
-                    className="rounded-lg border border-status-danger-text/30 px-3 py-1.5 text-xs font-semibold text-status-danger-text hover:bg-status-danger-bg"
-                  >
-                    Deny
-                  </button>
-                </>
-              )}
-              {application.status === 'accepted' &&
-                (application.user_id ? (
-                  <Link
-                    to={`/contributors/${encodeURIComponent(application.remotasks_email)}`}
-                    className="text-sm font-medium text-sky-700 hover:underline"
-                  >
-                    Profile
-                  </Link>
-                ) : (
-                  <button
-                    onClick={() => openCreate(application)}
-                    className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground"
-                  >
-                    Create account
-                  </button>
-                ))}
+            <div className="flex justify-end">
+              <ActionsMenu
+                label={`Actions for ${application.full_name}`}
+                items={[
+                  { label: 'View', onClick: () => setDetails(application) },
+                  ...(application.status === 'pending'
+                    ? [
+                        { label: 'Accept', onClick: () => openReview({ application, decision: 'accept' }) },
+                        { label: 'Deny', variant: 'danger' as const, onClick: () => openReview({ application, decision: 'deny' }) },
+                      ]
+                    : []),
+                  ...(application.status === 'accepted'
+                    ? application.user_id
+                      ? [
+                          {
+                            label: 'View profile',
+                            onClick: () => navigate(`/contributors/${encodeURIComponent(application.remotasks_email)}`),
+                          },
+                        ]
+                      : [{ label: 'Create account', onClick: () => openCreate(application) }]
+                    : []),
+                ]}
+              />
             </div>
           )
         },
       },
     ],
-    [isAdmin, leadNameById, statusFilter],
+    [isAdmin, leadNameById, statusFilter, onboardMutation, navigate],
   )
 
   const loginDetails = credentials
@@ -500,13 +581,24 @@ export function Hiring() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Hiring</h1>
-        <p className="text-sm text-gray-500">
-          {isAdmin
-            ? "Review applicants from every lead's application link."
-            : 'Share your application link, then accept or deny the people who apply.'}
-        </p>
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Hiring</h1>
+          <p className="text-sm text-gray-500">
+            {isAdmin
+              ? "Review applicants from every lead's application link."
+              : 'Share your application link, then accept or deny the people who apply.'}
+          </p>
+        </div>
+        {isAdmin && applications.length > 0 && (
+          <button
+            type="button"
+            onClick={openClearHiring}
+            className="rounded-lg border border-status-danger-text/30 px-3 py-2 text-sm font-semibold text-status-danger-text hover:bg-status-danger-bg"
+          >
+            Clear all hiring
+          </button>
+        )}
       </div>
 
       {notice && (
@@ -607,6 +699,14 @@ export function Hiring() {
             className={selectClass}
           />
         )}
+        <button
+          type="button"
+          onClick={() => exportApplications(rows, `hiring-${statusFilter}-${todayStamp()}.csv`)}
+          disabled={rows.length === 0}
+          className="ml-auto rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+        >
+          Export all
+        </button>
       </div>
 
       {loadError && (
@@ -615,11 +715,19 @@ export function Hiring() {
         </div>
       )}
 
-      {statusFilter === 'accepted' && selected.length > 0 && (
+      {selected.length > 0 && (
         <div className="sticky top-0 z-10 mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 shadow-sm">
           <span className="text-sm font-medium text-gray-700">{selected.length} selected</span>
-          <button onClick={openEmail} className="rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground">
-            Send email
+          {statusFilter === 'accepted' && (
+            <button onClick={openEmail} className="rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground">
+              Send email
+            </button>
+          )}
+          <button
+            onClick={() => exportApplications(selected, `hiring-selected-${todayStamp()}.csv`)}
+            className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+          >
+            Export selected
           </button>
           <button onClick={() => setRowSelection({})} className="ml-auto text-sm font-medium text-gray-500 hover:underline">
             Clear selection
@@ -627,15 +735,15 @@ export function Hiring() {
         </div>
       )}
       {statusFilter === 'accepted' && selected.length === 0 && rows.length > 0 && (
-        <p className="mb-3 text-xs text-gray-400">Tick one or more applicants to send them an email.</p>
+        <p className="mb-3 text-xs text-gray-400">Tick one or more applicants to send them an email, or to export just them.</p>
       )}
 
       <DataTable
         columns={columns}
         data={rows}
         getRowId={(a) => String(a.id)}
-        rowSelection={statusFilter === 'accepted' ? rowSelection : undefined}
-        onRowSelectionChange={statusFilter === 'accepted' ? setRowSelection : undefined}
+        rowSelection={rowSelection}
+        onRowSelectionChange={setRowSelection}
         scrollX
         onRowClick={setDetails}
         isLoading={isLoading}
@@ -667,6 +775,9 @@ export function Hiring() {
                   <Detail label="Emailed">{details.emailed_at ? new Date(details.emailed_at).toLocaleString() : 'Not yet'}</Detail>
                 )}
                 {details.status === 'accepted' && <Detail label="Account">{details.user_id ? 'Created' : 'Not created yet'}</Detail>}
+                {details.status === 'accepted' && (
+                  <Detail label="Onboarded">{details.onboarded_at ? new Date(details.onboarded_at).toLocaleString() : 'Not yet'}</Detail>
+                )}
               </dl>
             </section>
             <section>
@@ -707,6 +818,16 @@ export function Hiring() {
                     className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
                   >
                     Create account
+                  </button>
+                )}
+                {details.status === 'accepted' && (
+                  <button
+                    type="button"
+                    onClick={() => onboardMutation.mutate({ id: details.id, onboarded: !details.onboarded_at })}
+                    disabled={onboardMutation.isPending}
+                    className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    {onboardMutation.isPending ? 'Saving...' : details.onboarded_at ? 'Mark not onboarded' : 'Mark onboarded'}
                   </button>
                 )}
                 {details.status === 'pending' && (
@@ -975,6 +1096,51 @@ export function Hiring() {
                 className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
               >
                 Done
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {clearingHiring && (
+        <Modal title="Clear all hiring data?" onClose={() => setClearingHiring(false)}>
+          <div className="flex flex-col gap-3">
+            <p className="text-sm text-gray-600">
+              This permanently deletes all <span className="font-medium text-gray-900">{plural(applications.length, 'application')}</span>{' '}
+              — pending, accepted and denied, from every lead. It cannot be undone. Any contributor account already created from one of
+              them is not affected; only the application history is removed.
+            </p>
+            <label htmlFor="clear-hiring-confirm" className="text-sm font-medium text-gray-700">
+              Type <span className="font-mono font-semibold">CLEAR</span> to confirm.
+            </label>
+            <input
+              id="clear-hiring-confirm"
+              type="text"
+              value={clearConfirmText}
+              onChange={(e) => setClearConfirmText(e.target.value)}
+              autoComplete="off"
+              className={inputClass}
+            />
+            {error && (
+              <div role="alert" className="text-sm text-status-danger-text">
+                {error}
+              </div>
+            )}
+            <div className="mt-2 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setClearingHiring(false)}
+                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={clearHiringMutation.isPending || clearConfirmText !== 'CLEAR'}
+                onClick={() => clearHiringMutation.mutate()}
+                className="rounded-lg bg-status-danger-text px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              >
+                {clearHiringMutation.isPending ? 'Clearing...' : 'Clear all hiring data'}
               </button>
             </div>
           </div>

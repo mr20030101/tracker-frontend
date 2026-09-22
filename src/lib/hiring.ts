@@ -148,6 +148,35 @@ export async function createAccount(id: number): Promise<AccountResult> {
   return data as AccountResult
 }
 
+export interface OnboardResult {
+  id: number
+  onboarded_at: string | null
+}
+
+/** Marks an accepted applicant onboarded (after the bootcamp), or reverses that. Only accepted applicants can be marked. */
+export async function setOnboarded(id: number, onboarded: boolean): Promise<OnboardResult> {
+  const { data, error } = await supabase.functions.invoke('manage-user', {
+    body: { action: 'set-onboarded', id, onboarded },
+  })
+  if (error) throw await functionErrorMessage(error)
+  return data as OnboardResult
+}
+
+export interface ClearHiringResult {
+  deleted: number
+}
+
+/**
+ * Admin only: permanently deletes every hiring application, any lead, any status. This is a hard
+ * reset of the application history; it does not remove any contributor account already created
+ * from one of them.
+ */
+export async function clearHiring(): Promise<ClearHiringResult> {
+  const { data, error } = await supabase.functions.invoke('manage-user', { body: { action: 'clear-hiring' } })
+  if (error) throw await functionErrorMessage(error)
+  return data as ClearHiringResult
+}
+
 /** The most applicants one send can go to; the function enforces the same limit. */
 export const MAX_EMAIL_RECIPIENTS = 50
 

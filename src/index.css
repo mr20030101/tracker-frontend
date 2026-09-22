@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
-  --font-mono: 'Raleway', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Roboto', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Roboto Mono', ui-monospace, SFMono-Regular, monospace;
 
   --text-xs: calc(0.75rem + 2px);
   --text-sm: calc(0.875rem + 2px);

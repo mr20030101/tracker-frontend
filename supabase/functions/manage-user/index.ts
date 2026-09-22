@@ -183,6 +183,39 @@ Deno.serve(async (request) => {
         return Response.json(result, { headers: corsHeaders })
     }
 
+    // Marks an accepted applicant onboarded (after the bootcamp), or reverses that. Separate from
+    // creating their account. A lead may only mark their own applicants; an admin anyone's.
+    if (body.action === 'set-onboarded') {
+        if (!body.id || typeof body.onboarded !== 'boolean') {
+            return errorResponse('An application id and onboarded (true or false) are required.', 400)
+        }
+        const { data: application } = await admin.from('hiring_applications').select('id, lead_id, status').eq('id', body.id).maybeSingle()
+        if (!application) return errorResponse('Application not found.', 404)
+        if (profile.role !== 'admin' && application.lead_id !== caller.user.id) {
+            return errorResponse('Forbidden: this application belongs to another lead.', 403)
+        }
+        if (application.status !== 'accepted') return errorResponse('Only accepted applicants can be marked onboarded.', 409)
+
+        const { data: updated, error } = await admin
+            .from('hiring_applications')
+            .update({ onboarded_at: body.onboarded ? new Date().toISOString() : null })
+            .eq('id', application.id)
+            .select('id, onboarded_at')
+            .single()
+        if (error) return errorResponse(`Could not update onboarding status: ${error.message}`, 400)
+        return Response.json(updated, { headers: corsHeaders })
+    }
+
+    // Admin-only hard reset: permanently deletes every hiring application, any lead, any status.
+    // This only clears the application history — a contributor account already created from one
+    // lives in profiles/auth, not in this table, so it is untouched.
+    if (body.action === 'clear-hiring') {
+        if (profile.role !== 'admin') return errorResponse('Forbidden: only an admin can clear hiring data.', 403)
+        const { error, count } = await admin.from('hiring_applications').delete({ count: 'exact' }).gt('id', 0)
+        if (error) return errorResponse(`Could not clear hiring applications: ${error.message}`, 400)
+        return Response.json({ deleted: count ?? 0 }, { headers: corsHeaders })
+    }
+
     if (body.action === 'email-applicants') {
         const apiKey = Deno.env.get('RESEND_API_KEY')
         if (!apiKey) return errorResponse('Email sending is not set up yet: the RESEND_API_KEY secret is missing on this function.', 503)
