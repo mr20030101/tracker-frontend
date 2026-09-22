@@ -509,7 +509,9 @@ export function ContributorWorkPanel({ email, contributorName, canEdit }: Props)
             </div>
             <button
               onClick={() => shiftRange(1)}
-              className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+              disabled={isCurrentRange}
+              title={isCurrentRange ? "Can't browse into the future." : undefined}
+              className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
             >
               Next →
             </button>
@@ -576,6 +578,9 @@ export function ContributorWorkPanel({ email, contributorName, canEdit }: Props)
                   const badVideoPending = taskRequests.some(
                     (r) => r.task_submission_id === row.id && r.type === 'bad_video' && r.status === 'pending',
                   )
+                  // A bad video is only reportable same-day — the video isn't expected to still
+                  // be reviewable once the day it was logged has passed.
+                  const canReportBadVideo = row.date?.slice(0, 10) === toISODate(new Date())
                   return (
                   <tr key={row.id} className="hover:bg-gray-50">
                     <td className="max-w-40 truncate px-5 py-3 font-mono text-xs text-gray-500">
@@ -673,9 +678,16 @@ export function ContributorWorkPanel({ email, contributorName, canEdit }: Props)
                                   },
                                 ]
                               : []),
-                            badVideoPending
-                              ? { label: 'Bad video report pending', disabled: true, onClick: () => {} }
-                              : { label: 'Report bad video', onClick: () => setReportingBadVideoFor(row) },
+                            !canReportBadVideo
+                              ? {
+                                  label: 'Report bad video',
+                                  disabled: true,
+                                  title: 'Only reportable on the day it was logged.',
+                                  onClick: () => {},
+                                }
+                              : badVideoPending
+                                ? { label: 'Bad video report pending', disabled: true, onClick: () => {} }
+                                : { label: 'Report bad video', onClick: () => setReportingBadVideoFor(row) },
                             {
                               label: 'Delete',
                               variant: 'danger',

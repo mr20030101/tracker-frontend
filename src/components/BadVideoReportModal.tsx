@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
+import { toISODate } from '../lib/week'
 import { reportBadVideo } from '../lib/taskRequests'
 import { Modal } from './Modal'
 
@@ -35,13 +36,18 @@ export function BadVideoReportModal({ submission: initialSubmission, onClose }: 
   const [category, setCategory] = useState('')
   const [frame, setFrame] = useState('')
 
+  // A bad video is only reportable same-day, so there's no point surfacing (or letting someone
+  // pick) a task logged on any other day.
+  const today = toISODate(new Date())
+
   const { data: matches = [], isFetching } = useQuery({
-    queryKey: ['task-lookup', search],
+    queryKey: ['task-lookup', search, today],
     queryFn: async (): Promise<TaskLookupRow[]> => {
       const term = search.trim().replace(/[%,]/g, '')
       const { data, error } = await supabase
         .from('task_submissions')
         .select('id, task_id, cb_email, date')
+        .eq('date', today)
         .or(`task_id.ilike.%${term}%,cb_email.ilike.%${term}%`)
         .order('date', { ascending: false })
         .limit(20)
@@ -73,7 +79,9 @@ export function BadVideoReportModal({ submission: initialSubmission, onClose }: 
     <Modal title="Report a bad video?" onClose={onClose}>
       {!submission ? (
         <div className="flex flex-col gap-3">
-          <p className="text-sm text-gray-600">Search by Task ID or CB email to find the task.</p>
+          <p className="text-sm text-gray-600">
+            Search by Task ID or CB email to find the task. Only tasks logged today are reportable.
+          </p>
           <input
             autoFocus
             type="search"
