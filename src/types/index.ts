@@ -62,6 +62,20 @@ export interface TaskSubmission {
   created_at: string
 }
 
+export type ExtensionRequestStatus = 'pending' | 'approved' | 'denied'
+
+// A contributor asking their lead for more time before a submission is marked expired.
+export interface ExtensionRequest {
+  id: number
+  task_submission_id: number
+  requested_by: string
+  reason: string | null
+  status: ExtensionRequestStatus
+  requested_at: string
+  reviewed_by: string | null
+  reviewed_at: string | null
+}
+
 export interface Paginated<T> {
   data: T[]
   current_page: number

@@ -1,10 +1,18 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Image } from 'lucide-react'
-import { api } from '../lib/api'
+import { api, supabase } from '../lib/api'
+import { useAuth } from '../lib/auth'
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, yearMonth, toISODate, formatRange, formatTime } from '../lib/week'
 import { remotasksDiffViewerUrl } from '../lib/remotasks'
-import type { ContributorProfile, Project, TaskSubmission } from '../types'
+import {
+  buildExtensionRequestFormUrl,
+  lookupRemotaskId,
+  requestExtension,
+  reviewExtensionRequest,
+  withdrawExtensionRequest,
+} from '../lib/extensionRequests'
+import type { ContributorProfile, ExtensionRequest, Project, TaskSubmission } from '../types'
 import { ProgressRing } from './ProgressRing'
 import { LineChart } from './LineChart'
 import { CountUp } from './CountUp'
@@ -15,8 +23,12 @@ import { SortableHeader } from './SortableHeader'
 import { CtsFormModal } from './CtsFormModal'
 import { TaskSubmissionForm } from './TaskSubmissionForm'
 import { BulkImportModal } from './BulkImportModal'
+import { Modal } from './Modal'
 
 const TREND_DAYS = 30
+const MANAGER_ROLES = ['admin', 'lead']
+// A request only makes sense before the outcome is settled.
+const EXTENSION_ELIGIBLE_STATUSES = ['in_progress', 'expired']
 
 type SortKey = 'task_id' | 'project' | 'stage' | 'status' | 'date'
 type ViewMode = 'day' | 'week' | 'month'
@@ -38,6 +50,8 @@ interface Props {
  */
 export function ContributorWorkPanel({ email, contributorName, canEdit }: Props) {
   const queryClient = useQueryClient()
+  const { user: currentUser } = useAuth()
+  const isManager = Boolean(currentUser && MANAGER_ROLES.includes(currentUser.role))
   // Collapsed by default; a toggle below shows the goal ring and charts for whoever wants them.
   const [showGraphs, setShowGraphs] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>('day')
@@ -47,6 +61,8 @@ export function ContributorWorkPanel({ email, contributorName, canEdit }: Props)
   const [showCtsModal, setShowCtsModal] = useState(false)
   const [formTarget, setFormTarget] = useState<'new' | TaskSubmission | null>(null)
   const [bulkImporting, setBulkImporting] = useState(false)
+  const [requestingExtensionFor, setRequestingExtensionFor] = useState<TaskSubmission | null>(null)
+  const [extensionReason, setExtensionReason] = useState('')
   const pageSize = 10
 
   const thisWeekIso = useMemo(() => toISODate(startOfWeek(new Date())), [])
@@ -67,6 +83,28 @@ export function ContributorWorkPanel({ email, contributorName, canEdit }: Props)
     queryFn: async () => (await api.get<Project[]>('/projects')).data,
   })
 
+  // Keyed by the joined id list (not the array itself) so this doesn't refetch every time
+  // `data` reloads with a same-content-but-new-reference all_submissions array.
+  const submissionIds = (data?.all_submissions ?? []).map((s) => s.id)
+  const submissionIdsKey = submissionIds.join(',')
+  const { data: extensionRequests = [] } = useQuery({
+    queryKey: ['extension-requests', submissionIdsKey],
+    queryFn: async () => {
+      const { data: rows, error } = await supabase
+        .from('task_extension_requests')
+        .select('*')
+        .in('task_submission_id', submissionIds)
+        .order('requested_at', { ascending: false })
+      if (error) throw error
+      return rows as ExtensionRequest[]
+    },
+    enabled: submissionIds.length > 0,
+  })
+
+  function extensionRequestFor(submissionId: number): ExtensionRequest | undefined {
+    return extensionRequests.find((request) => request.task_submission_id === submissionId)
+  }
+
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => api.delete(`/task-submissions/${id}`),
     onSuccess: () => {
@@ -75,6 +113,49 @@ export function ContributorWorkPanel({ email, contributorName, canEdit }: Props)
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] })
     },
   })
+
+  const requestExtensionMutation = useMutation({
+    mutationFn: async ({ submissionId, reason }: { submissionId: number; reason: string }) => {
+      if (!currentUser) throw new Error('Unauthenticated')
+      await requestExtension(submissionId, currentUser.id, reason)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['extension-requests'] })
+      setRequestingExtensionFor(null)
+      setExtensionReason('')
+    },
+  })
+
+  const withdrawExtensionMutation = useMutation({
+    mutationFn: withdrawExtensionRequest,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['extension-requests'] }),
+  })
+
+  const reviewExtensionMutation = useMutation({
+    mutationFn: ({ id, status }: { id: number; status: 'approved' | 'denied' }) => {
+      if (!currentUser) throw new Error('Unauthenticated')
+      return reviewExtensionRequest(id, status, currentUser.id)
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['extension-requests'] }),
+  })
+
+  // Opens the actual Scale "Reclaim / Extend" form, prefilled from this request, then marks it
+  // approved here — filing that form is what approving really means.
+  async function handleRequestExtension(request: ExtensionRequest, submission: TaskSubmission | undefined) {
+    const remotaskId = await lookupRemotaskId(request.requested_by)
+    window.open(
+      buildExtensionRequestFormUrl({
+        taskId: submission?.task_id ?? null,
+        cbEmail: submission?.cb_email ?? null,
+        remotaskId,
+        reason: request.reason,
+        supportName: currentUser?.name ?? '',
+      }),
+      '_blank',
+      'noopener,noreferrer',
+    )
+    reviewExtensionMutation.mutate({ id: request.id, status: 'approved' })
+  }
 
   const rangeStart = useMemo(() => {
     if (viewMode === 'day') return toISODate(anchorDate)
@@ -196,8 +277,67 @@ export function ContributorWorkPanel({ email, contributorName, canEdit }: Props)
   const totalPages = Math.max(1, Math.ceil(sortedSubmissions.length / pageSize))
   const pagedSubmissions = sortedSubmissions.slice((page - 1) * pageSize, page * pageSize)
 
+  // Independent of whichever day/week/month is currently being browsed below, so a pending
+  // request for a submission outside that range is never hidden.
+  const pendingExtensionRequests = extensionRequests.filter((request) => request.status === 'pending')
+
   return (
     <>
+      {pendingExtensionRequests.length > 0 && (
+        <div className="mb-6 rounded-xl border-2 border-status-warning-text bg-status-warning-bg p-5">
+          <div className="mb-3 text-sm font-semibold text-status-warning-text">
+            {pendingExtensionRequests.length === 1 ? '1 extension request' : `${pendingExtensionRequests.length} extension requests`}{' '}
+            awaiting review
+          </div>
+          <div className="divide-y divide-status-warning-text/20">
+            {pendingExtensionRequests.map((request) => {
+              const submission = data.all_submissions.find((s) => s.id === request.task_submission_id)
+              return (
+                <div key={request.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm first:pt-0 last:pb-0">
+                  <div className="min-w-0">
+                    <div className="font-mono font-medium text-gray-900">{submission?.task_id ?? `Submission #${request.task_submission_id}`}</div>
+                    {request.reason && <div className="mt-0.5 text-xs text-gray-600">{request.reason}</div>}
+                    <div className="mt-0.5 text-xs text-gray-400">
+                      Requested {new Date(request.requested_at).toLocaleString()}
+                      {submission?.date && ` — for ${submission.date.slice(0, 10)}`}
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 gap-2">
+                    {isManager ? (
+                      <>
+                        <button
+                          onClick={() => handleRequestExtension(request, submission)}
+                          disabled={reviewExtensionMutation.isPending}
+                          title="Opens the Reclaim / Extend form, prefilled, and marks this approved"
+                          className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground disabled:opacity-50"
+                        >
+                          Request
+                        </button>
+                        <button
+                          onClick={() => reviewExtensionMutation.mutate({ id: request.id, status: 'denied' })}
+                          disabled={reviewExtensionMutation.isPending}
+                          className="rounded-lg border border-status-danger-text/30 px-3 py-1.5 text-xs font-semibold text-status-danger-text hover:bg-status-danger-bg disabled:opacity-50"
+                        >
+                          Deny
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => withdrawExtensionMutation.mutate(request.id)}
+                        disabled={withdrawExtensionMutation.isPending}
+                        className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+                      >
+                        Withdraw
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       <button
         type="button"
         onClick={() => setShowGraphs((v) => !v)}
@@ -357,6 +497,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit }: Props)
                   <SortableHeader label="Stage" active={sort.key === 'stage'} dir={sort.dir} onClick={() => toggleSort('stage')} />
                   <SortableHeader label="Status" active={sort.key === 'status'} dir={sort.dir} onClick={() => toggleSort('status')} />
                   <th className="px-5 py-3">CTS</th>
+                  <th className="px-5 py-3">Extension</th>
                   <SortableHeader label="Date" active={sort.key === 'date'} dir={sort.dir} onClick={() => toggleSort('date')} />
                   <th className="px-5 py-3 text-right">Actions</th>
                 </tr>
@@ -364,12 +505,15 @@ export function ContributorWorkPanel({ email, contributorName, canEdit }: Props)
               <tbody className="divide-y divide-gray-100">
                 {pagedSubmissions.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-5 py-6 text-center text-gray-400">
+                    <td colSpan={8} className="px-5 py-6 text-center text-gray-400">
                       No submissions for this {viewMode}.
                     </td>
                   </tr>
                 )}
-                {pagedSubmissions.map((row) => (
+                {pagedSubmissions.map((row) => {
+                  const extension = extensionRequestFor(row.id)
+                  const canRequestExtension = !isManager && EXTENSION_ELIGIBLE_STATUSES.includes(row.status)
+                  return (
                   <tr key={row.id} className="hover:bg-gray-50">
                     <td className="max-w-40 truncate px-5 py-3 font-mono text-xs text-gray-500">
                       <span className="inline-flex items-center gap-1.5">
@@ -403,6 +547,24 @@ export function ContributorWorkPanel({ email, contributorName, canEdit }: Props)
                         </span>
                       )}
                     </td>
+                    <td className="px-5 py-3">
+                      {extension ? (
+                        <span
+                          title={extension.reason ?? undefined}
+                          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                            extension.status === 'approved'
+                              ? 'bg-status-success-bg text-status-success-text'
+                              : extension.status === 'denied'
+                                ? 'bg-status-danger-bg text-status-danger-text'
+                                : 'bg-status-warning-bg text-status-warning-text'
+                          }`}
+                        >
+                          {extension.status === 'approved' ? 'Approved' : extension.status === 'denied' ? 'Denied' : 'Pending'}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-300">—</span>
+                      )}
+                    </td>
                     <td className="px-5 py-3 text-gray-500">
                       {row.date?.slice(0, 10) ?? '—'}
                       {row.date && <span className="ml-1.5 text-xs text-gray-400">{formatTime(row.created_at)}</span>}
@@ -412,6 +574,29 @@ export function ContributorWorkPanel({ email, contributorName, canEdit }: Props)
                         <ActionsMenu
                           items={[
                             { label: 'Edit', onClick: () => setFormTarget(row) },
+                            ...(canRequestExtension
+                              ? extension?.status === 'pending'
+                                ? [{ label: 'Withdraw extension request', onClick: () => withdrawExtensionMutation.mutate(extension.id) }]
+                                : [
+                                    {
+                                      label: 'Request extension',
+                                      onClick: () => {
+                                        setRequestingExtensionFor(row)
+                                        setExtensionReason('')
+                                      },
+                                    },
+                                  ]
+                              : []),
+                            ...(isManager && extension?.status === 'pending'
+                              ? [
+                                  { label: 'Request extension', onClick: () => handleRequestExtension(extension, row) },
+                                  {
+                                    label: 'Deny extension',
+                                    variant: 'danger' as const,
+                                    onClick: () => reviewExtensionMutation.mutate({ id: extension.id, status: 'denied' }),
+                                  },
+                                ]
+                              : []),
                             {
                               label: 'Delete',
                               variant: 'danger',
@@ -426,7 +611,8 @@ export function ContributorWorkPanel({ email, contributorName, canEdit }: Props)
                       </div>
                     </td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
             {sortedSubmissions.length > 0 && (
@@ -464,6 +650,55 @@ export function ContributorWorkPanel({ email, contributorName, canEdit }: Props)
 
       {bulkImporting && (
         <BulkImportModal projects={allProjects} contributorEmail={email} contributorName={contributorName} onClose={() => setBulkImporting(false)} />
+      )}
+
+      {requestingExtensionFor && (
+        <Modal title="Request an extension?" onClose={() => setRequestingExtensionFor(null)}>
+          <div className="flex flex-col gap-4">
+            <p className="text-sm text-gray-600">
+              Asks your lead for more time on{' '}
+              <span className="font-mono text-gray-900">{requestingExtensionFor.task_id ?? 'this task'}</span> before it's marked
+              expired.
+            </p>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Reason (optional)</label>
+              <textarea
+                rows={3}
+                maxLength={500}
+                value={extensionReason}
+                onChange={(e) => setExtensionReason(e.target.value)}
+                placeholder="Why do you need more time?"
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
+              />
+            </div>
+            {requestExtensionMutation.isError && (
+              <div className="text-sm text-status-danger-text">
+                {requestExtensionMutation.error instanceof Error
+                  ? requestExtensionMutation.error.message
+                  : 'Could not send this request.'}
+              </div>
+            )}
+            <div className="mt-2 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setRequestingExtensionFor(null)}
+                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={requestExtensionMutation.isPending}
+                onClick={() =>
+                  requestExtensionMutation.mutate({ submissionId: requestingExtensionFor.id, reason: extensionReason })
+                }
+                className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+              >
+                {requestExtensionMutation.isPending ? 'Sending...' : 'Send request'}
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
     </>
   )
