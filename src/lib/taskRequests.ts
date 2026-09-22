@@ -1,7 +1,11 @@
 import { supabase } from './api'
 import type { RequestStatus, TaskRequest } from '../types'
 
-export interface TaskRequestWithContext extends TaskRequest {
+// TaskRequest is a union (ExtensionTaskRequest | BadVideoTaskRequest) — an interface can't
+// `extends` a union (only object types/intersections), so this intersects instead. That still
+// distributes correctly: TaskRequestWithContext is itself
+// (ExtensionTaskRequest & Context) | (BadVideoTaskRequest & Context), so `type` still narrows it.
+export type TaskRequestWithContext = TaskRequest & {
   task_submission: {
     id: number
     task_id: string | null
