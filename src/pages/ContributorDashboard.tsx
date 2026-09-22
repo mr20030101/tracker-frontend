@@ -12,6 +12,7 @@ import { CountUp } from '../components/CountUp'
 import { GrowBar } from '../components/GrowBar'
 import { Reveal } from '../components/Reveal'
 import { CtsFormModal } from '../components/CtsFormModal'
+import { TaskSubmissionForm } from '../components/TaskSubmissionForm'
 
 const TREND_DAYS = 30
 
@@ -34,6 +35,7 @@ export function ContributorDashboard() {
   const { user } = useAuth()
   const email = user?.email ?? ''
   const [showCtsModal, setShowCtsModal] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   const thisWeekIso = useMemo(() => toISODate(startOfWeek(new Date())), [])
   const today = useMemo(() => toISODate(new Date()), [])
 
@@ -92,6 +94,13 @@ export function ContributorDashboard() {
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
+            onClick={() => setSubmitting(true)}
+            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
+          >
+            + Submit a Task
+          </button>
+          <button
+            type="button"
             onClick={() => setShowCtsModal(true)}
             className="animate-heartbeat-soft rounded-lg bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600"
           >
@@ -107,6 +116,8 @@ export function ContributorDashboard() {
           </a>
         </div>
       </div>
+
+      {submitting && <TaskSubmissionForm onClose={() => setSubmitting(false)} />}
 
       {showCtsModal && <CtsFormModal email={email} submissions={todaysSubmissions} onClose={() => setShowCtsModal(false)} />}
 

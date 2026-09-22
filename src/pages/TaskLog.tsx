@@ -14,6 +14,7 @@ import { Select } from '../components/Select'
 import { TaskSubmissionForm } from '../components/TaskSubmissionForm'
 import { SortableHeader } from '../components/SortableHeader'
 import { BulkImportModal } from '../components/BulkImportModal'
+import { ContributorWorkPanel } from '../components/ContributorWorkPanel'
 import { downloadCsv } from '../lib/csv'
 
 const MANAGER_ROLES = ['admin', 'lead']
@@ -36,6 +37,28 @@ const STATUS_OPTIONS: { value: SubmissionStatus; label: string }[] = [
 ]
 
 export function TaskLog() {
+  const { user } = useAuth()
+  const isManager = Boolean(user && MANAGER_ROLES.includes(user.role))
+  return isManager ? <ManagerTaskLog /> : <ContributorTaskLog />
+}
+
+// A contributor's own goal ring, charts and day/week/month submissions table — the same panel
+// shown on the profile page when a lead/admin reviews someone else.
+function ContributorTaskLog() {
+  const { user } = useAuth()
+  return (
+    <div>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Task Log</h1>
+        <p className="text-sm text-gray-500">Your submissions, goals and CTS status.</p>
+      </div>
+      {user?.email && <ContributorWorkPanel email={user.email} contributorName={user.name ?? user.email} canEdit />}
+    </div>
+  )
+}
+
+// The global, filterable, multi-contributor log — for a lead/admin reviewing everyone's work.
+function ManagerTaskLog() {
   const { user } = useAuth()
   const isManager = Boolean(user && MANAGER_ROLES.includes(user.role))
   const [stage, setStage] = useState<Stage | ''>('')
