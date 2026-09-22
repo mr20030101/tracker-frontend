@@ -10,7 +10,7 @@ export interface ExtensionRequestWithContext extends ExtensionRequest {
     cb_email: string
     project: { name: string } | null
   } | null
-  requester: { id: string; name: string; email: string } | null
+  requester: { id: string; name: string; email: string; remotasks_id: string | null } | null
 }
 
 /**
@@ -21,7 +21,7 @@ export async function fetchExtensionRequests(): Promise<ExtensionRequestWithCont
   const { data, error } = await supabase
     .from('task_extension_requests')
     .select(
-      '*, task_submission:task_submissions(id, task_id, date, status, cb_email, project:projects(name)), requester:profiles!task_extension_requests_requested_by_fkey(id, name, email)',
+      '*, task_submission:task_submissions(id, task_id, date, status, cb_email, project:projects(name)), requester:profiles!task_extension_requests_requested_by_fkey(id, name, email, remotasks_id)',
     )
     .order('requested_at', { ascending: false })
   if (error) throw error
@@ -55,6 +55,39 @@ export async function reviewExtensionRequest(
   if (error) throw error
 }
 
+export interface BulkResult {
+  updated: number[]
+  failed: { id: number; error: string }[]
+}
+
+/** Runs `run` on each id in parallel for a "select all, then..." bulk action. One failing id
+ * doesn't stop the rest; `failed` says which ones didn't go through, so just those can be retried. */
+async function runBulk(ids: number[], run: (id: number) => Promise<void>): Promise<BulkResult> {
+  const results = await Promise.allSettled(ids.map(run))
+  const updated: number[] = []
+  const failed: { id: number; error: string }[] = []
+  results.forEach((result, index) => {
+    const id = ids[index]
+    if (result.status === 'fulfilled') updated.push(id)
+    else failed.push({ id, error: result.reason instanceof Error ? result.reason.message : String(result.reason) })
+  })
+  return { updated, failed }
+}
+
+/** Approves or denies several requests at once. See runBulk. */
+export async function reviewExtensionRequestsBulk(
+  ids: number[],
+  status: Extract<ExtensionRequestStatus, 'approved' | 'denied'>,
+  reviewedBy: string,
+): Promise<BulkResult> {
+  return runBulk(ids, (id) => reviewExtensionRequest(id, status, reviewedBy))
+}
+
+/** Deletes (a lead/admin) or withdraws (a contributor's own pending ones) several requests at once. See runBulk. */
+export async function deleteExtensionRequestsBulk(ids: number[]): Promise<BulkResult> {
+  return runBulk(ids, withdrawExtensionRequest)
+}
+
 // The Scale "Reclaim / Extend Request Form" a lead files with Remotasks itself once they've
 // decided to approve — the actual mechanism that gets the contributor more time. Its own
 // question ids, from the form's rendered HTML (Google Forms doesn't expose these any other way).
@@ -66,22 +99,6 @@ const EXTENSION_FORM_ENTRY = {
   requestType: 'entry.1650689703',
   reason: 'entry.654618638',
   supportName: 'entry.1875363957',
-}
-
-/**
- * Best-effort lookup of a contributor's Remotasks ID from their (most recent) hiring application —
- * it isn't copied onto their profile, so this is the only place it lives. Returns null rather than
- * throwing when it can't be found, since the form field just gets left for the lead to fill in.
- */
-export async function lookupRemotaskId(userId: string): Promise<string | null> {
-  const { data } = await supabase
-    .from('hiring_applications')
-    .select('remotasks_id')
-    .eq('user_id', userId)
-    .order('reviewed_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-  return data?.remotasks_id ?? null
 }
 
 /** A link to the Reclaim/Extend form with as much of it prefilled as we have on hand. */

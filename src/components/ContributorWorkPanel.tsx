@@ -7,7 +7,6 @@ import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, yearMonth, toISODate,
 import { remotasksDiffViewerUrl } from '../lib/remotasks'
 import {
   buildExtensionRequestFormUrl,
-  lookupRemotaskId,
   requestExtension,
   reviewExtensionRequest,
   withdrawExtensionRequest,
@@ -141,13 +140,12 @@ export function ContributorWorkPanel({ email, contributorName, canEdit }: Props)
 
   // Opens the actual Scale "Reclaim / Extend" form, prefilled from this request, then marks it
   // approved here — filing that form is what approving really means.
-  async function handleRequestExtension(request: ExtensionRequest, submission: TaskSubmission | undefined) {
-    const remotaskId = await lookupRemotaskId(request.requested_by)
+  function handleRequestExtension(request: ExtensionRequest, submission: TaskSubmission | undefined) {
     window.open(
       buildExtensionRequestFormUrl({
         taskId: submission?.task_id ?? null,
         cbEmail: submission?.cb_email ?? null,
-        remotaskId,
+        remotaskId: data?.user?.remotasks_id ?? null,
         reason: request.reason,
         supportName: currentUser?.name ?? '',
       }),
@@ -319,6 +317,17 @@ export function ContributorWorkPanel({ email, contributorName, canEdit }: Props)
                           className="rounded-lg border border-status-danger-text/30 px-3 py-1.5 text-xs font-semibold text-status-danger-text hover:bg-status-danger-bg disabled:opacity-50"
                         >
                           Deny
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (confirm('Delete this extension request? This cannot be undone.')) {
+                              withdrawExtensionMutation.mutate(request.id)
+                            }
+                          }}
+                          disabled={withdrawExtensionMutation.isPending}
+                          className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+                        >
+                          Delete
                         </button>
                       </>
                     ) : (
@@ -594,6 +603,19 @@ export function ContributorWorkPanel({ email, contributorName, canEdit }: Props)
                                     label: 'Deny extension',
                                     variant: 'danger' as const,
                                     onClick: () => reviewExtensionMutation.mutate({ id: extension.id, status: 'denied' }),
+                                  },
+                                ]
+                              : []),
+                            ...(isManager && extension
+                              ? [
+                                  {
+                                    label: 'Delete extension request',
+                                    variant: 'danger' as const,
+                                    onClick: () => {
+                                      if (confirm('Delete this extension request? This cannot be undone.')) {
+                                        withdrawExtensionMutation.mutate(extension.id)
+                                      }
+                                    },
                                   },
                                 ]
                               : []),

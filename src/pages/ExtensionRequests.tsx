@@ -4,9 +4,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../lib/auth'
 import {
   buildExtensionRequestFormUrl,
+  deleteExtensionRequestsBulk,
   fetchExtensionRequests,
-  lookupRemotaskId,
   reviewExtensionRequest,
+  reviewExtensionRequestsBulk,
   withdrawExtensionRequest,
   type ExtensionRequestWithContext,
 } from '../lib/extensionRequests'
@@ -15,6 +16,7 @@ import type { ExtensionRequestStatus } from '../types'
 const MANAGER_ROLES = ['admin', 'lead']
 
 type StatusFilter = ExtensionRequestStatus | 'all'
+type Notice = { tone: 'success' | 'error'; text: string }
 
 const STATUS_FILTERS: StatusFilter[] = ['pending', 'approved', 'denied', 'all']
 const STATUS_LABELS: Record<StatusFilter, string> = { pending: 'Pending', approved: 'Approved', denied: 'Denied', all: 'All' }
@@ -25,12 +27,15 @@ const STATUS_STYLES: Record<ExtensionRequestStatus, string> = {
 }
 
 const pillClass = 'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium'
+const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`
 
 export function ExtensionRequests() {
   const { user } = useAuth()
   const isManager = Boolean(user && MANAGER_ROLES.includes(user.role))
   const queryClient = useQueryClient()
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('pending')
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  const [notice, setNotice] = useState<Notice | null>(null)
 
   const { data: requests = [], isLoading } = useQuery({
     queryKey: ['extension-requests-all'],
@@ -51,15 +56,52 @@ export function ExtensionRequests() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['extension-requests-all'] }),
   })
 
+  const bulkReviewMutation = useMutation({
+    mutationFn: ({ ids, status }: { ids: number[]; status: 'approved' | 'denied' }) => {
+      if (!user) throw new Error('Unauthenticated')
+      return reviewExtensionRequestsBulk(ids, status, user.id)
+    },
+    onSuccess: (result, { ids, status }) => {
+      queryClient.invalidateQueries({ queryKey: ['extension-requests-all'] })
+      const verb = status === 'approved' ? 'approved' : 'denied'
+      if (result.failed.length === 0) {
+        setSelectedIds(new Set())
+        setNotice({ tone: 'success', text: `${plural(result.updated.length, 'request')} ${verb}.` })
+        return
+      }
+      setSelectedIds(new Set(result.failed.map((f) => f.id)))
+      setNotice({
+        tone: 'error',
+        text: `${result.updated.length} of ${ids.length} ${verb}. Not done: ${result.failed.map((f) => f.error).join('; ')}. They're still selected so you can try again.`,
+      })
+    },
+  })
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: (ids: number[]) => deleteExtensionRequestsBulk(ids),
+    onSuccess: (result, ids) => {
+      queryClient.invalidateQueries({ queryKey: ['extension-requests-all'] })
+      if (result.failed.length === 0) {
+        setSelectedIds(new Set())
+        setNotice({ tone: 'success', text: `Deleted ${plural(result.updated.length, 'request')}.` })
+        return
+      }
+      setSelectedIds(new Set(result.failed.map((f) => f.id)))
+      setNotice({
+        tone: 'error',
+        text: `Deleted ${result.updated.length} of ${ids.length}. Not done: ${result.failed.map((f) => f.error).join('; ')}. They're still selected so you can try again.`,
+      })
+    },
+  })
+
   // Opens the actual Scale "Reclaim / Extend" form, prefilled from this request, then marks it
   // approved here — filing that form is what approving really means.
-  async function handleRequest(request: ExtensionRequestWithContext) {
-    const remotaskId = request.requester ? await lookupRemotaskId(request.requester.id) : null
+  function handleRequest(request: ExtensionRequestWithContext) {
     window.open(
       buildExtensionRequestFormUrl({
         taskId: request.task_submission?.task_id ?? null,
         cbEmail: request.task_submission?.cb_email ?? null,
-        remotaskId,
+        remotaskId: request.requester?.remotasks_id ?? null,
         reason: request.reason,
         supportName: user?.name ?? '',
       }),
@@ -69,9 +111,29 @@ export function ExtensionRequests() {
     reviewMutation.mutate({ id: request.id, status: 'approved' })
   }
 
+  function setFilter(status: StatusFilter) {
+    setStatusFilter(status)
+    setSelectedIds(new Set())
+  }
+
+  function toggleOne(id: number) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function toggleAllVisible() {
+    setSelectedIds((prev) => (rows.every((r) => prev.has(r.id)) ? new Set() : new Set(rows.map((r) => r.id))))
+  }
+
   const countOf = (status: StatusFilter) => (status === 'all' ? requests.length : requests.filter((r) => r.status === status).length)
   const rows = requests.filter((r) => statusFilter === 'all' || r.status === statusFilter)
-  const columnCount = isManager ? 8 : 7
+  const selected = rows.filter((r) => selectedIds.has(r.id))
+  const allVisibleSelected = rows.length > 0 && rows.every((r) => selectedIds.has(r.id))
+  const columnCount = (isManager ? 9 : 8)
 
   return (
     <div>
@@ -84,13 +146,29 @@ export function ExtensionRequests() {
         </p>
       </div>
 
-      <div role="tablist" aria-label="Filter by status" className="mb-4 inline-flex rounded-lg border border-gray-200 bg-white p-0.5">
+      {notice && (
+        <div
+          role={notice.tone === 'error' ? 'alert' : 'status'}
+          className={`mb-4 flex items-start justify-between gap-3 rounded-lg border px-4 py-2.5 text-sm ${
+            notice.tone === 'error'
+              ? 'border-status-danger-text/30 bg-status-danger-bg text-status-danger-text'
+              : 'border-status-success-text/30 bg-status-success-bg text-status-success-text'
+          }`}
+        >
+          <span>{notice.text}</span>
+          <button onClick={() => setNotice(null)} className="opacity-60 hover:opacity-100" aria-label="Dismiss">
+            ✕
+          </button>
+        </div>
+      )}
+
+      <div className="mb-4 inline-flex rounded-lg border border-gray-200 bg-white p-0.5" role="tablist" aria-label="Filter by status">
         {STATUS_FILTERS.map((status) => (
           <button
             key={status}
             role="tab"
             aria-selected={statusFilter === status}
-            onClick={() => setStatusFilter(status)}
+            onClick={() => setFilter(status)}
             className={`rounded-md px-3 py-1.5 text-sm font-medium ${
               statusFilter === status ? 'bg-accent-bg text-accent-foreground' : 'text-gray-600 hover:bg-gray-100'
             }`}
@@ -100,10 +178,66 @@ export function ExtensionRequests() {
         ))}
       </div>
 
+      {selected.length > 0 && (
+        <div className="sticky top-0 z-10 mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 shadow-sm">
+          <span className="text-sm font-medium text-gray-700">{selected.length} selected</span>
+          {statusFilter === 'pending' &&
+            (isManager ? (
+              <button
+                onClick={() => bulkReviewMutation.mutate({ ids: selected.map((r) => r.id), status: 'denied' })}
+                disabled={bulkReviewMutation.isPending}
+                className="rounded-lg border border-status-danger-text/30 px-3 py-1.5 text-sm font-semibold text-status-danger-text hover:bg-status-danger-bg disabled:opacity-50"
+              >
+                {bulkReviewMutation.isPending ? 'Denying...' : 'Deny selected'}
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  if (confirm(`Withdraw ${plural(selected.length, 'request')}?`)) {
+                    bulkDeleteMutation.mutate(selected.map((r) => r.id))
+                  }
+                }}
+                disabled={bulkDeleteMutation.isPending}
+                className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                {bulkDeleteMutation.isPending ? 'Withdrawing...' : 'Withdraw selected'}
+              </button>
+            ))}
+          {isManager && (
+            <button
+              onClick={() => {
+                if (confirm(`Delete ${plural(selected.length, 'request')}? This cannot be undone.`)) {
+                  bulkDeleteMutation.mutate(selected.map((r) => r.id))
+                }
+              }}
+              disabled={bulkDeleteMutation.isPending}
+              className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            >
+              {bulkDeleteMutation.isPending ? 'Deleting...' : 'Delete selected'}
+            </button>
+          )}
+          <button onClick={() => setSelectedIds(new Set())} className="ml-auto text-sm font-medium text-gray-500 hover:underline">
+            Clear selection
+          </button>
+        </div>
+      )}
+
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
             <tr>
+              <th className="w-10 px-4 py-3">
+                <input
+                  type="checkbox"
+                  aria-label="Select all on this page"
+                  checked={allVisibleSelected}
+                  ref={(el) => {
+                    if (el) el.indeterminate = selected.length > 0 && !allVisibleSelected
+                  }}
+                  onChange={toggleAllVisible}
+                  className="h-4 w-4 rounded border-gray-300 text-accent focus:ring-accent"
+                />
+              </th>
               {isManager && <th className="px-5 py-3">Contributor</th>}
               <th className="px-5 py-3">Task ID</th>
               <th className="px-5 py-3">Project</th>
@@ -131,6 +265,15 @@ export function ExtensionRequests() {
             )}
             {rows.map((request) => (
               <tr key={request.id} className="hover:bg-gray-50">
+                <td className="px-4 py-3">
+                  <input
+                    type="checkbox"
+                    aria-label={`Select request ${request.id}`}
+                    checked={selectedIds.has(request.id)}
+                    onChange={() => toggleOne(request.id)}
+                    className="h-4 w-4 rounded border-gray-300 text-accent focus:ring-accent"
+                  />
+                </td>
                 {isManager && (
                   <td className="px-5 py-3">
                     {request.requester ? (
@@ -156,39 +299,54 @@ export function ExtensionRequests() {
                   <span className={`${pillClass} ${STATUS_STYLES[request.status]}`}>{STATUS_LABELS[request.status]}</span>
                 </td>
                 <td className="px-5 py-3 text-right">
-                  {request.status !== 'pending' ? (
-                    <span className="text-xs text-gray-400">
-                      {request.reviewed_at ? new Date(request.reviewed_at).toLocaleDateString() : ''}
-                    </span>
-                  ) : isManager ? (
-                    <div className="flex justify-end gap-2">
+                  <div className="flex items-center justify-end gap-2">
+                    {request.status === 'pending' &&
+                      (isManager ? (
+                        <>
+                          <button
+                            onClick={() => handleRequest(request)}
+                            disabled={reviewMutation.isPending}
+                            title="Opens the Reclaim / Extend form, prefilled, and marks this approved"
+                            className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground disabled:opacity-50"
+                          >
+                            Request
+                          </button>
+                          <button
+                            onClick={() => reviewMutation.mutate({ id: request.id, status: 'denied' })}
+                            disabled={reviewMutation.isPending}
+                            className="rounded-lg border border-status-danger-text/30 px-3 py-1.5 text-xs font-semibold text-status-danger-text hover:bg-status-danger-bg disabled:opacity-50"
+                          >
+                            Deny
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => withdrawMutation.mutate(request.id)}
+                          disabled={withdrawMutation.isPending}
+                          className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+                        >
+                          Withdraw
+                        </button>
+                      ))}
+                    {request.status !== 'pending' && (
+                      <span className="text-xs text-gray-400">
+                        {request.reviewed_at ? new Date(request.reviewed_at).toLocaleDateString() : ''}
+                      </span>
+                    )}
+                    {isManager && (
                       <button
-                        onClick={() => handleRequest(request)}
-                        disabled={reviewMutation.isPending}
-                        title="Opens the Reclaim / Extend form, prefilled, and marks this approved"
-                        className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground disabled:opacity-50"
-                      >
-                        Request
-                      </button>
-                      <button
-                        onClick={() => reviewMutation.mutate({ id: request.id, status: 'denied' })}
-                        disabled={reviewMutation.isPending}
-                        className="rounded-lg border border-status-danger-text/30 px-3 py-1.5 text-xs font-semibold text-status-danger-text hover:bg-status-danger-bg disabled:opacity-50"
-                      >
-                        Deny
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex justify-end">
-                      <button
-                        onClick={() => withdrawMutation.mutate(request.id)}
+                        onClick={() => {
+                          if (confirm('Delete this extension request? This cannot be undone.')) {
+                            withdrawMutation.mutate(request.id)
+                          }
+                        }}
                         disabled={withdrawMutation.isPending}
                         className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
                       >
-                        Withdraw
+                        Delete
                       </button>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}

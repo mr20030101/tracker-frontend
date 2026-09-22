@@ -12,6 +12,8 @@ export interface User {
   must_change_password: boolean
   // A lead's public application form: false while they have it switched off.
   accepting_applications: boolean
+  // A CB's own Remotasks worker ID, self-set from Edit Profile.
+  remotasks_id: string | null
 }
 
 export type ActivityEvent = 'login' | 'login_failed' | 'logout'

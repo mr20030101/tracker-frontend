@@ -13,8 +13,12 @@ export async function uploadAvatar(userId: string, file: File): Promise<string> 
   return `${data.publicUrl}?v=${Date.now()}`
 }
 
-export async function updateOwnProfile(name: string, avatarUrl: string | null): Promise<User> {
-  const { data, error } = await supabase.rpc('update_own_profile', { new_name: name, new_avatar_url: avatarUrl })
+export async function updateOwnProfile(name: string, avatarUrl: string | null, remotasksId: string): Promise<User> {
+  const { data, error } = await supabase.rpc('update_own_profile', {
+    new_name: name,
+    new_avatar_url: avatarUrl,
+    new_remotasks_id: remotasksId,
+  })
   if (error) throw error
   return data as User
 }

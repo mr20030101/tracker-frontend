@@ -75,6 +75,7 @@ export function CbProfile() {
 
   const [showWarning, setShowWarning] = useState(true)
   const [profileName, setProfileName] = useState(() => currentUser?.name ?? '')
+  const [profileRemotasksId, setProfileRemotasksId] = useState(() => currentUser?.remotasks_id ?? '')
   const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null)
   const [profilePhotoPreview, setProfilePhotoPreview] = useState<string | null>(null)
   const [profilePassword, setProfilePassword] = useState('')
@@ -170,7 +171,7 @@ export function CbProfile() {
       if (!currentUser) throw new Error('Unauthenticated')
       let avatarUrl = currentUser.avatar_url
       if (profilePhotoFile) avatarUrl = await uploadAvatar(currentUser.id, profilePhotoFile)
-      await updateOwnProfile(profileName.trim(), avatarUrl)
+      await updateOwnProfile(profileName.trim(), avatarUrl, profileRemotasksId.trim())
       if (profilePassword) {
         const { error } = await supabase.auth.updateUser({ password: profilePassword })
         if (error) throw error
@@ -318,6 +319,16 @@ export function CbProfile() {
                 value={decodedEmail}
                 className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500"
               />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Remotask ID</label>
+              <input
+                value={profileRemotasksId}
+                onChange={(e) => setProfileRemotasksId(e.target.value)}
+                placeholder="Your Remotasks worker ID"
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
+              />
+              <p className="mt-1 text-xs text-gray-400">Used to prefill the Reclaim / Extend form when your lead approves an extension request.</p>
             </div>
             <div className="border-t border-gray-100 pt-4">
               <label className="mb-1 block text-sm font-medium text-gray-700">New Password</label>

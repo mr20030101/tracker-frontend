@@ -196,6 +196,8 @@ async function contributor(params: Record<string, unknown>): Promise<Contributor
           avatar_url: stats.avatar_url,
           must_change_password: false,
           accepting_applications: true,
+          // Not exposed by this public-view RPC — only meaningful for the caller's own team.
+          remotasks_id: null,
         }
       : null
     return {
