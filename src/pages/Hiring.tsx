@@ -5,6 +5,7 @@ import type { ColumnDef, RowSelectionState } from '@tanstack/react-table'
 import { Check, Copy, ExternalLink } from 'lucide-react'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
+import { toISODate } from '../lib/week'
 import {
   applicationLink,
   clearHiring,
@@ -54,7 +55,7 @@ const NOTICE_CLASSES: Record<Notice['tone'], string> = {
 
 const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`
 // For an export filename, like "2026-09-22".
-const todayStamp = () => new Date().toISOString().slice(0, 10)
+const todayStamp = () => toISODate(new Date())
 
 const inputClass = 'w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent'
 const selectClass = 'rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent'

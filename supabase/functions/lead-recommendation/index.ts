@@ -9,8 +9,19 @@ function errorResponse(message: string, status: number) {
     return Response.json({ error: message }, { status, headers: corsHeaders })
 }
 
+// The team works Asia/Singapore time. Reading the zone's own wall-clock date for this instant
+// (via Intl, looked up by name rather than a hardcoded offset) gives the local calendar
+// day/weekday without pulling in a timezone library.
+const SG_PARTS = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Singapore',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+})
+
 function isoWeekStart(date: Date): string {
-    const d = new Date(date)
+    const parts = Object.fromEntries(SG_PARTS.formatToParts(date).map((p) => [p.type, p.value]))
+    const d = new Date(Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day)))
     const day = d.getUTCDay()
     d.setUTCDate(d.getUTCDate() - (day === 0 ? 6 : day - 1))
     return d.toISOString().slice(0, 10)

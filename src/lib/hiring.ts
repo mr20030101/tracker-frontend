@@ -1,4 +1,5 @@
 import { api, functionErrorMessage, supabase } from './api'
+import { toISODate } from './week'
 import type { HiringApplication } from '../types'
 
 export interface ApplicationInput {
@@ -253,12 +254,7 @@ const FIRST_BOOTCAMP_DETAILS: BootcampDetails = {
 }
 const BOOTCAMP_DETAILS_KEY = 'hiring-bootcamp-details'
 
-const localToday = () => {
-  const now = new Date()
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-}
-
-/** The details to start the form with. A remembered date that has already passed is cleared, so an old one can't be sent by accident. */
+/** The details to start the form with. A remembered date that has already passed (in Singapore/PH time, same as the edge function's own check) is cleared, so an old one can't be sent by accident. */
 export function loadBootcampDetails(): BootcampDetails {
   let details = FIRST_BOOTCAMP_DETAILS
   try {
@@ -275,7 +271,7 @@ export function loadBootcampDetails(): BootcampDetails {
   } catch {
     // Storage can be unavailable or hold something unreadable: start from the defaults.
   }
-  return details.date && details.date < localToday() ? { ...details, date: '' } : details
+  return details.date && details.date < toISODate(new Date()) ? { ...details, date: '' } : details
 }
 
 export function saveBootcampDetails(details: BootcampDetails) {

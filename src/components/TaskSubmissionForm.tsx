@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
+import { toISODate } from '../lib/week'
 import type { Project, Stage, SubmissionStatus, TaskSubmission } from '../types'
 import { Modal } from './Modal'
 import { Select } from './Select'
@@ -43,7 +44,7 @@ const emptyForm = {
   new_project: '',
   stage: 'attempt' as Stage,
   status: 'in_progress' as SubmissionStatus,
-  date: new Date().toISOString().slice(0, 10),
+  date: toISODate(new Date()),
   notes: '',
   snipboard_url: '',
 }
@@ -67,7 +68,7 @@ export function TaskSubmissionForm({ submission, onClose }: Props) {
           new_project: '',
           stage: submission.stage,
           status: submission.status,
-          date: submission.date?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
+          date: submission.date?.slice(0, 10) ?? toISODate(new Date()),
           notes: submission.notes ?? '',
           snipboard_url: submission.snipboard_url ?? '',
         }

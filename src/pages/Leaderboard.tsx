@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
-import { startOfWeek, endOfWeek, toISODate, formatRange } from '../lib/week'
+import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, yearMonth, toISODate, formatRange } from '../lib/week'
 import type { DashboardSummary, LeaderboardRow, Project } from '../types'
 import { Avatar } from '../components/Avatar'
 import { ProgressBar } from '../components/ProgressBar'
@@ -26,9 +26,7 @@ function rangeFor(period: Period): { start: string; end: string } {
     return { start: toISODate(startOfWeek(today)), end: toISODate(endOfWeek(today)) }
   }
   if (period === 'month') {
-    const start = new Date(today.getFullYear(), today.getMonth(), 1)
-    const end = new Date(today.getFullYear(), today.getMonth() + 1, 0)
-    return { start: toISODate(start), end: toISODate(end) }
+    return { start: toISODate(startOfMonth(today)), end: toISODate(endOfMonth(today)) }
   }
   return { start: '2000-01-01', end: toISODate(today) }
 }
@@ -125,20 +123,22 @@ function ManagerLeaderboard() {
   const rangeStart = useMemo(() => {
     if (viewMode === 'day') return toISODate(anchorDate)
     if (viewMode === 'week') return toISODate(startOfWeek(anchorDate))
-    return toISODate(new Date(anchorDate.getFullYear(), anchorDate.getMonth(), 1))
+    return toISODate(startOfMonth(anchorDate))
   }, [viewMode, anchorDate])
 
   const rangeEnd = useMemo(() => {
     if (viewMode === 'day') return toISODate(anchorDate)
     if (viewMode === 'week') return toISODate(endOfWeek(anchorDate))
-    return toISODate(new Date(anchorDate.getFullYear(), anchorDate.getMonth() + 1, 0))
+    return toISODate(endOfMonth(anchorDate))
   }, [viewMode, anchorDate])
 
   const isCurrentRange = useMemo(() => {
     const today = new Date()
     if (viewMode === 'day') return rangeStart === toISODate(today)
     if (viewMode === 'week') return rangeStart === toISODate(startOfWeek(today))
-    return anchorDate.getFullYear() === today.getFullYear() && anchorDate.getMonth() === today.getMonth()
+    const [anchorYear, anchorMonth] = yearMonth(anchorDate)
+    const [todayYear, todayMonth] = yearMonth(today)
+    return anchorYear === todayYear && anchorMonth === todayMonth
   }, [viewMode, rangeStart, anchorDate])
 
   function shiftRange(direction: 1 | -1) {
@@ -164,7 +164,7 @@ function ManagerLeaderboard() {
       })
     }
     if (viewMode === 'week') return formatRange(rangeStart, rangeEnd)
-    return anchorDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+    return new Date(`${rangeStart}T00:00:00`).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
   }
 
   const [search, setSearch] = useState('')

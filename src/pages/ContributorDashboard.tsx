@@ -1,11 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { BookOpen, ClipboardList, MessageCircle, Trophy, User, type LucideIcon } from 'lucide-react'
-import { api } from '../lib/api'
+import { api, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { startOfWeek, toISODate } from '../lib/week'
-import type { ContributorProfile } from '../types'
+import type { ContributorProfile, ContributorProjectLevel, Project, ProjectLevel } from '../types'
 import { ProgressRing } from '../components/ProgressRing'
 import { LineChart } from '../components/LineChart'
 import { CountUp } from '../components/CountUp'
@@ -13,6 +13,7 @@ import { GrowBar } from '../components/GrowBar'
 import { Reveal } from '../components/Reveal'
 import { CtsFormModal } from '../components/CtsFormModal'
 import { TaskSubmissionForm } from '../components/TaskSubmissionForm'
+import { LevelPill } from '../components/LevelPill'
 
 const TREND_DAYS = 30
 
@@ -36,8 +37,16 @@ export function ContributorDashboard() {
   const email = user?.email ?? ''
   const [showCtsModal, setShowCtsModal] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [showWarning, setShowWarning] = useState(true)
   const thisWeekIso = useMemo(() => toISODate(startOfWeek(new Date())), [])
   const today = useMemo(() => toISODate(new Date()), [])
+
+  // Fades on its own after a while, like the same warning on the profile page.
+  useEffect(() => {
+    setShowWarning(true)
+    const timer = setTimeout(() => setShowWarning(false), 10000)
+    return () => clearTimeout(timer)
+  }, [])
 
   const { data, isLoading } = useQuery({
     queryKey: ['contributor', email, thisWeekIso],
@@ -50,9 +59,50 @@ export function ContributorDashboard() {
     enabled: Boolean(email),
   })
 
+  const contributorId = data?.user?.id ?? null
+  const contributorLeadId = data?.user?.lead_id ?? null
+
+  const { data: allProjects = [] } = useQuery({
+    queryKey: ['projects'],
+    queryFn: async () => (await api.get<Project[]>('/projects')).data,
+  })
+
+  // A contributor's project list is exactly whichever projects their lead runs.
+  const { data: leadProjectIds = [] } = useQuery({
+    queryKey: ['project-leads-for-lead', contributorLeadId],
+    queryFn: async () => {
+      const { data: rows, error } = await supabase
+        .from('project_leads')
+        .select('project_id')
+        .eq('lead_id', contributorLeadId!)
+      if (error) throw error
+      return rows.map((row) => row.project_id as number)
+    },
+    enabled: Boolean(contributorLeadId),
+  })
+
+  const { data: projectLevels = [] } = useQuery({
+    queryKey: ['contributor-project-levels', contributorId],
+    queryFn: async () => {
+      const { data: rows, error } = await supabase
+        .from('contributor_project_levels')
+        .select('*')
+        .eq('user_id', contributorId!)
+      if (error) throw error
+      return rows as ContributorProjectLevel[]
+    },
+    enabled: Boolean(contributorId),
+  })
+
   if (isLoading || !data) {
     return <div className="text-gray-400">Loading...</div>
   }
+
+  const levelByProjectId = new Map(projectLevels.map((row) => [row.project_id, row.level]))
+  const levelProjects = leadProjectIds
+    .map((id) => allProjects.find((project) => project.id === id))
+    .filter((project): project is Project => Boolean(project))
+    .map((project) => ({ project, level: levelByProjectId.get(project.id) ?? ('contributor' as ProjectLevel) }))
 
   const quickLinks: QuickLink[] = [
     { to: `/contributors/${encodeURIComponent(email)}`, label: 'Profile', icon: User },
@@ -116,6 +166,20 @@ export function ContributorDashboard() {
           </a>
         </div>
       </div>
+
+      {showWarning && data.submitted_this_week === 0 && (
+        <div className="mb-6 flex items-center gap-3 rounded-xl border-2 border-status-danger-text bg-status-danger-text px-5 py-4 text-sm font-semibold text-white shadow-sm">
+          <span className="animate-heartbeat text-lg leading-none">⚠</span>
+          <span>WARNING: No submissions logged yet this week.</span>
+          <button
+            onClick={() => setShowWarning(false)}
+            className="ml-auto text-lg leading-none text-white/80 hover:text-white"
+            aria-label="Dismiss"
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       {submitting && <TaskSubmissionForm onClose={() => setSubmitting(false)} />}
 
@@ -205,6 +269,23 @@ export function ContributorDashboard() {
           </div>
         </div>
       </div>
+
+      {levelProjects.length > 0 && (
+        <div className="mt-6 rounded-xl border border-gray-200 bg-white p-5">
+          <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-700">
+            <Trophy className="h-4 w-4 text-amber-500" />
+            Project Levels
+          </div>
+          <div className="divide-y divide-gray-100">
+            {levelProjects.map(({ project, level }) => (
+              <div key={project.id} className="flex items-center justify-between gap-3 py-3 text-sm first:pt-0 last:pb-0">
+                <span className="font-medium uppercase tracking-wide text-gray-700">{project.name}</span>
+                <LevelPill level={level} />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </Reveal>
   )
 }

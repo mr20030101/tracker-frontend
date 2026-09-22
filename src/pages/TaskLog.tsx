@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { remotasksDiffViewerUrl } from '../lib/remotasks'
-import { formatTime } from '../lib/week'
+import { formatTime, toISODate } from '../lib/week'
 import type { Paginated, Project, Stage, SubmissionStatus, TaskSubmission } from '../types'
 import { StatusPill } from '../components/StatusPill'
 import { Avatar } from '../components/Avatar'
@@ -120,7 +120,7 @@ function ManagerTaskLog() {
 
       const projectById = new Map((projects ?? []).map((p) => [p.id, p.name]))
       downloadCsv(
-        `task-log-${new Date().toISOString().slice(0, 10)}.csv`,
+        `task-log-${toISODate(new Date())}.csv`,
         (rows ?? []).map((r) => ({
           date: r.date ?? '',
           cb_email: r.cb_email,

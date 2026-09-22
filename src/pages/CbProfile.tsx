@@ -8,7 +8,6 @@ import { startOfWeek, toISODate } from '../lib/week'
 import { clearMustChangePassword, updateOwnProfile, uploadAvatar } from '../lib/profile'
 import type { ContributorProfile, ContributorProjectLevel, Project, ProjectLevel } from '../types'
 import { Avatar } from '../components/Avatar'
-import { Modal } from '../components/Modal'
 import { LevelPill, LEVEL_TIERS } from '../components/LevelPill'
 import { ContributorWorkPanel } from '../components/ContributorWorkPanel'
 import { Reveal } from '../components/Reveal'
@@ -301,7 +300,8 @@ export function CbProfile() {
       </div>
 
       {editingProfile && (
-        <Modal title="Edit Profile" onClose={() => setEditingProfile(false)}>
+        <div className="mb-6 rounded-xl border border-gray-200 bg-white p-5">
+          <h2 className="mb-4 text-sm font-semibold text-gray-700">Edit Profile</h2>
           <form onSubmit={handleSaveProfile} className="flex flex-col gap-4">
             <div className="flex items-center gap-4">
               <Avatar name={profileName || displayName} photoUrl={profilePhotoPreview ?? currentUser?.avatar_url} size={64} />
@@ -380,10 +380,12 @@ export function CbProfile() {
               </button>
             </div>
           </form>
-        </Modal>
+        </div>
       )}
 
-      {canEdit && isContributorRole && showWarning && data.submitted_this_week === 0 && (!data.user || data.user.is_active) && (
+      {/* A CB's own "no submissions yet" nudge lives on their Dashboard now; keep it here only
+          for a lead/admin reviewing someone else. */}
+      {canEdit && isContributorRole && !isOwnProfile && showWarning && data.submitted_this_week === 0 && (!data.user || data.user.is_active) && (
         <div className="mb-6 flex items-center gap-3 rounded-xl border-2 border-status-danger-text bg-status-danger-text px-5 py-4 text-sm font-semibold text-white shadow-sm">
           <span className="animate-heartbeat text-lg leading-none">⚠</span>
           <span>WARNING: No submissions logged yet this week.</span>
@@ -411,7 +413,9 @@ export function CbProfile() {
         </div>
       )}
 
-      {isContributorRole && levelProjects.length > 0 && (
+      {/* Same for Project Levels — a CB sees their own on the Dashboard now; this stays only
+          for a lead/admin reviewing someone else. */}
+      {isContributorRole && !isOwnProfile && levelProjects.length > 0 && (
         <div className="mb-6 rounded-xl border border-gray-200 bg-white p-5">
           <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-700">
             <Trophy className="h-4 w-4 text-amber-500" />
