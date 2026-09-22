@@ -58,7 +58,7 @@ function ContributorLeaderboard() {
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Leaderboard</h1>
-        <p className="text-sm text-gray-500">See who's submitted the most tasks {periodLabel}.</p>
+        <p className="text-sm text-gray-500">See who on your team has submitted the most tasks {periodLabel}.</p>
       </div>
 
       <div className="mb-4 flex rounded-lg border border-gray-200 bg-white p-1 w-fit">
