@@ -24,6 +24,7 @@ interface ParsedRow {
   project_id: number | null
   project_name_raw: string
   project_unmatched: boolean
+  snipboard_url: string | null
 }
 
 const STATUS_MAP: Record<string, SubmissionStatus> = {
@@ -74,11 +75,11 @@ function parseRows(text: string, projects: Project[], fixedEmail?: string): Pars
 
   return lines.map((line) => {
     const rawFields = line.split('\t')
-    while (rawFields.length < (hasEmailColumn ? 8 : 7)) rawFields.push('')
-    const [dateRaw, taskIdRaw, emailRaw, statusRaw, stageRaw, notesRaw, dateSubRaw, projectRaw] = hasEmailColumn
+    while (rawFields.length < (hasEmailColumn ? 9 : 8)) rawFields.push('')
+    const [dateRaw, taskIdRaw, emailRaw, statusRaw, stageRaw, notesRaw, dateSubRaw, projectRaw, snipboardRaw] = hasEmailColumn
       ? rawFields
-      : [rawFields[0], rawFields[1], '', rawFields[2], rawFields[3], rawFields[4], rawFields[5], rawFields[6]]
-    const fields = hasEmailColumn ? rawFields : rawFields.slice(0, 7)
+      : [rawFields[0], rawFields[1], '', rawFields[2], rawFields[3], rawFields[4], rawFields[5], rawFields[6], rawFields[7]]
+    const fields = hasEmailColumn ? rawFields : rawFields.slice(0, 8)
 
     const cleanTaskId = taskIdRaw.trim().replace(/^sub id:\s*/i, '').trim()
     const cb_email = fixedEmail ?? (emailRaw.trim().toUpperCase() === 'NONE' ? '' : emailRaw.trim())
@@ -95,6 +96,8 @@ function parseRows(text: string, projects: Project[], fixedEmail?: string): Pars
     const project_id = projectNormalized ? (projectByName.get(projectNormalized) ?? null) : null
     const project_unmatched = Boolean(projectNormalized) && project_id === null
 
+    const snipboard_url = snipboardRaw.trim() && snipboardRaw.trim().toUpperCase() !== 'NONE' ? snipboardRaw.trim() : null
+
     return {
       raw: fields,
       task_id: cleanTaskId && cleanTaskId.toUpperCase() !== 'NONE' ? cleanTaskId : null,
@@ -108,6 +111,7 @@ function parseRows(text: string, projects: Project[], fixedEmail?: string): Pars
       project_id,
       project_name_raw: projectRaw.trim(),
       project_unmatched,
+      snipboard_url,
     }
   })
 }
@@ -184,6 +188,7 @@ export function BulkImportModal({ projects, onClose, contributorEmail, contribut
           notes: row.notes,
           date: row.date,
           submitted_at: row.submitted_at,
+          snipboard_url: row.snipboard_url,
         })
       }
 
@@ -221,13 +226,14 @@ export function BulkImportModal({ projects, onClose, contributorEmail, contribut
             <p className="text-sm text-gray-500">
               {contributorEmail ? (
                 <>
-                  Paste tab-separated rows: Date, Task ID, Status, Stage, Notes, Date Submitted, Project — one per
-                  line. Every row imports under <span className="font-medium text-gray-700">{contributorName ?? contributorEmail}</span>.
+                  Paste tab-separated rows: Date, Task ID, Status, Stage, Notes, Date Submitted, Project, Screenshot
+                  URL — one per line. Every row imports under{' '}
+                  <span className="font-medium text-gray-700">{contributorName ?? contributorEmail}</span>.
                 </>
               ) : (
                 <>
-                  Paste tab-separated rows: Date, Task ID, CB Email, Status, Stage, Notes, Date Submitted, Project —
-                  one per line (this matches a direct copy-paste from the tracking spreadsheet).
+                  Paste tab-separated rows: Date, Task ID, CB Email, Status, Stage, Notes, Date Submitted, Project,
+                  Screenshot URL — one per line (this matches a direct copy-paste from the tracking spreadsheet).
                 </>
               )}
             </p>
@@ -237,8 +243,8 @@ export function BulkImportModal({ projects, onClose, contributorEmail, contribut
               rows={14}
               placeholder={
                 contributorEmail
-                  ? '09/12/2026\t6aa0a04f...\tsubmitted\tAttempt\t\t09/12/2026\tProject Name'
-                  : '09/12/2026\t6aa0a04f...\tname@email.com\tsubmitted\tAttempt\t\t09/12/2026\tProject Name'
+                  ? '09/12/2026\t6aa0a04f...\tsubmitted\tAttempt\t\t09/12/2026\tProject Name\thttps://snipboard.io/abc123.jpg'
+                  : '09/12/2026\t6aa0a04f...\tname@email.com\tsubmitted\tAttempt\t\t09/12/2026\tProject Name\thttps://snipboard.io/abc123.jpg'
               }
               className="w-full rounded-lg border border-gray-200 px-3 py-2 font-mono text-xs outline-none focus:border-accent"
             />
@@ -281,6 +287,7 @@ export function BulkImportModal({ projects, onClose, contributorEmail, contribut
                     <th className="px-3 py-2">Submitted</th>
                     <th className="px-3 py-2">Project</th>
                     <th className="px-3 py-2">Notes</th>
+                    <th className="px-3 py-2">Screenshot</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -324,6 +331,20 @@ export function BulkImportModal({ projects, onClose, contributorEmail, contribut
                           )}
                         </td>
                         <td className="max-w-32 truncate px-3 py-2 text-gray-500">{row.notes ?? '—'}</td>
+                        <td className="px-3 py-2">
+                          {row.snipboard_url ? (
+                            <a
+                              href={row.snipboard_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-sky-700 hover:underline"
+                            >
+                              View
+                            </a>
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
+                        </td>
                       </tr>
                     )
                   })}
