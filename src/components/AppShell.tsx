@@ -179,7 +179,11 @@ export function AppShell({ children }: { children: ReactNode }) {
               <ThemeToggle />
               {user && <MessagesButton />}
               {user && <NotificationBell />}
-              {user && <Avatar name={user.name} photoUrl={user.avatar_url} size={32} />}
+              {user && (
+                <NavLink to={ownProfilePath} aria-label="Open your profile" className="shrink-0 rounded-full">
+                  <Avatar name={user.name} photoUrl={user.avatar_url} size={32} />
+                </NavLink>
+              )}
             </div>
           </header>
 

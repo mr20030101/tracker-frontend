@@ -1,5 +1,7 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
+import { BookOpen, ClipboardList, MessageCircle, Trophy, User, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { startOfWeek, toISODate } from '../lib/week'
@@ -9,8 +11,15 @@ import { LineChart } from '../components/LineChart'
 import { CountUp } from '../components/CountUp'
 import { GrowBar } from '../components/GrowBar'
 import { Reveal } from '../components/Reveal'
+import { CtsFormModal } from '../components/CtsFormModal'
 
 const TREND_DAYS = 30
+
+interface QuickLink {
+  to: string
+  label: string
+  icon: LucideIcon
+}
 
 const ATTENDANCE_FORM_URL =
   'https://docs.google.com/forms/d/e/1FAIpQLSdItgT4AYcL14m0A3t5Rx7nGaySxDe64J1VZtInYD0ukepAfg/viewform'
@@ -24,6 +33,7 @@ function buildAttendanceFormUrl(email: string) {
 export function ContributorDashboard() {
   const { user } = useAuth()
   const email = user?.email ?? ''
+  const [showCtsModal, setShowCtsModal] = useState(false)
   const thisWeekIso = useMemo(() => toISODate(startOfWeek(new Date())), [])
   const today = useMemo(() => toISODate(new Date()), [])
 
@@ -42,6 +52,14 @@ export function ContributorDashboard() {
     return <div className="text-gray-400">Loading...</div>
   }
 
+  const quickLinks: QuickLink[] = [
+    { to: `/contributors/${encodeURIComponent(email)}`, label: 'Profile', icon: User },
+    { to: '/leaderboard', label: 'Leaderboard', icon: Trophy },
+    { to: '/task-log', label: 'Task Log', icon: ClipboardList },
+    { to: '/resources', label: 'Resources', icon: BookOpen },
+    { to: '/messages', label: 'Messages', icon: MessageCircle },
+  ]
+
   const submittedToday = data.all_submissions.filter((r) => r.date?.slice(0, 10) === today && r.status === 'submitted').length
   const loggedToday = data.all_submissions.filter((r) => r.date?.slice(0, 10) === today).length
   const dayTarget = Math.round(data.weekly_target / 5)
@@ -59,6 +77,11 @@ export function ContributorDashboard() {
     return { date: iso, value }
   })
 
+  // Today's, not already submitted to CTS, and not still in progress — same as the CTS Form on the profile page.
+  const todaysSubmissions = data.all_submissions.filter(
+    (row) => row.date?.slice(0, 10) === today && row.status !== 'in_progress' && !row.cts_submitted_at,
+  )
+
   return (
     <Reveal>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -66,14 +89,38 @@ export function ContributorDashboard() {
           <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
           <p className="text-sm text-gray-500">Welcome back, {data.user?.name ?? email}.</p>
         </div>
-        <a
-          href={buildAttendanceFormUrl(email)}
-          target="_blank"
-          rel="noreferrer"
-          className="animate-heartbeat-soft rounded-lg bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600"
-        >
-          Attendance Form
-        </a>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowCtsModal(true)}
+            className="animate-heartbeat-soft rounded-lg bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600"
+          >
+            CTS Form
+          </button>
+          <a
+            href={buildAttendanceFormUrl(email)}
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+          >
+            Attendance Form
+          </a>
+        </div>
+      </div>
+
+      {showCtsModal && <CtsFormModal email={email} submissions={todaysSubmissions} onClose={() => setShowCtsModal(false)} />}
+
+      <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+        {quickLinks.map((link) => (
+          <Link
+            key={link.to}
+            to={link.to}
+            className="flex flex-col items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-6 text-center hover:border-accent hover:bg-accent-bg"
+          >
+            <link.icon className="h-6 w-6 text-gray-500" strokeWidth={2} />
+            <span className="text-sm font-semibold text-gray-700">{link.label}</span>
+          </Link>
+        ))}
       </div>
 
       <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">

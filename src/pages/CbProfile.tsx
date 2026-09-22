@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Navigate, useParams, Link } from 'react-router-dom'
-import { Image, ChevronDown, MessageCircle, Trophy } from 'lucide-react'
+import { Eye, EyeOff, Image, ChevronDown, MessageCircle, Trophy } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, functionErrorMessage, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
@@ -110,6 +110,8 @@ export function CbProfile() {
   }, [profilePhotoPreview])
   const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('day')
   const [anchorDate, setAnchorDate] = useState(() => new Date())
+  // Collapsed by default; a toggle below shows the goal ring and charts for whoever wants them.
+  const [showGraphs, setShowGraphs] = useState(false)
   const thisWeekIso = useMemo(() => toISODate(startOfWeek(new Date())), [])
 
   type SortKey = 'task_id' | 'project' | 'stage' | 'status' | 'date'
@@ -609,78 +611,92 @@ export function CbProfile() {
 
       {isContributorRole && (
         <>
-          <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
-            {/* Day/Week/Month Goal is derived from raw per-row submissions,
-                which are deliberately empty in the public view — showing it
-                there would just be a permanent, misleading 0. */}
-            {!data.is_public_view && (
-              <div className="flex items-center gap-5 rounded-xl border border-gray-200 bg-white p-5 lg:col-span-1">
-                <ProgressRing
-                  value={rangeProgress}
-                  label={`${viewLabel} Goal`}
-                  sublabel={`${submittedInRange} / ${rangeTarget}`}
-                />
-                <div className="flex flex-col gap-3">
-                  <div>
-                    <div className="text-xs font-medium uppercase tracking-wider text-gray-400">{`Submitted (${viewLabel})`}</div>
-                    <div className="text-xl font-bold text-gray-900">
-                      <CountUp value={submittedInRange} />
+          <button
+            type="button"
+            onClick={() => setShowGraphs((v) => !v)}
+            aria-expanded={showGraphs}
+            className="mb-4 inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
+          >
+            {showGraphs ? <EyeOff className="h-4 w-4" strokeWidth={2} /> : <Eye className="h-4 w-4" strokeWidth={2} />}
+            {showGraphs ? 'Hide graphs' : 'Show graphs'}
+          </button>
+
+          {showGraphs && (
+            <>
+              <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
+                {/* Day/Week/Month Goal is derived from raw per-row submissions,
+                    which are deliberately empty in the public view — showing it
+                    there would just be a permanent, misleading 0. */}
+                {!data.is_public_view && (
+                  <div className="flex items-center gap-5 rounded-xl border border-gray-200 bg-white p-5 lg:col-span-1">
+                    <ProgressRing
+                      value={rangeProgress}
+                      label={`${viewLabel} Goal`}
+                      sublabel={`${submittedInRange} / ${rangeTarget}`}
+                    />
+                    <div className="flex flex-col gap-3">
+                      <div>
+                        <div className="text-xs font-medium uppercase tracking-wider text-gray-400">{`Submitted (${viewLabel})`}</div>
+                        <div className="text-xl font-bold text-gray-900">
+                          <CountUp value={submittedInRange} />
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs font-medium uppercase tracking-wider text-gray-400">{`Logged (${viewLabel})`}</div>
+                        <div className="text-xl font-bold text-gray-900">
+                          <CountUp value={loggedInRange} />
+                        </div>
+                      </div>
+                      <div className="text-xs text-gray-400">Minimum goal — submit as much as you want, no upper limit.</div>
                     </div>
                   </div>
-                  <div>
-                    <div className="text-xs font-medium uppercase tracking-wider text-gray-400">{`Logged (${viewLabel})`}</div>
-                    <div className="text-xl font-bold text-gray-900">
-                      <CountUp value={loggedInRange} />
-                    </div>
+                )}
+
+                <div className={`rounded-xl border border-gray-200 bg-white p-5 ${data.is_public_view ? 'lg:col-span-3' : 'lg:col-span-2'}`}>
+                  <div className="mb-3 flex items-center justify-between">
+                    <div className="text-sm font-semibold text-gray-700">Submission Trend</div>
+                    <span className="text-xs text-gray-400">last {TREND_DAYS} days</span>
                   </div>
-                  <div className="text-xs text-gray-400">Minimum goal — submit as much as you want, no upper limit.</div>
+                  <LineChart data={trendData} color="#d4a017" unitLabel="submitted" />
                 </div>
               </div>
-            )}
 
-            <div className={`rounded-xl border border-gray-200 bg-white p-5 ${data.is_public_view ? 'lg:col-span-3' : 'lg:col-span-2'}`}>
-              <div className="mb-3 flex items-center justify-between">
-                <div className="text-sm font-semibold text-gray-700">Submission Trend</div>
-                <span className="text-xs text-gray-400">last {TREND_DAYS} days</span>
-              </div>
-              <LineChart data={trendData} color="#d4a017" unitLabel="submitted" />
-            </div>
-          </div>
-
-          <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="rounded-xl border border-gray-200 bg-white p-5">
-              <div className="mb-3 text-sm font-semibold text-gray-700">By Stage (all-time)</div>
-              <div className="flex flex-col gap-3">
-                {stages.length === 0 && <div className="text-sm text-gray-400">No submissions yet.</div>}
-                {stages.map(([stage, total], index) => (
-                  <div key={stage} className="flex items-center gap-3 text-sm">
-                    <span className="w-16 shrink-0 uppercase text-gray-600">{stage}</span>
-                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-100">
-                      <GrowBar className="h-full rounded-full bg-accent" pct={Math.max(4, (total / maxStageTotal) * 100)} delay={400 + index * 80} />
-                    </div>
-                    <span className="w-8 shrink-0 text-right font-medium text-gray-900">{total}</span>
+              <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="rounded-xl border border-gray-200 bg-white p-5">
+                  <div className="mb-3 text-sm font-semibold text-gray-700">By Stage (all-time)</div>
+                  <div className="flex flex-col gap-3">
+                    {stages.length === 0 && <div className="text-sm text-gray-400">No submissions yet.</div>}
+                    {stages.map(([stage, total], index) => (
+                      <div key={stage} className="flex items-center gap-3 text-sm">
+                        <span className="w-16 shrink-0 uppercase text-gray-600">{stage}</span>
+                        <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-100">
+                          <GrowBar className="h-full rounded-full bg-accent" pct={Math.max(4, (total / maxStageTotal) * 100)} delay={400 + index * 80} />
+                        </div>
+                        <span className="w-8 shrink-0 text-right font-medium text-gray-900">{total}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
-            <div className="rounded-xl border border-gray-200 bg-white p-5">
-              <div className="mb-3 text-sm font-semibold text-gray-700">By Project (all-time)</div>
-              <div className="flex flex-col gap-3">
-                {data.project_breakdown.length === 0 && <div className="text-sm text-gray-400">No submissions yet.</div>}
-                {data.project_breakdown.map((p, index) => (
-                  <div key={p.name} className="flex items-center gap-3 text-sm">
-                    <span className="w-32 shrink-0 truncate text-gray-600" title={p.name}>
-                      {p.name}
-                    </span>
-                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-100">
-                      <GrowBar className="h-full rounded-full bg-sky-600" pct={Math.max(4, (p.total / maxProjectTotal) * 100)} delay={400 + index * 80} />
-                    </div>
-                    <span className="w-8 shrink-0 text-right font-medium text-gray-900">{p.total}</span>
+                </div>
+                <div className="rounded-xl border border-gray-200 bg-white p-5">
+                  <div className="mb-3 text-sm font-semibold text-gray-700">By Project (all-time)</div>
+                  <div className="flex flex-col gap-3">
+                    {data.project_breakdown.length === 0 && <div className="text-sm text-gray-400">No submissions yet.</div>}
+                    {data.project_breakdown.map((p, index) => (
+                      <div key={p.name} className="flex items-center gap-3 text-sm">
+                        <span className="w-32 shrink-0 truncate text-gray-600" title={p.name}>
+                          {p.name}
+                        </span>
+                        <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-100">
+                          <GrowBar className="h-full rounded-full bg-sky-600" pct={Math.max(4, (p.total / maxProjectTotal) * 100)} delay={400 + index * 80} />
+                        </div>
+                        <span className="w-8 shrink-0 text-right font-medium text-gray-900">{p.total}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                </div>
               </div>
-            </div>
-          </div>
+            </>
+          )}
 
           {canEdit && (
             <>
