@@ -193,7 +193,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
             <div className="flex items-center gap-3">
               <ThemeToggle />
-              {user && <MessagesButton />}
+              {user && !location.pathname.startsWith('/messages') && <MessagesButton />}
               {user && <NotificationBell />}
               {user && (
                 <NavLink to={ownProfilePath} aria-label="Open your profile" className="shrink-0 rounded-full">

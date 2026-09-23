@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { Navigate, useParams, Link } from 'react-router-dom'
-import { ChevronDown, MessageCircle, Trophy } from 'lucide-react'
+import { Camera, ChevronDown, Lock, MessageCircle, Trophy } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, functionErrorMessage, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
@@ -110,6 +110,8 @@ export function CbProfile() {
   const [showWarning, setShowWarning] = useState(true)
   const [profileName, setProfileName] = useState(() => currentUser?.name ?? '')
   const [profileRemotasksId, setProfileRemotasksId] = useState(() => currentUser?.remotasks_id ?? '')
+  const [profileShift, setProfileShift] = useState(() => currentUser?.shift ?? '')
+  const [profileBio, setProfileBio] = useState(() => currentUser?.bio ?? '')
   const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null)
   const [profilePhotoPreview, setProfilePhotoPreview] = useState<string | null>(null)
   const [profilePassword, setProfilePassword] = useState('')
@@ -205,7 +207,7 @@ export function CbProfile() {
       if (!currentUser) throw new Error('Unauthenticated')
       let avatarUrl = currentUser.avatar_url
       if (profilePhotoFile) avatarUrl = await uploadAvatar(currentUser.id, profilePhotoFile)
-      await updateOwnProfile(profileName.trim(), avatarUrl, profileRemotasksId.trim())
+      await updateOwnProfile(profileName.trim(), avatarUrl, profileRemotasksId.trim(), profileShift.trim(), profileBio.trim())
       if (profilePassword) {
         const { error } = await supabase.auth.updateUser({ password: profilePassword })
         if (error) throw error
@@ -300,6 +302,9 @@ export function CbProfile() {
             )}
           </div>
           <p className="text-sm text-gray-500">{decodedEmail}</p>
+          {(isOwnProfile ? currentUser?.bio : data.user?.bio) && (
+            <p className="mt-1 max-w-xl text-sm text-gray-600">{isOwnProfile ? currentUser?.bio : data.user?.bio}</p>
+          )}
         </div>
         <div className="ml-auto flex items-center gap-2">
           {!isOwnProfile && contributorId && (
@@ -315,18 +320,19 @@ export function CbProfile() {
       </div>
 
       {isOwnProfile && (
-        <div className="mb-6 rounded-xl border border-gray-200 bg-white p-5">
-          <h2 className="mb-4 text-sm font-semibold text-gray-700">Edit Profile</h2>
-          <form onSubmit={handleSaveProfile} className="flex flex-col gap-4">
+        <div className="mb-6 rounded-xl border border-gray-200 bg-white p-6">
+          <h2 className="mb-5 text-sm font-semibold text-gray-700">Edit Profile</h2>
+          <form onSubmit={handleSaveProfile} className="flex flex-col gap-5">
             <div className="flex items-center gap-4">
-              <Avatar name={profileName || displayName} photoUrl={profilePhotoPreview ?? currentUser?.avatar_url} size={64} />
-              <div>
+              <div className="group relative shrink-0">
+                <Avatar name={profileName || displayName} photoUrl={profilePhotoPreview ?? currentUser?.avatar_url} size={72} />
                 <button
                   type="button"
                   onClick={() => photoInputRef.current?.click()}
-                  className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
+                  aria-label="Change photo"
+                  className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-accent text-accent-foreground shadow-sm hover:brightness-95"
                 >
-                  Change Photo
+                  <Camera className="h-3.5 w-3.5" />
                 </button>
                 <input
                   ref={photoInputRef}
@@ -336,35 +342,84 @@ export function CbProfile() {
                   onChange={(e) => handlePhotoChange(e.target.files?.[0] ?? null)}
                 />
               </div>
+              <div>
+                <div className="text-sm font-semibold text-gray-900">{profileName || displayName}</div>
+                <button
+                  type="button"
+                  onClick={() => photoInputRef.current?.click()}
+                  className="text-xs font-medium text-sky-700 hover:underline"
+                >
+                  Change photo
+                </button>
+              </div>
             </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Name</label>
+                <input
+                  required
+                  value={profileName}
+                  onChange={(e) => setProfileName(e.target.value)}
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Remotask ID</label>
+                <input
+                  value={profileRemotasksId}
+                  onChange={(e) => setProfileRemotasksId(e.target.value)}
+                  placeholder="Your Remotasks worker ID"
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
+                />
+                <p className="mt-1 text-xs text-gray-400">Prefills the Reclaim / Extend form when your lead approves an extension.</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Shift</label>
+                <input
+                  value={profileShift}
+                  onChange={(e) => setProfileShift(e.target.value)}
+                  placeholder="e.g. 9 AM – 5 PM PHT"
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
+                />
+                <p className="mt-1 text-xs text-gray-400">Shown on your profile so your lead knows when you're online.</p>
+              </div>
+              <div>
+                <label className="mb-1 flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                  <Lock className="h-3.5 w-3.5 text-gray-400" />
+                  Email
+                </label>
+                <input
+                  disabled
+                  value={decodedEmail}
+                  className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500"
+                />
+              </div>
+            </div>
+
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Name</label>
-              <input
-                required
-                value={profileName}
-                onChange={(e) => setProfileName(e.target.value)}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
+              <div className="mb-1 flex items-center justify-between">
+                <label className="block text-sm font-medium text-gray-700">Bio</label>
+                <span className="text-xs text-gray-400">{profileBio.length}/240</span>
+              </div>
+              <textarea
+                rows={2}
+                maxLength={240}
+                value={profileBio}
+                onChange={(e) => setProfileBio(e.target.value)}
+                placeholder="A short line about yourself — shown on your profile."
+                className="w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
               />
             </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Email</label>
-              <input
-                disabled
-                value={decodedEmail}
-                className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Remotask ID</label>
-              <input
-                value={profileRemotasksId}
-                onChange={(e) => setProfileRemotasksId(e.target.value)}
-                placeholder="Your Remotasks worker ID"
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
-              />
-              <p className="mt-1 text-xs text-gray-400">Used to prefill the Reclaim / Extend form when your lead approves an extension request.</p>
-            </div>
-            <div className="border-t border-gray-100 pt-4">
+
+            <div className="border-t border-gray-100 pt-5">
+              <div className="mb-3 flex items-center gap-1.5 text-sm font-semibold text-gray-700">
+                <Lock className="h-3.5 w-3.5 text-gray-400" />
+                Password
+              </div>
               <label className="mb-1 block text-sm font-medium text-gray-700">New Password</label>
               <input
                 type="password"
@@ -374,21 +429,22 @@ export function CbProfile() {
                 onChange={(e) => setProfilePassword(e.target.value)}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
               />
+              {profilePassword && (
+                <div className="mt-4">
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Confirm New Password</label>
+                  <input
+                    type="password"
+                    minLength={8}
+                    value={profilePasswordConfirm}
+                    onChange={(e) => setProfilePasswordConfirm(e.target.value)}
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
+                  />
+                </div>
+              )}
             </div>
-            {profilePassword && (
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Confirm New Password</label>
-                <input
-                  type="password"
-                  minLength={8}
-                  value={profilePasswordConfirm}
-                  onChange={(e) => setProfilePasswordConfirm(e.target.value)}
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
-                />
-              </div>
-            )}
+
             {profileError && <div className="rounded-lg bg-status-danger-text px-3 py-2 text-sm text-status-danger-bg">{profileError}</div>}
-            <div className="mt-2 flex justify-end gap-2">
+            <div className="flex justify-end gap-2">
               <button
                 type="submit"
                 disabled={saveProfileMutation.isPending || !profileName.trim()}
@@ -417,7 +473,7 @@ export function CbProfile() {
         </div>
       )}
 
-      {canEdit && data.user?.shift && (
+      {!isOwnProfile && data.user?.shift && (
         <div className="mb-6 rounded-xl border border-gray-200 bg-white px-5 py-4 text-sm text-gray-600">
           <span className="font-medium text-gray-700">Shift:</span> {data.user.shift}
           {data.user.meet_link && (

@@ -199,7 +199,7 @@ async function contributor(params: Record<string, unknown>): Promise<Contributor
           name: stats.name,
           email,
           role: stats.role as User['role'],
-          shift: null,
+          shift: stats.shift,
           meet_link: null,
           is_active: stats.is_active,
           last_seen_at: null,
@@ -209,6 +209,7 @@ async function contributor(params: Record<string, unknown>): Promise<Contributor
           accepting_applications: true,
           // Not exposed by this public-view RPC — only meaningful for the caller's own team.
           remotasks_id: null,
+          bio: stats.bio,
         }
       : null
     return {

@@ -14,6 +14,8 @@ export interface User {
   accepting_applications: boolean
   // A CB's own Remotasks worker ID, self-set from Edit Profile.
   remotasks_id: string | null
+  // A short self-written line shown on the profile page, self-set from Edit Profile.
+  bio: string | null
 }
 
 export type ActivityEvent = 'login' | 'login_failed' | 'logout'
