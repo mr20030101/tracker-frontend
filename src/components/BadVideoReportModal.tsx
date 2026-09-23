@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { supabase } from '../lib/api'
+import { errorMessage, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { toISODate } from '../lib/week'
 import { reportBadVideo } from '../lib/taskRequests'
@@ -166,9 +166,7 @@ export function BadVideoReportModal({ submission: initialSubmission, onClose }: 
             />
           </label>
           {reportMutation.isError && (
-            <div className="text-sm text-status-danger-text">
-              {reportMutation.error instanceof Error ? reportMutation.error.message : 'Could not file this report.'}
-            </div>
+            <div className="text-sm text-status-danger-text">{errorMessage(reportMutation.error, 'Could not file this report.')}</div>
           )}
           <div className="mt-2 flex justify-end gap-2">
             <button

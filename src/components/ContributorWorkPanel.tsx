@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Image } from 'lucide-react'
-import { api, supabase } from '../lib/api'
+import { api, errorMessage, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, yearMonth, toISODate, formatRange, formatTime } from '../lib/week'
 import { remotasksDiffViewerUrl } from '../lib/remotasks'
@@ -764,9 +764,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit }: Props)
             </div>
             {requestExtensionMutation.isError && (
               <div className="text-sm text-status-danger-text">
-                {requestExtensionMutation.error instanceof Error
-                  ? requestExtensionMutation.error.message
-                  : 'Could not send this request.'}
+                {errorMessage(requestExtensionMutation.error, 'Could not send this request.')}
               </div>
             )}
             <div className="mt-2 flex justify-end gap-2">

@@ -104,7 +104,7 @@ create table if not exists public.task_extension_requests (
 
 -- task_extension_requests already exists in production under that name — renamed here to
 -- task_requests since it now holds more than just extension requests (see `type` below).
-alter table public.task_extension_requests rename to task_requests;
+alter table if exists public.task_extension_requests rename to task_requests;
 
 -- 'extension': a contributor asking their lead for more time (the table's original purpose).
 -- 'bad_video': a lead/admin flagging a claimed task's video as bad, needing validation/removal
@@ -207,13 +207,15 @@ $$;
 -- Messaging is open to any active user regardless of lead attachment, so it
 -- needs its own minimal, RLS-independent lookup rather than the profiles
 -- table's (deliberately) scoped read policy.
+-- role is included so the Dashboard's "Message admin" link can find an admin
+-- to message without needing its own lookup.
 -- Dropped first since CREATE OR REPLACE can't change a function's return type
--- (this one gained avatar_url after its first release).
+-- (this one gained avatar_url after its first release, then role).
 drop function if exists public.directory();
 create function public.directory()
-returns table (id uuid, name text, is_active boolean, last_seen_at timestamptz, avatar_url text)
+returns table (id uuid, name text, is_active boolean, last_seen_at timestamptz, avatar_url text, role text)
 language sql stable security definer set search_path = public
-as $$ select id, name, is_active, last_seen_at, avatar_url from public.profiles where is_active $$;
+as $$ select id, name, is_active, last_seen_at, avatar_url, role from public.profiles where is_active $$;
 
 grant execute on function public.directory() to authenticated;
 

@@ -150,6 +150,7 @@ export interface DirectoryUser {
   is_active: boolean
   last_seen_at: string | null
   avatar_url: string | null
+  role: User['role']
 }
 
 export interface LeaderboardRow {

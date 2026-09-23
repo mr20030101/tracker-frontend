@@ -1,14 +1,18 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
+import { MessageCircle } from 'lucide-react'
 import { api } from '../lib/api'
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, yearMonth, toISODate, formatRange } from '../lib/week'
+import { useMessaging } from '../lib/messagingContext'
 import type { DashboardSummary } from '../types'
 import { LineChart } from '../components/LineChart'
 
 export function Dashboard() {
   const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('week')
   const [anchorDate, setAnchorDate] = useState(() => new Date())
+  const { usersById, myId, openChatWith } = useMessaging()
+  const admin = useMemo(() => [...usersById.values()].find((u) => u.role === 'admin' && u.id !== myId), [usersById, myId])
 
   const rangeStart = useMemo(() => {
     if (viewMode === 'day') return toISODate(anchorDate)
@@ -84,15 +88,26 @@ export function Dashboard() {
             {disabledCount > 0 && ` · ${disabledCount} disabled`}
           </p>
         </div>
-        {noProgressCount > 0 && (
-          <Link
-            to="/leaderboard"
-            className="flex items-center gap-2 rounded-full border border-status-danger-text/30 bg-status-danger-bg px-4 py-2 text-sm font-semibold text-status-danger-text hover:border-status-danger-text"
-          >
-            <span className="h-2 w-2 rounded-full bg-current" />
-            {noProgressCount} with no progress
-          </Link>
-        )}
+        <div className="flex items-center gap-3">
+          {noProgressCount > 0 && (
+            <Link
+              to="/leaderboard"
+              className="flex items-center gap-2 rounded-full border border-status-danger-text/30 bg-status-danger-bg px-4 py-2 text-sm font-semibold text-status-danger-text hover:border-status-danger-text"
+            >
+              <span className="h-2 w-2 rounded-full bg-current" />
+              {noProgressCount} with no progress
+            </Link>
+          )}
+          {admin && (
+            <button
+              onClick={() => openChatWith(admin.id, admin.name)}
+              className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            >
+              <MessageCircle className="h-4 w-4" />
+              Message {admin.name}
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="mb-6 flex flex-wrap items-center gap-3">

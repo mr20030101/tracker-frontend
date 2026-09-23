@@ -10,6 +10,17 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 type Response<T> = { data: T }
 
+// A caught error isn't always an Error instance (a plain object with a `message`, a string, etc.),
+// so `err instanceof Error ? err.message : fallback` silently drops the real reason in those
+// cases. This pulls `.message` off anything error-shaped before giving up and using the fallback.
+export function errorMessage(err: unknown, fallback: string): string {
+  if (err instanceof Error) return err.message
+  if (err && typeof err === 'object' && 'message' in err && typeof (err as { message: unknown }).message === 'string') {
+    return (err as { message: string }).message
+  }
+  return fallback
+}
+
 export function taskIdConflictError(table: string, error: { code?: string; message: string }): Error {
   if (table === 'task_submissions' && error.code === '23505' && error.message.includes('task_id')) {
     return new Error('This Task ID has already been logged. Double check your Task ID.')
