@@ -659,8 +659,29 @@ drop policy if exists "leads delete attached contributor project levels" on publ
 create policy "leads delete attached contributor project levels" on public.contributor_project_levels for delete
   using (public.is_admin() or (public.is_own_or_attached(user_id) and public.is_project_lead(project_id)));
 
-create policy "active users read resources" on public.resources for select using (public.is_active_user());
-create policy "managers manage resources" on public.resources for all using (public.is_manager()) with check (public.is_manager());
+-- Resources are per-project: a resource with no project (project_id is null) is general and stays
+-- visible to everyone, same as before. A resource tied to a project is visible to that project's
+-- lead(s), an admin, and any contributor whose own lead leads that project — not to every active
+-- user the way it used to be.
+drop policy if exists "active users read resources" on public.resources;
+create policy "users read permitted resources" on public.resources for select
+  using (
+    public.is_admin()
+    or project_id is null
+    or public.is_project_lead(project_id)
+    or exists (
+      select 1 from public.profiles p
+      join public.project_leads pl on pl.lead_id = p.lead_id
+      where p.id = auth.uid() and pl.project_id = resources.project_id
+    )
+  );
+-- An admin manages any resource. A lead may only create/edit/delete resources tied to a project
+-- they actually lead — never a general (project_id is null) resource, that stays admin-only so
+-- there's one deliberate "visible to everyone" bucket leads can't add to freely.
+drop policy if exists "managers manage resources" on public.resources;
+create policy "admins or project leads manage resources" on public.resources for all
+  using (public.is_admin() or (project_id is not null and public.is_project_lead(project_id)))
+  with check (public.is_admin() or (project_id is not null and public.is_project_lead(project_id)));
 
 -- Read is harmless (it's just help text) and lets a future admin FAQ-management UI list existing
 -- entries; the bot_auto_reply() trigger itself is security definer and doesn't need this policy at

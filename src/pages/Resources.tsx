@@ -1,14 +1,15 @@
-import { useState, type FormEvent } from 'react'
+import { useMemo, useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
-import type { Resource } from '../types'
+import type { Project, Resource } from '../types'
 import { Modal } from '../components/Modal'
 import { ActionsMenu } from '../components/ActionsMenu'
+import { Select } from '../components/Select'
 
 const MANAGER_ROLES = ['admin', 'lead']
 
-const emptyForm = { category: '', title: '', url: '' }
+const emptyForm = { category: '', title: '', url: '', project_id: '' }
 
 // A Canva share link (edit or view) turned into its embeddable form, so it can be shown in an
 // iframe here instead of sending people to canva.com. Canva's own embed convention: any
@@ -27,6 +28,7 @@ function canvaEmbedUrl(url: string): string | null {
 
 export function Resources() {
   const { user } = useAuth()
+  const isAdmin = user?.role === 'admin'
   const isManager = Boolean(user && MANAGER_ROLES.includes(user.role))
   const queryClient = useQueryClient()
   const [formTarget, setFormTarget] = useState<'new' | Resource | null>(null)
@@ -40,12 +42,42 @@ export function Resources() {
     queryFn: async () => (await api.get<Resource[]>('/resources')).data,
   })
 
+  // Only fetched for the Add/Edit form's project picker — a lead can only file a resource under a
+  // project they actually lead (RLS enforces this too; this just keeps the dropdown from offering
+  // choices that would be rejected).
+  const { data: allProjects = [] } = useQuery({
+    queryKey: ['projects'],
+    queryFn: async () => (await api.get<Project[]>('/projects')).data,
+    enabled: isManager,
+  })
+  const { data: projectLeads = [] } = useQuery({
+    queryKey: ['project-leads'],
+    queryFn: async () => {
+      const { data: rows, error } = await supabase.from('project_leads').select('project_id, lead_id')
+      if (error) throw error
+      return rows as { project_id: number; lead_id: string }[]
+    },
+    enabled: isManager && !isAdmin,
+  })
+  const myProjectIds = useMemo(
+    () => new Set(projectLeads.filter((pl) => pl.lead_id === user?.id).map((pl) => pl.project_id)),
+    [projectLeads, user?.id],
+  )
+  const projectOptions = useMemo(() => {
+    const projects = isAdmin ? allProjects : allProjects.filter((p) => myProjectIds.has(p.id))
+    const options = projects.map((p) => ({ value: String(p.id), label: p.name }))
+    // Only an admin can leave a resource general (visible to everyone) — a lead must pick one of
+    // their own projects, enforced server-side too.
+    return isAdmin ? [{ value: '', label: '— General (visible to everyone) —' }, ...options] : options
+  }, [allProjects, isAdmin, myProjectIds])
+
   const saveMutation = useMutation({
     mutationFn: async () => {
+      const payload = { category: form.category, title: form.title, url: form.url, project_id: form.project_id ? Number(form.project_id) : null }
       if (formTarget && formTarget !== 'new') {
-        await api.patch(`/resources/${formTarget.id}`, form)
+        await api.patch(`/resources/${formTarget.id}`, payload)
       } else {
-        await api.post('/resources', form)
+        await api.post('/resources', payload)
       }
     },
     onSuccess: () => {
@@ -67,7 +99,12 @@ export function Resources() {
   }
 
   function openEdit(resource: Resource) {
-    setForm({ category: resource.category, title: resource.title, url: resource.url })
+    setForm({
+      category: resource.category,
+      title: resource.title,
+      url: resource.url,
+      project_id: resource.project_id != null ? String(resource.project_id) : '',
+    })
     setError(null)
     setFormTarget(resource)
   }
@@ -82,6 +119,10 @@ export function Resources() {
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
+    if (!isAdmin && !form.project_id) {
+      setError('Pick a project — as a lead, you can only add resources under one of your own projects.')
+      return
+    }
     saveMutation.mutate()
   }
 
@@ -191,6 +232,23 @@ export function Resources() {
         <Modal title={formTarget === 'new' ? 'Add Resource' : 'Edit Resource'} onClose={closeForm}>
           <form onSubmit={handleSubmit} className="flex flex-col gap-3">
             <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Project</label>
+              {!isAdmin && projectOptions.length === 0 ? (
+                <p className="text-sm text-status-danger-text">
+                  You don't have any projects assigned yet — ask an admin to assign you to a project first.
+                </p>
+              ) : (
+                <Select
+                  value={form.project_id}
+                  onChange={(value) => setForm({ ...form, project_id: value })}
+                  options={projectOptions}
+                  placeholder={isAdmin ? undefined : 'Select a project...'}
+                  fullWidth
+                  className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
+                />
+              )}
+            </div>
+            <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">Category</label>
               <input
                 required
@@ -241,7 +299,7 @@ export function Resources() {
               </button>
               <button
                 type="submit"
-                disabled={saveMutation.isPending || uploading}
+                disabled={saveMutation.isPending || uploading || (!isAdmin && projectOptions.length === 0)}
                 className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
               >
                 {saveMutation.isPending ? 'Saving...' : formTarget === 'new' ? 'Add Resource' : 'Save Changes'}
