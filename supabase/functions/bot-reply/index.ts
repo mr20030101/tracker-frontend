@@ -61,10 +61,10 @@ async function handle(request: Request): Promise<Response> {
     const { message_id, sender_id, recipient_id, body } = (await request.json()) as BotReplyRequest
     if (!sender_id || !recipient_id || !body) return errorResponse('Missing message_id, sender_id, recipient_id, or body.', 400)
 
-    const { data: faqs, error: faqsError } = await admin.from('bot_faqs').select('answer').order('sort_order')
+    const { data: faqs, error: faqsError } = await admin.from('bot_faqs').select('keywords, answer').order('sort_order')
     if (faqsError) return errorResponse(`Could not load bot_faqs: ${faqsError.message}`, 500)
 
-    const reference = (faqs ?? []).map((f) => `- ${f.answer}`).join('\n')
+    const reference = selectReference(faqs ?? [], body)
 
     const reply = await getReply(groqApiKey, reference, body)
 
@@ -72,6 +72,31 @@ async function handle(request: Request): Promise<Response> {
     if (insertError) return errorResponse(`Could not send the reply: ${insertError.message}`, 500)
 
     return Response.json({ message_id, reply }, { headers: corsHeaders })
+}
+
+// bot_faqs now holds a large project reference doc alongside the original short app-usage tips, so
+// joining every row into every prompt (the original approach) would make each reply slow/expensive
+// and bury the relevant answer in irrelevant sections. Instead, only rows whose `keywords` appear
+// as a substring of the question are included — a plain match against the same keyword lists the
+// FAQs were already tagged with, not full-text search, since the table is small. A char budget
+// caps how much can be pulled in even if a question matches several large sections at once.
+const REFERENCE_CHAR_BUDGET = 24000
+
+function selectReference(faqs: { keywords: string[]; answer: string }[], question: string): string {
+    const q = question.toLowerCase()
+    const matched = faqs
+        .map((f) => ({ answer: f.answer, score: f.keywords.filter((kw) => q.includes(kw.toLowerCase())).length }))
+        .filter((f) => f.score > 0)
+        .sort((a, b) => b.score - a.score)
+
+    const picked: string[] = []
+    let used = 0
+    for (const { answer } of matched) {
+        if (used + answer.length > REFERENCE_CHAR_BUDGET) break
+        picked.push(answer)
+        used += answer.length
+    }
+    return picked.join('\n\n')
 }
 
 async function getReply(groqApiKey: string, reference: string, question: string): Promise<string> {
