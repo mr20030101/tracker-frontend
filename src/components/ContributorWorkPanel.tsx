@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Image } from 'lucide-react'
+import { Flame, Image } from 'lucide-react'
 import { api, errorMessage, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, yearMonth, toISODate, formatRange, formatTime } from '../lib/week'
@@ -41,20 +41,25 @@ interface Props {
   contributorName: string
   /** Whether Add Submission / Bulk Import / CTS Form / row edits are offered. Off for a restricted ("public") view, where all_submissions comes back empty anyway. */
   canEdit: boolean
+  /** Whether the goal ring/charts are collapsible. Task Log (browsing your own dense submissions
+   * table) wants them collapsed by default; a profile page (a quick glance at someone's work) wants
+   * them always visible, with no toggle to hide them. Defaults to collapsible for that reason. */
+  showGraphsToggle?: boolean
 }
 
 /**
  * A contributor's own work at a glance: the day/week/month goal ring, submission trend and
- * stage/project breakdown charts (collapsed by default), and a day/week/month table of their
- * submissions with CTS status. Shared by the profile page (for a lead/admin reviewing someone
- * else) and Task Log (for a contributor's own submissions).
+ * stage/project breakdown charts, and a day/week/month table of their submissions with CTS status.
+ * Shared by the profile page (for a lead/admin reviewing someone else) and Task Log (for a
+ * contributor's own submissions).
  */
-export function ContributorWorkPanel({ email, contributorName, canEdit }: Props) {
+export function ContributorWorkPanel({ email, contributorName, canEdit, showGraphsToggle = true }: Props) {
   const queryClient = useQueryClient()
   const { user: currentUser } = useAuth()
   const isManager = Boolean(currentUser && MANAGER_ROLES.includes(currentUser.role))
-  // Collapsed by default; a toggle below shows the goal ring and charts for whoever wants them.
-  const [showGraphs, setShowGraphs] = useState(false)
+  // Collapsed by default when a toggle is offered; always visible otherwise (see showGraphsToggle).
+  const [graphsToggledOn, setGraphsToggledOn] = useState(false)
+  const showGraphs = showGraphsToggle ? graphsToggledOn : true
   const [viewMode, setViewMode] = useState<ViewMode>('day')
   const [anchorDate, setAnchorDate] = useState(() => new Date())
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'date', dir: 'desc' })
@@ -270,6 +275,18 @@ export function ContributorWorkPanel({ email, contributorName, canEdit }: Props)
       return { date: iso, value }
     })
 
+  // All-time total and current streak are derived from aggregate fields (project_breakdown,
+  // submission_trend) that the public-view RPC path still fills in for real — unlike
+  // all_submissions, which is deliberately forced empty there (see the comment below on the
+  // Day/Week/Month goal ring). Safe to show on a peer's profile.
+  const allTimeTotal = data.project_breakdown.reduce((sum, p) => sum + p.total, 0)
+  let currentStreak = 0
+  for (let i = trendData.length - 1; i >= 0; i--) {
+    if (trendData[i].value <= 0) break
+    currentStreak++
+  }
+  const bestDay = trendData.reduce((best, d) => (d.value > best.value ? d : best), trendData[0] ?? { date: '', value: 0 })
+
   const visibleSubmissions = data.all_submissions.filter((row) => {
     const d = row.date?.slice(0, 10)
     return d && d >= rangeStart && d <= rangeEnd
@@ -398,17 +415,45 @@ export function ContributorWorkPanel({ email, contributorName, canEdit }: Props)
         </div>
       )}
 
-      <button
-        type="button"
-        onClick={() => setShowGraphs((v) => !v)}
-        aria-expanded={showGraphs}
-        className="mb-4 inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
-      >
-        {showGraphs ? 'Hide graphs' : 'Show graphs'}
-      </button>
+      {showGraphsToggle && (
+        <button
+          type="button"
+          onClick={() => setGraphsToggledOn((v) => !v)}
+          aria-expanded={showGraphs}
+          className="mb-4 inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
+        >
+          {showGraphs ? 'Hide graphs' : 'Show graphs'}
+        </button>
+      )}
 
       {showGraphs && (
         <>
+          {data.is_public_view && (
+            <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <StatCard label="All-time" value={allTimeTotal} />
+              <StatCard
+                label="This week"
+                value={data.submitted_this_week}
+                sublabel={data.weekly_target > 0 ? `of ${data.weekly_target} goal` : undefined}
+              />
+              <StatCard
+                label="Streak"
+                value={currentStreak}
+                sublabel={currentStreak === 1 ? 'day' : 'days'}
+                icon={currentStreak > 0 ? <Flame className="h-4 w-4 text-orange-500" /> : undefined}
+              />
+              <StatCard
+                label="Best day"
+                value={bestDay.value}
+                sublabel={
+                  bestDay.value > 0
+                    ? new Date(`${bestDay.date}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+                    : 'last 30 days'
+                }
+              />
+            </div>
+          )}
+
           <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
             {/* Day/Week/Month Goal is derived from raw per-row submissions,
                 which are deliberately empty in the public view — showing it
@@ -801,5 +846,23 @@ export function ContributorWorkPanel({ email, contributorName, canEdit }: Props)
         />
       )}
     </>
+  )
+}
+
+// One highlight number on a peer's profile — a quick "who is this person" read, built entirely
+// from aggregate fields the public-view RPC already returns for real (see the comment above where
+// these are computed).
+function StatCard({ label, value, sublabel, icon }: { label: string; value: number; sublabel?: string; icon?: ReactNode }) {
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-4">
+      <div className="mb-1 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-gray-400">
+        {icon}
+        {label}
+      </div>
+      <div className="text-2xl font-bold text-gray-900">
+        <CountUp value={value} />
+      </div>
+      {sublabel && <div className="text-xs text-gray-400">{sublabel}</div>}
+    </div>
   )
 }

@@ -494,7 +494,7 @@ export function CbProfile() {
       {/* A contributor's own graphs/table live on their own Task Log now; this page keeps them
           only for someone else reviewing this contributor (a lead/admin, or a public view). */}
       {isContributorRole && !isOwnProfile && (
-        <ContributorWorkPanel email={decodedEmail} contributorName={displayName} canEdit={canEdit} />
+        <ContributorWorkPanel email={decodedEmail} contributorName={displayName} canEdit={canEdit} showGraphsToggle={false} />
       )}
     </Reveal>
   )
