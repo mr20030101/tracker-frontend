@@ -695,6 +695,20 @@ alter publication supabase_realtime add table public.task_submissions;
 -- Enables live message delivery; RLS limits each viewer's stream to messages
 -- where they are the sender or recipient.
 alter publication supabase_realtime add table public.messages;
+
+-- Enables the notification bell's live "X requested an extension" / "X flagged a bad video"
+-- alerts for leads/admins. Wrapped in a guard (unlike the two additions above) since
+-- `alter publication ... add table` errors instead of no-op-ing if already added, and this
+-- script gets re-run.
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'task_requests'
+  ) then
+    alter publication supabase_realtime add table public.task_requests;
+  end if;
+end $$;
 -- Hiring: each lead has a public application link (/apply/<lead id>). An
 -- applicant fills in the form; the lead reviews the entry and accepts or
 -- denies it. Accepting creates the applicant's login on that lead's team.

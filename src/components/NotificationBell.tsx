@@ -26,6 +26,20 @@ interface TaskSubmissionRow {
   project_id: number | null
 }
 
+interface RequestAlert {
+  id: string
+  name: string
+  email: string
+  type: 'extension' | 'bad_video'
+}
+
+interface TaskRequestRow {
+  id: number
+  requested_by: string
+  type: 'extension' | 'bad_video'
+  status: string
+}
+
 export function NotificationBell() {
   const { user } = useAuth()
   const [open, setOpen] = useState(false)
@@ -48,15 +62,21 @@ export function NotificationBell() {
   }, [open])
 
   const [submissionAlerts, setSubmissionAlerts] = useState<SubmissionAlert[]>([])
+  const [requestAlerts, setRequestAlerts] = useState<RequestAlert[]>([])
   const [profileNames, setProfileNames] = useState<Map<string, string>>()
+  const [profilesById, setProfilesById] = useState<Map<string, { name: string; email: string }>>()
   const [projectNames, setProjectNames] = useState<Map<number, string>>()
 
   useEffect(() => {
     if (!isManager) return
     supabase
       .from('profiles')
-      .select('email, name')
-      .then(({ data }) => setProfileNames(new Map((data ?? []).map((p) => [p.email.toLowerCase(), p.name as string]))))
+      .select('id, email, name')
+      .then(({ data }) => {
+        const rows = data ?? []
+        setProfileNames(new Map(rows.map((p) => [p.email.toLowerCase(), p.name as string])))
+        setProfilesById(new Map(rows.map((p) => [p.id as string, { name: p.name as string, email: p.email as string }])))
+      })
     supabase
       .from('projects')
       .select('id, name')
@@ -99,11 +119,43 @@ export function NotificationBell() {
     }
   }, [isManager, profileNames, projectNames])
 
+  useEffect(() => {
+    if (!isManager) return
+
+    function addRequestAlert(row: TaskRequestRow) {
+      const profile = profilesById?.get(row.requested_by)
+      const id = `${row.id}-${Date.now()}`
+      setRequestAlerts((prev) =>
+        [{ id, name: profile?.name ?? 'Someone', email: profile?.email ?? '', type: row.type }, ...prev].slice(0, MAX_SUBMISSION_ALERTS),
+      )
+    }
+
+    const channel = supabase
+      .channel('task-requests-live')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'task_requests' },
+        (payload) => {
+          const row = payload.new as TaskRequestRow
+          if (row.status === 'pending') addRequestAlert(row)
+        },
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [isManager, profilesById])
+
   function dismissSubmissionAlert(id: string) {
     setSubmissionAlerts((prev) => prev.filter((a) => a.id !== id))
   }
 
-  const count = isManager ? submissionAlerts.length : 0
+  function dismissRequestAlert(id: string) {
+    setRequestAlerts((prev) => prev.filter((a) => a.id !== id))
+  }
+
+  const count = isManager ? submissionAlerts.length + requestAlerts.length : 0
 
   function close() {
     setOpen(false)
@@ -140,15 +192,42 @@ export function NotificationBell() {
               <div className="flex items-center justify-between px-2 py-1.5">
                 <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Notifications</span>
                 {count > 0 && (
-                  <button onClick={() => setSubmissionAlerts([])} className="text-xs font-medium text-sky-700 hover:underline">
+                  <button
+                    onClick={() => {
+                      setSubmissionAlerts([])
+                      setRequestAlerts([])
+                    }}
+                    className="text-xs font-medium text-sky-700 hover:underline"
+                  >
                     Clear all
                   </button>
                 )}
               </div>
               <div className="flex max-h-96 flex-col gap-1 overflow-y-auto">
-                {(!isManager || submissionAlerts.length === 0) && (
-                  <div className="px-2 py-3 text-sm text-gray-400">Nothing to show.</div>
-                )}
+                {(!isManager || count === 0) && <div className="px-2 py-3 text-sm text-gray-400">Nothing to show.</div>}
+                {requestAlerts.map((alert) => (
+                  <div key={alert.id} className="group flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-gray-50">
+                    <Link
+                      to="/requests"
+                      onClick={close}
+                      className="flex min-w-0 flex-1 items-center gap-2 text-sm"
+                    >
+                      <Avatar name={alert.name || alert.email} size={28} />
+                      <div className="min-w-0">
+                        <div className="truncate font-medium text-gray-900">
+                          {alert.name} {alert.type === 'extension' ? 'requested an extension' : 'flagged a bad video'}
+                        </div>
+                      </div>
+                    </Link>
+                    <button
+                      onClick={() => dismissRequestAlert(alert.id)}
+                      className="shrink-0 rounded p-1 text-gray-300 hover:bg-gray-200 hover:text-gray-600"
+                      aria-label="Dismiss"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
                 {submissionAlerts.map((alert) => (
                   <div key={alert.id} className="group flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-gray-50">
                     <Link
