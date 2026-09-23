@@ -27,6 +27,33 @@ export async function deleteMessageForMe(myId: string, message: Message): Promis
   if (error) throw error
 }
 
+// Same "delete for me" semantics as deleteMessageForMe, batched into at most 2 requests (one per
+// role) instead of one request per message, since a multi-select delete can span both sides of the
+// conversation — some rows I sent, some the other person sent.
+export async function deleteMessagesForMe(myId: string, messages: Message[]): Promise<void> {
+  const sentIds = messages.filter((m) => m.sender_id === myId).map((m) => m.id)
+  const receivedIds = messages.filter((m) => m.recipient_id === myId).map((m) => m.id)
+  const results = await Promise.all([
+    sentIds.length ? supabase.from('messages').update({ deleted_by_sender: true }).in('id', sentIds) : null,
+    receivedIds.length ? supabase.from('messages').update({ deleted_by_recipient: true }).in('id', receivedIds) : null,
+  ])
+  for (const result of results) {
+    if (result?.error) throw result.error
+  }
+}
+
+// Deletes every message in a 2-person thread, for me only — same as selecting the whole thread and
+// bulk-deleting, but scoped by the pair directly instead of needing the message list in hand.
+export async function deleteConversationForMe(myId: string, otherUserId: string): Promise<void> {
+  const results = await Promise.all([
+    supabase.from('messages').update({ deleted_by_sender: true }).eq('sender_id', myId).eq('recipient_id', otherUserId),
+    supabase.from('messages').update({ deleted_by_recipient: true }).eq('sender_id', otherUserId).eq('recipient_id', myId),
+  ])
+  for (const result of results) {
+    if (result.error) throw result.error
+  }
+}
+
 export async function sendMessage(recipientId: string, body: string): Promise<Message> {
   const { data: authData } = await supabase.auth.getUser()
   const senderId = authData.user?.id

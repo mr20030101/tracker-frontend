@@ -152,6 +152,7 @@ export interface DirectoryUser {
   avatar_url: string | null
   role: User['role']
   is_bot: boolean
+  email: string
 }
 
 export interface LeaderboardRow {

@@ -1,15 +1,25 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Search } from 'lucide-react'
+import { Info, Search } from 'lucide-react'
 import { useMessaging } from '../lib/messagingContext'
 import { convertEmoticons } from '../lib/emoticons'
-import { deleteMessageForMe, markThreadRead, sendMessage } from '../lib/messages'
+import { deleteConversationForMe, deleteMessageForMe, deleteMessagesForMe, markThreadRead, sendMessage } from '../lib/messages'
+import { formatActiveStatus } from '../lib/presence'
 import { formatTime } from '../lib/week'
 import type { Message } from '../types'
+import { ActionsMenu } from '../components/ActionsMenu'
 import { Avatar } from '../components/Avatar'
+import { AvatarWithStatus } from '../components/AvatarWithStatus'
+import { ConversationInfoPanel } from '../components/ConversationInfoPanel'
 import { MessageBubble } from '../components/MessageBubble'
+import { TypingIndicator } from '../components/TypingIndicator'
 import { EmojiPickerButton } from '../components/EmojiPickerButton'
+import { useBotTyping } from '../lib/useBotTyping'
+
+// Messenger's own send-bubble blue, matching MessageBubble.tsx — kept local rather than
+// repointing the app's global --color-accent, which drives buttons everywhere else.
+const BUBBLE_BLUE = '#0084ff'
 
 export function Messages() {
   const { userId: routeUserId } = useParams<{ userId: string }>()
@@ -18,11 +28,30 @@ export function Messages() {
   const { myId, usersById, conversations, threadWith } = useMessaging()
   const [draft, setDraft] = useState('')
   const [userSearch, setUserSearch] = useState('')
+  const [selectMode, setSelectMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  const [infoPanelOpen, setInfoPanelOpen] = useState(false)
   const threadEndRef = useRef<HTMLDivElement>(null)
 
   const selectedUserId = routeUserId ?? null
   const selectedUser = selectedUserId ? usersById.get(selectedUserId) : undefined
   const thread = threadWith(selectedUserId)
+  const { visibleThread, isTyping } = useBotTyping(thread, myId, Boolean(selectedUser?.is_bot))
+
+  useEffect(() => {
+    setSelectMode(false)
+    setSelectedIds(new Set())
+    setInfoPanelOpen(false)
+  }, [selectedUserId])
+
+  function toggleSelect(id: number) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
 
   const searchResults = userSearch.trim()
     ? Array.from(usersById.values())
@@ -45,7 +74,7 @@ export function Messages() {
 
   useEffect(() => {
     threadEndRef.current?.scrollIntoView({ block: 'nearest' })
-  }, [selectedUserId, thread.length])
+  }, [selectedUserId, visibleThread.length, isTyping])
 
   const sendMutation = useMutation({
     mutationFn: async () => {
@@ -75,147 +104,252 @@ export function Messages() {
     }
   }
 
+  const bulkDeleteMutation = useMutation({
+    mutationFn: (messages: Message[]) => deleteMessagesForMe(myId!, messages),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['messages', myId] })
+      setSelectMode(false)
+      setSelectedIds(new Set())
+    },
+  })
+
+  function handleBulkDelete() {
+    const selected = thread.filter((m) => selectedIds.has(m.id))
+    if (selected.length === 0) return
+    if (confirm(`Delete ${selected.length} message${selected.length === 1 ? '' : 's'} for you? The other person will still see them.`)) {
+      bulkDeleteMutation.mutate(selected)
+    }
+  }
+
+  const deleteConversationMutation = useMutation({
+    mutationFn: (otherUserId: string) => deleteConversationForMe(myId!, otherUserId),
+    onSuccess: (_data, otherUserId) => {
+      queryClient.invalidateQueries({ queryKey: ['messages', myId] })
+      if (selectedUserId === otherUserId) navigate('/messages')
+    },
+  })
+
+  function handleDeleteConversation(otherUserId: string, otherUserName: string) {
+    if (confirm(`Delete your whole conversation with ${otherUserName}? The other person will still see their copy.`)) {
+      deleteConversationMutation.mutate(otherUserId)
+    }
+  }
+
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Messages</h1>
-        <p className="text-sm text-gray-500">Direct conversations with anyone on the team.</p>
-      </div>
-
-      <div className="flex h-[calc(100vh-14rem)] overflow-hidden rounded-xl border border-gray-200 bg-white">
-        <div className="flex w-72 shrink-0 flex-col border-r border-gray-200">
-          <div className="border-b border-gray-100 p-3">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <input
-                value={userSearch}
-                onChange={(e) => setUserSearch(e.target.value)}
-                placeholder="Search people to message..."
-                className="w-full rounded-lg border border-gray-200 bg-gray-50 py-1.5 pl-8 pr-3 text-sm outline-none focus:border-accent"
-              />
-            </div>
+    <div className="flex h-full min-h-0 overflow-hidden rounded-xl border border-gray-200 bg-white">
+      <div className="flex w-80 shrink-0 flex-col border-r border-gray-200">
+        <div className="border-b border-gray-100 p-3">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <input
+              value={userSearch}
+              onChange={(e) => setUserSearch(e.target.value)}
+              placeholder="Search people to message..."
+              className="w-full rounded-lg border border-gray-200 bg-gray-50 py-1.5 pl-8 pr-3 text-sm outline-none focus:border-accent"
+            />
           </div>
-          {userSearch.trim() ? (
-            <div className="flex-1 overflow-y-auto">
-              {searchResults.length === 0 && (
-                <div className="px-4 py-6 text-center text-sm text-gray-400">No matching people.</div>
-              )}
-              {searchResults.map((u) => (
-                <button
-                  key={u.id}
-                  onClick={() => startConversation(u.id)}
-                  className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-gray-50"
-                >
-                  <Avatar name={u.name} photoUrl={u.avatar_url} size={36} />
-                  <span className="truncate text-sm font-medium text-gray-900">{u.name}</span>
-                  {u.is_bot && (
-                    <span className="inline-flex items-center rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700">
-                      Bot
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
-          ) : (
-            <>
-              <div className="border-b border-gray-100 px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
-                Conversations
-              </div>
-              <div className="flex-1 overflow-y-auto">
-                {conversations.length === 0 && (
-                  <div className="px-4 py-6 text-center text-sm text-gray-400">
-                    No conversations yet. Search above to message someone.
-                  </div>
-                )}
-                {conversations.map((c) => {
-                  const isSelected = selectedUserId === c.otherUserId
-                  return (
-                  <button
-                    key={c.otherUserId}
-                    onClick={() => navigate(`/messages/${c.otherUserId}`)}
-                    className={`flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 ${
-                      isSelected ? 'bg-accent-bg' : ''
-                    }`}
-                  >
-                    <Avatar name={c.otherUserName} photoUrl={c.otherUserAvatarUrl} size={36} />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className={`truncate text-sm font-medium ${isSelected ? 'text-accent-foreground' : 'text-gray-900'}`}>{c.otherUserName}</span>
-                        <span className={`shrink-0 text-[10px] ${isSelected ? 'text-accent-foreground/70' : 'text-gray-400'}`}>{formatTime(c.lastMessage.created_at)}</span>
-                      </div>
-                      <div className={`truncate text-xs ${isSelected ? 'text-accent-foreground/80' : 'text-gray-500'}`}>
-                        {c.lastMessage.sender_id === myId ? 'You: ' : ''}
-                        {convertEmoticons(c.lastMessage.body)}
-                      </div>
-                    </div>
-                    {c.unreadCount > 0 && (
-                      <span className="flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-status-danger-text px-1 text-[10px] font-bold text-white">
-                        {c.unreadCount}
-                      </span>
-                    )}
-                  </button>
-                  )
-                })}
-              </div>
-            </>
-          )}
         </div>
-
-        <div className="flex min-w-0 flex-1 flex-col">
-          {selectedUserId ? (
-            <>
-              <div className="flex items-center gap-3 border-b border-gray-100 px-5 py-3.5">
-                <Avatar name={selectedUser?.name ?? ''} photoUrl={selectedUser?.avatar_url} size={32} />
-                <span className="font-semibold text-gray-900">{selectedUser?.name ?? 'Unknown'}</span>
-                {selectedUser?.is_bot && (
+        {userSearch.trim() ? (
+          <div className="flex-1 overflow-y-auto">
+            {searchResults.length === 0 && (
+              <div className="px-4 py-6 text-center text-sm text-gray-400">No matching people.</div>
+            )}
+            {searchResults.map((u) => (
+              <button
+                key={u.id}
+                onClick={() => startConversation(u.id)}
+                className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-gray-50"
+              >
+                <Avatar name={u.name} photoUrl={u.avatar_url} size={36} />
+                <span className="truncate text-sm font-medium text-gray-900">{u.name}</span>
+                {u.is_bot && (
                   <span className="inline-flex items-center rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700">
                     Bot
                   </span>
                 )}
-              </div>
-              <div className="flex-1 overflow-y-auto px-5 py-4">
-                {thread.length === 0 && (
-                  <div className="flex h-full items-center justify-center text-sm text-gray-400">
-                    Say hello to {selectedUser?.name}.
-                  </div>
-                )}
-                <div className="flex flex-col gap-2">
-                  {thread.map((m: Message) => (
-                    <MessageBubble
-                      key={m.id}
-                      message={m}
-                      mine={m.sender_id === myId}
-                      isBot={m.sender_id !== myId && Boolean(selectedUser?.is_bot)}
-                      onDelete={() => handleDelete(m)}
-                    />
-                  ))}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <>
+            <div className="border-b border-gray-100 px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
+              Conversations
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {conversations.length === 0 && (
+                <div className="px-4 py-6 text-center text-sm text-gray-400">
+                  No conversations yet. Search above to message someone.
                 </div>
-                <div ref={threadEndRef} />
+              )}
+              {conversations.map((c) => {
+                const isSelected = selectedUserId === c.otherUserId
+                return (
+                  <div key={c.otherUserId} className={`flex items-center ${isSelected ? 'bg-accent-bg' : 'hover:bg-gray-50'}`}>
+                    <button
+                      onClick={() => navigate(`/messages/${c.otherUserId}`)}
+                      className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left"
+                    >
+                      <AvatarWithStatus
+                        name={c.otherUserName}
+                        photoUrl={c.otherUserAvatarUrl}
+                        lastSeenAt={usersById.get(c.otherUserId)?.last_seen_at}
+                        size={36}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className={`truncate text-sm font-medium ${isSelected ? 'text-accent-foreground' : 'text-gray-900'}`}>{c.otherUserName}</span>
+                          <span className={`shrink-0 text-[10px] ${isSelected ? 'text-accent-foreground/70' : 'text-gray-400'}`}>{formatTime(c.lastMessage.created_at)}</span>
+                        </div>
+                        <div className={`truncate text-xs ${isSelected ? 'text-accent-foreground/80' : 'text-gray-500'}`}>
+                          {c.lastMessage.sender_id === myId ? 'You: ' : ''}
+                          {convertEmoticons(c.lastMessage.body)}
+                        </div>
+                      </div>
+                      {c.unreadCount > 0 && (
+                        <span className="flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-status-danger-text px-1 text-[10px] font-bold text-white">
+                          {c.unreadCount}
+                        </span>
+                      )}
+                    </button>
+                    <div className="shrink-0 pr-1">
+                      <ActionsMenu
+                        items={[
+                          {
+                            label: 'Delete conversation',
+                            variant: 'danger',
+                            onClick: () => handleDeleteConversation(c.otherUserId, c.otherUserName),
+                          },
+                        ]}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </>
+        )}
+      </div>
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        {selectedUserId ? (
+          <>
+            <div className="flex items-center gap-3 border-b border-gray-100 px-5 py-3">
+              <AvatarWithStatus
+                name={selectedUser?.name ?? ''}
+                photoUrl={selectedUser?.avatar_url}
+                lastSeenAt={selectedUser?.last_seen_at}
+                size={36}
+              />
+              <div className="flex min-w-0 flex-col">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-gray-900">{selectedUser?.name ?? 'Unknown'}</span>
+                  {selectedUser?.is_bot && (
+                    <span className="inline-flex items-center rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700">
+                      Bot
+                    </span>
+                  )}
+                </div>
+                {!selectedUser?.is_bot && (
+                  <span className="text-xs text-gray-400">{formatActiveStatus(selectedUser?.last_seen_at ?? null)}</span>
+                )}
               </div>
+              <button
+                type="button"
+                onClick={() => setInfoPanelOpen((v) => !v)}
+                aria-label="Conversation info"
+                className={`ml-auto flex h-9 w-9 items-center justify-center rounded-full ${
+                  infoPanelOpen ? 'bg-violet-100 text-violet-600' : 'text-violet-500 hover:bg-violet-50'
+                }`}
+              >
+                <Info className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-5 py-4">
+              {thread.length === 0 && (
+                <div className="flex h-full items-center justify-center text-sm text-gray-400">
+                  Say hello to {selectedUser?.name}.
+                </div>
+              )}
+              <div className="flex flex-col gap-2">
+                {visibleThread.map((m: Message) => (
+                  <MessageBubble
+                    key={m.id}
+                    message={m}
+                    mine={m.sender_id === myId}
+                    isBot={m.sender_id !== myId && Boolean(selectedUser?.is_bot)}
+                    otherName={selectedUser?.name}
+                    otherAvatarUrl={selectedUser?.avatar_url}
+                    selectable={selectMode}
+                    selected={selectedIds.has(m.id)}
+                    onToggleSelect={() => toggleSelect(m.id)}
+                    onDelete={() => handleDelete(m)}
+                  />
+                ))}
+                {isTyping && <TypingIndicator />}
+              </div>
+              <div ref={threadEndRef} />
+            </div>
+            {selectMode ? (
+              <div className="flex items-center gap-2 border-t border-gray-100 p-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectMode(false)
+                    setSelectedIds(new Set())
+                  }}
+                  className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600"
+                >
+                  Cancel
+                </button>
+                <span className="flex-1 text-sm text-gray-500">{selectedIds.size} selected</span>
+                <button
+                  type="button"
+                  onClick={handleBulkDelete}
+                  disabled={selectedIds.size === 0 || bulkDeleteMutation.isPending}
+                  className="rounded-lg bg-status-danger-text px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                >
+                  Delete
+                </button>
+              </div>
+            ) : (
               <form onSubmit={handleSend} className="flex items-center gap-2 border-t border-gray-100 p-3">
                 <input
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
-                  placeholder="Message..."
-                  className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
+                  placeholder="Aa"
+                  className="flex-1 rounded-full border border-gray-200 bg-gray-50 px-4 py-2 text-sm outline-none focus:border-accent"
                 />
                 <EmojiPickerButton onSelect={(emoji) => setDraft((d) => d + emoji)} />
                 <button
                   type="submit"
                   disabled={!draft.trim() || sendMutation.isPending}
-                  className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+                  style={{ backgroundColor: BUBBLE_BLUE }}
+                  className="rounded-full px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
                 >
                   Send
                 </button>
               </form>
-            </>
-          ) : (
-            <div className="flex h-full items-center justify-center text-sm text-gray-400">
-              Select a conversation to start messaging.
-            </div>
-          )}
-        </div>
+            )}
+          </>
+        ) : (
+          <div className="flex h-full items-center justify-center text-sm text-gray-400">
+            Select a conversation to start messaging.
+          </div>
+        )}
       </div>
+
+      {selectedUserId && selectedUser && infoPanelOpen && (
+        <ConversationInfoPanel
+          user={selectedUser}
+          selectDisabled={thread.length === 0}
+          onSelectMessages={() => {
+            setSelectMode(true)
+            setInfoPanelOpen(false)
+          }}
+          onDeleteConversation={() => handleDeleteConversation(selectedUserId, selectedUser.name)}
+          onClose={() => setInfoPanelOpen(false)}
+        />
+      )}
     </div>
   )
 }

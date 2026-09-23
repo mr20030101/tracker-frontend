@@ -119,66 +119,77 @@ export function AppShell({ children }: { children: ReactNode }) {
     <MessagingProvider>
       <div className="flex h-screen bg-gray-50">
         {user && !location.pathname.startsWith('/messages') && <OnlineUsers />}
-        <aside className="flex w-64 shrink-0 flex-col border-r border-gray-200 bg-white">
-          <div className="px-5 py-5">
-            <Logo />
-          </div>
-
-          <nav className="flex-1 overflow-y-auto px-3 py-2">
-            {navSections(isManager, isAdmin).map((section) => (
-              <div key={section.label} className="mb-4">
-                <div className="px-2 pb-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-gray-400">
-                  {section.label}
-                </div>
-                {section.items.map((item) => (
-                  <NavLink
-                    key={item.to}
-                    to={item.to}
-                    end
-                    className={({ isActive }) =>
-                      `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium ${isActive ? 'bg-accent-bg text-accent-foreground' : 'text-gray-600 hover:bg-gray-100'
-                      }`
-                    }
-                  >
-                    <item.icon className="h-4 w-4 shrink-0" strokeWidth={2} />
-                    {item.label}
-                  </NavLink>
-                ))}
-              </div>
-            ))}
-          </nav>
-
-          {user && (
-            <div className="border-t border-gray-200 p-3">
-              <div className="flex items-center gap-2 rounded-lg p-2 hover:bg-gray-100">
-                <NavLink
-                  to={ownProfilePath}
-                  className="flex min-w-0 flex-1 items-center gap-2"
-                  aria-label="Open your profile"
-                >
-                  <Avatar name={user.name} photoUrl={user.avatar_url} size={32} />
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-semibold">{user.name}</div>
-                    <div className="truncate text-xs text-gray-400 capitalize">{user.role}</div>
-                  </div>
-                </NavLink>
-                <button
-                  onClick={() => logout()}
-                  className="text-xs font-medium text-gray-400 hover:text-gray-700"
-                >
-                  Sign out
-                </button>
-              </div>
+        {!location.pathname.startsWith('/messages') && (
+          <aside className="flex w-64 shrink-0 flex-col border-r border-gray-200 bg-white">
+            <div className="px-5 py-5">
+              <Logo />
             </div>
-          )}
-        </aside>
+
+            <nav className="flex-1 overflow-y-auto px-3 py-2">
+              {navSections(isManager, isAdmin).map((section) => (
+                <div key={section.label} className="mb-4">
+                  <div className="px-2 pb-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-gray-400">
+                    {section.label}
+                  </div>
+                  {section.items.map((item) => (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      end
+                      className={({ isActive }) =>
+                        `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium ${isActive ? 'bg-accent-bg text-accent-foreground' : 'text-gray-600 hover:bg-gray-100'
+                        }`
+                      }
+                    >
+                      <item.icon className="h-4 w-4 shrink-0" strokeWidth={2} />
+                      {item.label}
+                    </NavLink>
+                  ))}
+                </div>
+              ))}
+            </nav>
+
+            {user && (
+              <div className="border-t border-gray-200 p-3">
+                <div className="flex items-center gap-2 rounded-lg p-2 hover:bg-gray-100">
+                  <NavLink
+                    to={ownProfilePath}
+                    className="flex min-w-0 flex-1 items-center gap-2"
+                    aria-label="Open your profile"
+                  >
+                    <Avatar name={user.name} photoUrl={user.avatar_url} size={32} />
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-semibold">{user.name}</div>
+                      <div className="truncate text-xs text-gray-400 capitalize">{user.role}</div>
+                    </div>
+                  </NavLink>
+                  <button
+                    onClick={() => logout()}
+                    className="text-xs font-medium text-gray-400 hover:text-gray-700"
+                  >
+                    Sign out
+                  </button>
+                </div>
+              </div>
+            )}
+          </aside>
+        )}
 
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-3">
-            <div className="text-sm text-gray-500">
-              <span className="font-medium text-gray-700">Home</span>
-              <span className="mx-2">/</span>
-              <span>{crumb}</span>
+            <div className="flex items-center gap-4">
+              {location.pathname.startsWith('/messages') && (
+                <NavLink to="/" className="shrink-0" aria-label="Home">
+                  <Logo className="h-6" />
+                </NavLink>
+              )}
+              <div className="text-sm text-gray-500">
+                <NavLink to="/" className="font-medium text-gray-700 hover:underline">
+                  Home
+                </NavLink>
+                <span className="mx-2">/</span>
+                <span>{crumb}</span>
+              </div>
             </div>
             <div className="flex items-center gap-3">
               <ThemeToggle />

@@ -13,6 +13,10 @@ export interface ActionsMenuItem {
 interface ActionsMenuProps {
   items: ActionsMenuItem[]
   label?: string
+  // Lets a hover-revealed trigger (e.g. a per-message action button that only shows on
+  // group-hover) stay visible while its own menu is open, even after the pointer leaves the row —
+  // the panel itself is portaled to <body>, so it's no longer a descendant the hover state covers.
+  onOpenChange?: (open: boolean) => void
 }
 
 interface PanelPosition {
@@ -27,10 +31,15 @@ const EDGE_GAP = 8
 // Above Modal's z-50, so a menu opened inside a modal isn't covered by it.
 const PANEL_Z_INDEX = 60
 
-export function ActionsMenu({ items, label = 'Actions' }: ActionsMenuProps) {
-  const [open, setOpen] = useState(false)
+export function ActionsMenu({ items, label = 'Actions', onOpenChange }: ActionsMenuProps) {
+  const [open, setOpenState] = useState(false)
   const [pos, setPos] = useState<PanelPosition | null>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
+
+  function setOpen(next: boolean) {
+    setOpenState(next)
+    onOpenChange?.(next)
+  }
 
   // Fixed-position panel, measured against the button: flips upward near the bottom of the
   // screen and, being portaled to <body>, is never clipped by a table's rounded/overflow-hidden edge.
@@ -79,7 +88,7 @@ export function ActionsMenu({ items, label = 'Actions' }: ActionsMenuProps) {
       <button
         ref={buttonRef}
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen(!open)}
         aria-label={label}
         className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
       >
