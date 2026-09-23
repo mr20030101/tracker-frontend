@@ -98,6 +98,11 @@ export function MessagesButton() {
                   </button>
                   <Avatar name={activeUserName ?? ''} photoUrl={activeUserAvatarUrl} size={24} />
                   <span className="truncate text-sm font-semibold text-gray-900">{activeUserName}</span>
+                  {activeUserId && usersById.get(activeUserId)?.is_bot && (
+                    <span className="inline-flex items-center rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700">
+                      Bot
+                    </span>
+                  )}
                 </div>
                 <div className="flex-1 overflow-y-auto px-3 py-2">
                   {thread.length === 0 && (

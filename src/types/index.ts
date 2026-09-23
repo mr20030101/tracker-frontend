@@ -151,6 +151,7 @@ export interface DirectoryUser {
   last_seen_at: string | null
   avatar_url: string | null
   role: User['role']
+  is_bot: boolean
 }
 
 export interface LeaderboardRow {

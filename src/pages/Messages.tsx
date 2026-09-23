@@ -108,6 +108,11 @@ export function Messages() {
                 >
                   <Avatar name={u.name} photoUrl={u.avatar_url} size={36} />
                   <span className="truncate text-sm font-medium text-gray-900">{u.name}</span>
+                  {u.is_bot && (
+                    <span className="inline-flex items-center rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700">
+                      Bot
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
@@ -162,6 +167,11 @@ export function Messages() {
               <div className="flex items-center gap-3 border-b border-gray-100 px-5 py-3.5">
                 <Avatar name={selectedUser?.name ?? ''} photoUrl={selectedUser?.avatar_url} size={32} />
                 <span className="font-semibold text-gray-900">{selectedUser?.name ?? 'Unknown'}</span>
+                {selectedUser?.is_bot && (
+                  <span className="inline-flex items-center rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700">
+                    Bot
+                  </span>
+                )}
               </div>
               <div className="flex-1 overflow-y-auto px-5 py-4">
                 {thread.length === 0 && (

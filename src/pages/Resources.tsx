@@ -10,6 +10,21 @@ const MANAGER_ROLES = ['admin', 'lead']
 
 const emptyForm = { category: '', title: '', url: '' }
 
+// A Canva share link (edit or view) turned into its embeddable form, so it can be shown in an
+// iframe here instead of sending people to canva.com. Canva's own embed convention: any
+// /design/<id>/<shareId>/... URL becomes /design/<id>/<shareId>/view?embed.
+function canvaEmbedUrl(url: string): string | null {
+  try {
+    const parsed = new URL(url)
+    if (!parsed.hostname.endsWith('canva.com')) return null
+    const match = parsed.pathname.match(/^\/design\/([^/]+)\/([^/]+)/)
+    if (!match) return null
+    return `https://www.canva.com/design/${match[1]}/${match[2]}/view?embed`
+  } catch {
+    return null
+  }
+}
+
 export function Resources() {
   const { user } = useAuth()
   const isManager = Boolean(user && MANAGER_ROLES.includes(user.role))
@@ -18,6 +33,7 @@ export function Resources() {
   const [form, setForm] = useState(emptyForm)
   const [error, setError] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [previewResource, setPreviewResource] = useState<Resource | null>(null)
 
   const { data, isLoading } = useQuery({
     queryKey: ['resources'],
@@ -121,17 +137,29 @@ export function Resources() {
               {category}
             </div>
             <ul className="divide-y divide-gray-100">
-              {items.map((item) => (
+              {items.map((item) => {
+                const embeddable = canvaEmbedUrl(item.url) !== null
+                return (
                 <li key={item.id} className="flex items-center justify-between px-5 py-3">
                   <div>
-                    <a
-                      href={item.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-sm font-medium text-sky-700 hover:underline"
-                    >
-                      {item.title}
-                    </a>
+                    {embeddable ? (
+                      <button
+                        type="button"
+                        onClick={() => setPreviewResource(item)}
+                        className="text-sm font-medium text-sky-700 hover:underline"
+                      >
+                        {item.title}
+                      </button>
+                    ) : (
+                      <a
+                        href={item.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-sm font-medium text-sky-700 hover:underline"
+                      >
+                        {item.title}
+                      </a>
+                    )}
                     {item.project && <div className="text-xs text-gray-400">{item.project.name}</div>}
                   </div>
                   {isManager && (
@@ -153,7 +181,7 @@ export function Resources() {
                     </div>
                   )}
                 </li>
-              ))}
+              )})}
             </ul>
           </div>
         ))}
@@ -220,6 +248,30 @@ export function Resources() {
               </button>
             </div>
           </form>
+        </Modal>
+      )}
+
+      {previewResource && (
+        <Modal title={previewResource.title} onClose={() => setPreviewResource(null)} maxWidthClassName="max-w-4xl">
+          <div className="flex flex-col gap-3">
+            <div className="relative w-full overflow-hidden rounded-lg border border-gray-200" style={{ paddingTop: '56.25%' }}>
+              <iframe
+                src={canvaEmbedUrl(previewResource.url) ?? undefined}
+                loading="lazy"
+                allow="fullscreen"
+                allowFullScreen
+                className="absolute inset-0 h-full w-full"
+              />
+            </div>
+            <a
+              href={previewResource.url}
+              target="_blank"
+              rel="noreferrer"
+              className="self-end text-xs font-medium text-sky-700 hover:underline"
+            >
+              Open in Canva ↗
+            </a>
+          </div>
         </Modal>
       )}
     </div>
