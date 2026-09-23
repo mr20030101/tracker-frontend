@@ -57,6 +57,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
   const queryClient = useQueryClient()
   const { user: currentUser } = useAuth()
   const isManager = Boolean(currentUser && MANAGER_ROLES.includes(currentUser.role))
+  const isOwnProfile = currentUser?.email.toLowerCase() === email.toLowerCase()
   // Collapsed by default when a toggle is offered; always visible otherwise (see showGraphsToggle).
   const [graphsToggledOn, setGraphsToggledOn] = useState(false)
   const showGraphs = showGraphsToggle ? graphsToggledOn : true
@@ -432,7 +433,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
 
       {showGraphs && (
         <>
-          {data.is_public_view && (
+          {!isOwnProfile && (
             <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
               <StatCard label="All-time" value={allTimeTotal} />
               <StatCard
