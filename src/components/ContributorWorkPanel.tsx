@@ -291,9 +291,13 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
     const d = row.date?.slice(0, 10)
     return d && d >= rangeStart && d <= rangeEnd
   })
-  const todaysSubmissions = data.all_submissions.filter(
-    (row) => row.date?.slice(0, 10) === toISODate(new Date()) && row.status !== 'in_progress' && !row.cts_submitted_at,
-  )
+  // Any not-yet-submitted task from today or the last 3 days can go to CTS now, not just today's
+  // — a CB can catch up on a short backlog without reaching arbitrarily far back — sorted
+  // most-recent-first so today's work is what they see (and CtsFormModal pre-selects) first.
+  const ctsCutoffIso = toISODate(new Date(Date.now() - 3 * 24 * 60 * 60 * 1000))
+  const ctsEligibleSubmissions = data.all_submissions
+    .filter((row) => row.status !== 'in_progress' && !row.cts_submitted_at && (row.date?.slice(0, 10) ?? '') >= ctsCutoffIso)
+    .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
 
   const sortedSubmissions = [...visibleSubmissions].sort((a, b) => {
     const cmp = sortValue(a).localeCompare(sortValue(b))
@@ -778,7 +782,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
         </>
       )}
 
-      {showCtsModal && <CtsFormModal email={email} submissions={todaysSubmissions} onClose={() => setShowCtsModal(false)} />}
+      {showCtsModal && <CtsFormModal email={email} submissions={ctsEligibleSubmissions} onClose={() => setShowCtsModal(false)} />}
 
       {formTarget && (
         <TaskSubmissionForm submission={formTarget === 'new' ? undefined : formTarget} onClose={() => setFormTarget(null)} />

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/api'
+import { toISODate } from '../lib/week'
 import type { TaskSubmission } from '../types'
 import { Modal } from './Modal'
 import { StatusPill } from './StatusPill'
@@ -24,7 +25,12 @@ interface Props {
 
 export function CtsFormModal({ email, submissions, onClose }: Props) {
   const queryClient = useQueryClient()
-  const [selected, setSelected] = useState<Set<number>>(new Set(submissions.map((s) => s.id)))
+  const todayIso = toISODate(new Date())
+  // Today's tasks are the common case and come pre-selected; anything from an earlier day is
+  // still here to catch up on, but the CB has to opt into including it explicitly.
+  const [selected, setSelected] = useState<Set<number>>(
+    new Set(submissions.filter((s) => s.date?.slice(0, 10) === todayIso).map((s) => s.id)),
+  )
   const [step, setStep] = useState<'select' | 'confirm'>('select')
   const chosen = submissions.filter((s) => selected.has(s.id))
 
@@ -105,15 +111,15 @@ export function CtsFormModal({ email, submissions, onClose }: Props) {
   }
 
   return (
-    <Modal title="Today's Tasks" onClose={onClose} maxWidthClassName="max-w-4xl">
+    <Modal title="Tasks Ready for CTS" onClose={onClose} maxWidthClassName="max-w-4xl">
       <p className="mb-3 text-sm text-gray-500">
         Select the tasks to include, then continue to the CTS Form. Their Task IDs and screenshot links will be
-        prefilled for you.
+        prefilled for you. Today's tasks are selected by default — check any earlier ones you'd also like to include.
       </p>
 
       {submissions.length === 0 ? (
         <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-6 text-center text-sm text-gray-400">
-          No submissions logged today yet.
+          No tasks ready for CTS yet.
         </div>
       ) : (
         <div className="max-h-96 overflow-auto rounded-lg border border-gray-200">
@@ -128,6 +134,7 @@ export function CtsFormModal({ email, submissions, onClose }: Props) {
                     className="h-4 w-4 rounded border-gray-300"
                   />
                 </th>
+                <th className="px-3 py-2">Date</th>
                 <th className="px-3 py-2">Task ID</th>
                 <th className="px-3 py-2">Project</th>
                 <th className="px-3 py-2">Stage</th>
@@ -136,7 +143,9 @@ export function CtsFormModal({ email, submissions, onClose }: Props) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {submissions.map((row) => (
+              {submissions.map((row) => {
+                const rowDate = row.date?.slice(0, 10)
+                return (
                 <tr key={row.id} className="hover:bg-gray-50">
                   <td className="px-4 py-2">
                     <input
@@ -145,6 +154,13 @@ export function CtsFormModal({ email, submissions, onClose }: Props) {
                       onChange={() => toggle(row.id)}
                       className="h-4 w-4 rounded border-gray-300"
                     />
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-2 text-xs">
+                    {rowDate === todayIso ? (
+                      <span className="font-semibold text-accent">Today</span>
+                    ) : (
+                      <span className="text-gray-500">{rowDate ?? '—'}</span>
+                    )}
                   </td>
                   <td className="whitespace-nowrap px-3 py-2 font-mono text-xs text-gray-600">{row.task_id ?? '—'}</td>
                   <td className="px-3 py-2 text-gray-600">{row.project?.name ?? '—'}</td>
@@ -160,7 +176,8 @@ export function CtsFormModal({ email, submissions, onClose }: Props) {
                     )}
                   </td>
                 </tr>
-              ))}
+                )
+              })}
             </tbody>
           </table>
         </div>

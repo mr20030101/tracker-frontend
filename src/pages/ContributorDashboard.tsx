@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { BookOpen, ClipboardList, MessageCircle, Trophy, User, type LucideIcon } from 'lucide-react'
 import { api, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
+import { useMessaging } from '../lib/messagingContext'
 import { startOfWeek, toISODate, sgMinutesSinceMidnight } from '../lib/week'
 import type { ContributorProfile, ContributorProjectLevel, Project, ProjectLevel } from '../types'
 import { ProgressRing } from '../components/ProgressRing'
@@ -43,6 +44,8 @@ function buildAttendanceFormUrl(email: string) {
 export function ContributorDashboard() {
   const { user } = useAuth()
   const email = user?.email ?? ''
+  const { usersById, openChatWith } = useMessaging()
+  const bot = useMemo(() => [...usersById.values()].find((u) => u.is_bot), [usersById])
   const [showCtsModal, setShowCtsModal] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   // Shown at most once per browser session: once dismissed (or faded on its own), a reload won't bring it back.
@@ -207,6 +210,16 @@ export function ContributorDashboard() {
           >
             Attendance Form
           </button>
+          {bot && (
+            <button
+              type="button"
+              onClick={() => openChatWith(bot.id, bot.name)}
+              className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            >
+              <MessageCircle className="h-4 w-4" />
+              Chat with {bot.name}
+            </button>
+          )}
         </div>
       </div>
 
