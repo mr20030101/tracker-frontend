@@ -1,5 +1,6 @@
 import { Trash2 } from 'lucide-react'
 import { convertEmoticons } from '../lib/emoticons'
+import { formatBotMessage } from '../lib/formatBotMessage'
 import type { Message } from '../types'
 
 function formatTime(iso: string) {
@@ -9,10 +10,12 @@ function formatTime(iso: string) {
 export function MessageBubble({
   message,
   mine,
+  isBot = false,
   onDelete,
 }: {
   message: Message
   mine: boolean
+  isBot?: boolean
   onDelete: () => void
 }) {
   return (
@@ -23,7 +26,9 @@ export function MessageBubble({
             mine ? 'bg-accent text-accent-foreground' : 'bg-gray-100 text-gray-800'
           }`}
         >
-          <div className="whitespace-pre-wrap wrap-break-word">{convertEmoticons(message.body)}</div>
+          <div className="whitespace-pre-wrap wrap-break-word">
+            {isBot ? formatBotMessage(message.body) : convertEmoticons(message.body)}
+          </div>
           <div className={`mt-0.5 text-[10px] ${mine ? 'text-accent-foreground/70' : 'text-gray-400'}`}>
             {formatTime(message.created_at)}
           </div>

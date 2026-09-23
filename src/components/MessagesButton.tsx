@@ -112,7 +112,13 @@ export function MessagesButton() {
                   )}
                   <div className="flex flex-col gap-2">
                     {thread.map((m: Message) => (
-                      <MessageBubble key={m.id} message={m} mine={m.sender_id === myId} onDelete={() => handleDelete(m)} />
+                      <MessageBubble
+                        key={m.id}
+                        message={m}
+                        mine={m.sender_id === myId}
+                        isBot={m.sender_id !== myId && Boolean(activeUserId && usersById.get(activeUserId)?.is_bot)}
+                        onDelete={() => handleDelete(m)}
+                      />
                     ))}
                   </div>
                   <div ref={threadEndRef} />

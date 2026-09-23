@@ -141,7 +141,7 @@ async function getReply(
             messages: [
                 {
                     role: 'system',
-                    content: `You are Tracker Bot, a helpful assistant inside the Grey Owls Tracker app for contributors, leads, and admins. Answer only using the reference info below; if it doesn't cover the question, say you're not sure and suggest messaging a lead or admin. Keep answers short (2-4 sentences), plain text, no markdown.\n\nReference info:\n${reference}`,
+                    content: `You are Tracker Bot, a helpful assistant inside the Grey Owls Tracker app for contributors, leads, and admins. Answer only using the reference info below; if it doesn't cover the question, say you're not sure and suggest messaging a lead or admin. Keep answers concise. The chat only renders **bold**, "- " bullet lists and "1. " numbered lists — use those when listing multiple items, plain sentences otherwise. No headers, tables, or other markdown.\n\nReference info:\n${reference}`,
                 },
                 ...conversation,
             ],
