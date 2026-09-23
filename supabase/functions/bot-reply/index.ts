@@ -61,12 +61,36 @@ async function handle(request: Request): Promise<Response> {
     const { message_id, sender_id, recipient_id, body } = (await request.json()) as BotReplyRequest
     if (!sender_id || !recipient_id || !body) return errorResponse('Missing message_id, sender_id, recipient_id, or body.', 400)
 
+    // Recent messages between this pair, oldest first, so the bot sees the conversation instead of
+    // treating every incoming message as a one-shot question with no memory of what came before.
+    // The trigger fires after insert, so the message that just arrived is already in this table —
+    // it comes back as the last row here, no need to append `body` separately.
+    const HISTORY_LIMIT = 20
+    const { data: historyRows, error: historyError } = await admin
+        .from('messages')
+        .select('sender_id, body')
+        .or(`and(sender_id.eq.${sender_id},recipient_id.eq.${recipient_id}),and(sender_id.eq.${recipient_id},recipient_id.eq.${sender_id})`)
+        .order('created_at', { ascending: false })
+        .limit(HISTORY_LIMIT)
+    if (historyError) return errorResponse(`Could not load message history: ${historyError.message}`, 500)
+
+    const conversation = (historyRows ?? [])
+        .reverse()
+        .map((m) => ({ role: (m.sender_id === recipient_id ? 'assistant' : 'user') as 'assistant' | 'user', content: m.body }))
+
     const { data: faqs, error: faqsError } = await admin.from('bot_faqs').select('keywords, answer').order('sort_order')
     if (faqsError) return errorResponse(`Could not load bot_faqs: ${faqsError.message}`, 500)
 
-    const reference = selectReference(faqs ?? [], body)
+    // Matched against the whole recent thread, not just the latest message, so a short follow-up
+    // like "what about bad video" still pulls in the right section even though that phrase alone
+    // wouldn't otherwise carry enough keywords.
+    const questionText = conversation
+        .filter((m) => m.role === 'user')
+        .map((m) => m.content)
+        .join('\n')
+    const reference = selectReference(faqs ?? [], questionText)
 
-    const reply = await getReply(groqApiKey, reference, body)
+    const reply = await getReply(groqApiKey, reference, conversation)
 
     const { error: insertError } = await admin.from('messages').insert({ sender_id: recipient_id, recipient_id: sender_id, body: reply })
     if (insertError) return errorResponse(`Could not send the reply: ${insertError.message}`, 500)
@@ -99,7 +123,11 @@ function selectReference(faqs: { keywords: string[]; answer: string }[], questio
     return picked.join('\n\n')
 }
 
-async function getReply(groqApiKey: string, reference: string, question: string): Promise<string> {
+async function getReply(
+    groqApiKey: string,
+    reference: string,
+    conversation: { role: 'user' | 'assistant'; content: string }[],
+): Promise<string> {
     const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -115,7 +143,7 @@ async function getReply(groqApiKey: string, reference: string, question: string)
                     role: 'system',
                     content: `You are Tracker Bot, a helpful assistant inside the Grey Owls Tracker app for contributors, leads, and admins. Answer only using the reference info below; if it doesn't cover the question, say you're not sure and suggest messaging a lead or admin. Keep answers short (2-4 sentences), plain text, no markdown.\n\nReference info:\n${reference}`,
                 },
-                { role: 'user', content: question },
+                ...conversation,
             ],
         }),
     })
