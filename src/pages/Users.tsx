@@ -13,6 +13,7 @@ import { DataTable } from '../components/DataTable'
 import { ActionsMenu } from '../components/ActionsMenu'
 import { Select } from '../components/Select'
 import { BulkImportUsersModal } from '../components/BulkImportUsersModal'
+import { contributorPath } from '../lib/urlRef'
 
 const ROLES: User['role'][] = ['contributor', 'lead', 'admin']
 const ROLE_OPTIONS = ROLES.map((r) => ({ value: r, label: r.charAt(0).toUpperCase() + r.slice(1) }))
@@ -332,7 +333,7 @@ export function Users() {
           const opensTeam = isAdmin && u.role === 'lead'
           return (
             <Link
-              to={opensTeam ? `/leads/${u.id}` : `/contributors/${encodeURIComponent(u.email)}`}
+              to={opensTeam ? `/leads/${u.id}` : contributorPath(u.email)}
               title={opensTeam ? `View ${u.name}'s team` : undefined}
               className="flex items-center gap-3 hover:underline"
             >

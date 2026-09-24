@@ -154,7 +154,8 @@ export interface DirectoryUser {
   avatar_url: string | null
   role: User['role']
   is_bot: boolean
-  email: string
+  // For contributors, email is always null and last_seen_at is only set for people online right now.
+  email: string | null
 }
 
 export interface LeaderboardRow {
@@ -174,6 +175,13 @@ export interface Message {
   deleted_by_sender: boolean
   deleted_by_recipient: boolean
   created_at: string
+}
+
+export interface ConversationSummary {
+  other_user_id: string
+  unread_count: number
+  // The conversation's last few messages, oldest first.
+  recent: Message[]
 }
 
 export interface Conversation {

@@ -174,23 +174,27 @@ async function dashboard(params: Record<string, unknown>): Promise<DashboardSumm
   return { week_start: rangeStart, week_end: rangeEnd, data: rows, daily_report: dailyReport }
 }
 
+// Looked up by `id` when the caller doesn't know the person's email (a contributor opening a peer's
+// profile), otherwise by `email`.
 async function contributor(params: Record<string, unknown>): Promise<ContributorProfile> {
-  const email = String(params.email)
+  const targetId = params.id ? String(params.id) : null
   const weekStart = String(params.week_start)
   const weekEndDate = new Date(`${weekStart}T00:00:00Z`)
   weekEndDate.setUTCDate(weekEndDate.getUTCDate() + WEEK_LENGTH_DAYS - 1)
   const weekEnd = weekEndDate.toISOString().slice(0, 10)
-  const { data: user } = await supabase.from('profiles').select('*').eq('email', email).maybeSingle()
+  const { data: user } = targetId
+    ? await supabase.from('profiles').select('*').eq('id', targetId).maybeSingle()
+    : await supabase.from('profiles').select('*').eq('email', String(params.email)).maybeSingle()
+  const email: string = user?.email ?? (targetId ? '' : String(params.email))
 
   if (!user) {
     // RLS only lets self, the contributor's lead, or an admin read their
     // profiles/task_submissions rows directly — a peer contributor viewing
     // someone else falls back to this security-definer RPC, which exposes
     // rollups only (never raw task IDs, links, or per-row status).
-    const { data: rows, error } = await supabase.rpc('contributor_public_stats', {
-      p_target_email: email,
-      p_week_start: weekStart,
-    })
+    const { data: rows, error } = targetId
+      ? await supabase.rpc('contributor_public_stats_by_id', { p_target_id: targetId, p_week_start: weekStart })
+      : await supabase.rpc('contributor_public_stats', { p_target_email: email, p_week_start: weekStart })
     if (error) throw error
     const stats = rows?.[0]
     const publicUser: User | null = stats

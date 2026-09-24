@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { Avatar } from './Avatar'
+import { contributorPath } from '../lib/urlRef'
 
 const MANAGER_ROLES = ['admin', 'lead']
 const MAX_SUBMISSION_ALERTS = 20
@@ -231,7 +232,7 @@ export function NotificationBell() {
                 {submissionAlerts.map((alert) => (
                   <div key={alert.id} className="group flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-gray-50">
                     <Link
-                      to={`/contributors/${encodeURIComponent(alert.email)}`}
+                      to={contributorPath(alert.email)}
                       onClick={close}
                       className="flex min-w-0 flex-1 items-center gap-2 text-sm"
                     >

@@ -248,22 +248,68 @@ as $$
     or exists (select 1 from public.profiles where id = profile_id and lead_id = auth.uid())
 $$;
 
--- Messaging is open to any active user regardless of lead attachment, so it
--- needs its own minimal, RLS-independent lookup rather than the profiles
--- table's (deliberately) scoped read policy.
--- role is included so the Dashboard's "Message admin" link can find an admin
--- to message without needing its own lookup. is_bot lets the messaging UI badge the FAQ bot. email
--- lets the messaging conversation-info panel link straight to /contributors/:email without a
--- separate lookup.
+-- Messaging needs names and avatars for the people in a conversation, which the profiles table's
+-- (deliberately) scoped read policy can't give a contributor, so it has its own RLS-independent
+-- lookup. This function is callable by every signed-in user, so it must not list everyone to
+-- everyone: admins and leads get every active user (with email and last_seen_at); a contributor
+-- gets only the bot, the admins, their own lead, people they already exchanged messages with, and
+-- whoever is online right now (for the online bubbles). A contributor never gets anyone's email,
+-- and last_seen_at only for people online now — the 3 minutes matches ONLINE_THRESHOLD_MS in
+-- src/lib/presence.ts.
+-- role is included so the Dashboard's "Message admin" link can find an admin to message. is_bot
+-- lets the messaging UI badge the FAQ bot. email lets the conversation-info panel link straight to
+-- /contributors/:email.
 -- Dropped first since CREATE OR REPLACE can't change a function's return type
 -- (this one gained avatar_url after its first release, then role, then is_bot, then email).
 drop function if exists public.directory();
 create function public.directory()
 returns table (id uuid, name text, is_active boolean, last_seen_at timestamptz, avatar_url text, role text, is_bot boolean, email text)
 language sql stable security definer set search_path = public
-as $$ select id, name, is_active, last_seen_at, avatar_url, role, is_bot, email from public.profiles where is_active $$;
+as $$
+  select p.id, p.name, p.is_active,
+    case when public.is_manager() or p.last_seen_at > now() - interval '3 minutes' then p.last_seen_at end,
+    p.avatar_url, p.role, p.is_bot,
+    case when public.is_manager() then p.email end
+  from public.profiles p
+  where p.is_active and (
+    public.is_manager()
+    or p.is_bot
+    or p.role = 'admin'
+    or p.last_seen_at > now() - interval '3 minutes'
+    or p.id = (select me.lead_id from public.profiles me where me.id = auth.uid())
+    or exists (
+      select 1 from public.messages m
+      where (m.sender_id = auth.uid() and m.recipient_id = p.id)
+         or (m.recipient_id = auth.uid() and m.sender_id = p.id)
+    )
+  )
+$$;
 
 grant execute on function public.directory() to authenticated;
+
+-- One row per conversation: the unread count and the last 5 messages (oldest first), so the inbox
+-- list, unread badge, bot reveal timing and notification sound never need a whole thread. Full
+-- threads are fetched a page at a time when a chat is opened. Messages the caller deleted for
+-- themselves are left out. Runs as the caller, so the messages read policy still applies.
+create or replace function public.conversation_summaries()
+returns table (other_user_id uuid, unread_count bigint, recent jsonb)
+language sql stable set search_path = public
+as $$
+  with mine as (
+    select m.*, case when m.sender_id = auth.uid() then m.recipient_id else m.sender_id end as other_id
+    from public.messages m
+    where (m.sender_id = auth.uid() and not m.deleted_by_sender)
+       or (m.recipient_id = auth.uid() and not m.deleted_by_recipient)
+  )
+  select o.other_id,
+    count(*) filter (where o.recipient_id = auth.uid() and o.read_at is null),
+    (select jsonb_agg(to_jsonb(x) - 'other_id' order by x.id)
+       from (select * from mine mm where mm.other_id = o.other_id order by mm.id desc limit 5) x)
+  from mine o
+  group by o.other_id
+$$;
+
+grant execute on function public.conversation_summaries() to authenticated;
 
 -- Ranks a contributor's own teammates (same lead_id) by tasks submitted in a date range, which
 -- the scoped "profiles read own or manager" policy can't do on its own — same rationale as
@@ -387,6 +433,15 @@ as $$
 $$;
 
 grant execute on function public.contributor_public_stats(text, date) to authenticated;
+
+-- Same rollups looked up by user id, so a contributor can open a peer's profile without ever being
+-- told that peer's email (directory() hides it). Returns nothing the email version doesn't.
+create or replace function public.contributor_public_stats_by_id(p_target_id uuid, p_week_start date)
+returns table(id uuid, name text, avatar_url text, role text, lead_id uuid, is_active boolean, shift text, bio text, weekly_target integer, submitted_this_week bigint, stage_breakdown jsonb, project_breakdown jsonb, trend jsonb, levels jsonb)
+language sql stable security definer set search_path = public
+as $$ select s.* from public.contributor_public_stats((select p.email from public.profiles p where p.id = p_target_id), p_week_start) s $$;
+
+grant execute on function public.contributor_public_stats_by_id(uuid, date) to authenticated;
 
 create or replace function public.is_active_profile(target_id uuid)
 returns boolean language sql stable security definer set search_path = public
@@ -614,7 +669,7 @@ alter table public.weekly_targets enable row level security;
 alter table public.resources enable row level security;
 alter table public.messages enable row level security;
 alter table public.bot_faqs enable row level security;
--- No policies added below on purpose — see the comment on this table's create statement.
+-- bot_faqs' policies (signed-in users read, admins manage) are defined further down with the rest.
 alter table public.app_secrets enable row level security;
 
 -- Admins see every profile; a lead sees only their own row plus contributors
@@ -640,7 +695,21 @@ create policy "anon logs failed logins" on public.activity_logs for insert to an
 create policy "admins clear activity logs" on public.activity_logs for delete
   using (public.is_admin());
 
-create policy "active users read projects" on public.projects for select using (public.is_active_user());
+-- Same visibility model as the resources read policy below: admins see every project, a lead sees
+-- the ones they're assigned to, and a contributor sees the ones their lead is assigned to. A
+-- project with no lead assigned yet is visible to admins only.
+drop policy if exists "active users read projects" on public.projects;
+drop policy if exists "users read assigned projects" on public.projects;
+create policy "users read assigned projects" on public.projects for select using (
+  public.is_active_user() and (
+    public.is_admin()
+    or public.is_project_lead(id)
+    or exists (
+      select 1 from public.profiles p join public.project_leads pl on pl.lead_id = p.lead_id
+      where p.id = auth.uid() and pl.project_id = projects.id
+    )
+  )
+);
 -- Admin creates and owns the master project list; a lead may only rename or
 -- delete a project they're assigned to via project_leads — assignment
 -- itself is admin-only (see "admins manage project leads" below).

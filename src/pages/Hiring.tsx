@@ -33,6 +33,7 @@ import { DataTable } from '../components/DataTable'
 import { downloadCsv } from '../lib/csv'
 import { Modal } from '../components/Modal'
 import { Select } from '../components/Select'
+import { contributorPath } from '../lib/urlRef'
 
 type StatusFilter = HiringStatus | 'all'
 type Notice = { tone: 'success' | 'error'; text: string }
@@ -635,7 +636,7 @@ export function Hiring() {
                       ? [
                           {
                             label: 'View profile',
-                            onClick: () => navigate(`/contributors/${encodeURIComponent(application.remotasks_email)}`),
+                            onClick: () => navigate(contributorPath(application.remotasks_email)),
                           },
                         ]
                       : [{ label: 'Create account', onClick: () => openCreate(application) }]

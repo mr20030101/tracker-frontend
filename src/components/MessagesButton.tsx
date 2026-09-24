@@ -14,6 +14,7 @@ import { MessageBubble } from './MessageBubble'
 import { TypingIndicator } from './TypingIndicator'
 import { EmojiPickerButton } from './EmojiPickerButton'
 import { useBotTyping } from '../lib/useBotTyping'
+import { useThread } from '../lib/useThread'
 
 // Messenger's own send-bubble blue, matching MessageBubble.tsx — kept local rather than
 // repointing the app's global --color-accent, which drives buttons everywhere else.
@@ -26,14 +27,15 @@ function formatTime(iso: string) {
 export function MessagesButton() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
-  const { isOpen, activeUserId, activeUserName, openInbox, openChatWith, close, myId, usersById, conversations, totalUnread, threadWith } =
+  const { isOpen, activeUserId, activeUserName, openInbox, openChatWith, close, myId, usersById, conversations, totalUnread } =
     useMessaging()
   const [draft, setDraft] = useState('')
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const threadEndRef = useRef<HTMLDivElement>(null)
 
-  const thread = threadWith(activeUserId)
+  // Only loads while a chat is open (activeUserId set), a page at a time.
+  const { messages: thread, isLoading: threadLoading, hasOlder, loadingOlder, loadOlder, scrollRef } = useThread(myId, activeUserId)
   const activeUser = activeUserId ? usersById.get(activeUserId) : undefined
   const activeUserAvatarUrl = activeUser?.avatar_url ?? null
   const activeUserIsBot = Boolean(activeUser?.is_bot)
@@ -61,9 +63,11 @@ export function MessagesButton() {
     }
   }, [myId, activeUserId, thread, queryClient])
 
+  // Keyed on the newest message, not the count, so loading older messages doesn't jump to the bottom.
+  const newestMessageId = visibleThread[visibleThread.length - 1]?.id
   useEffect(() => {
     if (isOpen && activeUserId) threadEndRef.current?.scrollIntoView({ block: 'nearest' })
-  }, [isOpen, activeUserId, visibleThread.length, isTyping])
+  }, [isOpen, activeUserId, newestMessageId, isTyping])
 
   const sendMutation = useMutation({
     mutationFn: async (text: string) => {
@@ -168,7 +172,7 @@ export function MessagesButton() {
                         </span>
                       )}
                     </div>
-                    {!activeUserIsBot && (
+                    {!activeUserIsBot && activeUser?.last_seen_at && (
                       <span className="text-[11px] text-gray-400">{formatActiveStatus(activeUser?.last_seen_at ?? null)}</span>
                     )}
                   </div>
@@ -185,8 +189,18 @@ export function MessagesButton() {
                     />
                   </div>
                 </div>
-                <div className="flex-1 overflow-y-auto px-3 py-2">
-                  {thread.length === 0 && (
+                <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-2">
+                  {hasOlder && (
+                    <button
+                      type="button"
+                      onClick={loadOlder}
+                      disabled={loadingOlder}
+                      className="mx-auto mb-2 block rounded-full border border-gray-200 px-3 py-1 text-[11px] font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                    >
+                      {loadingOlder ? 'Loading...' : 'Load earlier messages'}
+                    </button>
+                  )}
+                  {thread.length === 0 && !threadLoading && (
                     <div className="flex h-full items-center justify-center text-sm text-gray-400">
                       {activeUserIsBot ? `Ask ${activeUserName} anything.` : `Say hello to ${activeUserName}.`}
                     </div>

@@ -13,6 +13,7 @@ import { DataTable } from '../components/DataTable'
 import { LineChart } from '../components/LineChart'
 import { ProgressBar } from '../components/ProgressBar'
 import { Select } from '../components/Select'
+import { contributorPath, messagePath } from '../lib/urlRef'
 
 const percent = (n: number) => `${Math.round(n)}%`
 
@@ -75,7 +76,7 @@ export function LeadTeam() {
         cell: ({ row }) => {
           const u = row.original.user
           return (
-            <Link to={`/contributors/${encodeURIComponent(u.email)}`} className="flex items-center gap-3 hover:underline">
+            <Link to={contributorPath(u.email)} className="flex items-center gap-3 hover:underline">
               <Avatar name={u.name} photoUrl={u.avatar_url} size={28} />
               <div className="min-w-0">
                 <div className="truncate font-medium text-gray-900">{u.name}</div>
@@ -200,13 +201,13 @@ export function LeadTeam() {
             />
           )}
           <Link
-            to={`/messages/${lead.id}`}
+            to={messagePath(lead.id)}
             className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50"
           >
             Message
           </Link>
           <Link
-            to={`/contributors/${encodeURIComponent(lead.email)}`}
+            to={contributorPath(lead.email)}
             className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50"
           >
             Profile

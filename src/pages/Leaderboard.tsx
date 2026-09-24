@@ -12,6 +12,7 @@ import { Reveal } from '../components/Reveal'
 import { GrowBar } from '../components/GrowBar'
 import { SortableHeader } from '../components/SortableHeader'
 import { downloadCsv } from '../lib/csv'
+import { contributorPath } from '../lib/urlRef'
 
 type Period = 'week' | 'month' | 'all'
 type StatusFilter = 'all' | 'active' | 'disabled'
@@ -85,7 +86,7 @@ function ContributorLeaderboard() {
               return (
                 <li key={row.user_id}>
                   <Link
-                    to={`/contributors/${encodeURIComponent(row.cb_email)}`}
+                    to={contributorPath(row.cb_email)}
                     className={`flex items-center gap-3 px-5 py-3 hover:bg-gray-50 ${isMe ? 'bg-accent-bg/40' : ''}`}
                   >
                     <span className="w-8 shrink-0 text-center text-lg font-semibold text-gray-400">
@@ -395,7 +396,7 @@ function ManagerLeaderboard() {
                 >
                   <td className="px-5 py-3">
                     <Link
-                      to={`/contributors/${encodeURIComponent(row.cb_email)}`}
+                      to={contributorPath(row.cb_email)}
                       className="flex items-center gap-3 hover:underline"
                     >
                       <Avatar name={row.name || row.cb_email} />

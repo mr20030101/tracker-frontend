@@ -24,6 +24,7 @@ import { NotificationBell } from './NotificationBell'
 import { MessagesButton } from './MessagesButton'
 import { ThemeToggle } from './ThemeToggle'
 import { OnlineUsers } from './OnlineUsers'
+import { contributorPath } from '../lib/urlRef'
 
 const MANAGER_ROLES = ['admin', 'lead']
 
@@ -86,7 +87,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     }
   }, [location.pathname])
 
-  const ownProfilePath = user ? `/contributors/${encodeURIComponent(user.email)}` : '/'
+  const ownProfilePath = user ? contributorPath(user.email) : '/'
 
   const crumb =
     location.pathname === '/leaderboard'

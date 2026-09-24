@@ -7,6 +7,7 @@ import { convertEmoticons } from '../lib/emoticons'
 import { deleteConversationForMe, deleteMessageForMe, deleteMessagesForMe, markThreadRead, sendMessage } from '../lib/messages'
 import { formatActiveStatus } from '../lib/presence'
 import { formatTime } from '../lib/week'
+import { messagePath, parseMessageRef } from '../lib/urlRef'
 import type { Message } from '../types'
 import { ActionsMenu } from '../components/ActionsMenu'
 import { Avatar } from '../components/Avatar'
@@ -17,16 +18,17 @@ import { MessageBubble } from '../components/MessageBubble'
 import { TypingIndicator } from '../components/TypingIndicator'
 import { EmojiPickerButton } from '../components/EmojiPickerButton'
 import { useBotTyping } from '../lib/useBotTyping'
+import { useThread } from '../lib/useThread'
 
 // Messenger's own send-bubble blue, matching MessageBubble.tsx — kept local rather than
 // repointing the app's global --color-accent, which drives buttons everywhere else.
 const BUBBLE_BLUE = '#0084ff'
 
 export function Messages() {
-  const { userId: routeUserId } = useParams<{ userId: string }>()
+  const { userId: routeRef } = useParams<{ userId: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const { myId, usersById, conversations, threadWith } = useMessaging()
+  const { myId, usersById, conversations } = useMessaging()
   const [draft, setDraft] = useState('')
   const [userSearch, setUserSearch] = useState('')
   const [selectMode, setSelectMode] = useState(false)
@@ -34,9 +36,9 @@ export function Messages() {
   const [infoPanelOpen, setInfoPanelOpen] = useState(false)
   const threadEndRef = useRef<HTMLDivElement>(null)
 
-  const selectedUserId = routeUserId ?? null
+  const selectedUserId = routeRef ? parseMessageRef(routeRef) : null
   const selectedUser = selectedUserId ? usersById.get(selectedUserId) : undefined
-  const thread = threadWith(selectedUserId)
+  const { messages: thread, isLoading: threadLoading, hasOlder, loadingOlder, loadOlder, scrollRef } = useThread(myId, selectedUserId)
   const { visibleThread, isTyping } = useBotTyping(thread, myId, Boolean(selectedUser?.is_bot))
 
   useEffect(() => {
@@ -62,7 +64,7 @@ export function Messages() {
 
   function startConversation(userId: string) {
     setUserSearch('')
-    navigate(`/messages/${userId}`)
+    navigate(messagePath(userId))
   }
 
   useEffect(() => {
@@ -73,9 +75,11 @@ export function Messages() {
     }
   }, [myId, selectedUserId, thread, queryClient])
 
+  // Keyed on the newest message, not the count, so loading older messages doesn't jump to the bottom.
+  const newestMessageId = visibleThread[visibleThread.length - 1]?.id
   useEffect(() => {
     threadEndRef.current?.scrollIntoView({ block: 'nearest' })
-  }, [selectedUserId, visibleThread.length, isTyping])
+  }, [selectedUserId, newestMessageId, isTyping])
 
   const sendMutation = useMutation({
     mutationFn: async (text: string) => {
@@ -190,7 +194,7 @@ export function Messages() {
                 return (
                   <div key={c.otherUserId} className={`flex items-center ${isSelected ? 'bg-accent-bg' : 'hover:bg-gray-50'}`}>
                     <button
-                      onClick={() => navigate(`/messages/${c.otherUserId}`)}
+                      onClick={() => navigate(messagePath(c.otherUserId))}
                       className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left"
                     >
                       <AvatarWithStatus
@@ -253,7 +257,7 @@ export function Messages() {
                     </span>
                   )}
                 </div>
-                {!selectedUser?.is_bot && (
+                {!selectedUser?.is_bot && selectedUser?.last_seen_at && (
                   <span className="text-xs text-gray-400">{formatActiveStatus(selectedUser?.last_seen_at ?? null)}</span>
                 )}
               </div>
@@ -268,8 +272,18 @@ export function Messages() {
                 <Info className="h-5 w-5" />
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto px-5 py-4">
-              {thread.length === 0 && (
+            <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4">
+              {hasOlder && (
+                <button
+                  type="button"
+                  onClick={loadOlder}
+                  disabled={loadingOlder}
+                  className="mx-auto mb-3 block rounded-full border border-gray-200 px-3 py-1 text-xs font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  {loadingOlder ? 'Loading...' : 'Load earlier messages'}
+                </button>
+              )}
+              {thread.length === 0 && !threadLoading && (
                 <div className="flex h-full items-center justify-center text-sm text-gray-400">
                   {selectedUser?.is_bot
                     ? `Ask ${selectedUser.name} anything.`

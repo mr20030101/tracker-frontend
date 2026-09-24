@@ -16,6 +16,7 @@ import { SortableHeader } from '../components/SortableHeader'
 import { BulkImportModal } from '../components/BulkImportModal'
 import { ContributorWorkPanel } from '../components/ContributorWorkPanel'
 import { downloadCsv } from '../lib/csv'
+import { contributorPath } from '../lib/urlRef'
 
 const MANAGER_ROLES = ['admin', 'lead']
 
@@ -304,7 +305,7 @@ function ManagerTaskLog() {
               <tr key={row.id} className="hover:bg-gray-50">
                 <td className="px-5 py-3">
                   <Link
-                    to={`/contributors/${encodeURIComponent(row.cb_email)}`}
+                    to={contributorPath(row.cb_email)}
                     className="flex items-center gap-3 hover:underline"
                   >
                     <Avatar name={row.cb_email} size={28} />

@@ -7,6 +7,7 @@ import { remotasksDiffViewerUrl } from '../lib/remotasks'
 import { TaskSubmissionForm } from '../components/TaskSubmissionForm'
 import { DataTable } from '../components/DataTable'
 import type { TaskSubmission } from '../types'
+import { contributorPath } from '../lib/urlRef'
 
 const HIGH_VOLUME_THRESHOLD = 20
 
@@ -171,7 +172,7 @@ export function DataQuality() {
         accessorFn: (r) => r.cb_email,
         header: 'CB Email',
         cell: ({ row }) => (
-          <Link to={`/contributors/${encodeURIComponent(row.original.cb_email)}`} className="text-sky-700 hover:underline">
+          <Link to={contributorPath(row.original.cb_email)} className="text-sky-700 hover:underline">
             {row.original.cb_email}
           </Link>
         ),
@@ -234,7 +235,7 @@ export function DataQuality() {
         accessorFn: (r) => r.cb_email,
         header: 'CB Email',
         cell: ({ row }) => (
-          <Link to={`/contributors/${encodeURIComponent(row.original.cb_email)}`} className="text-sky-700 hover:underline">
+          <Link to={contributorPath(row.original.cb_email)} className="text-sky-700 hover:underline">
             {row.original.cb_email}
           </Link>
         ),
@@ -272,7 +273,7 @@ export function DataQuality() {
         accessorFn: (r) => r.cb_email,
         header: 'CB Email',
         cell: ({ row }) => (
-          <Link to={`/contributors/${encodeURIComponent(row.original.cb_email)}`} className="text-sky-700 hover:underline">
+          <Link to={contributorPath(row.original.cb_email)} className="text-sky-700 hover:underline">
             {row.original.cb_email}
           </Link>
         ),
@@ -316,7 +317,7 @@ export function DataQuality() {
         accessorFn: (r) => r.cb_email,
         header: 'CB Email',
         cell: ({ row }) => (
-          <Link to={`/contributors/${encodeURIComponent(row.original.cb_email)}`} className="text-sky-700 hover:underline">
+          <Link to={contributorPath(row.original.cb_email)} className="text-sky-700 hover:underline">
             {row.original.cb_email}
           </Link>
         ),

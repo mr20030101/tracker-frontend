@@ -16,6 +16,7 @@ import { CtsFormModal } from '../components/CtsFormModal'
 import { TaskSubmissionForm } from '../components/TaskSubmissionForm'
 import { LevelPill } from '../components/LevelPill'
 import { Modal } from '../components/Modal'
+import { contributorPath } from '../lib/urlRef'
 
 const TREND_DAYS = 30
 
@@ -133,7 +134,7 @@ export function ContributorDashboard() {
     .map((project) => ({ project, level: levelByProjectId.get(project.id) ?? ('contributor' as ProjectLevel) }))
 
   const quickLinks: QuickLink[] = [
-    { to: `/contributors/${encodeURIComponent(email)}`, label: 'Profile', icon: User },
+    { to: contributorPath(email), label: 'Profile', icon: User },
     { to: '/leaderboard', label: 'Leaderboard', icon: Trophy },
     { to: '/task-log', label: 'Task Log', icon: ClipboardList },
     { to: '/resources', label: 'Resources', icon: BookOpen },

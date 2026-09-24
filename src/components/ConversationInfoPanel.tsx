@@ -3,6 +3,7 @@ import { CheckSquare, Trash2, User as UserIcon, X } from 'lucide-react'
 import { Avatar } from './Avatar'
 import { formatActiveStatus } from '../lib/presence'
 import type { DirectoryUser } from '../types'
+import { contributorPathById } from '../lib/urlRef'
 
 export function ConversationInfoPanel({
   user,
@@ -28,13 +29,15 @@ export function ConversationInfoPanel({
       <div className="flex flex-col items-center gap-1 px-4 pb-6 pt-1">
         <Avatar name={user.name} photoUrl={user.avatar_url} size={80} />
         <span className="mt-2 text-base font-semibold text-gray-900">{user.name}</span>
-        <span className="text-xs text-gray-400">{user.is_bot ? 'Always active' : formatActiveStatus(user.last_seen_at)}</span>
+        {(user.is_bot || user.last_seen_at) && (
+          <span className="text-xs text-gray-400">{user.is_bot ? 'Always active' : formatActiveStatus(user.last_seen_at)}</span>
+        )}
       </div>
 
       <div className="flex justify-center gap-8 border-b border-gray-100 px-4 pb-6">
         {!user.is_bot && (
           <Link
-            to={`/contributors/${encodeURIComponent(user.email)}`}
+            to={contributorPathById(user.id)}
             className="flex flex-col items-center gap-1.5 text-gray-600 hover:text-gray-900"
           >
             <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">

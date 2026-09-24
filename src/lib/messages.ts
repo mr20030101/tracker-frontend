@@ -1,5 +1,7 @@
 import { supabase } from './api'
-import type { Conversation, DirectoryUser, Message } from '../types'
+import type { Conversation, ConversationSummary, DirectoryUser, Message } from '../types'
+
+export const THREAD_PAGE_SIZE = 30
 
 export async function fetchDirectory(): Promise<DirectoryUser[]> {
   const { data, error } = await supabase.rpc('directory')
@@ -7,18 +9,35 @@ export async function fetchDirectory(): Promise<DirectoryUser[]> {
   return (data ?? []) as DirectoryUser[]
 }
 
-export async function fetchAllMessages(myId: string): Promise<Message[]> {
-  const { data, error } = await supabase
+// The inbox: one small row per conversation (unread count + last few messages), computed in the
+// database so history never has to be downloaded just to draw the list.
+export async function fetchConversationSummaries(): Promise<ConversationSummary[]> {
+  const { data, error } = await supabase.rpc('conversation_summaries')
+  if (error) throw error
+  return ((data ?? []) as ConversationSummary[]).map((s) => ({
+    ...s,
+    unread_count: Number(s.unread_count),
+    recent: s.recent ?? [],
+  }))
+}
+
+// One page of a two-person thread, newest first: the newest THREAD_PAGE_SIZE messages, or the next
+// THREAD_PAGE_SIZE older than `beforeId`. "Delete for me" hides a message from just the viewer who
+// deleted it — the other party's copy is untouched — so those are filtered out here.
+export async function fetchThreadPage(myId: string, otherUserId: string, beforeId?: number): Promise<Message[]> {
+  let query = supabase
     .from('messages')
     .select('*')
-    .or(`sender_id.eq.${myId},recipient_id.eq.${myId}`)
-    .order('created_at', { ascending: true })
+    .or(
+      `and(sender_id.eq.${myId},recipient_id.eq.${otherUserId},deleted_by_sender.eq.false),` +
+        `and(sender_id.eq.${otherUserId},recipient_id.eq.${myId},deleted_by_recipient.eq.false)`,
+    )
+    .order('id', { ascending: false })
+    .limit(THREAD_PAGE_SIZE)
+  if (beforeId !== undefined) query = query.lt('id', beforeId)
+  const { data, error } = await query
   if (error) throw error
-  // "Delete for me" hides a message from just the viewer who deleted it —
-  // the other party's copy is untouched.
-  return ((data ?? []) as Message[]).filter(
-    (m) => !((m.sender_id === myId && m.deleted_by_sender) || (m.recipient_id === myId && m.deleted_by_recipient)),
-  )
+  return (data ?? []) as Message[]
 }
 
 export async function deleteMessageForMe(myId: string, message: Message): Promise<void> {
@@ -77,7 +96,14 @@ export async function markThreadRead(myId: string, otherUserId: string): Promise
   if (error) throw error
 }
 
-export function buildConversations(myId: string, messages: Message[], usersById: Map<string, DirectoryUser>): Conversation[] {
+// `messages` is only each conversation's recent tail, so the real unread totals come from
+// `unreadByOther` (the database's count); counting `messages` is just the fallback.
+export function buildConversations(
+  myId: string,
+  messages: Message[],
+  usersById: Map<string, DirectoryUser>,
+  unreadByOther?: Map<string, number>,
+): Conversation[] {
   const byOther = new Map<string, Message[]>()
   for (const message of messages) {
     const otherUserId = message.sender_id === myId ? message.recipient_id : message.sender_id
@@ -90,7 +116,7 @@ export function buildConversations(myId: string, messages: Message[], usersById:
     .map(([otherUserId, thread]) => {
       const sorted = [...thread].sort((a, b) => a.created_at.localeCompare(b.created_at))
       const lastMessage = sorted[sorted.length - 1]
-      const unreadCount = sorted.filter((m) => m.recipient_id === myId && !m.read_at).length
+      const unreadCount = unreadByOther?.get(otherUserId) ?? sorted.filter((m) => m.recipient_id === myId && !m.read_at).length
       const other = usersById.get(otherUserId)
       return {
         otherUserId,

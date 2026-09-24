@@ -7,6 +7,7 @@ import { api, functionErrorMessage, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { startOfWeek, toISODate } from '../lib/week'
 import { clearMustChangePassword, updateOwnProfile, uploadAvatar } from '../lib/profile'
+import { isUserId, messagePath, parseContributorRef } from '../lib/urlRef'
 import type { ContributorProfile, ContributorProjectLevel, Project, ProjectLevel } from '../types'
 import { Avatar } from '../components/Avatar'
 import { LevelPill, LEVEL_TIERS } from '../components/LevelPill'
@@ -102,10 +103,12 @@ function LevelBadgePicker({ level, onChange }: { level: ProjectLevel; onChange: 
 
 export function CbProfile() {
   const { user: currentUser, refreshUser } = useAuth()
-  const { email = '' } = useParams<{ email: string }>()
-  const decodedEmail = decodeURIComponent(email)
+  const { email: contributorRef = '' } = useParams<{ email: string }>()
+  // The URL carries an email, or a user id when the viewer isn't allowed to know the email.
+  const target = parseContributorRef(contributorRef)
+  const targetIsId = isUserId(target)
 
-  const isOwnProfile = currentUser?.email.toLowerCase() === decodedEmail.toLowerCase()
+  const isOwnProfile = targetIsId ? currentUser?.id === target : currentUser?.email.toLowerCase() === target.toLowerCase()
 
   const [showWarning, setShowWarning] = useState(true)
   const [profileName, setProfileName] = useState(() => currentUser?.name ?? '')
@@ -123,7 +126,7 @@ export function CbProfile() {
     setShowWarning(true)
     const timer = setTimeout(() => setShowWarning(false), 10000)
     return () => clearTimeout(timer)
-  }, [decodedEmail])
+  }, [target])
 
   useEffect(() => {
     return () => {
@@ -133,15 +136,18 @@ export function CbProfile() {
   const thisWeekIso = useMemo(() => toISODate(startOfWeek(new Date())), [])
 
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ['contributor', decodedEmail, thisWeekIso],
+    queryKey: ['contributor', target, thisWeekIso],
     queryFn: async () =>
       (
         await api.get<ContributorProfile>('/contributor', {
-          params: { email: decodedEmail, week_start: thisWeekIso },
+          params: targetIsId ? { id: target, week_start: thisWeekIso } : { email: target, week_start: thisWeekIso },
         })
       ).data,
-    enabled: Boolean(decodedEmail),
+    enabled: Boolean(target),
   })
+
+  // Empty for a peer opened by id: they aren't told the email, and the page just leaves it out.
+  const decodedEmail = targetIsId ? (data?.cb_email ?? '') : target
 
   const queryClient = useQueryClient()
 
@@ -301,7 +307,7 @@ export function CbProfile() {
               </span>
             )}
           </div>
-          <p className="text-sm text-gray-500">{decodedEmail}</p>
+          {decodedEmail && <p className="text-sm text-gray-500">{decodedEmail}</p>}
           {(isOwnProfile ? currentUser?.bio : data.user?.bio) && (
             <p className="mt-1 max-w-xl text-sm text-gray-600">{isOwnProfile ? currentUser?.bio : data.user?.bio}</p>
           )}
@@ -309,7 +315,7 @@ export function CbProfile() {
         <div className="ml-auto flex items-center gap-2">
           {!isOwnProfile && contributorId && (
             <Link
-              to={`/messages/${contributorId}`}
+              to={messagePath(contributorId)}
               className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
             >
               <MessageCircle className="h-4 w-4" />
@@ -549,7 +555,7 @@ export function CbProfile() {
 
       {/* A contributor's own graphs/table live on their own Task Log now; this page keeps them
           only for someone else reviewing this contributor (a lead/admin, or a public view). */}
-      {isContributorRole && !isOwnProfile && (
+      {isContributorRole && !isOwnProfile && decodedEmail && (
         <ContributorWorkPanel email={decodedEmail} contributorName={displayName} canEdit={canEdit} showGraphsToggle={false} />
       )}
     </Reveal>

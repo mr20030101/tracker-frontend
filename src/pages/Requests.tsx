@@ -14,6 +14,7 @@ import {
 } from '../lib/taskRequests'
 import { BadVideoReportModal } from '../components/BadVideoReportModal'
 import type { RequestStatus, RequestType } from '../types'
+import { contributorPath } from '../lib/urlRef'
 
 const MANAGER_ROLES = ['admin', 'lead']
 
@@ -347,7 +348,7 @@ export function Requests() {
                     <td className="px-5 py-3">
                       {request.requester ? (
                         <Link
-                          to={`/contributors/${encodeURIComponent(request.requester.email)}`}
+                          to={contributorPath(request.requester.email)}
                           className="font-medium text-sky-700 hover:underline"
                         >
                           {request.requester.name}
