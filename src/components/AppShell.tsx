@@ -1,6 +1,7 @@
 import { NavLink, useLocation } from 'react-router-dom'
 import { useLayoutEffect, useRef, type ReactNode } from 'react'
 import { animate } from 'animejs'
+import { useQuery } from '@tanstack/react-query'
 import {
   LayoutDashboard,
   MessageCircle,
@@ -25,10 +26,15 @@ import { MessagesButton } from './MessagesButton'
 import { ThemeToggle } from './ThemeToggle'
 import { OnlineUsers } from './OnlineUsers'
 import { contributorPath } from '../lib/urlRef'
+import { fetchPendingRequestCount } from '../lib/taskRequests'
 
 const MANAGER_ROLES = ['admin', 'lead']
 
-function navSections(isManager: boolean, isAdmin: boolean): { label: string; items: { to: string; label: string; icon: LucideIcon }[] }[] {
+function navSections(
+  isManager: boolean,
+  isAdmin: boolean,
+  pendingRequests: number,
+): { label: string; items: { to: string; label: string; icon: LucideIcon; badge?: number }[] }[] {
   return [
     {
       label: 'Overview',
@@ -42,7 +48,7 @@ function navSections(isManager: boolean, isAdmin: boolean): { label: string; ite
       items: isManager
         ? [
           { to: '/task-log', label: 'Task Log', icon: ClipboardList },
-          { to: '/requests', label: 'Requests', icon: Hourglass },
+          { to: '/requests', label: 'Requests', icon: Hourglass, badge: pendingRequests },
           { to: '/data-quality', label: 'Data Quality', icon: ShieldCheck },
           ...(isAdmin ? [{ to: '/activity-log', label: 'Activity Log', icon: History }] : []),
         ]
@@ -75,6 +81,15 @@ export function AppShell({ children }: { children: ReactNode }) {
   const isManager = Boolean(user && MANAGER_ROLES.includes(user.role))
   const isAdmin = user?.role === 'admin'
   const mainRef = useRef<HTMLElement>(null)
+
+  // The number on the Requests link, for the people who decide them. Refreshed after every review
+  // on the Requests page (same ['task-requests'] key prefix) and every half minute in between.
+  const { data: pendingRequests = 0 } = useQuery({
+    queryKey: ['task-requests', 'pending-count'],
+    queryFn: fetchPendingRequestCount,
+    enabled: isManager,
+    refetchInterval: 30_000,
+  })
 
   // Fade the page area in on each route change. Opacity only: a transform here
   // would become the containing block for the page's position: fixed modals.
@@ -127,7 +142,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
 
             <nav className="flex-1 overflow-y-auto px-3 py-2">
-              {navSections(isManager, isAdmin).map((section) => (
+              {navSections(isManager, isAdmin, pendingRequests).map((section) => (
                 <div key={section.label} className="mb-4">
                   <div className="px-2 pb-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-gray-400">
                     {section.label}
@@ -144,6 +159,12 @@ export function AppShell({ children }: { children: ReactNode }) {
                     >
                       <item.icon className="h-4 w-4 shrink-0" strokeWidth={2} />
                       {item.label}
+                      {item.badge ? (
+                        <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-status-danger-text px-1.5 text-[11px] font-bold text-white">
+                          {item.badge > 99 ? '99+' : item.badge}
+                          <span className="sr-only"> pending</span>
+                        </span>
+                      ) : null}
                     </NavLink>
                   ))}
                 </div>

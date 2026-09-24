@@ -15,6 +15,8 @@ export type TaskRequestWithContext = TaskRequest & {
     project: { name: string } | null
   } | null
   requester: { id: string; name: string; email: string; remotasks_id: string | null } | null
+  // Null while pending, or when the viewer isn't allowed to read the reviewer's profile.
+  reviewer: { id: string; name: string } | null
 }
 
 /**
@@ -29,11 +31,24 @@ export async function fetchTaskRequests(): Promise<TaskRequestWithContext[]> {
     .select(
       // The FK constraint keeps its pre-rename name (task_extension_requests_requested_by_fkey) —
       // renaming DB constraint names was deliberately left out of the table rename for minimal risk.
-      '*, task_submission:task_submissions(id, task_id, date, status, cb_email, project:projects(name)), requester:profiles!task_extension_requests_requested_by_fkey(id, name, email, remotasks_id)',
+      '*, task_submission:task_submissions(id, task_id, date, status, cb_email, project:projects(name)), requester:profiles!task_extension_requests_requested_by_fkey(id, name, email, remotasks_id), reviewer:profiles!task_extension_requests_reviewed_by_fkey(id, name)',
     )
     .order('requested_at', { ascending: false })
   if (error) throw error
   return data as TaskRequestWithContext[]
+}
+
+/**
+ * How many requests are waiting on a decision, out of the ones the caller can see — the same set
+ * (and so the same number) as the Requests page's Pending tab, without downloading the rows.
+ */
+export async function fetchPendingRequestCount(): Promise<number> {
+  const { count, error } = await supabase
+    .from('task_requests')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'pending')
+  if (error) throw error
+  return count ?? 0
 }
 
 export async function requestExtension(submissionId: number, requestedBy: string, reason: string): Promise<void> {

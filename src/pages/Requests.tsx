@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../lib/auth'
@@ -13,6 +13,7 @@ import {
   type TaskRequestWithContext,
 } from '../lib/taskRequests'
 import { BadVideoReportModal } from '../components/BadVideoReportModal'
+import { Modal } from '../components/Modal'
 import type { RequestStatus, RequestType } from '../types'
 import { contributorPath } from '../lib/urlRef'
 import { RobotEmoji } from '../components/RobotEmoji'
@@ -39,6 +40,16 @@ const TYPE_STYLES: Record<RequestType, string> = {
 }
 
 const pillClass = 'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium'
+const humanize = (value: string) => value.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase())
+
+function Detail({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="grid grid-cols-[7.5rem_1fr] gap-3 border-b border-gray-100 py-2.5 last:border-b-0">
+      <dt className="pt-0.5 text-xs font-semibold uppercase tracking-wider text-gray-400">{label}</dt>
+      <dd className="min-w-0 break-words text-gray-800">{children}</dd>
+    </div>
+  )
+}
 const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`
 
 export function Requests() {
@@ -50,6 +61,7 @@ export function Requests() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [notice, setNotice] = useState<Notice | null>(null)
   const [newReport, setNewReport] = useState(false)
+  const [viewingId, setViewingId] = useState<number | null>(null)
 
   const { data: requests = [], isLoading } = useQuery({
     queryKey: ['task-requests', 'all'],
@@ -144,6 +156,78 @@ export function Requests() {
     reviewMutation.mutate({ id: request.id, status: 'approved' })
   }
 
+  // A contributor can act (withdraw) on a request only if it's their own — either their extension
+  // request, or a bad_video report they flagged themselves. A bad_video report someone else (their
+  // lead) filed about their work is view-only.
+  const canAct = (request: TaskRequestWithContext) => isManager || request.requested_by === user?.id
+
+  // The buttons on a request's row and in its details modal. `after` runs once one is used, so the
+  // modal can close; `inModal` drops the reviewed date, which the modal already spells out.
+  function actionButtons(request: TaskRequestWithContext, { after, inModal = false }: { after?: () => void; inModal?: boolean } = {}) {
+    return (
+      <>
+        {request.status === 'pending' && canAct(request) && (isManager ? (
+          <>
+            <button
+              onClick={() => {
+                if (request.type === 'extension') handleRequestExtension(request)
+                else handleFileBadVideoReport(request)
+                after?.()
+              }}
+              disabled={reviewMutation.isPending}
+              title={
+                request.type === 'extension'
+                  ? 'Opens the Reclaim / Extend form, prefilled, and marks this approved'
+                  : 'Opens the Bad Video Validation/Removal form, prefilled, and marks this approved'
+              }
+              className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground disabled:opacity-50"
+            >
+              Request
+            </button>
+            <button
+              onClick={() => {
+                reviewMutation.mutate({ id: request.id, status: 'denied' })
+                after?.()
+              }}
+              disabled={reviewMutation.isPending}
+              className="rounded-lg border border-status-danger-text/30 px-3 py-1.5 text-xs font-semibold text-status-danger-text hover:bg-status-danger-bg disabled:opacity-50"
+            >
+              Deny
+            </button>
+          </>
+        ) : (
+          <button
+            onClick={() => {
+              withdrawMutation.mutate(request.id)
+              after?.()
+            }}
+            disabled={withdrawMutation.isPending}
+            className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+          >
+            Withdraw
+          </button>
+        ))}
+        {!inModal && request.status !== 'pending' && (
+          <span className="text-xs text-gray-400">{request.reviewed_at ? new Date(request.reviewed_at).toLocaleDateString() : ''}</span>
+        )}
+        {isManager && (
+          <button
+            onClick={() => {
+              if (confirm('Delete this request? This cannot be undone.')) {
+                withdrawMutation.mutate(request.id)
+                after?.()
+              }
+            }}
+            disabled={withdrawMutation.isPending}
+            className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+          >
+            Delete
+          </button>
+        )}
+      </>
+    )
+  }
+
   function setStatus(status: StatusFilter) {
     setStatusFilter(status)
     setSelectedIds(new Set())
@@ -171,7 +255,9 @@ export function Requests() {
   const rows = requests.filter((r) => (statusFilter === 'all' || r.status === statusFilter) && (typeFilter === 'all' || r.type === typeFilter))
   const selected = rows.filter((r) => selectedIds.has(r.id))
   const allVisibleSelected = rows.length > 0 && rows.every((r) => selectedIds.has(r.id))
-  const columnCount = isManager ? 10 : 9
+  const columnCount = isManager ? 6 : 5
+  // Looked up by id each render, so the modal follows the request if it's reviewed while open.
+  const viewing = viewingId === null ? null : (requests.find((r) => r.id === viewingId) ?? null)
 
   return (
     <div>
@@ -308,10 +394,6 @@ export function Requests() {
               </th>
               {isManager && <th className="px-5 py-3">Contributor</th>}
               <th className="px-5 py-3">Type</th>
-              <th className="px-5 py-3">Task ID</th>
-              <th className="px-5 py-3">Project</th>
-              <th className="px-5 py-3">For date</th>
-              <th className="px-5 py-3">Details</th>
               <th className="px-5 py-3">Requested</th>
               <th className="px-5 py-3">Status</th>
               <th className="px-5 py-3 text-right">Actions</th>
@@ -332,116 +414,131 @@ export function Requests() {
                 </td>
               </tr>
             )}
-            {rows.map((request) => {
-              // A contributor can act (withdraw) on a request only if it's their own — either
-              // their extension request, or a bad_video report they flagged themselves. A
-              // bad_video report someone else (their lead) filed about their work is view-only.
-              const canAct = isManager || request.requested_by === user?.id
-              return (
-                <tr key={request.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3">
-                    <input
-                      type="checkbox"
-                      aria-label={`Select request ${request.id}`}
-                      checked={selectedIds.has(request.id)}
-                      onChange={() => toggleOne(request.id)}
-                      className="h-4 w-4 rounded border-gray-300 text-accent focus:ring-accent"
-                    />
-                  </td>
-                  {isManager && (
-                    <td className="px-5 py-3">
-                      {request.requester ? (
-                        <Link
-                          to={contributorPath(request.requester.email)}
-                          className="font-medium text-sky-700 hover:underline"
-                        >
-                          {request.requester.name}
-                        </Link>
-                      ) : (
-                        '—'
-                      )}
-                    </td>
-                  )}
+            {rows.map((request) => (
+              <tr key={request.id} onClick={() => setViewingId(request.id)} className="cursor-pointer hover:bg-gray-50">
+                <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                  <input
+                    type="checkbox"
+                    aria-label={`Select request ${request.id}`}
+                    checked={selectedIds.has(request.id)}
+                    onChange={() => toggleOne(request.id)}
+                    className="h-4 w-4 rounded border-gray-300 text-accent focus:ring-accent"
+                  />
+                </td>
+                {isManager && (
                   <td className="px-5 py-3">
-                    <span className={`${pillClass} ${TYPE_STYLES[request.type]}`}>{TYPE_LABELS[request.type]}</span>
-                  </td>
-                  <td className="max-w-40 truncate px-5 py-3 font-mono text-xs text-gray-600">{request.task_submission?.task_id ?? '—'}</td>
-                  <td className="px-5 py-3 text-gray-600">{request.task_submission?.project?.name ?? '—'}</td>
-                  <td className="px-5 py-3 text-gray-500">{request.task_submission?.date?.slice(0, 10) ?? '—'}</td>
-                  <td className="max-w-64 truncate px-5 py-3 text-gray-600">
-                    {request.type === 'extension' ? (
-                      request.reason ?? <span className="text-gray-300">—</span>
+                    {request.requester ? (
+                      <Link
+                        to={contributorPath(request.requester.email)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="font-medium text-sky-700 hover:underline"
+                      >
+                        {request.requester.name}
+                      </Link>
                     ) : (
-                      <span title={`Workforce: ${request.bad_video_workforce} — ${request.bad_video_workforce_name}`}>
-                        {request.bad_video_category} · frame {request.bad_video_frame}
-                      </span>
+                      '—'
                     )}
                   </td>
-                  <td className="whitespace-nowrap px-5 py-3 text-gray-500">{new Date(request.requested_at).toLocaleString()}</td>
-                  <td className="px-5 py-3">
-                    <span className={`${pillClass} ${STATUS_STYLES[request.status]}`}>{STATUS_LABELS[request.status]}</span>
-                  </td>
-                  <td className="px-5 py-3 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      {request.status === 'pending' && canAct && (isManager ? (
-                        <>
-                          <button
-                            onClick={() =>
-                              request.type === 'extension' ? handleRequestExtension(request) : handleFileBadVideoReport(request)
-                            }
-                            disabled={reviewMutation.isPending}
-                            title={
-                              request.type === 'extension'
-                                ? 'Opens the Reclaim / Extend form, prefilled, and marks this approved'
-                                : 'Opens the Bad Video Validation/Removal form, prefilled, and marks this approved'
-                            }
-                            className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground disabled:opacity-50"
-                          >
-                            Request
-                          </button>
-                          <button
-                            onClick={() => reviewMutation.mutate({ id: request.id, status: 'denied' })}
-                            disabled={reviewMutation.isPending}
-                            className="rounded-lg border border-status-danger-text/30 px-3 py-1.5 text-xs font-semibold text-status-danger-text hover:bg-status-danger-bg disabled:opacity-50"
-                          >
-                            Deny
-                          </button>
-                        </>
-                      ) : (
-                        <button
-                          onClick={() => withdrawMutation.mutate(request.id)}
-                          disabled={withdrawMutation.isPending}
-                          className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
-                        >
-                          Withdraw
-                        </button>
-                      ))}
-                      {request.status !== 'pending' && (
-                        <span className="text-xs text-gray-400">
-                          {request.reviewed_at ? new Date(request.reviewed_at).toLocaleDateString() : ''}
-                        </span>
-                      )}
-                      {isManager && (
-                        <button
-                          onClick={() => {
-                            if (confirm('Delete this request? This cannot be undone.')) {
-                              withdrawMutation.mutate(request.id)
-                            }
-                          }}
-                          disabled={withdrawMutation.isPending}
-                          className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
-                        >
-                          Delete
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              )
-            })}
+                )}
+                <td className="px-5 py-3">
+                  <span className={`${pillClass} ${TYPE_STYLES[request.type]}`}>{TYPE_LABELS[request.type]}</span>
+                </td>
+                <td className="whitespace-nowrap px-5 py-3 text-gray-500">{new Date(request.requested_at).toLocaleString()}</td>
+                <td className="px-5 py-3">
+                  <span className={`${pillClass} ${STATUS_STYLES[request.status]}`}>{STATUS_LABELS[request.status]}</span>
+                </td>
+                <td className="px-5 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      onClick={() => setViewingId(request.id)}
+                      className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+                    >
+                      Details
+                    </button>
+                    {actionButtons(request)}
+                  </div>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
+
+      {viewing && (
+        <Modal title="Request details" onClose={() => setViewingId(null)} maxWidthClassName="max-w-xl">
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <span className={`${pillClass} ${TYPE_STYLES[viewing.type]}`}>{TYPE_LABELS[viewing.type]}</span>
+            <span className={`${pillClass} ${STATUS_STYLES[viewing.status]}`}>{STATUS_LABELS[viewing.status]}</span>
+            <span className="ml-auto text-xs text-gray-400">Request #{viewing.id}</span>
+          </div>
+          <dl>
+            <Detail label="Requested by">
+              {viewing.requester ? (
+                isManager ? (
+                  <>
+                    <Link to={contributorPath(viewing.requester.email)} className="font-medium text-sky-700 hover:underline">
+                      {viewing.requester.name}
+                    </Link>
+                    <div className="text-xs text-gray-400">{viewing.requester.email}</div>
+                  </>
+                ) : (
+                  viewing.requester.name
+                )
+              ) : (
+                '—'
+              )}
+            </Detail>
+            <Detail label="Task owner">
+              {viewing.task_submission?.cb_email ? (
+                isManager ? (
+                  <Link to={contributorPath(viewing.task_submission.cb_email)} className="text-sky-700 hover:underline">
+                    {viewing.task_submission.cb_email}
+                  </Link>
+                ) : (
+                  viewing.task_submission.cb_email
+                )
+              ) : (
+                '—'
+              )}
+            </Detail>
+            <Detail label="Task ID">
+              <span className="font-mono text-xs break-all">{viewing.task_submission?.task_id ?? '—'}</span>
+            </Detail>
+            <Detail label="Project">{viewing.task_submission?.project?.name ?? '—'}</Detail>
+            <Detail label="For date">{viewing.task_submission?.date?.slice(0, 10) ?? '—'}</Detail>
+            <Detail label="Task status">{viewing.task_submission ? humanize(viewing.task_submission.status) : '—'}</Detail>
+            {viewing.type === 'extension' ? (
+              <Detail label="Reason">
+                {viewing.reason ? <span className="whitespace-pre-wrap">{viewing.reason}</span> : <span className="text-gray-400">No reason given</span>}
+              </Detail>
+            ) : (
+              <>
+                <Detail label="Category">{viewing.bad_video_category}</Detail>
+                <Detail label="Frame">{viewing.bad_video_frame}</Detail>
+                <Detail label="Workforce">
+                  {viewing.bad_video_workforce} — {viewing.bad_video_workforce_name}
+                </Detail>
+              </>
+            )}
+            <Detail label="Requested">{new Date(viewing.requested_at).toLocaleString()}</Detail>
+            <Detail label="Decision">
+              {viewing.reviewed_at ? (
+                <>
+                  {STATUS_LABELS[viewing.status]} on {new Date(viewing.reviewed_at).toLocaleString()}
+                  {viewing.reviewer && <span className="text-gray-500"> by {viewing.reviewer.name}</span>}
+                </>
+              ) : (
+                <span className="text-gray-400">Waiting for a decision</span>
+              )}
+            </Detail>
+          </dl>
+          {((viewing.status === 'pending' && canAct(viewing)) || isManager) && (
+            <div className="mt-5 flex flex-wrap items-center justify-end gap-2">
+              {actionButtons(viewing, { after: () => setViewingId(null), inModal: true })}
+            </div>
+          )}
+        </Modal>
+      )}
 
       {newReport && <BadVideoReportModal onClose={() => setNewReport(false)} />}
     </div>
