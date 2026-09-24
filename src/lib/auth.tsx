@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { api, logActivity, supabase, touchPresence } from './api'
 import type { User } from '../types'
 
@@ -17,6 +18,7 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient()
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   // Set when the user arrives from a password-reset email. Tracked here, not in Login, because the
@@ -39,10 +41,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }).finally(() => setLoading(false))
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY') setRecovering(true)
-      if (!session) setUser(null)
+      if (!session) {
+        setUser(null)
+        // Fetched data stays in memory after logout (or a session expiring) until the page reloads,
+        // and most of it is cached under keys shared by every user — so the next person to sign in
+        // on this browser would briefly see the previous user's data before their own arrives.
+        queryClient.clear()
+      }
     })
     return () => listener.subscription.unsubscribe()
-  }, [])
+  }, [queryClient])
 
   useEffect(() => {
     if (!user) return

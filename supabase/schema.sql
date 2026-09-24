@@ -1163,3 +1163,28 @@ end;
 $$;
 
 grant execute on function public.submit_hiring_application(uuid, text, text, text, text, text, boolean, boolean, boolean, text, text, numeric) to anon, authenticated;
+
+-- Keep these functions away from signed-out visitors. Postgres (and Supabase's default privileges)
+-- makes every new function executable by PUBLIC and anon, and the grants above only ADD authenticated
+-- — so without this, anyone holding the public anon key could call them. directory() alone listed
+-- every admin and everyone online to a stranger. Left public on purpose: hiring_lead_info() and
+-- submit_hiring_application() (the Apply page has no login) and the is_*() helpers (row-level
+-- security policies call them, and they only ever return false without a login). Sits at the end so
+-- re-running this file after a `drop function` + `create function` doesn't quietly re-open them; add
+-- any new signed-in-only function to this list.
+do $$
+declare fn record;
+begin
+  for fn in
+    select p.oid::regprocedure as sig
+    from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname in (
+        'clear_must_change_password', 'contributor_public_stats', 'contributor_public_stats_by_id',
+        'directory', 'leaderboard', 'touch_presence', 'update_own_profile', 'conversation_summaries'
+      )
+  loop
+    execute format('revoke execute on function %s from public, anon', fn.sig);
+    execute format('grant execute on function %s to authenticated, service_role', fn.sig);
+  end loop;
+end $$;
