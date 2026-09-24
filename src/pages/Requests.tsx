@@ -15,6 +15,7 @@ import {
 import { BadVideoReportModal } from '../components/BadVideoReportModal'
 import type { RequestStatus, RequestType } from '../types'
 import { contributorPath } from '../lib/urlRef'
+import { RobotEmoji } from '../components/RobotEmoji'
 
 const MANAGER_ROLES = ['admin', 'lead']
 
@@ -176,7 +177,10 @@ export function Requests() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Requests</h1>
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
+            Requests
+            <RobotEmoji page="requests" />
+          </h1>
           <p className="text-sm text-gray-500">
             {isManager
               ? "Your team's extension requests and bad-video reports."

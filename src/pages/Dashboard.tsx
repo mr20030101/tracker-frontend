@@ -7,6 +7,7 @@ import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, yearMonth, toISODate,
 import { useMessaging } from '../lib/messagingContext'
 import type { DashboardSummary } from '../types'
 import { LineChart } from '../components/LineChart'
+import { RobotEmoji } from '../components/RobotEmoji'
 
 export function Dashboard() {
   const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('week')
@@ -82,7 +83,10 @@ export function Dashboard() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
+            Dashboard
+            <RobotEmoji page="dashboard" />
+          </h1>
           <p className="text-sm text-gray-500">
             {formatRange(rangeStart, rangeEnd)} · {submittedCount} contributors submitted {periodPhrase}
             {disabledCount > 0 && ` · ${disabledCount} disabled`}

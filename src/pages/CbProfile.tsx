@@ -12,7 +12,9 @@ import type { ContributorProfile, ContributorProjectLevel, Project, ProjectLevel
 import { Avatar } from '../components/Avatar'
 import { LevelPill, LEVEL_TIERS } from '../components/LevelPill'
 import { ContributorWorkPanel } from '../components/ContributorWorkPanel'
+import { Modal } from '../components/Modal'
 import { Reveal } from '../components/Reveal'
+import { RobotEmoji } from '../components/RobotEmoji'
 
 const LEVEL_OPTIONS: ProjectLevel[] = ['contributor', 'l0', 'l1', 'l10']
 
@@ -111,6 +113,7 @@ export function CbProfile() {
   const isOwnProfile = targetIsId ? currentUser?.id === target : currentUser?.email.toLowerCase() === target.toLowerCase()
 
   const [showWarning, setShowWarning] = useState(true)
+  const [editingProfile, setEditingProfile] = useState(false)
   const [profileName, setProfileName] = useState(() => currentUser?.name ?? '')
   const [profileRemotasksId, setProfileRemotasksId] = useState(() => currentUser?.remotasks_id ?? '')
   const [profileShift, setProfileShift] = useState(() => currentUser?.shift ?? '')
@@ -229,9 +232,30 @@ export function CbProfile() {
       setProfilePhotoPreview(null)
       setProfilePassword('')
       setProfilePasswordConfirm('')
+      setEditingProfile(false)
     },
     onError: (mutationError: Error) => setProfileError(mutationError.message || 'Could not save your profile.'),
   })
+
+  // Every open starts from what is saved, so an abandoned edit doesn't linger into the next one.
+  function openEditProfile() {
+    setProfileName(currentUser?.name ?? '')
+    setProfileRemotasksId(currentUser?.remotasks_id ?? '')
+    setProfileShift(currentUser?.shift ?? '')
+    setProfileBio(currentUser?.bio ?? '')
+    setProfilePhotoFile(null)
+    setProfilePhotoPreview(null)
+    setProfilePassword('')
+    setProfilePasswordConfirm('')
+    setProfileError(null)
+    setEditingProfile(true)
+  }
+
+  function closeEditProfile() {
+    setEditingProfile(false)
+    setProfilePassword('')
+    setProfilePasswordConfirm('')
+  }
 
   function handlePhotoChange(file: File | null) {
     setProfilePhotoFile(file)
@@ -300,7 +324,10 @@ export function CbProfile() {
         <Avatar name={displayName} photoUrl={isOwnProfile ? currentUser?.avatar_url : data.user?.avatar_url} size={56} />
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-gray-900">{displayName}</h1>
+            <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
+              {displayName}
+              <RobotEmoji page="profile" />
+            </h1>
             {data.user && (
               <span className="rounded-full bg-accent-bg px-3 py-1 text-xs font-medium capitalize text-accent-foreground">
                 {data.user.role}
@@ -322,12 +349,19 @@ export function CbProfile() {
               Message
             </Link>
           )}
+          {isOwnProfile && (
+            <button
+              onClick={openEditProfile}
+              className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            >
+              Edit Profile
+            </button>
+          )}
         </div>
       </div>
 
-      {isOwnProfile && (
-        <div className="mb-6 rounded-xl border border-gray-200 bg-white p-6">
-          <h2 className="mb-5 text-sm font-semibold text-gray-700">Edit Profile</h2>
+      {isOwnProfile && editingProfile && (
+        <Modal title="Edit Profile" onClose={closeEditProfile} maxWidthClassName="max-w-2xl">
           <form onSubmit={handleSaveProfile} className="flex flex-col gap-5">
             <div className="flex items-center gap-4">
               <div className="group relative shrink-0">
@@ -452,6 +486,13 @@ export function CbProfile() {
             {profileError && <div className="rounded-lg bg-status-danger-text px-3 py-2 text-sm text-status-danger-bg">{profileError}</div>}
             <div className="flex justify-end gap-2">
               <button
+                type="button"
+                onClick={closeEditProfile}
+                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
+              >
+                Cancel
+              </button>
+              <button
                 type="submit"
                 disabled={saveProfileMutation.isPending || !profileName.trim()}
                 className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
@@ -460,7 +501,7 @@ export function CbProfile() {
               </button>
             </div>
           </form>
-        </div>
+        </Modal>
       )}
 
       {/* A CB's own "no submissions yet" nudge lives on their Dashboard now; keep it here only

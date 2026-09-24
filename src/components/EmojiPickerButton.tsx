@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { ROBOTS } from './RobotEmoji'
 
 const EMOJIS = [
   '😀', '😂', '😊', '😍', '😘', '😎', '🤔', '😅', '😢', '😭',
@@ -7,8 +8,14 @@ const EMOJIS = [
   '👏', '💪', '🎉', '🔥', '✅', '❌', '❤️', '💯', '👀', '🚀',
 ]
 
+// The robot next to each page title, offered here too. Taken from the same list, so swapping one
+// there swaps it here.
+const ROBOT_EMOJIS = [...new Set(Object.values(ROBOTS))]
+
 const PANEL_WIDTH = 224
 const EDGE_GAP = 8
+// Room the panel needs above the button before it opens upward instead of down.
+const PANEL_HEIGHT = 260
 // Above Modal's z-50, so a picker opened inside a modal isn't covered by it.
 const PANEL_Z_INDEX = 60
 
@@ -16,6 +23,8 @@ interface PanelPosition {
   top?: number
   bottom?: number
   right: number
+  // The room the panel has in the direction it opens; it scrolls if it's taller than that.
+  maxHeight: number
 }
 
 export function EmojiPickerButton({ onSelect }: { onSelect: (emoji: string) => void }) {
@@ -31,9 +40,12 @@ export function EmojiPickerButton({ onSelect }: { onSelect: (emoji: string) => v
     if (!open || !button) return
     const rect = button.getBoundingClientRect()
     const above = rect.top - EDGE_GAP
-    const openDown = above < 200 && window.innerHeight - rect.bottom > above
+    const below = window.innerHeight - rect.bottom - EDGE_GAP
+    const openDown = above < PANEL_HEIGHT && below > above
     setPos({
-      ...(openDown ? { top: rect.bottom + 8 } : { bottom: window.innerHeight - rect.top + 8 }),
+      ...(openDown
+        ? { top: rect.bottom + 8, maxHeight: below - 8 }
+        : { bottom: window.innerHeight - rect.top + 8, maxHeight: above - 8 }),
       right: window.innerWidth - rect.right,
     })
   }, [open])
@@ -58,6 +70,21 @@ export function EmojiPickerButton({ onSelect }: { onSelect: (emoji: string) => v
     return () => window.removeEventListener('mousedown', handleClickOutside)
   }, [open])
 
+  // `group` keeps keys unique: the rocket is in both lists.
+  const pick = (emoji: string, group: string) => (
+    <button
+      key={`${group}-${emoji}`}
+      type="button"
+      onClick={() => {
+        onSelect(emoji)
+        close()
+      }}
+      className="rounded p-1 text-lg hover:bg-gray-100"
+    >
+      {emoji}
+    </button>
+  )
+
   return (
     <>
       <button
@@ -75,21 +102,11 @@ export function EmojiPickerButton({ onSelect }: { onSelect: (emoji: string) => v
           <div
             ref={panelRef}
             style={{ position: 'fixed', zIndex: PANEL_Z_INDEX, width: PANEL_WIDTH, ...pos }}
-            className="grid grid-cols-8 gap-1 rounded-xl border border-gray-200 bg-white p-2 shadow-lg"
+            className="grid grid-cols-8 gap-1 overflow-y-auto rounded-xl border border-gray-200 bg-white p-2 shadow-lg"
           >
-            {EMOJIS.map((emoji) => (
-              <button
-                key={emoji}
-                type="button"
-                onClick={() => {
-                  onSelect(emoji)
-                  close()
-                }}
-                className="rounded p-1 text-lg hover:bg-gray-100"
-              >
-                {emoji}
-              </button>
-            ))}
+            {EMOJIS.map((emoji) => pick(emoji, 'common'))}
+            <div className="col-span-8 mt-1 px-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Robots</div>
+            {ROBOT_EMOJIS.map((emoji) => pick(emoji, 'robots'))}
           </div>,
           document.body,
         )}

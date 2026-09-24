@@ -7,6 +7,7 @@ import { Avatar } from '../components/Avatar'
 import { Select } from '../components/Select'
 import { DataTable } from '../components/DataTable'
 import { Modal } from '../components/Modal'
+import { RobotEmoji } from '../components/RobotEmoji'
 
 const EVENT_LABELS: Record<ActivityEvent, string> = {
   login: 'Signed in',
@@ -93,7 +94,10 @@ export function ActivityLog() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Activity Log</h1>
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
+            Activity Log
+            <RobotEmoji page="activityLog" />
+          </h1>
           <p className="text-sm text-gray-500">Sign-in and sign-out activity across all logins.</p>
         </div>
         <div className="flex items-center gap-2">

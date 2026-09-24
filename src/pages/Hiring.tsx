@@ -34,6 +34,7 @@ import { downloadCsv } from '../lib/csv'
 import { Modal } from '../components/Modal'
 import { Select } from '../components/Select'
 import { contributorPath } from '../lib/urlRef'
+import { RobotEmoji } from '../components/RobotEmoji'
 
 type StatusFilter = HiringStatus | 'all'
 type Notice = { tone: 'success' | 'error'; text: string }
@@ -660,7 +661,10 @@ export function Hiring() {
     <div>
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Hiring</h1>
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
+            Hiring
+            <RobotEmoji page="hiring" />
+          </h1>
           <p className="text-sm text-gray-500">
             {isAdmin
               ? "Review applicants from every lead's application link."

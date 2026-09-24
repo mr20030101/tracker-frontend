@@ -6,6 +6,7 @@ import type { Project, User } from '../types'
 import { Modal } from '../components/Modal'
 import { Combobox } from '../components/Combobox'
 import { ActionsMenu } from '../components/ActionsMenu'
+import { RobotEmoji } from '../components/RobotEmoji'
 
 interface ProjectLead {
   project_id: number
@@ -135,7 +136,10 @@ export function Projects() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Projects</h1>
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
+            Projects
+            <RobotEmoji page="projects" />
+          </h1>
           <p className="text-sm text-gray-500">
             Manage the list of projects contributors can log task submissions against.
           </p>
