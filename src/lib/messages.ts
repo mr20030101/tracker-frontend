@@ -73,17 +73,14 @@ export async function deleteConversationForMe(myId: string, otherUserId: string)
   }
 }
 
-export async function sendMessage(recipientId: string, body: string): Promise<Message> {
+// Doesn't ask for the stored row back: when someone spams the bot the database drops the message
+// (and has the bot post a reminder instead), so there may be no row to return.
+export async function sendMessage(recipientId: string, body: string): Promise<void> {
   const { data: authData } = await supabase.auth.getUser()
   const senderId = authData.user?.id
   if (!senderId) throw new Error('Unauthenticated')
-  const { data, error } = await supabase
-    .from('messages')
-    .insert({ sender_id: senderId, recipient_id: recipientId, body })
-    .select()
-    .single()
+  const { error } = await supabase.from('messages').insert({ sender_id: senderId, recipient_id: recipientId, body })
   if (error) throw error
-  return data as Message
 }
 
 export async function markThreadRead(myId: string, otherUserId: string): Promise<void> {

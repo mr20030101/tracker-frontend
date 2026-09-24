@@ -576,6 +576,64 @@ create trigger messages_prevent_tampering
   before update on public.messages
   for each row execute procedure public.prevent_message_tampering();
 
+-- Spam guard, enforced here so it holds however a message is sent (the UI is not the only client).
+-- Every message to the FAQ bot costs a Groq call and produces a reply, so that is capped tighter:
+-- 5 a minute to the bot, 30 a minute to people, and 2000 characters per message (the longest real
+-- one so far is ~1150). Bots are exempt so the bot's own replies and the daily digest are never
+-- blocked.
+-- Over the limit to the bot, the message is dropped (returning null skips the row without aborting
+-- the transaction, which is what lets the bot's reply be saved in the same statement) and the bot
+-- posts a fixed reminder, at most one a minute so the warnings can't be spammed either. The other
+-- two limits raise an exception, whose text the chat UI shows to the sender as-is.
+create or replace function public.enforce_message_limits()
+returns trigger language plpgsql security definer set search_path = public
+as $$
+declare
+  warning constant text := 'Please be reminded: no spamming. You are sending messages too fast, so I could not take your last message. Give it a minute, then send it again.';
+  sender_is_bot boolean;
+  recipient_is_bot boolean;
+  recent integer;
+begin
+  select is_bot into sender_is_bot from public.profiles where id = new.sender_id;
+  if coalesce(sender_is_bot, false) then
+    return new;
+  end if;
+
+  if char_length(new.body) > 2000 then
+    raise exception 'Messages can be at most 2000 characters.';
+  end if;
+
+  select is_bot into recipient_is_bot from public.profiles where id = new.recipient_id;
+  if coalesce(recipient_is_bot, false) then
+    select count(*) into recent from public.messages
+     where sender_id = new.sender_id and recipient_id = new.recipient_id and created_at > now() - interval '60 seconds';
+    if recent >= 5 then
+      if not exists (
+        select 1 from public.messages
+         where sender_id = new.recipient_id and recipient_id = new.sender_id and body = warning
+           and created_at > now() - interval '60 seconds'
+      ) then
+        insert into public.messages (sender_id, recipient_id, body) values (new.recipient_id, new.sender_id, warning);
+      end if;
+      return null;
+    end if;
+  else
+    select count(*) into recent from public.messages
+     where sender_id = new.sender_id and created_at > now() - interval '60 seconds';
+    if recent >= 30 then
+      raise exception 'You are sending messages too fast. Please wait a moment.';
+    end if;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists messages_enforce_limits on public.messages;
+create trigger messages_enforce_limits
+  before insert on public.messages
+  for each row execute function public.enforce_message_limits();
+
 -- Lets a signed-in user stamp their own presence without granting general
 -- update rights on profiles (only managers can update profiles otherwise).
 create or replace function public.touch_presence()

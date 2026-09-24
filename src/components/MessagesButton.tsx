@@ -15,6 +15,7 @@ import { TypingIndicator } from './TypingIndicator'
 import { EmojiPickerButton } from './EmojiPickerButton'
 import { useBotTyping } from '../lib/useBotTyping'
 import { useThread } from '../lib/useThread'
+import { errorMessage } from '../lib/api'
 
 // Messenger's own send-bubble blue, matching MessageBubble.tsx — kept local rather than
 // repointing the app's global --color-accent, which drives buttons everywhere else.
@@ -69,6 +70,7 @@ export function MessagesButton() {
     if (isOpen && activeUserId) threadEndRef.current?.scrollIntoView({ block: 'nearest' })
   }, [isOpen, activeUserId, newestMessageId, isTyping])
 
+  const [sendError, setSendError] = useState<string | null>(null)
   const sendMutation = useMutation({
     mutationFn: async (text: string) => {
       if (!activeUserId) return
@@ -77,7 +79,13 @@ export function MessagesButton() {
     onSuccess: (_data, sent) => {
       // A quick-reply chip sends without touching the box, so only clear what was actually sent.
       setDraft((d) => (d.trim() === sent ? '' : d))
+      setSendError(null)
       queryClient.invalidateQueries({ queryKey: ['messages', myId] })
+    },
+    // The database refuses spam (too many messages a minute, over-long text) with a readable reason.
+    onError: (error) => {
+      setSendError(errorMessage(error, 'Could not send your message.'))
+      setTimeout(() => setSendError(null), 6000)
     },
   })
 
@@ -224,6 +232,11 @@ export function MessagesButton() {
                   </div>
                   <div ref={threadEndRef} />
                 </div>
+                {sendError && (
+                  <div role="alert" className="px-3 pb-1 pt-2 text-xs text-status-danger-text">
+                    {sendError}
+                  </div>
+                )}
                 {showQuickReplies && (
                   <BotQuickReplies
                     onPick={(text) => sendMutation.mutate(text)}
