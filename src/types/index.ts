@@ -64,6 +64,7 @@ export interface TaskSubmission {
   snipboard_url: string | null
   cts_submitted_at: string | null
   created_at: string
+  updated_at?: string
 }
 
 export type RequestType = 'extension' | 'bad_video'

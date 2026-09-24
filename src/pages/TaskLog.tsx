@@ -1,16 +1,15 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Image } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
-import { remotasksDiffViewerUrl } from '../lib/remotasks'
 import { formatTime, toISODate } from '../lib/week'
 import type { Paginated, Project, Stage, SubmissionStatus, TaskSubmission } from '../types'
 import { StatusPill } from '../components/StatusPill'
 import { Avatar } from '../components/Avatar'
 import { ActionsMenu } from '../components/ActionsMenu'
 import { Select } from '../components/Select'
+import { SubmissionDetailsModal } from '../components/SubmissionDetailsModal'
 import { TaskSubmissionForm } from '../components/TaskSubmissionForm'
 import { SortableHeader } from '../components/SortableHeader'
 import { BulkImportModal } from '../components/BulkImportModal'
@@ -21,7 +20,7 @@ import { RobotEmoji } from '../components/RobotEmoji'
 
 const MANAGER_ROLES = ['admin', 'lead']
 
-type SortKey = 'cb_email' | 'task_id' | 'project' | 'stage' | 'status' | 'date'
+type SortKey = 'cb_email' | 'status' | 'date'
 
 const STAGES: { value: Stage | ''; label: string }[] = [
   { value: '', label: 'All Stages' },
@@ -73,6 +72,7 @@ function ManagerTaskLog() {
   const [page, setPage] = useState(1)
   const [formTarget, setFormTarget] = useState<'new' | TaskSubmission | null>(null)
   const [editingStatusId, setEditingStatusId] = useState<number | null>(null)
+  const [viewingId, setViewingId] = useState<number | null>(null)
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'date', dir: 'desc' })
   const [bulkImportOpen, setBulkImportOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
@@ -94,12 +94,15 @@ function ManagerTaskLog() {
             date_from: dateFrom || undefined,
             date_to: dateTo || undefined,
             page,
-            sort: sort.key === 'project' ? 'project_id' : sort.key,
+            sort: sort.key,
             sort_dir: sort.dir,
           },
         })
       ).data,
   })
+
+  // Looked up by id each render, so the modal shows the row's current values.
+  const viewing = viewingId === null ? null : (data?.data.find((r) => r.id === viewingId) ?? null)
 
   function toggleSort(key: SortKey) {
     setSort((prev) => (prev.key === key ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }))
@@ -112,7 +115,7 @@ function ManagerTaskLog() {
       let query = supabase
         .from('task_submissions')
         .select('date, cb_email, task_id, project_id, stage, status, notes, submitted_at, snipboard_url')
-        .order(sort.key === 'project' ? 'project_id' : sort.key, { ascending: sort.dir === 'asc' })
+        .order(sort.key, { ascending: sort.dir === 'asc' })
       if (stage) query = query.eq('stage', stage)
       if (search) {
         const term = search.replace(/[%,]/g, '')
@@ -268,24 +271,6 @@ function ManagerTaskLog() {
                 onClick={() => toggleSort('cb_email')}
               />
               <SortableHeader
-                label="Task ID"
-                active={sort.key === 'task_id'}
-                dir={sort.dir}
-                onClick={() => toggleSort('task_id')}
-              />
-              <SortableHeader
-                label="Project"
-                active={sort.key === 'project'}
-                dir={sort.dir}
-                onClick={() => toggleSort('project')}
-              />
-              <SortableHeader
-                label="Stage"
-                active={sort.key === 'stage'}
-                dir={sort.dir}
-                onClick={() => toggleSort('stage')}
-              />
-              <SortableHeader
                 label="Status"
                 active={sort.key === 'status'}
                 dir={sort.dir}
@@ -303,52 +288,24 @@ function ManagerTaskLog() {
           <tbody className="divide-y divide-gray-100">
             {isLoading && (
               <tr>
-                <td colSpan={7} className="px-5 py-6 text-center text-gray-400">
+                <td colSpan={4} className="px-5 py-6 text-center text-gray-400">
                   Loading...
                 </td>
               </tr>
             )}
             {data?.data.map((row) => (
-              <tr key={row.id} className="hover:bg-gray-50">
+              <tr key={row.id} onClick={() => setViewingId(row.id)} className="cursor-pointer hover:bg-gray-50">
                 <td className="px-5 py-3">
                   <Link
                     to={contributorPath(row.cb_email)}
+                    onClick={(e) => e.stopPropagation()}
                     className="flex items-center gap-3 hover:underline"
                   >
                     <Avatar name={row.cb_email} size={28} />
                     <span className="truncate">{row.cb_email}</span>
                   </Link>
                 </td>
-                <td className="max-w-40 truncate px-5 py-3 font-mono text-xs text-gray-500">
-                  <span className="inline-flex items-center gap-1.5">
-                    {row.task_id ? (
-                      <a
-                        href={remotasksDiffViewerUrl(row.task_id)}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-sky-700 hover:underline"
-                      >
-                        {row.task_id}
-                      </a>
-                    ) : (
-                      '—'
-                    )}
-                    {row.snipboard_url && (
-                      <a
-                        href={row.snipboard_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        title="View screenshot"
-                        className="text-gray-400 hover:text-sky-700"
-                      >
-                        <Image className="h-3.5 w-3.5" strokeWidth={2} />
-                      </a>
-                    )}
-                  </span>
-                </td>
-                <td className="px-5 py-3 text-gray-600">{row.project?.name ?? '—'}</td>
-                <td className="px-5 py-3 uppercase text-gray-600">{row.stage}</td>
-                <td className="px-5 py-3">
+                <td className="px-5 py-3" onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center gap-2">
                     {editingStatusId === row.id ? (
                       <Select
@@ -374,8 +331,14 @@ function ManagerTaskLog() {
                   {row.date?.slice(0, 10) ?? '—'}
                   {row.date && <span className="ml-1.5 text-xs text-gray-400">{formatTime(row.created_at)}</span>}
                 </td>
-                <td className="px-5 py-3 text-right">
-                  <div className="flex justify-end">
+                <td className="px-5 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      onClick={() => setViewingId(row.id)}
+                      className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+                    >
+                      Details
+                    </button>
                     <ActionsMenu
                       items={[
                         { label: 'Edit', onClick: () => setFormTarget(row) },
@@ -424,6 +387,23 @@ function ManagerTaskLog() {
           </div>
         )}
       </div>
+
+      {viewing && (
+        <SubmissionDetailsModal
+          submission={viewing}
+          onClose={() => setViewingId(null)}
+          onEdit={() => {
+            setViewingId(null)
+            setFormTarget(viewing)
+          }}
+          onDelete={() => {
+            if (confirm('Delete this submission?')) {
+              deleteMutation.mutate(viewing.id)
+              setViewingId(null)
+            }
+          }}
+        />
+      )}
 
       {formTarget && (
         <TaskSubmissionForm
