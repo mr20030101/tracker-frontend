@@ -11,6 +11,7 @@ import type { Message } from '../types'
 import { ActionsMenu } from '../components/ActionsMenu'
 import { Avatar } from '../components/Avatar'
 import { AvatarWithStatus } from '../components/AvatarWithStatus'
+import { BotQuickReplies } from '../components/BotQuickReplies'
 import { ConversationInfoPanel } from '../components/ConversationInfoPanel'
 import { MessageBubble } from '../components/MessageBubble'
 import { TypingIndicator } from '../components/TypingIndicator'
@@ -77,12 +78,13 @@ export function Messages() {
   }, [selectedUserId, visibleThread.length, isTyping])
 
   const sendMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (text: string) => {
       if (!selectedUserId) return
-      return sendMessage(selectedUserId, draft.trim())
+      return sendMessage(selectedUserId, text)
     },
-    onSuccess: () => {
-      setDraft('')
+    onSuccess: (_data, sent) => {
+      // A quick-reply chip sends without touching the box, so only clear what was actually sent.
+      setDraft((d) => (d.trim() === sent ? '' : d))
       queryClient.invalidateQueries({ queryKey: ['messages', myId] })
     },
   })
@@ -90,8 +92,10 @@ export function Messages() {
   function handleSend(e: FormEvent) {
     e.preventDefault()
     if (!draft.trim() || sendMutation.isPending) return
-    sendMutation.mutate()
+    sendMutation.mutate(draft.trim())
   }
+
+  const showQuickReplies = Boolean(selectedUser?.is_bot) && !selectMode
 
   const deleteMutation = useMutation({
     mutationFn: (message: Message) => deleteMessageForMe(myId!, message),
@@ -267,7 +271,9 @@ export function Messages() {
             <div className="flex-1 overflow-y-auto px-5 py-4">
               {thread.length === 0 && (
                 <div className="flex h-full items-center justify-center text-sm text-gray-400">
-                  Say hello to {selectedUser?.name}.
+                  {selectedUser?.is_bot
+                    ? `Ask ${selectedUser.name} anything.`
+                    : `Say hello to ${selectedUser?.name}.`}
                 </div>
               )}
               <div className="flex flex-col gap-2">
@@ -289,6 +295,9 @@ export function Messages() {
               </div>
               <div ref={threadEndRef} />
             </div>
+            {showQuickReplies && (
+              <BotQuickReplies onPick={(text) => sendMutation.mutate(text)} disabled={sendMutation.isPending || isTyping} />
+            )}
             {selectMode ? (
               <div className="flex items-center gap-2 border-t border-gray-100 p-3">
                 <button
@@ -312,7 +321,7 @@ export function Messages() {
                 </button>
               </div>
             ) : (
-              <form onSubmit={handleSend} className="flex items-center gap-2 border-t border-gray-100 p-3">
+              <form onSubmit={handleSend} className={`flex items-center gap-2 p-3 ${showQuickReplies ? '' : 'border-t border-gray-100'}`}>
                 <input
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}

@@ -10,7 +10,7 @@ function errorResponse(message: string, status: number) {
 }
 
 const BOT_EMAIL = 'digest-bot@tracker.internal'
-const BOT_NAME = 'Tracker Bot'
+const BOT_NAME = 'Meera'
 
 // The team works UTC+8; task_submissions.date is a plain calendar date with
 // no timezone, entered against that local day. Shifting "now" forward by the

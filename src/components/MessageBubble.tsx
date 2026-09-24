@@ -46,9 +46,8 @@ export function MessageBubble({
           <div
             onClick={selectable ? onToggleSelect : undefined}
             style={mine ? { backgroundColor: BUBBLE_BLUE } : undefined}
-            className={`max-w-md rounded-3xl px-3.5 py-2 text-sm ${
-              mine ? 'text-white' : 'bg-gray-100 text-gray-800'
-            } ${selectable ? 'cursor-pointer' : ''} ${selected ? 'ring-2 ring-accent ring-offset-1' : ''}`}
+            className={`max-w-lg rounded-3xl px-3.5 py-2 text-sm ${mine ? 'text-white' : 'bg-gray-100 text-gray-800'
+              } ${selectable ? 'cursor-pointer' : ''} ${selected ? 'ring-2 ring-accent ring-offset-1' : ''}`}
           >
             <div className="whitespace-pre-wrap wrap-break-word">
               {isBot ? formatBotMessage(message.body) : convertEmoticons(message.body)}
@@ -58,9 +57,8 @@ export function MessageBubble({
             <button
               onClick={onToggleSelect}
               aria-label={selected ? 'Deselect message' : 'Select message'}
-              className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-colors ${
-                selected ? 'border-accent bg-accent text-accent-foreground' : 'border-gray-300 text-transparent hover:border-gray-400'
-              }`}
+              className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-colors ${selected ? 'border-accent bg-accent text-accent-foreground' : 'border-gray-300 text-transparent hover:border-gray-400'
+                }`}
             >
               <Check className="h-3 w-3" />
             </button>
@@ -77,9 +75,8 @@ export function MessageBubble({
           )}
         </div>
         <span
-          className={`px-1 text-[10px] text-gray-400 opacity-0 transition-opacity group-hover:opacity-100 ${
-            !mine ? 'ml-[30px]' : ''
-          }`}
+          className={`px-1 text-[10px] text-gray-400 opacity-0 transition-opacity group-hover:opacity-100 ${!mine ? 'ml-[30px]' : ''
+            }`}
         >
           {formatTime(message.created_at)}
         </span>

@@ -201,7 +201,7 @@ select * from (values
   (array['lead', 'who is my lead', 'contact lead'],
    'You can see and message your lead from your profile page, or from the online users list in the bottom-right corner if they''re currently online.', 7),
   (array['help', 'hi', 'hello'],
-   'Hi! I can help with: extension requests, bad video reports, the CTS form, bulk import, and general navigation. What do you need?', 8)
+   'Hi! I''m Meera. I can help with: extension requests, bad video reports, the CTS form, bulk import, and general navigation. What do you need?', 8)
 ) as seed(keywords, answer, sort_order)
 where not exists (select 1 from public.bot_faqs);
 
