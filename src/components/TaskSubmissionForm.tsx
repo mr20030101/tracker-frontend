@@ -164,8 +164,8 @@ export function TaskSubmissionForm({ submission, onClose }: Props) {
   }
 
   return (
-    <Modal title={submission ? 'Edit Submission' : 'Add Submission'} onClose={onClose}>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+    <Modal title={submission ? 'Edit Submission' : 'Add Submission'} onClose={onClose} maxWidthClassName="max-w-2xl">
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
         <div>
           <label className="mb-1 block text-sm font-medium text-gray-700">CB Email</label>
           <input
@@ -207,29 +207,6 @@ export function TaskSubmissionForm({ submission, onClose }: Props) {
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Stage</label>
-            <Select
-              fullWidth
-              value={form.stage}
-              onChange={(value) => setForm({ ...form, stage: value as Stage })}
-              options={STAGE_OPTIONS}
-              className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Status</label>
-            <Select
-              fullWidth
-              value={form.status}
-              onChange={(value) => setForm({ ...form, status: value as SubmissionStatus })}
-              options={STATUS_OPTIONS}
-              className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
-            />
-          </div>
-        </div>
-
         <div>
           <label className="mb-1 block text-sm font-medium text-gray-700">Date</label>
           <input
@@ -242,6 +219,27 @@ export function TaskSubmissionForm({ submission, onClose }: Props) {
         </div>
 
         <div>
+          <label className="mb-1 block text-sm font-medium text-gray-700">Stage</label>
+          <Select
+            fullWidth
+            value={form.stage}
+            onChange={(value) => setForm({ ...form, stage: value as Stage })}
+            options={STAGE_OPTIONS}
+            className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-sm font-medium text-gray-700">Status</label>
+          <Select
+            fullWidth
+            value={form.status}
+            onChange={(value) => setForm({ ...form, status: value as SubmissionStatus })}
+            options={STATUS_OPTIONS}
+            className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
+          />
+        </div>
+
+        <div className="sm:col-span-2">
           <label className="mb-1 block text-sm font-medium text-gray-700">Screenshot link</label>
           <input
             type="url"
@@ -252,7 +250,7 @@ export function TaskSubmissionForm({ submission, onClose }: Props) {
           />
         </div>
 
-        <div>
+        <div className="sm:col-span-2">
           <label className="mb-1 block text-sm font-medium text-gray-700">Notes</label>
           <textarea
             value={form.notes}
@@ -263,10 +261,10 @@ export function TaskSubmissionForm({ submission, onClose }: Props) {
         </div>
 
         {error && (
-          <div className="rounded-lg bg-status-danger-text px-3 py-2 text-sm text-status-danger-bg">{error}</div>
+          <div className="rounded-lg bg-status-danger-text px-3 py-2 text-sm text-status-danger-bg sm:col-span-2">{error}</div>
         )}
 
-        <div className="mt-2 flex justify-end gap-2">
+        <div className="mt-2 flex justify-end gap-2 sm:col-span-2">
           <button
             type="button"
             onClick={onClose}
