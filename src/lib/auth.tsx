@@ -10,6 +10,8 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
   refreshUser: () => Promise<void>
+  recovering: boolean
+  clearRecovery: () => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -17,6 +19,10 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  // Set when the user arrives from a password-reset email. Tracked here, not in Login, because the
+  // link can land on any route (Supabase falls back to the Site URL, i.e. "/", when the requested
+  // redirect isn't allow-listed) and the event only fires once.
+  const [recovering, setRecovering] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
@@ -31,7 +37,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null)
       }
     }).finally(() => setLoading(false))
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') setRecovering(true)
       if (!session) setUser(null)
     })
     return () => listener.subscription.unsubscribe()
@@ -67,7 +74,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(res.data.user)
   }
 
-  return <AuthContext.Provider value={{ user, loading, login, logout, refreshUser }}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider value={{ user, loading, login, logout, refreshUser, recovering, clearRecovery: () => setRecovering(false) }}>
+      {children}
+    </AuthContext.Provider>
+  )
 }
 
 export function useAuth() {

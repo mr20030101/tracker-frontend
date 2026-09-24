@@ -1,5 +1,5 @@
-import { useEffect, useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, type FormEvent } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { supabase } from '../lib/api'
 import { Logo } from '../components/Logo'
@@ -9,13 +9,19 @@ import { useReducedMotion, useReveal } from '../lib/motion'
 // Shows the "Forgot password?" link. It relies on Supabase delivering the reset
 // email, which needs custom SMTP under Authentication > SMTP (the built-in sender
 // only reaches team members, at 2 an hour) and this site's address in Authentication
-// > URL Configuration. If emails stop arriving, set this to false and an admin can
-// reset passwords from Users > Reset Password instead.
+// > URL Configuration (Site URL = SITE_URL below). If emails stop arriving, set this
+// to false and an admin can reset passwords from Users > Reset Password instead.
 const FORGOT_PASSWORD_ENABLED = true
 
+// Where the reset email's link sends people, whichever address they requested it from (a Vercel
+// preview, say). The site root is always accepted once it is the Supabase Site URL; the recovery
+// form is shown from any route, so it doesn't need to be /login.
+const SITE_URL = 'https://greyowlstracker.space'
+
 export function Login() {
-  const { login } = useAuth()
+  const { login, recovering, clearRecovery } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const reducedMotion = useReducedMotion()
   const cardRef = useReveal<HTMLDivElement>({
     self: true,
@@ -25,17 +31,10 @@ export function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
-  const [mode, setMode] = useState<'login' | 'forgot' | 'recovery'>('login')
-  const [notice, setNotice] = useState<string | null>(null)
+  const [mode, setMode] = useState<'login' | 'forgot' | 'recovery'>(recovering ? 'recovery' : 'login')
+  const [notice, setNotice] = useState<string | null>((location.state as { notice?: string } | null)?.notice ?? null)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
-
-  useEffect(() => {
-    const { data: listener } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') setMode('recovery')
-    })
-    return () => listener.subscription.unsubscribe()
-  }, [])
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -58,7 +57,7 @@ export function Login() {
     setSubmitting(true)
     try {
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/login`,
+        redirectTo: `${import.meta.env.DEV ? window.location.origin : SITE_URL}/`,
       })
       if (resetError) throw resetError
       setNotice('Check your email for a password reset link.')
@@ -77,9 +76,8 @@ export function Login() {
       const { error: updateError } = await supabase.auth.updateUser({ password: newPassword })
       if (updateError) throw updateError
       await supabase.auth.signOut()
-      setMode('login')
-      setNewPassword('')
-      setNotice('Password updated. You can now sign in.')
+      clearRecovery()
+      navigate('/login', { replace: true, state: { notice: 'Password updated. You can now sign in.' } })
     } catch (updateError) {
       setError(updateError instanceof Error ? updateError.message : 'Could not update the password.')
     } finally {

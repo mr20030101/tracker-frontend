@@ -63,6 +63,12 @@ function ProtectedLayout() {
 }
 
 export default function App() {
+  const { recovering } = useAuth()
+
+  // The reset-email session is a real login, so without this the dashboard would open and the
+  // person would never be asked for a new password.
+  if (recovering) return <Login />
+
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
