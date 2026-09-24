@@ -8,6 +8,7 @@ import { AuthProvider } from './lib/auth.tsx'
 import { ThemeProvider } from './lib/theme.tsx'
 import { SpeedInsightsTracker } from './components/SpeedInsightsTracker.tsx'
 import './lib/sound.ts'
+import './lib/consoleWarning.ts'
 
 const queryClient = new QueryClient()
 
