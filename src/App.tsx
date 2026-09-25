@@ -18,6 +18,7 @@ import { ActivityLog } from './pages/ActivityLog'
 import { Apply } from './pages/Apply'
 import { Hiring } from './pages/Hiring'
 import { Requests } from './pages/Requests'
+import { Office } from './pages/Office'
 
 const MANAGER_ROLES = ['admin', 'lead']
 
@@ -48,6 +49,7 @@ function ProtectedLayout() {
         <Route path="/requests" element={<Requests />} />
         <Route path="/resources" element={<Resources />} />
         <Route path="/messages" element={<Messages />} />
+        <Route path="/office" element={<Office />} />
         <Route path="/messages/:userId" element={<Messages />} />
         <Route path="/contributors/:email" element={<CbProfile />} />
         {isManager && <Route path="/users" element={<Users />} />}

@@ -287,6 +287,34 @@ $$;
 
 grant execute on function public.directory() to authenticated;
 
+-- Who has a desk or office on the caller's floor(s) of the Office page. Each lead's team has its own
+-- floor (the lead's private office + their contributors' desks); contributors with no lead share
+-- one; admins who don't lead a team have an admin floor. Everyone looking at a floor has to get the
+-- same list, because the floor plan is built from it and positions are shared as floor-plan
+-- coordinates — directory() can't be used, since what it returns depends on who's online and who
+-- you've messaged. Scoped like the rest of the app: a contributor gets their lead and teammates, a
+-- lead gets their own team, an admin gets everyone (to visit any floor). Only what the office draws:
+-- no email, no last seen (online status still comes from directory()).
+drop function if exists public.office_roster();
+create function public.office_roster()
+returns table (id uuid, name text, role text, avatar_url text, lead_id uuid)
+language sql stable security definer set search_path = public
+as $$
+  select p.id, p.name, p.role, p.avatar_url, p.lead_id
+  from public.profiles p, public.profiles me
+  where me.id = auth.uid()
+    and p.is_active and not p.is_bot
+    and (
+      public.is_admin()
+      or p.id = me.id
+      or p.id = me.lead_id
+      or p.lead_id = me.id
+      or (me.role = 'contributor' and p.role = 'contributor' and p.lead_id is not distinct from me.lead_id)
+    )
+$$;
+
+grant execute on function public.office_roster() to authenticated;
+
 -- One row per conversation: the unread count and the last 5 messages (oldest first), so the inbox
 -- list, unread badge, bot reveal timing and notification sound never need a whole thread. Full
 -- threads are fetched a page at a time when a chat is opened. Messages the caller deleted for

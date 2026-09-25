@@ -1,0 +1,525 @@
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { Armchair, Crosshair, Map as MapIcon, Maximize2, MessageCircle, Minimize2, Minus, Plus, Send } from 'lucide-react'
+import { useAuth } from '../lib/auth'
+import { useMessaging } from '../lib/messagingContext'
+import { fetchDirectory } from '../lib/messages'
+import { isOnline } from '../lib/presence'
+import { useTheme } from '../lib/theme'
+import {
+  ALL_FLOOR,
+  NEAR_RADIUS,
+  WALK_SPEED,
+  buildLayout,
+  canHear,
+  distance,
+  fetchOfficeRoster,
+  floorOf,
+  floorsIn,
+  officeMembers,
+  roomAt,
+  step,
+  useOfficeChannel,
+  type Desk,
+  type Point,
+} from '../lib/office'
+import type { CameraApi, CameraMode } from '../components/office/OfficeScene'
+import type { DirectoryUser } from '../types'
+import { Avatar } from '../components/Avatar'
+import { Select } from '../components/Select'
+
+// three.js is heavy; it's only downloaded when someone actually opens the office.
+const OfficeScene = lazy(() => import('../components/office/OfficeScene').then((m) => ({ default: m.OfficeScene })))
+
+const EMOTES = ['👋', '👍', '😂', '🎉', '☕']
+// Screen-relative: "up" walks away from the camera, whichever way it's been turned.
+const MOVE_KEYS: Record<string, Point> = {
+  ArrowUp: { x: 0, y: -1 },
+  ArrowDown: { x: 0, y: 1 },
+  ArrowLeft: { x: -1, y: 0 },
+  ArrowRight: { x: 1, y: 0 },
+  w: { x: 0, y: -1 },
+  s: { x: 0, y: 1 },
+  a: { x: -1, y: 0 },
+  d: { x: 1, y: 0 },
+}
+// Walking broadcasts at most this often; other people's avatars ease between updates.
+const MOVE_SEND_MS = 90
+// The side panel (who's nearby) only needs your position a few times a second, not every frame.
+const POS_UI_MS = 150
+
+function isTyping(target: EventTarget | null) {
+  return target instanceof HTMLElement && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
+}
+
+export function Office() {
+  const { user } = useAuth()
+  const { theme } = useTheme()
+  const { openChatWith } = useMessaging()
+  const { data: directory = [], isLoading } = useQuery({
+    queryKey: ['directory'],
+    queryFn: fetchDirectory,
+    refetchInterval: 30_000,
+  })
+
+  // Who's on which floor comes from office_roster(), which is the same for everyone looking at a
+  // floor; directory() only adds who's online. (undefined: loading; null: not deployed yet.)
+  const { data: roster, isLoading: rosterLoading } = useQuery({
+    queryKey: ['office-roster'],
+    queryFn: fetchOfficeRoster,
+    refetchInterval: 5 * 60_000,
+  })
+  const floors = useMemo(() => (roster ? floorsIn(roster) : []), [roster])
+  const meInRoster = roster?.find((u) => u.id === user?.id)
+  const homeFloor = roster === null ? ALL_FLOOR : roster && meInRoster ? floorOf(meInRoster, roster) : null
+  // Admins can visit any floor; everyone else stays on their own.
+  const canSwitchFloor = user?.role === 'admin' && floors.length > 1
+  const [pickedFloor, setPickedFloor] = useState<string | null>(null)
+  const floor = canSwitchFloor && pickedFloor && floors.some((f) => f.key === pickedFloor) ? pickedFloor : homeFloor
+  const floorLabel = floors.find((f) => f.key === floor)?.label ?? null
+
+  const floorPeople = useMemo<DirectoryUser[]>(() => {
+    if (roster === null) return officeMembers(directory)
+    if (!roster || !floor) return []
+    const online = new Map(directory.map((u) => [u.id, u.last_seen_at]))
+    return roster
+      .filter((u) => floorOf(u, roster) === floor)
+      .map((u) => ({ ...u, is_active: true, is_bot: false, email: null, last_seen_at: online.get(u.id) ?? null }))
+  }, [roster, floor, directory])
+  const members = useMemo(() => officeMembers(floorPeople), [floorPeople])
+  // The floor plan only depends on who's on the floor, not on their online status, so the
+  // half-minute directory refresh doesn't rebuild every desk.
+  const layoutKey = members.map((u) => `${u.id}:${u.role}:${u.name}`).join('|')
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const layout = useMemo(() => buildLayout(members), [layoutKey])
+  const usersById = useMemo(() => new Map([...directory, ...floorPeople].map((u) => [u.id, u])), [directory, floorPeople])
+  const myDesk = useMemo(() => layout.desks.find((d) => d.ownerId === user?.id) ?? null, [layout, user?.id])
+
+  // Your own position lives in a ref: the 3D scene reads it every frame, and `pos` is a throttled
+  // copy for the side panel.
+  const posRef = useRef<Point | null>(null)
+  const [pos, setPos] = useState<Point | null>(null)
+  const targetRef = useRef<Point | null>(null)
+  const ready = Boolean(floor) && !rosterLoading && directory.length > 0
+  // On arriving on a floor you start at your own desk there (or the lounge, when visiting).
+  const placedOnFloor = useRef<string | null>(null)
+  useLayoutEffect(() => {
+    if (!ready || placedOnFloor.current === floor) return
+    placedOnFloor.current = floor
+    const start = myDesk?.seat ?? { x: layout.lounge.x + layout.lounge.w / 2, y: layout.lounge.y + layout.lounge.h - 20 }
+    posRef.current = start
+    targetRef.current = null
+    setPos(start)
+  }, [ready, floor, myDesk, layout])
+  const getMyPos = useCallback(() => posRef.current ?? { x: -9999, y: -9999 }, [])
+  const layoutRef = useRef(layout)
+  useLayoutEffect(() => {
+    layoutRef.current = layout
+  }, [layout])
+  const getLayout = useCallback(() => layoutRef.current, [])
+
+  // Joining waits for the starting position so you never appear at 0,0.
+  const identity = useMemo(
+    () => (user && ready ? { id: user.id, name: user.name, avatar_url: user.avatar_url } : null),
+    [user, ready],
+  )
+  const { players, bubbles, chat, sendMove, syncPresence, say } = useOfficeChannel(identity, ready ? floor : null, getMyPos, getLayout)
+
+  const [mode, setMode] = useState<CameraMode>('follow')
+  const [expanded, setExpanded] = useState(false)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const yawRef = useRef(0)
+  const cameraApi = useRef<CameraApi | null>(null)
+
+  // Movement: keyboard (WASD / arrows) or click-to-walk, driven by one requestAnimationFrame loop.
+  const keysRef = useRef(new Set<string>())
+
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (isTyping(e.target) || e.metaKey || e.ctrlKey || e.altKey) return
+      const key = e.key.length === 1 ? e.key.toLowerCase() : e.key
+      if (MOVE_KEYS[key]) {
+        e.preventDefault()
+        keysRef.current.add(key)
+        targetRef.current = null
+        setMode('follow')
+      }
+    }
+    const up = (e: KeyboardEvent) => keysRef.current.delete(e.key.length === 1 ? e.key.toLowerCase() : e.key)
+    const clear = () => keysRef.current.clear()
+    window.addEventListener('keydown', down)
+    window.addEventListener('keyup', up)
+    window.addEventListener('blur', clear)
+    return () => {
+      window.removeEventListener('keydown', down)
+      window.removeEventListener('keyup', up)
+      window.removeEventListener('blur', clear)
+    }
+  }, [])
+
+  useEffect(() => {
+    let frame = 0
+    let last = performance.now()
+    let lastSent = 0
+    let lastUi = 0
+    let moving = false
+    const tick = (now: number) => {
+      const dt = Math.min(0.1, (now - last) / 1000)
+      last = now
+      const from = posRef.current
+      if (from) {
+        let input = { x: 0, y: 0 }
+        for (const key of keysRef.current) {
+          input = { x: input.x + MOVE_KEYS[key].x, y: input.y + MOVE_KEYS[key].y }
+        }
+        // Rotate the key input by the camera's heading so "up" is always "away from the camera".
+        const yaw = yawRef.current
+        let dir = {
+          x: Math.cos(yaw) * input.x + Math.sin(yaw) * input.y,
+          y: -Math.sin(yaw) * input.x + Math.cos(yaw) * input.y,
+        }
+        const target = targetRef.current
+        if (input.x === 0 && input.y === 0 && target) {
+          const d = distance(from, target)
+          if (d < 2) targetRef.current = null
+          else dir = { x: (target.x - from.x) / d, y: (target.y - from.y) / d }
+        }
+        const len = Math.hypot(dir.x, dir.y)
+        let next = from
+        if (len > 1e-6) {
+          const dist = Math.min(WALK_SPEED * dt, target && keysRef.current.size === 0 ? distance(from, target) : Infinity)
+          next = step(from, (dir.x / len) * dist, (dir.y / len) * dist, layoutRef.current)
+          // Walked into furniture on the way to a clicked spot: give up rather than grind against it.
+          if (distance(next, from) < 0.01) targetRef.current = null
+        }
+        if (distance(next, from) > 0.01) {
+          posRef.current = next
+          moving = true
+          if (now - lastSent > MOVE_SEND_MS) {
+            lastSent = now
+            sendMove(next)
+          }
+          if (now - lastUi > POS_UI_MS) {
+            lastUi = now
+            setPos(next)
+          }
+        } else if (moving) {
+          moving = false
+          setPos(from)
+          sendMove(from)
+          syncPresence(from)
+        }
+      }
+      frame = requestAnimationFrame(tick)
+    }
+    frame = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(frame)
+  }, [sendMove, syncPresence])
+
+  const walkTo = useCallback((p: Point) => {
+    targetRef.current = p
+    setMode('follow')
+  }, [])
+
+  useEffect(() => {
+    if (!expanded) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isTyping(e.target)) setExpanded(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [expanded])
+
+  // Inside a private office, "nearby" is everyone in the room; out on the floor, it's distance.
+  const nearby = useMemo(
+    () =>
+      pos
+        ? [...players.values()]
+          .filter((p) => canHear(layout, p, pos, NEAR_RADIUS))
+          .sort((a, b) => distance(a, pos) - distance(b, pos))
+        : [],
+    [players, pos, layout],
+  )
+  const myRoomIndex = pos ? roomAt(layout, pos) : -1
+  const myRoom = myRoomIndex >= 0 ? layout.rooms[myRoomIndex] : null
+  const nearIds = useMemo(() => new Set(nearby.map((p) => p.id)), [nearby])
+
+  // Who's physically in the office, as a value that only changes when someone arrives or leaves —
+  // not on every step — so the memoised desks don't re-render while people walk around.
+  const presentKey = [...players.keys()].sort().join(',')
+  const presentIds = useMemo(() => new Set(presentKey ? presentKey.split(',') : []), [presentKey])
+
+  // Signed in to the tracker but not on this page: the scene shows them working at their desk.
+  const workingCount = members.filter((m) => m.id !== user?.id && !presentIds.has(m.id) && isOnline(m.last_seen_at)).length
+
+  const selectedUser = selectedId ? usersById.get(selectedId) ?? null : null
+  const selectedPlayer = selectedId ? players.get(selectedId) ?? null : null
+  const selectedDesk = selectedId ? layout.desks.find((d) => d.ownerId === selectedId) ?? null : null
+
+  return (
+    <div className={expanded ? 'fixed inset-0 z-50 flex flex-col bg-gray-50 p-4' : 'flex h-full flex-col'}>
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Office
+            {floorLabel && <span className="font-medium text-gray-400"> · {floorLabel}</span>}
+          </h1>
+          <p className="text-sm text-gray-500">
+            Walk with WASD / arrow keys or click the floor. Drag to turn the camera, scroll to zoom. Walk up to people to chat.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {canSwitchFloor && floor && (
+            <Select
+              value={floor}
+              onChange={setPickedFloor}
+              options={floors.map((f) => ({ value: f.key, label: f.label }))}
+              aria-label="Floor"
+            />
+          )}
+          <div className="flex items-center gap-1 rounded-lg border border-gray-200 bg-white p-1">
+            <ToolButton label="Zoom out" onClick={() => cameraApi.current?.zoom(1.25)}>
+              <Minus className="h-4 w-4" />
+            </ToolButton>
+            <ToolButton label="Zoom in" onClick={() => cameraApi.current?.zoom(0.8)}>
+              <Plus className="h-4 w-4" />
+            </ToolButton>
+            <span className="mx-1 h-5 w-px bg-gray-200" />
+            <ToolButton label="Follow me" onClick={() => setMode('follow')} active={mode === 'follow'}>
+              <Crosshair className="h-4 w-4" />
+            </ToolButton>
+            <ToolButton label="Whole office view" onClick={() => setMode('overview')} active={mode === 'overview'}>
+              <MapIcon className="h-4 w-4" />
+            </ToolButton>
+            {myDesk && (
+              <ToolButton label="Go to my desk" onClick={() => walkTo(myDesk.seat)}>
+                <Armchair className="h-4 w-4" />
+              </ToolButton>
+            )}
+            <ToolButton label={expanded ? 'Exit full screen (Esc)' : 'Expand map'} onClick={() => setExpanded((v) => !v)}>
+              {expanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            </ToolButton>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex min-h-0 flex-1 gap-4">
+        {/* `isolate` keeps the 3D labels' z-indexes from escaping above the app's menus and modals. */}
+        <div className="relative isolate min-h-[520px] flex-1 touch-none overflow-hidden rounded-xl border border-gray-200 bg-gray-100 select-none">
+          {(isLoading || !user || !pos) && <div className="absolute inset-0 flex items-center justify-center text-gray-400">Loading office...</div>}
+          {user && pos && (
+            <Suspense fallback={<div className="absolute inset-0 flex items-center justify-center text-gray-400">Loading 3D office...</div>}>
+              <OfficeScene
+                layout={layout}
+                dark={theme === 'dark'}
+                me={{ id: user.id, name: user.name, avatar_url: user.avatar_url }}
+                posRef={posRef}
+                yawRef={yawRef}
+                apiRef={cameraApi}
+                mode={mode}
+                players={players}
+                presentIds={presentIds}
+                usersById={usersById}
+                bubbles={bubbles}
+                nearIds={nearIds}
+                selectedId={selectedId}
+                onSelect={setSelectedId}
+                onWalk={walkTo}
+              />
+            </Suspense>
+          )}
+
+          <div className="pointer-events-none absolute bottom-3 left-3 rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-gray-600 shadow-sm">
+            {players.size + 1} in the office · {workingCount} working at their desk · {members.length - layout.rooms.length} {members.length - layout.rooms.length === 1 ? 'desk' : 'desks'} · {layout.rooms.length} {layout.rooms.length === 1 ? 'office' : 'offices'}
+          </div>
+        </div>
+
+        <SidePanel
+          roomOwner={myRoom ? (myRoom.ownerId === user?.id ? 'your' : `${myRoom.ownerFirstName}'s`) : null}
+          nearby={nearby}
+          chat={chat}
+          myId={user?.id ?? null}
+          selected={selectedUser}
+          selectedHere={Boolean(selectedPlayer)}
+          onSay={(text) => say(text)}
+          onEmote={(emoji, to) => say(emoji, 'emote', to)}
+          onMessage={(u) => openChatWith(u.id, u.name)}
+          onWalkTo={(id) => {
+            const target = players.get(id) ?? (layout.desks.find((d) => d.ownerId === id)?.seat ?? null)
+            if (target) walkTo(target)
+          }}
+          onSelect={setSelectedId}
+          selectedDesk={selectedDesk}
+        />
+      </div>
+    </div>
+  )
+}
+
+function ToolButton({ label, onClick, active, children }: { label: string; onClick: () => void; active?: boolean; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      title={label}
+      aria-label={label}
+      onClick={onClick}
+      className={`flex h-8 w-8 items-center justify-center rounded-md ${active ? 'bg-accent-bg text-accent-foreground' : 'text-gray-600 hover:bg-gray-100'}`}
+    >
+      {children}
+    </button>
+  )
+}
+
+function SidePanel({
+  roomOwner,
+  nearby,
+  chat,
+  myId,
+  selected,
+  selectedHere,
+  selectedDesk,
+  onSay,
+  onEmote,
+  onMessage,
+  onWalkTo,
+  onSelect,
+}: {
+  // Whose private office you're standing in ("your" or "Ana's"), if any.
+  roomOwner: string | null
+  nearby: { id: string; name: string; avatar_url: string | null }[]
+  chat: { key: string; userId: string; name: string; text: string }[]
+  myId: string | null
+  selected: DirectoryUser | null
+  selectedHere: boolean
+  selectedDesk: Desk | null
+  onSay: (text: string) => void
+  onEmote: (emoji: string, to?: string) => void
+  onMessage: (u: { id: string; name: string }) => void
+  onWalkTo: (id: string) => void
+  onSelect: (id: string | null) => void
+}) {
+  const [draft, setDraft] = useState('')
+  const logRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    logRef.current?.scrollTo({ top: logRef.current.scrollHeight })
+  }, [chat.length])
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault()
+    const text = draft.trim()
+    if (!text) return
+    onSay(text.slice(0, 140))
+    setDraft('')
+  }
+
+  return (
+    <aside className="flex w-72 shrink-0 flex-col gap-4">
+      {selected && selected.id !== myId && (
+        <section className="rounded-xl border border-gray-200 bg-white p-4">
+          <div className="flex items-center gap-3">
+            <Avatar name={selected.name} photoUrl={selected.avatar_url} size={40} />
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-semibold text-gray-900">{selected.name}</div>
+              <div className="text-xs text-gray-500">
+                <span className="capitalize">{selected.role}</span> ·{' '}
+                {selectedHere ? 'In the office' : isOnline(selected.last_seen_at) ? 'Working at their desk' : 'Offline'}
+              </div>
+            </div>
+            <button type="button" onClick={() => onSelect(null)} className="text-xs text-gray-400 hover:text-gray-700" aria-label="Close">
+              ✕
+            </button>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => onMessage(selected)}
+              className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground"
+            >
+              <MessageCircle className="h-3.5 w-3.5" /> Message
+            </button>
+            {(selectedHere || selectedDesk) && (
+              <button
+                type="button"
+                onClick={() => onWalkTo(selected.id)}
+                className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100"
+              >
+                {selectedHere ? 'Walk over' : 'Go to desk'}
+              </button>
+            )}
+            {selectedHere && (
+              <button
+                type="button"
+                onClick={() => onEmote('👋', selected.id)}
+                className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100"
+              >
+                👋 Wave
+              </button>
+            )}
+          </div>
+        </section>
+      )}
+
+      <section className="rounded-xl border border-gray-200 bg-white p-4">
+        <h2 className="mb-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-gray-400">Nearby ({nearby.length})</h2>
+        {roomOwner && (
+          <p className="mb-2 rounded-lg bg-accent-bg px-2.5 py-1.5 text-xs font-medium text-accent-foreground">
+            You're in {roomOwner} office. Only people in this room can hear you.
+          </p>
+        )}
+        {nearby.length === 0 ? (
+          <p className="text-xs text-gray-500">{roomOwner ? 'Nobody else is in here.' : 'Nobody close by. Walk up to someone to talk.'}</p>
+        ) : (
+          <ul className="space-y-1">
+            {nearby.map((p) => (
+              <li key={p.id}>
+                <button
+                  type="button"
+                  onClick={() => onSelect(p.id)}
+                  className="flex w-full items-center gap-2 rounded-lg p-1.5 text-left hover:bg-gray-100"
+                >
+                  <Avatar name={p.name} photoUrl={p.avatar_url} size={28} />
+                  <span className="truncate text-sm font-medium text-gray-800">{p.name}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="flex min-h-[220px] flex-1 flex-col rounded-xl border border-gray-200 bg-white">
+        <h2 className="px-4 pt-4 text-[10px] font-extrabold uppercase tracking-[0.14em] text-gray-400">Nearby chat</h2>
+        <div ref={logRef} className="flex-1 space-y-1.5 overflow-y-auto px-4 py-2">
+          {chat.length === 0 && <p className="text-xs text-gray-500">Only people close to you hear what you say here.</p>}
+          {chat.map((line) => (
+            <div key={line.key} className="text-xs">
+              <span className={`font-semibold ${line.userId === myId ? 'text-accent' : 'text-gray-800'}`}>
+                {line.userId === myId ? 'You' : line.name.split(/\s+/)[0]}:
+              </span>{' '}
+              <span className="break-words text-gray-600">{line.text}</span>
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-1 border-t border-gray-200 px-3 pt-2">
+          {EMOTES.map((e) => (
+            <button key={e} type="button" onClick={() => onEmote(e)} className="rounded-md px-1.5 py-0.5 text-base hover:bg-gray-100" aria-label={`Send ${e}`}>
+              {e}
+            </button>
+          ))}
+        </div>
+        <form onSubmit={submit} className="flex items-center gap-2 p-3">
+          <input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => e.key === 'Escape' && e.currentTarget.blur()}
+            maxLength={140}
+            placeholder="Say something..."
+            className="min-w-0 flex-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-900 outline-none focus:border-accent"
+          />
+          <button type="submit" className="rounded-lg bg-accent p-2 text-accent-foreground disabled:opacity-50" disabled={!draft.trim()} aria-label="Send">
+            <Send className="h-4 w-4" />
+          </button>
+        </form>
+      </section>
+    </aside>
+  )
+}

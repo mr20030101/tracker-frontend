@@ -239,3 +239,20 @@ body {
 .owl-field .owl-halo {
   fill-opacity: 0.3;
 }
+
+/* Office speech bubbles: pop in, hold, then fade before they're removed. */
+@keyframes office-bubble {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 4px);
+  }
+  6%,
+  85% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, 0);
+  }
+}
