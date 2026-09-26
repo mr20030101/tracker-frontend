@@ -3,7 +3,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { useMessaging } from '../lib/messagingContext'
-import { convertEmoticons } from '../lib/emoticons'
 import { deleteConversationForMe, deleteMessageForMe, deleteMessagesForMe, markThreadRead, sendMessage } from '../lib/messages'
 import { formatActiveStatus } from '../lib/presence'
 import type { Message } from '../types'
@@ -15,6 +14,9 @@ import { TypingIndicator } from './TypingIndicator'
 import { EmojiPickerButton } from './EmojiPickerButton'
 import { useBotTyping } from '../lib/useBotTyping'
 import { useThread } from '../lib/useThread'
+import { CallButton } from './CallBar'
+import { messagePreview } from '../lib/callLog'
+import { useCall } from '../lib/call'
 import { errorMessage } from '../lib/api'
 
 // Messenger's own send-bubble blue, matching MessageBubble.tsx — kept local rather than
@@ -37,6 +39,7 @@ export function MessagesButton() {
 
   // Only loads while a chat is open (activeUserId set), a page at a time.
   const { messages: thread, isLoading: threadLoading, hasOlder, loadingOlder, loadOlder, scrollRef } = useThread(myId, activeUserId)
+  const { startCall } = useCall()
   const activeUser = activeUserId ? usersById.get(activeUserId) : undefined
   const activeUserAvatarUrl = activeUser?.avatar_url ?? null
   const activeUserIsBot = Boolean(activeUser?.is_bot)
@@ -184,7 +187,12 @@ export function MessagesButton() {
                       <span className="text-[11px] text-gray-400">{formatActiveStatus(activeUser?.last_seen_at ?? null)}</span>
                     )}
                   </div>
-                  <div className="ml-auto">
+                  <div className="ml-auto flex items-center gap-1">
+                    <CallButton
+                      peer={activeUserId && activeUserName ? { id: activeUserId, name: activeUserName, avatar_url: activeUserAvatarUrl } : null}
+                      isBot={activeUserIsBot}
+                      className="h-8 w-8"
+                    />
                     <ActionsMenu
                       items={[
                         { label: 'Select messages', onClick: () => setSelectMode(true), disabled: thread.length === 0 },
@@ -226,6 +234,11 @@ export function MessagesButton() {
                         selected={selectedIds.has(m.id)}
                         onToggleSelect={() => toggleSelect(m.id)}
                         onDelete={() => handleDelete(m)}
+                        onCallBack={
+                          activeUserId && activeUserName && !activeUserIsBot
+                            ? () => startCall({ id: activeUserId, name: activeUserName, avatar_url: activeUserAvatarUrl })
+                            : undefined
+                        }
                       />
                     ))}
                     {isTyping && <TypingIndicator />}
@@ -318,8 +331,7 @@ export function MessagesButton() {
                             <span className="shrink-0 text-[10px] text-gray-400">{formatTime(c.lastMessage.created_at)}</span>
                           </div>
                           <div className="truncate text-xs text-gray-500">
-                            {c.lastMessage.sender_id === myId ? 'You: ' : ''}
-                            {convertEmoticons(c.lastMessage.body)}
+                            {messagePreview(c.lastMessage.body, c.lastMessage.sender_id === myId)}
                           </div>
                         </div>
                         {c.unreadCount > 0 && (

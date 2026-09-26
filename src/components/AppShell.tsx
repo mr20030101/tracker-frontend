@@ -22,6 +22,8 @@ import {
 import { useAuth } from '../lib/auth'
 import { prefersReducedMotion } from '../lib/motion'
 import { MessagingProvider } from '../lib/messagingContext'
+import { CallProvider } from '../lib/call'
+import { CallBar } from './CallBar'
 import { Avatar } from './Avatar'
 import { Logo } from './Logo'
 import { NotificationBell } from './NotificationBell'
@@ -199,138 +201,141 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <MessagingProvider>
-      <div className="flex h-screen bg-gray-50">
-        {user && !onMessages && <OnlineUsers />}
-        {menuOpen && !docked && (
-          <div className="fixed inset-0 z-40 bg-black/40" aria-hidden="true" onClick={() => setMenuOpen(false)} />
-        )}
-        <aside
-          id="app-menu"
-          inert={!navOpen}
-          onClick={(e) => {
-            if ((e.target as HTMLElement).closest('a')) setMenuOpen(false)
-          }}
-          className={`flex w-64 max-w-[85vw] flex-col border-r border-gray-200 bg-white ${
-            docked
-              ? 'shrink-0'
-              : `fixed inset-y-0 left-0 z-50 transition-transform duration-200 ${menuOpen ? 'translate-x-0 shadow-xl' : '-translate-x-full'}`
-          }`}
-        >
-            <div className="flex items-center justify-between px-5 py-5">
-              <Logo />
-              <button
-                type="button"
-                onClick={() => setNavOpen(false)}
-                aria-label="Hide navigation"
-                title="Hide navigation"
-                className="rounded-md p-1 text-gray-500 hover:bg-gray-100"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <nav className="flex-1 overflow-y-auto px-3 py-2">
-              {navSections(isManager, isAdmin, pendingRequests).map((section) => (
-                <div key={section.label} className="mb-4">
-                  <div className="px-2 pb-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-gray-400">
-                    {section.label}
-                  </div>
-                  {section.items.map((item) => (
-                    <NavLink
-                      key={item.to}
-                      to={item.to}
-                      end
-                      className={({ isActive }) =>
-                        `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium ${isActive ? 'bg-accent-bg text-accent-foreground' : 'text-gray-600 hover:bg-gray-100'
-                        }`
-                      }
-                    >
-                      <item.icon className="h-4 w-4 shrink-0" strokeWidth={2} />
-                      {item.label}
-                      {item.badge ? (
-                        <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-status-danger-text px-1.5 text-[11px] font-bold text-white">
-                          {item.badge > 99 ? '99+' : item.badge}
-                          <span className="sr-only"> pending</span>
-                        </span>
-                      ) : null}
-                    </NavLink>
-                  ))}
-                </div>
-              ))}
-            </nav>
-
-            {user && (
-              <div className="border-t border-gray-200 p-3">
-                <div className="flex items-center gap-2 rounded-lg p-2 hover:bg-gray-100">
-                  <NavLink
-                    to={ownProfilePath}
-                    className="flex min-w-0 flex-1 items-center gap-2"
-                    aria-label="Open your profile"
-                  >
-                    <Avatar name={user.name} photoUrl={user.avatar_url} size={32} />
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-semibold">{user.name}</div>
-                      <div className="truncate text-xs text-gray-400 capitalize">{user.role}</div>
-                    </div>
-                  </NavLink>
-                  <button
-                    onClick={() => logout()}
-                    className="text-xs font-medium text-gray-400 hover:text-gray-700"
-                  >
-                    Sign out
-                  </button>
-                </div>
-              </div>
-            )}
-        </aside>
-
-        <div className="flex min-w-0 flex-1 flex-col">
-          <header className="flex items-center justify-between gap-2 border-b border-gray-200 bg-white px-3 py-2.5 sm:px-6 sm:py-3">
-            <div className="flex min-w-0 items-center gap-2 sm:gap-4">
-              <button
-                type="button"
-                onClick={() => setNavOpen(!navOpen)}
-                aria-label={navOpen ? 'Hide navigation' : 'Show navigation'}
-                title={navOpen ? 'Hide navigation' : 'Show navigation'}
-                aria-expanded={navOpen}
-                aria-controls="app-menu"
-                className="-ml-1 shrink-0 rounded-md p-1.5 text-gray-600 hover:bg-gray-100"
-              >
-                <Menu className="h-5 w-5" />
-              </button>
-              {onMessages && (
-                <NavLink to="/" className="hidden shrink-0 sm:block" aria-label="Home">
-                  <Logo className="h-6" />
-                </NavLink>
-              )}
-              <div className="min-w-0 truncate text-sm text-gray-500">
-                <NavLink to="/" className="hidden font-medium text-gray-700 hover:underline sm:inline">
-                  Home
-                </NavLink>
-                <span className="mx-2 hidden sm:inline">/</span>
-                <span className="font-medium text-gray-700 sm:font-normal sm:text-gray-500">{crumb}</span>
-              </div>
-            </div>
-            <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
-              <ThemeToggle />
-              {user && !onMessages && <MessagesButton />}
-              {user && <NotificationBell />}
-              {user && (
-                <NavLink to={ownProfilePath} aria-label="Open your profile" className="shrink-0 rounded-full">
-                  <Avatar name={user.name} photoUrl={user.avatar_url} size={32} />
-                </NavLink>
-              )}
-            </div>
-          </header>
-
-          <main
-            ref={mainRef}
-            className={`flex-1 overflow-y-auto px-3 py-4 sm:px-6 sm:py-6 ${user && !onMessages ? 'lg:pr-20' : ''}`}
+      <CallProvider>
+        <CallBar />
+        <div className="flex h-screen bg-gray-50">
+          {user && !onMessages && <OnlineUsers />}
+          {menuOpen && !docked && (
+            <div className="fixed inset-0 z-40 bg-black/40" aria-hidden="true" onClick={() => setMenuOpen(false)} />
+          )}
+          <aside
+            id="app-menu"
+            inert={!navOpen}
+            onClick={(e) => {
+              if ((e.target as HTMLElement).closest('a')) setMenuOpen(false)
+            }}
+            className={`flex w-64 max-w-[85vw] flex-col border-r border-gray-200 bg-white ${
+              docked
+                ? 'shrink-0'
+                : `fixed inset-y-0 left-0 z-50 transition-transform duration-200 ${menuOpen ? 'translate-x-0 shadow-xl' : '-translate-x-full'}`
+            }`}
           >
-            {children}
-          </main>
+              <div className="flex items-center justify-between px-5 py-5">
+                <Logo />
+                <button
+                  type="button"
+                  onClick={() => setNavOpen(false)}
+                  aria-label="Hide navigation"
+                  title="Hide navigation"
+                  className="rounded-md p-1 text-gray-500 hover:bg-gray-100"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <nav className="flex-1 overflow-y-auto px-3 py-2">
+                {navSections(isManager, isAdmin, pendingRequests).map((section) => (
+                  <div key={section.label} className="mb-4">
+                    <div className="px-2 pb-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-gray-400">
+                      {section.label}
+                    </div>
+                    {section.items.map((item) => (
+                      <NavLink
+                        key={item.to}
+                        to={item.to}
+                        end
+                        className={({ isActive }) =>
+                          `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium ${isActive ? 'bg-accent-bg text-accent-foreground' : 'text-gray-600 hover:bg-gray-100'
+                          }`
+                        }
+                      >
+                        <item.icon className="h-4 w-4 shrink-0" strokeWidth={2} />
+                        {item.label}
+                        {item.badge ? (
+                          <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-status-danger-text px-1.5 text-[11px] font-bold text-white">
+                            {item.badge > 99 ? '99+' : item.badge}
+                            <span className="sr-only"> pending</span>
+                          </span>
+                        ) : null}
+                      </NavLink>
+                    ))}
+                  </div>
+                ))}
+              </nav>
+
+              {user && (
+                <div className="border-t border-gray-200 p-3">
+                  <div className="flex items-center gap-2 rounded-lg p-2 hover:bg-gray-100">
+                    <NavLink
+                      to={ownProfilePath}
+                      className="flex min-w-0 flex-1 items-center gap-2"
+                      aria-label="Open your profile"
+                    >
+                      <Avatar name={user.name} photoUrl={user.avatar_url} size={32} />
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold">{user.name}</div>
+                        <div className="truncate text-xs text-gray-400 capitalize">{user.role}</div>
+                      </div>
+                    </NavLink>
+                    <button
+                      onClick={() => logout()}
+                      className="text-xs font-medium text-gray-400 hover:text-gray-700"
+                    >
+                      Sign out
+                    </button>
+                  </div>
+                </div>
+              )}
+          </aside>
+
+          <div className="flex min-w-0 flex-1 flex-col">
+            <header className="flex items-center justify-between gap-2 border-b border-gray-200 bg-white px-3 py-2.5 sm:px-6 sm:py-3">
+              <div className="flex min-w-0 items-center gap-2 sm:gap-4">
+                <button
+                  type="button"
+                  onClick={() => setNavOpen(!navOpen)}
+                  aria-label={navOpen ? 'Hide navigation' : 'Show navigation'}
+                  title={navOpen ? 'Hide navigation' : 'Show navigation'}
+                  aria-expanded={navOpen}
+                  aria-controls="app-menu"
+                  className="-ml-1 shrink-0 rounded-md p-1.5 text-gray-600 hover:bg-gray-100"
+                >
+                  <Menu className="h-5 w-5" />
+                </button>
+                {onMessages && (
+                  <NavLink to="/" className="hidden shrink-0 sm:block" aria-label="Home">
+                    <Logo className="h-6" />
+                  </NavLink>
+                )}
+                <div className="min-w-0 truncate text-sm text-gray-500">
+                  <NavLink to="/" className="hidden font-medium text-gray-700 hover:underline sm:inline">
+                    Home
+                  </NavLink>
+                  <span className="mx-2 hidden sm:inline">/</span>
+                  <span className="font-medium text-gray-700 sm:font-normal sm:text-gray-500">{crumb}</span>
+                </div>
+              </div>
+              <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
+                <ThemeToggle />
+                {user && !onMessages && <MessagesButton />}
+                {user && <NotificationBell />}
+                {user && (
+                  <NavLink to={ownProfilePath} aria-label="Open your profile" className="shrink-0 rounded-full">
+                    <Avatar name={user.name} photoUrl={user.avatar_url} size={32} />
+                  </NavLink>
+                )}
+              </div>
+            </header>
+
+            <main
+              ref={mainRef}
+              className={`flex-1 overflow-y-auto px-3 py-4 sm:px-6 sm:py-6 ${user && !onMessages ? 'lg:pr-20' : ''}`}
+            >
+              {children}
+            </main>
+          </div>
         </div>
-      </div>
+      </CallProvider>
     </MessagingProvider>
   )
 }

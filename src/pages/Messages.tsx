@@ -3,7 +3,6 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, Info, Search } from 'lucide-react'
 import { useMessaging } from '../lib/messagingContext'
-import { convertEmoticons } from '../lib/emoticons'
 import { deleteConversationForMe, deleteMessageForMe, deleteMessagesForMe, markThreadRead, sendMessage } from '../lib/messages'
 import { formatActiveStatus } from '../lib/presence'
 import { formatTime } from '../lib/week'
@@ -14,11 +13,14 @@ import { Avatar } from '../components/Avatar'
 import { AvatarWithStatus } from '../components/AvatarWithStatus'
 import { BotQuickReplies } from '../components/BotQuickReplies'
 import { ConversationInfoPanel } from '../components/ConversationInfoPanel'
+import { CallButton } from '../components/CallBar'
 import { MessageBubble } from '../components/MessageBubble'
 import { TypingIndicator } from '../components/TypingIndicator'
 import { EmojiPickerButton } from '../components/EmojiPickerButton'
 import { useBotTyping } from '../lib/useBotTyping'
 import { useThread } from '../lib/useThread'
+import { messagePreview } from '../lib/callLog'
+import { useCall } from '../lib/call'
 import { errorMessage } from '../lib/api'
 
 // Messenger's own send-bubble blue, matching MessageBubble.tsx — kept local rather than
@@ -30,6 +32,7 @@ export function Messages() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { myId, usersById, conversations } = useMessaging()
+  const { startCall } = useCall()
   const [draft, setDraft] = useState('')
   const [userSearch, setUserSearch] = useState('')
   const [selectMode, setSelectMode] = useState(false)
@@ -218,8 +221,7 @@ export function Messages() {
                           <span className={`shrink-0 text-[10px] ${isSelected ? 'text-accent-foreground/70' : 'text-gray-400'}`}>{formatTime(c.lastMessage.created_at)}</span>
                         </div>
                         <div className={`truncate text-xs ${isSelected ? 'text-accent-foreground/80' : 'text-gray-500'}`}>
-                          {c.lastMessage.sender_id === myId ? 'You: ' : ''}
-                          {convertEmoticons(c.lastMessage.body)}
+                          {messagePreview(c.lastMessage.body, c.lastMessage.sender_id === myId)}
                         </div>
                       </div>
                       {c.unreadCount > 0 && (
@@ -278,11 +280,16 @@ export function Messages() {
                   <span className="text-xs text-gray-400">{formatActiveStatus(selectedUser?.last_seen_at ?? null)}</span>
                 )}
               </div>
+              <CallButton
+                peer={selectedUser ? { id: selectedUser.id, name: selectedUser.name, avatar_url: selectedUser.avatar_url } : null}
+                isBot={selectedUser?.is_bot}
+                className="ml-auto"
+              />
               <button
                 type="button"
                 onClick={() => setInfoPanelOpen((v) => !v)}
                 aria-label="Conversation info"
-                className={`ml-auto flex h-9 w-9 items-center justify-center rounded-full ${
+                className={`${selectedUser && !selectedUser.is_bot ? '' : 'ml-auto'} flex h-9 w-9 items-center justify-center rounded-full ${
                   infoPanelOpen ? 'bg-violet-100 text-violet-600' : 'text-violet-500 hover:bg-violet-50'
                 }`}
               >
@@ -320,6 +327,11 @@ export function Messages() {
                     selected={selectedIds.has(m.id)}
                     onToggleSelect={() => toggleSelect(m.id)}
                     onDelete={() => handleDelete(m)}
+                    onCallBack={
+                      selectedUser && !selectedUser.is_bot
+                        ? () => startCall({ id: selectedUser.id, name: selectedUser.name, avatar_url: selectedUser.avatar_url })
+                        : undefined
+                    }
                   />
                 ))}
                 {isTyping && <TypingIndicator />}

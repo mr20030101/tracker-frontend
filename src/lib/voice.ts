@@ -45,6 +45,13 @@ async function fetchRelayServers(): Promise<{ servers: RTCIceServer[]; paused: b
   }
 }
 
+// Everything a call can use to connect: STUN, any fixed TURN from the env, and relay credentials.
+// Shared by Office voice and direct calls from Messages (lib/call).
+export async function fetchIceServers(): Promise<{ iceServers: RTCIceServer[]; hasRelay: boolean; paused: boolean }> {
+  const { servers, paused } = await fetchRelayServers()
+  return { iceServers: [STUN, ...ENV_TURN, ...servers], hasRelay: ENV_TURN.length > 0 || servers.length > 0, paused }
+}
+
 export async function fetchRelayUsage(): Promise<RelayUsage | null> {
   const { data, error } = await supabase.functions.invoke('turn-credentials', { body: { usageOnly: true } })
   if (error) return null
@@ -177,18 +184,18 @@ export function useProximityVoice({
     if (!enabled) return
     let cancelled = false
     // Relay credentials are fetched alongside the microphone, so calls can use them from the start.
-    const relay = fetchRelayServers()
+    const relay = fetchIceServers()
     navigator.mediaDevices
       .getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } })
       .then(async (stream) => {
-        const { servers: relayServers, paused } = await relay
+        const { iceServers: servers, hasRelay: relayFound, paused } = await relay
         if (cancelled || paused) {
           stream.getTracks().forEach((t) => t.stop())
           if (paused && !cancelled) setError(VOICE_PAUSED_MESSAGE)
           return
         }
-        iceServers.current = [STUN, ...ENV_TURN, ...relayServers]
-        setHasRelay(ENV_TURN.length > 0 || relayServers.length > 0)
+        iceServers.current = servers
+        setHasRelay(relayFound)
         streamRef.current = stream
         setMicReady(true)
       })

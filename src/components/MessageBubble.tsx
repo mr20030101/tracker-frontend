@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Check } from 'lucide-react'
+import { Check, Phone, PhoneMissed } from 'lucide-react'
+import { callLogTitle, formatCallDuration, parseCallLog, type CallLog } from '../lib/callLog'
 import { convertEmoticons } from '../lib/emoticons'
 import { formatBotMessage } from '../lib/formatBotMessage'
 import { ActionsMenu } from './ActionsMenu'
@@ -25,6 +26,7 @@ export function MessageBubble({
   selected = false,
   onToggleSelect,
   onDelete,
+  onCallBack,
 }: {
   message: Message
   mine: boolean
@@ -35,24 +37,37 @@ export function MessageBubble({
   selected?: boolean
   onToggleSelect?: () => void
   onDelete: () => void
+  // Shown on call entries: rings the other person back.
+  onCallBack?: () => void
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
+  const callLog = isBot ? null : parseCallLog(message.body)
 
   return (
     <div className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
       <div className={`group flex flex-col gap-0.5 ${mine ? 'items-end' : 'items-start'}`}>
         <div className={`flex items-center gap-1.5 ${mine ? 'flex-row-reverse' : 'flex-row'}`}>
           {!mine && <Avatar name={otherName ?? ''} photoUrl={otherAvatarUrl} size={24} />}
-          <div
-            onClick={selectable ? onToggleSelect : undefined}
-            style={mine ? { backgroundColor: BUBBLE_BLUE } : undefined}
-            className={`max-w-lg rounded-3xl px-3.5 py-2 text-sm ${mine ? 'text-white' : 'bg-gray-100 text-gray-800'
-              } ${selectable ? 'cursor-pointer' : ''} ${selected ? 'ring-2 ring-accent ring-offset-1' : ''}`}
-          >
-            <div className="whitespace-pre-wrap wrap-break-word">
-              {isBot ? formatBotMessage(message.body) : convertEmoticons(message.body)}
+          {callLog ? (
+            <CallEntry
+              log={callLog}
+              mine={mine}
+              onClick={selectable ? onToggleSelect : undefined}
+              selected={selected}
+              onCallBack={selectable ? undefined : onCallBack}
+            />
+          ) : (
+            <div
+              onClick={selectable ? onToggleSelect : undefined}
+              style={mine ? { backgroundColor: BUBBLE_BLUE } : undefined}
+              className={`max-w-lg rounded-3xl px-3.5 py-2 text-sm ${mine ? 'text-white' : 'bg-gray-100 text-gray-800'
+                } ${selectable ? 'cursor-pointer' : ''} ${selected ? 'ring-2 ring-accent ring-offset-1' : ''}`}
+            >
+              <div className="whitespace-pre-wrap wrap-break-word">
+                {isBot ? formatBotMessage(message.body) : convertEmoticons(message.body)}
+              </div>
             </div>
-          </div>
+          )}
           {selectable ? (
             <button
               onClick={onToggleSelect}
@@ -80,6 +95,53 @@ export function MessageBubble({
         >
           {formatTime(message.created_at)}
         </span>
+      </div>
+    </div>
+  )
+}
+
+// A call's line in the conversation: missed/declined in red, or a finished call with how long it lasted.
+function CallEntry({
+  log,
+  mine,
+  selected,
+  onClick,
+  onCallBack,
+}: {
+  log: CallLog
+  mine: boolean
+  selected: boolean
+  onClick?: () => void
+  onCallBack?: () => void
+}) {
+  const missed = log.outcome !== 'ended'
+  return (
+    <div
+      onClick={onClick}
+      className={`flex items-center gap-3 rounded-2xl bg-gray-100 py-2 pl-2.5 pr-4 ${onClick ? 'cursor-pointer' : ''} ${
+        selected ? 'ring-2 ring-accent ring-offset-1' : ''
+      }`}
+    >
+      <span
+        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+          missed ? 'bg-status-danger-bg text-status-danger-text' : 'bg-gray-200 text-gray-700'
+        }`}
+      >
+        {missed ? <PhoneMissed className="h-4 w-4" /> : <Phone className="h-4 w-4" />}
+      </span>
+      <div className="min-w-0">
+        <div className="text-sm font-semibold text-gray-900">{callLogTitle(log, mine)}</div>
+        <div className="text-xs text-gray-500">
+          {log.outcome === 'ended' ? formatCallDuration(log.seconds) : null}
+          {onCallBack && (
+            <>
+              {log.outcome === 'ended' && ' · '}
+              <button type="button" onClick={onCallBack} className="font-semibold text-status-success-text hover:underline">
+                {mine ? 'Call again' : 'Call back'}
+              </button>
+            </>
+          )}
+        </div>
       </div>
     </div>
   )
