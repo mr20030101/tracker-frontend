@@ -7,7 +7,7 @@ import { useMessaging } from '../lib/messagingContext'
 import { fetchDirectory } from '../lib/messages'
 import { isOnline } from '../lib/presence'
 import { useTheme } from '../lib/theme'
-import { useProximityVoice, type VoiceState } from '../lib/voice'
+import { VOICE_PAUSED_MESSAGE, fetchRelayUsage, useProximityVoice, type RelayUsage, type VoiceState } from '../lib/voice'
 import {
   ALL_FLOOR,
   HEAR_RADIUS,
@@ -190,6 +190,13 @@ export function Office() {
   // Proximity voice (lib/voice): opt-in, and your mic is only ever sent to people in earshot.
   const [voiceOn, setVoiceOn] = useState(false)
   const [micMuted, setMicMuted] = useState(false)
+  // This month's relay data. Voice pauses once it nears the free tier (see the turn-credentials
+  // edge function), including for anyone already in a call when it does.
+  const { data: relayUsage } = useQuery({ queryKey: ['voice-relay-usage'], queryFn: fetchRelayUsage, refetchInterval: 10 * 60_000 })
+  const voicePaused = relayUsage?.paused === true
+  useEffect(() => {
+    if (voicePaused) setVoiceOn(false)
+  }, [voicePaused])
 
   // Joining waits for the starting position so you never appear at 0,0.
   const identity = useMemo(
@@ -497,6 +504,8 @@ export function Office() {
               talkingTo,
               connectingTo,
               hasRelay: voice.hasRelay,
+              paused: voicePaused,
+              usage: user?.role === 'admin' ? (relayUsage ?? null) : null,
               onJoin: () => {
                 voice.clearError()
                 setMicMuted(false)
@@ -541,6 +550,31 @@ function ToolButton({ label, onClick, active, children }: { label: string; onCli
   )
 }
 
+// Admin-only: how much of this month's call data (TURN relay) has been used.
+function RelayUsageMeter({ usage }: { usage: RelayUsage }) {
+  if (usage.usedGb === null) {
+    return <p className="mt-3 border-t border-gray-100 pt-2 text-[11px] text-status-warning-text">Call data: {usage.error ?? 'unknown'}</p>
+  }
+  const share = Math.min(1, usage.usedGb / usage.limitGb)
+  const used = usage.usedGb < 10 ? usage.usedGb.toFixed(2) : usage.usedGb.toFixed(1)
+  return (
+    <div className="mt-3 border-t border-gray-100 pt-2" title="Relay data for voice calls this month. Voice pauses at the limit, before Cloudflare starts charging at 1,000 GB.">
+      <div className="flex justify-between text-[11px] text-gray-500">
+        <span>Call data this month</span>
+        <span className="font-semibold text-gray-700">
+          {used} / {usage.limitGb} GB
+        </span>
+      </div>
+      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-gray-100">
+        <div
+          className={`h-full rounded-full ${share >= 0.9 ? 'bg-status-danger-text' : share >= 0.7 ? 'bg-status-warning-text' : 'bg-status-success-text'}`}
+          style={{ width: `${share * 100}%` }}
+        />
+      </div>
+    </div>
+  )
+}
+
 function SidePanel({
   voice,
   roomOwner,
@@ -565,6 +599,10 @@ function SidePanel({
     connectingTo: string[]
     // Whether a TURN relay is available for calls that can't connect directly.
     hasRelay: boolean
+    // The monthly call data cap was reached, so nobody can join until next month.
+    paused: boolean
+    // This month's relay data, shown to admins only.
+    usage: RelayUsage | null
     onJoin: () => void
     onLeave: () => void
     onToggleMute: () => void
@@ -611,11 +649,16 @@ function SidePanel({
         {voice.state === 'off' || voice.state === 'error' ? (
           <>
             <p className="mt-1 text-xs text-gray-500">Talk to whoever is near you. Your mic is only heard by people in earshot.</p>
-            {voice.error && <p className="mt-1 text-xs text-status-danger-text">{voice.error}</p>}
+            {voice.paused ? (
+              <p className="mt-1 text-xs text-status-warning-text">{VOICE_PAUSED_MESSAGE}</p>
+            ) : (
+              voice.error && <p className="mt-1 text-xs text-status-danger-text">{voice.error}</p>
+            )}
             <button
               type="button"
               onClick={voice.onJoin}
-              className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg bg-accent py-1.5 text-sm font-semibold text-accent-foreground"
+              disabled={voice.paused}
+              className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg bg-accent py-1.5 text-sm font-semibold text-accent-foreground disabled:opacity-50"
             >
               <Mic className="h-4 w-4" /> Join voice
             </button>
@@ -659,6 +702,7 @@ function SidePanel({
             </div>
           </>
         )}
+        {voice.usage && <RelayUsageMeter usage={voice.usage} />}
       </section>
 
       {selected && selected.id !== myId && (

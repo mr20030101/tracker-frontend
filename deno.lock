@@ -1,0 +1,41 @@
+{
+  "version": "5",
+  "redirects": {
+    "https://esm.sh/@supabase/supabase-js@2": "https://esm.sh/@supabase/supabase-js@2.117.2"
+  },
+  "remote": {
+    "https://esm.sh/@supabase/supabase-js@2.117.2": "6da4477d96ad4392b5a8be8f423384a3812cdd651df483e433ba422a69ff879b"
+  },
+  "workspace": {
+    "packageJson": {
+      "dependencies": [
+        "npm:@react-three/drei@^10.7.8",
+        "npm:@react-three/fiber@^9.8.0",
+        "npm:@supabase/supabase-js@^2.116.0",
+        "npm:@tailwindcss/vite@^4.3.3",
+        "npm:@tanstack/react-query@^5.102.8",
+        "npm:@tanstack/react-table@^8.21.3",
+        "npm:@types/node@^24.13.3",
+        "npm:@types/react-dom@^19.2.7",
+        "npm:@types/react@^19.2.18",
+        "npm:@types/three@0.186",
+        "npm:@vercel/speed-insights@2",
+        "npm:@vitejs/plugin-react@^6.1.1",
+        "npm:animejs@^4.5.0",
+        "npm:axios@^1.20.0",
+        "npm:chart.js@^4.5.1",
+        "npm:lucide-react@^1.47.0",
+        "npm:oxlint@^1.81.0",
+        "npm:playwright@^1.63.0",
+        "npm:react-chartjs-2@^5.3.1",
+        "npm:react-dom@^19.2.8",
+        "npm:react-router-dom@^7.18.3",
+        "npm:react@^19.2.8",
+        "npm:tailwindcss@^4.3.3",
+        "npm:three@0.186",
+        "npm:typescript@~6.0.2",
+        "npm:vite@^8.3.0"
+      ]
+    }
+  }
+}

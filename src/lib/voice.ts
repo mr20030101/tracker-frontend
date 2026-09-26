@@ -21,17 +21,36 @@ const ENV_TURN: RTCIceServer[] = TURN_URL
   ? [{ urls: TURN_URL.split(',').map((u) => u.trim()), username: import.meta.env.VITE_TURN_USERNAME, credential: import.meta.env.VITE_TURN_CREDENTIAL }]
   : []
 
+// This month's relay data against the cap the turn-credentials edge function enforces (Cloudflare
+// bills past 1,000 GB a month, and voice pauses a little before that).
+export interface RelayUsage {
+  usedGb: number | null
+  limitGb: number
+  paused: boolean
+  month: string
+  error?: string
+}
+
+export const VOICE_PAUSED_MESSAGE = "Voice calls are paused until next month: this month's call data limit has been reached."
+
 // Relay servers from the edge function, or none if it isn't deployed/configured (calls then try
-// direct routes only).
-async function fetchRelayServers(): Promise<RTCIceServer[]> {
+// direct routes only). `paused` means the monthly data cap was reached and voice shouldn't start.
+async function fetchRelayServers(): Promise<{ servers: RTCIceServer[]; paused: boolean }> {
   try {
     const { data, error } = await supabase.functions.invoke('turn-credentials')
-    if (error || !Array.isArray(data?.iceServers)) return []
-    return data.iceServers as RTCIceServer[]
+    if (error) return { servers: [], paused: false }
+    return { servers: Array.isArray(data?.iceServers) ? data.iceServers : [], paused: data?.paused === true }
   } catch {
-    return []
+    return { servers: [], paused: false }
   }
 }
+
+export async function fetchRelayUsage(): Promise<RelayUsage | null> {
+  const { data, error } = await supabase.functions.invoke('turn-credentials', { body: { usageOnly: true } })
+  if (error) return null
+  return (data?.usage as RelayUsage | undefined) ?? null
+}
+
 const CONNECT_TIMEOUT_MS = 10_000
 // Someone who drops out of earshot goes silent at once but stays connected this long, so walking
 // along the edge of someone's range doesn't hang up and redial over and over.
@@ -162,9 +181,10 @@ export function useProximityVoice({
     navigator.mediaDevices
       .getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } })
       .then(async (stream) => {
-        const relayServers = await relay
-        if (cancelled) {
+        const { servers: relayServers, paused } = await relay
+        if (cancelled || paused) {
           stream.getTracks().forEach((t) => t.stop())
+          if (paused && !cancelled) setError(VOICE_PAUSED_MESSAGE)
           return
         }
         iceServers.current = [STUN, ...ENV_TURN, ...relayServers]
