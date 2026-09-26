@@ -1,14 +1,16 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Armchair, Crosshair, Map as MapIcon, Maximize2, MessageCircle, Minimize2, Minus, Plus, Send, Shirt } from 'lucide-react'
+import { Armchair, Crosshair, Map as MapIcon, Maximize2, MessageCircle, Mic, MicOff, Minimize2, Minus, PhoneOff, Plus, Send, Shirt } from 'lucide-react'
 import { errorMessage } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useMessaging } from '../lib/messagingContext'
 import { fetchDirectory } from '../lib/messages'
 import { isOnline } from '../lib/presence'
 import { useTheme } from '../lib/theme'
+import { useProximityVoice, type VoiceState } from '../lib/voice'
 import {
   ALL_FLOOR,
+  HEAR_RADIUS,
   NEAR_RADIUS,
   WALK_SPEED,
   buildLayout,
@@ -16,11 +18,15 @@ import {
   distance,
   fetchOfficeRoster,
   floorOf,
+  fetchFloorPositions,
   floorsIn,
+  isFree,
   officeMembers,
+  offPagePeople,
   roomAt,
   step,
   useOfficeChannel,
+  saveFloorPosition,
   saveOfficeAvatar,
   type Desk,
   type OfficeAvatar,
@@ -51,6 +57,8 @@ const MOVE_KEYS: Record<string, Point> = {
 const MOVE_SEND_MS = 90
 // The side panel (who's nearby) only needs your position a few times a second, not every frame.
 const POS_UI_MS = 150
+// How often your position is written to the shared map while you walk (and always when you stop).
+const SAVE_POS_MS = 1_000
 
 function isTyping(target: EventTarget | null) {
   return target instanceof HTMLElement && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
@@ -104,17 +112,47 @@ export function Office() {
   const posRef = useRef<Point | null>(null)
   const [pos, setPos] = useState<Point | null>(null)
   const targetRef = useRef<Point | null>(null)
-  const ready = Boolean(floor) && !rosterLoading && directory.length > 0
-  // On arriving on a floor you start at your own desk there (or the lounge, when visiting).
+  // The shared map: where everyone on this floor last stood, the same rows for every viewer.
+  // Re-read every few seconds, so the office stays the same for everyone even when someone's live
+  // channel isn't getting through. (Disabled on the no-roster fallback floor, which has no rows.)
+  const { data: storedPositions, isLoading: positionsLoading } = useQuery({
+    queryKey: ['office-positions', floor],
+    queryFn: () => fetchFloorPositions(floor!),
+    enabled: Boolean(floor) && floor !== ALL_FLOOR,
+    refetchInterval: 3_000,
+  })
+
+  const ready = Boolean(floor) && !rosterLoading && !positionsLoading && directory.length > 0
+  // On arriving on a floor you're put back where you last stood there on the shared map, or else at
+  // your own desk (the lounge, when visiting).
   const placedOnFloor = useRef<string | null>(null)
   useLayoutEffect(() => {
-    if (!ready || placedOnFloor.current === floor) return
+    if (!ready || !floor || !user || placedOnFloor.current === floor) return
     placedOnFloor.current = floor
-    const start = myDesk?.seat ?? { x: layout.lounge.x + layout.lounge.w / 2, y: layout.lounge.y + layout.lounge.h - 20 }
+    const stored = storedPositions?.get(user.id)
+    const start =
+      (stored && isFree(layout, stored) ? { x: stored.x, y: stored.y } : null) ??
+      myDesk?.seat ?? { x: layout.lounge.x + layout.lounge.w / 2, y: layout.lounge.y + layout.lounge.h - 20 }
     posRef.current = start
     targetRef.current = null
     setPos(start)
-  }, [ready, floor, myDesk, layout])
+  }, [ready, floor, user, myDesk, layout, storedPositions])
+
+  // Writes your position to the shared map: while walking (throttled in the movement loop), when you
+  // stop, and when the tab closes mid-walk.
+  const rememberPosition = useRef<(p: Point) => void>(() => {})
+  useLayoutEffect(() => {
+    rememberPosition.current = (p) => {
+      if (floor && floor !== ALL_FLOOR && placedOnFloor.current === floor) void saveFloorPosition(floor, p)
+    }
+  }, [floor])
+  useEffect(() => {
+    const onHide = () => {
+      if (posRef.current) rememberPosition.current(posRef.current)
+    }
+    window.addEventListener('pagehide', onHide)
+    return () => window.removeEventListener('pagehide', onHide)
+  }, [])
   const getMyPos = useCallback(() => posRef.current ?? { x: -9999, y: -9999 }, [])
   const layoutRef = useRef(layout)
   useLayoutEffect(() => {
@@ -149,20 +187,30 @@ export function Office() {
     }
   }
 
+  // Proximity voice (lib/voice): opt-in, and your mic is only ever sent to people in earshot.
+  const [voiceOn, setVoiceOn] = useState(false)
+  const [micMuted, setMicMuted] = useState(false)
+
   // Joining waits for the starting position so you never appear at 0,0.
   const identity = useMemo(
-    () => (user && ready ? { id: user.id, name: user.name, avatar_url: user.avatar_url, avatar: savedAvatar } : null),
+    () => (user && ready ? { id: user.id, name: user.name, avatar_url: user.avatar_url, avatar: savedAvatar, voice: voiceOn, muted: micMuted } : null),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [user, ready, savedAvatarKey],
+    [user, ready, savedAvatarKey, voiceOn, micMuted],
   )
-  const { players, bubbles, chat, sendMove, syncPresence, say } = useOfficeChannel(identity, ready ? floor : null, getMyPos, getLayout)
-  // A newly saved look goes out in presence straight away, so everyone on the floor sees it.
-  const sentAvatarKey = useRef(savedAvatarKey)
+  const { players, bubbles, chat, connection, sendMove, syncPresence, say, sendVoiceSignal, onVoiceSignal } = useOfficeChannel(
+    identity,
+    ready ? floor : null,
+    getMyPos,
+    getLayout,
+  )
+  // A newly saved look, or joining/leaving/muting voice, goes out in presence straight away.
+  const presenceKey = `${savedAvatarKey}|${voiceOn}|${micMuted}`
+  const sentPresenceKey = useRef(presenceKey)
   useEffect(() => {
-    if (sentAvatarKey.current === savedAvatarKey) return
-    sentAvatarKey.current = savedAvatarKey
+    if (sentPresenceKey.current === presenceKey) return
+    sentPresenceKey.current = presenceKey
     if (posRef.current) syncPresence(posRef.current)
-  }, [savedAvatarKey, syncPresence])
+  }, [presenceKey, syncPresence])
 
   const [mode, setMode] = useState<CameraMode>('follow')
   const [expanded, setExpanded] = useState(false)
@@ -201,6 +249,7 @@ export function Office() {
     let last = performance.now()
     let lastSent = 0
     let lastUi = 0
+    let lastSaved = 0
     let moving = false
     const tick = (now: number) => {
       const dt = Math.min(0.1, (now - last) / 1000)
@@ -242,11 +291,16 @@ export function Office() {
             lastUi = now
             setPos(next)
           }
+          if (now - lastSaved > SAVE_POS_MS) {
+            lastSaved = now
+            rememberPosition.current(next)
+          }
         } else if (moving) {
           moving = false
           setPos(from)
           sendMove(from)
           syncPresence(from)
+          rememberPosition.current(from)
         }
       }
       frame = requestAnimationFrame(tick)
@@ -283,13 +337,40 @@ export function Office() {
   const myRoom = myRoomIndex >= 0 ? layout.rooms[myRoomIndex] : null
   const nearIds = useMemo(() => new Set(nearby.map((p) => p.id)), [nearby])
 
+  // Who you're talking to: everyone in voice you could hear, louder the closer they are (everyone in
+  // your private office at full volume).
+  const voiceWanted = useMemo(() => {
+    const wanted = new Map<string, number>()
+    if (!voiceOn || !pos) return wanted
+    const inRoom = roomAt(layout, pos) >= 0
+    for (const p of players.values()) {
+      if (!p.voice || !canHear(layout, p, pos, HEAR_RADIUS)) continue
+      const fade = Math.min(1, Math.max(0, (distance(p, pos) - HEAR_RADIUS / 3) / (HEAR_RADIUS * (2 / 3))))
+      wanted.set(p.id, inRoom ? 1 : 1 - fade * 0.8)
+    }
+    return wanted
+  }, [voiceOn, pos, players, layout])
+  const voice = useProximityVoice({
+    myId: user?.id ?? null,
+    enabled: voiceOn,
+    muted: micMuted,
+    wanted: voiceWanted,
+    sendSignal: sendVoiceSignal,
+    onSignal: onVoiceSignal,
+  })
+  // A microphone that couldn't start takes you back out of voice (the panel shows why).
+  useEffect(() => {
+    if (voice.state === 'error') setVoiceOn(false)
+  }, [voice.state])
+  const talkingTo = [...voice.connected].map((id) => players.get(id)?.name.split(/\s+/)[0] ?? 'Someone')
+
   // Who's physically in the office, as a value that only changes when someone arrives or leaves —
   // not on every step — so the memoised desks don't re-render while people walk around.
   const presentKey = [...players.keys()].sort().join(',')
   const presentIds = useMemo(() => new Set(presentKey ? presentKey.split(',') : []), [presentKey])
 
-  // Signed in to the tracker but not on this page: the scene shows them working at their desk.
-  const workingCount = members.filter((m) => m.id !== user?.id && !presentIds.has(m.id) && isOnline(m.last_seen_at)).length
+  // Around but not live on this page: the scene draws them from the shared map.
+  const offPageCount = user ? offPagePeople(layout, usersById, presentIds, storedPositions ?? null, user.id).length : 0
 
   const selectedUser = selectedId ? usersById.get(selectedId) ?? null : null
   const selectedPlayer = selectedId ? players.get(selectedId) ?? null : null
@@ -361,7 +442,7 @@ export function Office() {
               <OfficeScene
                 layout={layout}
                 dark={theme === 'dark'}
-                me={{ id: user.id, name: user.name, avatar_url: user.avatar_url, avatar: draft ?? savedAvatar }}
+                me={{ id: user.id, name: user.name, avatar_url: user.avatar_url, avatar: draft ?? savedAvatar, voice: voiceOn ? (micMuted ? 'muted' : 'on') : null }}
                 posRef={posRef}
                 yawRef={yawRef}
                 apiRef={cameraApi}
@@ -370,6 +451,7 @@ export function Office() {
                 presentIds={presentIds}
                 usersById={usersById}
                 avatars={avatars}
+                positions={storedPositions ?? null}
                 bubbles={bubbles}
                 nearIds={nearIds}
                 selectedId={selectedId}
@@ -379,8 +461,15 @@ export function Office() {
             </Suspense>
           )}
 
-          <div className="pointer-events-none absolute bottom-3 left-3 rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-gray-600 shadow-sm">
-            {players.size + 1} in the office · {workingCount} working at their desk · {members.length - layout.rooms.length} {members.length - layout.rooms.length === 1 ? 'desk' : 'desks'} · {layout.rooms.length} {layout.rooms.length === 1 ? 'office' : 'offices'}
+          <div className="pointer-events-none absolute bottom-3 left-3 flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-gray-600 shadow-sm">
+            <span
+              className={`h-2 w-2 rounded-full ${connection.state === 'live' ? 'bg-status-success-text' : connection.state === 'error' ? 'bg-status-danger-text' : 'bg-gray-400'}`}
+              title={connection.state === 'live' ? 'Live' : connection.state === 'error' ? `Not connected: ${connection.reason}` : 'Connecting...'}
+            />
+            {connection.state === 'error' && (
+              <span className="text-status-danger-text">Not connected ({connection.reason}), others can't see you move ·</span>
+            )}
+            {players.size + 1} in the office · {offPageCount} online elsewhere · {members.length - layout.rooms.length} {members.length - layout.rooms.length === 1 ? 'desk' : 'desks'} · {layout.rooms.length} {layout.rooms.length === 1 ? 'office' : 'offices'}
           </div>
         </div>
 
@@ -398,6 +487,19 @@ export function Office() {
           </Suspense>
         ) : (
           <SidePanel
+            voice={{
+              state: voice.state,
+              error: voice.error,
+              muted: micMuted,
+              talkingTo,
+              onJoin: () => {
+                voice.clearError()
+                setMicMuted(false)
+                setVoiceOn(true)
+              },
+              onLeave: () => setVoiceOn(false),
+              onToggleMute: () => setMicMuted((m) => !m),
+            }}
             roomOwner={myRoom ? (myRoom.ownerId === user?.id ? 'your' : `${myRoom.ownerFirstName}'s`) : null}
             nearby={nearby}
             chat={chat}
@@ -435,6 +537,7 @@ function ToolButton({ label, onClick, active, children }: { label: string; onCli
 }
 
 function SidePanel({
+  voice,
   roomOwner,
   nearby,
   chat,
@@ -448,6 +551,16 @@ function SidePanel({
   onWalkTo,
   onSelect,
 }: {
+  voice: {
+    state: VoiceState
+    error: string | null
+    muted: boolean
+    // First names of the people you're connected to right now.
+    talkingTo: string[]
+    onJoin: () => void
+    onLeave: () => void
+    onToggleMute: () => void
+  }
   // Whose private office you're standing in ("your" or "Ana's"), if any.
   roomOwner: string | null
   nearby: { id: string; name: string; avatar_url: string | null }[]
@@ -478,6 +591,60 @@ function SidePanel({
 
   return (
     <aside className="flex w-72 shrink-0 flex-col gap-4">
+      <section className="rounded-xl border border-gray-200 bg-white p-4">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-gray-400">Voice</h2>
+          {voice.state === 'on' && (
+            <span className="flex items-center gap-1 text-[11px] font-semibold text-status-success-text">
+              <span className="h-1.5 w-1.5 rounded-full bg-status-success-text" /> On
+            </span>
+          )}
+        </div>
+        {voice.state === 'off' || voice.state === 'error' ? (
+          <>
+            <p className="mt-1 text-xs text-gray-500">Talk to whoever is near you. Your mic is only heard by people in earshot.</p>
+            {voice.error && <p className="mt-1 text-xs text-status-danger-text">{voice.error}</p>}
+            <button
+              type="button"
+              onClick={voice.onJoin}
+              className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg bg-accent py-1.5 text-sm font-semibold text-accent-foreground"
+            >
+              <Mic className="h-4 w-4" /> Join voice
+            </button>
+          </>
+        ) : (
+          <>
+            <p className="mt-1 text-xs text-gray-500">
+              {voice.state === 'starting'
+                ? 'Starting your microphone...'
+                : voice.talkingTo.length
+                  ? `Talking with ${voice.talkingTo.join(', ')}`
+                  : 'Nobody in voice near you. Walk up to someone who has joined.'}
+            </p>
+            <div className="mt-2 flex gap-2">
+              <button
+                type="button"
+                onClick={voice.onToggleMute}
+                aria-pressed={voice.muted}
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg border py-1.5 text-sm font-semibold ${
+                  voice.muted ? 'border-status-danger-text text-status-danger-text' : 'border-gray-200 text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                {voice.muted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                {voice.muted ? 'Unmute' : 'Mute'}
+              </button>
+              <button
+                type="button"
+                onClick={voice.onLeave}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-gray-200 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-100"
+              >
+                <PhoneOff className="h-4 w-4" /> Leave
+              </button>
+            </div>
+          </>
+        )}
+      </section>
+
       {selected && selected.id !== myId && (
         <section className="rounded-xl border border-gray-200 bg-white p-4">
           <div className="flex items-center gap-3">

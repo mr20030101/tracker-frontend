@@ -4,8 +4,21 @@ import { Html as DreiHtml, OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
-import { AVATAR_R, BUBBLE_MS, NEAR_RADIUS, PX_PER_M, roomAt, type Desk, type OfficeAvatar, type OfficeBubble, type OfficeLayout, type OfficePlayer, type Point } from '../../lib/office'
-import { isOnline } from '../../lib/presence'
+import {
+  AVATAR_R,
+  BUBBLE_MS,
+  NEAR_RADIUS,
+  PX_PER_M,
+  offPagePeople,
+  roomAt,
+  type Desk,
+  type OfficeAvatar,
+  type OfficeBubble,
+  type OfficeLayout,
+  type OfficePlayer,
+  type Point,
+  type StoredPosition,
+} from '../../lib/office'
 import type { DirectoryUser } from '../../types'
 import { Avatar } from '../Avatar'
 import { avatarOptions, hashSeed, kit } from './kit'
@@ -23,6 +36,8 @@ const FOLLOW_OFFSET = new THREE.Vector3(-3.5, 6, -7)
 const SIT_RADIUS = 6
 
 export type CameraMode = 'follow' | 'overview'
+// Shown on a name tag: in proximity voice, and whether their mic is muted.
+type VoiceBadge = 'on' | 'muted' | null
 
 export interface CameraApi {
   zoom: (factor: number) => void
@@ -70,7 +85,7 @@ export interface OfficeSceneProps {
   layout: OfficeLayout
   dark: boolean
   // `avatar` is your saved character, or the builder's unsaved draft while it's open.
-  me: { id: string; name: string; avatar_url: string | null; avatar: OfficeAvatar | null }
+  me: { id: string; name: string; avatar_url: string | null; avatar: OfficeAvatar | null; voice: VoiceBadge }
   posRef: MutableRefObject<Point | null>
   // Written every frame with the camera's heading, so keyboard movement can be camera-relative.
   yawRef: MutableRefObject<number>
@@ -79,8 +94,10 @@ export interface OfficeSceneProps {
   players: Map<string, OfficePlayer>
   presentIds: Set<string>
   usersById: Map<string, DirectoryUser>
-  // Saved characters of the people on this floor, for those shown working at their desks.
+  // Saved characters of the people on this floor, for those not live on the page.
   avatars: Map<string, OfficeAvatar | null>
+  // The shared map: where everyone on this floor last stood (null before the database has it).
+  positions: Map<string, StoredPosition> | null
   bubbles: OfficeBubble[]
   nearIds: Set<string>
   selectedId: string | null
@@ -91,14 +108,10 @@ export interface OfficeSceneProps {
 export function OfficeScene(props: OfficeSceneProps) {
   const palette = props.dark ? DARK : LIGHT
   const labelLayer = useRef<HTMLDivElement>(null)
-  // Everyone signed in to the tracker but not on this page is shown hard at work at their own desk.
-  // Once they open the office they're in `players` instead, and get up and walk around.
-  const workingAtDesk = props.layout.desks.flatMap((desk) => {
-    const owner = desk.ownerId ? props.usersById.get(desk.ownerId) : undefined
-    if (!owner || owner.id === props.me.id || props.presentIds.has(owner.id) || !isOnline(owner.last_seen_at)) return []
-    return [{ desk, owner }]
-  })
-  const workingIds = new Set(workingAtDesk.map((w) => w.owner.id))
+  // People who aren't live on this page are drawn from the shared map, where they last stood (see
+  // offPagePeople); once they're live on the channel they're in `players` instead.
+  const offPage = offPagePeople(props.layout, props.usersById, props.presentIds, props.positions, props.me.id)
+  const offPageIds = new Set(offPage.map((o) => o.user.id))
   return (
     <div className="absolute inset-0">
       <div ref={labelLayer} className="pointer-events-none absolute inset-0 z-[1] overflow-hidden [&>*]:pointer-events-auto" />
@@ -115,7 +128,7 @@ export function OfficeScene(props: OfficeSceneProps) {
               key={i}
               desk={desk}
               owner={desk.ownerId ? props.usersById.get(desk.ownerId) ?? null : null}
-              occupied={Boolean(desk.ownerId && (props.presentIds.has(desk.ownerId) || desk.ownerId === props.me.id || workingIds.has(desk.ownerId)))}
+              occupied={Boolean(desk.ownerId && (props.presentIds.has(desk.ownerId) || desk.ownerId === props.me.id || offPageIds.has(desk.ownerId)))}
               mine={desk.ownerId === props.me.id}
               onSelect={props.onSelect}
             />
@@ -125,6 +138,7 @@ export function OfficeScene(props: OfficeSceneProps) {
             name={props.me.name}
             avatarUrl={props.me.avatar_url}
             avatar={props.me.avatar}
+            voice={props.me.voice}
             isMe
             getPos={() => props.posRef.current}
             desks={props.layout.desks}
@@ -139,6 +153,7 @@ export function OfficeScene(props: OfficeSceneProps) {
               name={p.name}
               avatarUrl={p.avatar_url}
               avatar={p.avatar ?? props.avatars.get(p.id) ?? null}
+              voice={p.voice ? (p.muted ? 'muted' : 'on') : null}
               getPos={() => p}
               smooth
               desks={props.layout.desks}
@@ -147,14 +162,15 @@ export function OfficeScene(props: OfficeSceneProps) {
               onSelect={props.onSelect}
             />
           ))}
-          {workingAtDesk.map(({ desk, owner }) => (
+          {offPage.map(({ user: owner, at }) => (
             <Character
-              key={`desk-${owner.id}`}
+              key={`map-${owner.id}`}
               id={owner.id}
               name={owner.name}
               avatarUrl={owner.avatar_url}
               avatar={props.avatars.get(owner.id) ?? null}
-              getPos={() => desk.seat}
+              getPos={() => at}
+              smooth
               desks={props.layout.desks}
               bubbles={props.bubbles}
               ring={props.selectedId === owner.id ? '#38bdf8' : null}
@@ -533,6 +549,7 @@ function Tag({
   name,
   avatarUrl,
   isMe,
+  voice,
   say,
   emote,
   onClick,
@@ -540,6 +557,7 @@ function Tag({
   name: string
   avatarUrl: string | null
   isMe?: boolean
+  voice: VoiceBadge
   say?: OfficeBubble
   emote?: OfficeBubble
   onClick?: () => void
@@ -558,6 +576,11 @@ function Tag({
         </div>
         <div className={`mt-0.5 whitespace-nowrap rounded-full px-1.5 py-px text-[10px] font-semibold ${isMe ? 'bg-accent text-accent-foreground' : 'bg-[#1d1f22]/85 text-white'}`}>
           {isMe ? 'You' : name.split(/\s+/)[0]}
+          {voice && (
+            <span aria-label={voice === 'muted' ? 'In voice, muted' : 'In voice'} title={voice === 'muted' ? 'In voice, muted' : 'In voice'}>
+              {voice === 'muted' ? ' 🔇' : ' 🎤'}
+            </span>
+          )}
         </div>
       </div>
     </ScaledHtml>
@@ -610,6 +633,7 @@ function Character({
   name,
   avatarUrl,
   avatar,
+  voice,
   isMe,
   getPos,
   smooth,
@@ -622,6 +646,7 @@ function Character({
   name: string
   avatarUrl: string | null
   avatar: OfficeAvatar | null
+  voice?: VoiceBadge
   isMe?: boolean
   getPos: () => Point | null
   smooth?: boolean
@@ -719,7 +744,7 @@ function Character({
         </mesh>
       )}
       <group ref={tag} position={[0, 2.25, 0]}>
-        <Tag name={name} avatarUrl={avatarUrl} isMe={isMe} say={say} emote={emote} onClick={onSelect ? () => onSelect(id) : undefined} />
+        <Tag name={name} avatarUrl={avatarUrl} isMe={isMe} voice={voice ?? null} say={say} emote={emote} onClick={onSelect ? () => onSelect(id) : undefined} />
       </group>
     </group>
   )

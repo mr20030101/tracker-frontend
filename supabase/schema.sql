@@ -337,6 +337,64 @@ $$;
 
 grant execute on function public.set_office_avatar(jsonb) to authenticated;
 
+-- Where everyone last stood on each Office floor: the one shared map every viewer reads, so the
+-- office looks the same to everyone (and you come back to the same spot) instead of each browser
+-- guessing. Floors are keyed like the page does: a lead's id, 'none' (contributors with no lead)
+-- or 'admin'. No RLS policies: it's only reached through the functions below.
+create table if not exists public.office_positions (
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  floor text not null,
+  x real not null,
+  y real not null,
+  updated_at timestamptz not null default now(),
+  primary key (user_id, floor)
+);
+alter table public.office_positions enable row level security;
+
+-- Whether the caller may be on an Office floor: admins anywhere, a lead on their own team's floor,
+-- a contributor on their lead's floor (or 'none' without one) — the same scoping as office_roster().
+create or replace function public.can_view_office_floor(target_floor text)
+returns boolean
+language sql stable security definer set search_path = public
+as $$
+  select exists (
+    select 1 from public.profiles me
+    where me.id = auth.uid() and me.is_active and (
+      me.role = 'admin'
+      or (me.role = 'lead' and target_floor = me.id::text)
+      or (me.role = 'contributor' and target_floor = coalesce(me.lead_id::text, 'none'))
+    )
+  )
+$$;
+
+create or replace function public.office_floor_positions(target_floor text)
+returns table (user_id uuid, x real, y real, updated_at timestamptz)
+language sql stable security definer set search_path = public
+as $$
+  select o.user_id, o.x, o.y, o.updated_at
+  from public.office_positions o
+  where o.floor = target_floor and public.can_view_office_floor(target_floor)
+$$;
+
+-- Saves where the caller is standing on a floor (their own row only).
+create or replace function public.set_office_position(target_floor text, new_x real, new_y real)
+returns void
+language plpgsql security definer set search_path = public
+as $$
+begin
+  if not public.can_view_office_floor(target_floor) then
+    raise exception 'You can''t be on that floor.';
+  end if;
+  insert into public.office_positions (user_id, floor, x, y, updated_at)
+  values (auth.uid(), target_floor, new_x, new_y, now())
+  on conflict (user_id, floor) do update set x = excluded.x, y = excluded.y, updated_at = now();
+end;
+$$;
+
+grant execute on function public.can_view_office_floor(text) to authenticated;
+grant execute on function public.office_floor_positions(text) to authenticated;
+grant execute on function public.set_office_position(text, real, real) to authenticated;
+
 -- One row per conversation: the unread count and the last 5 messages (oldest first), so the inbox
 -- list, unread badge, bot reveal timing and notification sound never need a whole thread. Full
 -- threads are fetched a page at a time when a chat is opened. Messages the caller deleted for
@@ -1232,7 +1290,7 @@ begin
       and p.proname in (
         'clear_must_change_password', 'contributor_public_stats', 'contributor_public_stats_by_id',
         'directory', 'leaderboard', 'touch_presence', 'update_own_profile', 'conversation_summaries',
-        'office_roster', 'set_office_avatar'
+        'office_roster', 'set_office_avatar', 'can_view_office_floor', 'office_floor_positions', 'set_office_position'
       )
   loop
     execute format('revoke execute on function %s from public, anon', fn.sig);

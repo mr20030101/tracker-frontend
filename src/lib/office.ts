@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from './api'
+import { isOnline } from './presence'
+import type { VoiceSignalMessage } from './voice'
 import type { DirectoryUser } from '../types'
 
 // The floor plan is laid out in pixels. The 3D kit (components/office/officeAssets) works in metres,
@@ -313,6 +315,77 @@ function blocked(p: Point, layout: OfficeLayout): boolean {
   return layout.obstacles.some((r) => hitsRect(p, r))
 }
 
+// Whether someone could stand at this spot: inside the floor, clear of furniture and walls.
+export function isFree(layout: OfficeLayout, p: Point): boolean {
+  return !blocked(p, layout)
+}
+
+// The shared map: where everyone last stood on a floor (office_positions in the database). Every
+// viewer reads the same rows, so the office looks the same to everyone, whether or not the live
+// channel is getting through. null when the database doesn't have it yet.
+export interface StoredPosition extends Point {
+  updatedAt: number
+}
+
+const missingFunction = (code?: string) => code === 'PGRST202' || code === '42883'
+
+export async function fetchFloorPositions(floor: string): Promise<Map<string, StoredPosition> | null> {
+  const { data, error } = await supabase.rpc('office_floor_positions', { target_floor: floor })
+  if (error) {
+    if (missingFunction(error.code)) return null
+    throw error
+  }
+  const rows = (data ?? []) as { user_id: string; x: number; y: number; updated_at: string }[]
+  return new Map(rows.map((r) => [r.user_id, { x: r.x, y: r.y, updatedAt: new Date(r.updated_at).getTime() }]))
+}
+
+// Someone's spot on the shared map counts as current for this long after they last moved: long
+// enough to cover people whose live channel isn't getting through, short enough that someone who
+// closed the tab without going offline doesn't linger.
+const FRESH_MS = 60_000
+
+export interface OffPagePerson {
+  user: DirectoryUser
+  at: Point
+}
+
+// Everyone to draw on the floor who isn't live on this page right now (live people come from the
+// channel instead), from the shared map: floor members who are online in the tracker or moved in
+// the last minute, at the spot they last stood — or at their desk if they've never moved or that
+// spot is no longer free — plus visitors from other floors who moved in the last minute.
+export function offPagePeople(
+  layout: OfficeLayout,
+  usersById: Map<string, DirectoryUser>,
+  presentIds: Set<string>,
+  positions: Map<string, StoredPosition> | null,
+  meId: string,
+): OffPagePerson[] {
+  const now = Date.now()
+  const fresh = (p: StoredPosition | undefined): p is StoredPosition => Boolean(p && now - p.updatedAt < FRESH_MS)
+  const people: OffPagePerson[] = []
+  const members = new Set<string>()
+  for (const desk of layout.desks) {
+    const user = desk.ownerId ? usersById.get(desk.ownerId) : undefined
+    if (!user) continue
+    members.add(user.id)
+    if (user.id === meId || presentIds.has(user.id)) continue
+    const stored = positions?.get(user.id)
+    if (!isOnline(user.last_seen_at) && !fresh(stored)) continue
+    people.push({ user, at: stored && isFree(layout, stored) ? { x: stored.x, y: stored.y } : desk.seat })
+  }
+  for (const [id, stored] of positions ?? []) {
+    const user = usersById.get(id)
+    if (!user || members.has(id) || id === meId || presentIds.has(id) || !fresh(stored) || !isFree(layout, stored)) continue
+    people.push({ user, at: { x: stored.x, y: stored.y } })
+  }
+  return people
+}
+
+export async function saveFloorPosition(floor: string, p: Point): Promise<void> {
+  const { error } = await supabase.rpc('set_office_position', { target_floor: floor, new_x: Math.round(p.x), new_y: Math.round(p.y) })
+  if (error && !missingFunction(error.code)) console.error('Office: could not save your position', error)
+}
+
 // One movement step with wall sliding: each axis is tried on its own, so walking diagonally into
 // a desk keeps you moving along its edge instead of stopping dead.
 export function step(from: Point, dx: number, dy: number, layout: OfficeLayout): Point {
@@ -338,6 +411,9 @@ export interface OfficePlayer extends Point {
   avatar_url: string | null
   // Their character, carried in presence so it shows even for visitors from another floor.
   avatar?: OfficeAvatar | null
+  // In proximity voice (see lib/voice), and whether their mic is muted.
+  voice?: boolean
+  muted?: boolean
   // Sender's clock at the time of this position; stale updates (a late presence sync arriving
   // after newer broadcasts) are dropped by comparing it.
   t: number
@@ -369,19 +445,30 @@ interface SayPayload {
   to?: string
 }
 
+// Channels still closing, by topic. The Supabase client hands back an existing channel when one with
+// the same topic is still in its list, so re-joining a floor before the old channel has finished
+// closing (React StrictMode's mount/unmount/mount in dev, or leaving and coming straight back)
+// would get the dying channel, and you'd never show up for anyone. Joining waits for these.
+const closingChannels = new Map<string, Promise<unknown>>()
+
 // One shared Realtime channel for the whole office. Presence answers "who's here and where did they
 // last stop"; broadcast carries the high-frequency stuff (walking, chat, emotes) without touching
 // the database. Chat is filtered on the receiving end (by distance, and by private-office walls —
 // see canHear), so it's "nearby only" by convention, not a private channel.
 export function useOfficeChannel(
-  identity: { id: string; name: string; avatar_url: string | null; avatar: OfficeAvatar | null } | null,
+  identity: { id: string; name: string; avatar_url: string | null; avatar: OfficeAvatar | null; voice: boolean; muted: boolean } | null,
   floor: string | null,
   getMyPos: () => Point,
   getLayout: () => OfficeLayout,
 ) {
+  // Voice set-up messages addressed to you are handed to whoever registers here (lib/voice).
+  const voiceListener = useRef<((msg: VoiceSignalMessage) => void) | null>(null)
   const [players, setPlayers] = useState<Map<string, OfficePlayer>>(new Map())
   const [bubbles, setBubbles] = useState<OfficeBubble[]>([])
   const [chat, setChat] = useState<OfficeChatLine[]>([])
+  // Whether you're actually connected to the floor, and if not, why — so "nobody can see me move"
+  // shows up on the page instead of failing silently.
+  const [connection, setConnection] = useState<{ state: 'connecting' | 'live' | 'error'; reason?: string }>({ state: 'connecting' })
   const channelRef = useRef<RealtimeChannel | null>(null)
   const getMyPosRef = useRef(getMyPos)
   const getLayoutRef = useRef(getLayout)
@@ -406,24 +493,35 @@ export function useOfficeChannel(
   useEffect(() => {
     if (!id || !floor) return
     // A channel per floor: people only get the positions and chat of the floor they're on.
-    const channel = supabase.channel(`${CHANNEL}:${floor}`, {
-      config: { presence: { key: id }, broadcast: { self: false } },
-    })
-    channelRef.current = channel
+    const topic = `${CHANNEL}:${floor}`
+    let left = false
+    let channel: RealtimeChannel | null = null
 
-    channel
+    const listen = (channel: RealtimeChannel) => channel
       .on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState<OfficePlayer>()
         setPlayers((prev) => {
           const next = new Map<string, OfficePlayer>()
           for (const [key, metas] of Object.entries(state)) {
             if (key === id || metas.length === 0) continue
-            const meta = metas[metas.length - 1]
+            // Someone with the office open in more than one place has one entry per tab; use the
+            // one they've moved or updated most recently, not an old tab left sitting at the desk.
+            const meta = metas.reduce((a, b) => (b.t > a.t ? b : a))
             const known = prev.get(key)
             // Position from whichever is newer; name and character always from presence, which is
             // re-sent when someone saves a new look.
             const where = known && known.t > meta.t ? known : meta
-            next.set(key, { id: meta.id, name: meta.name, avatar_url: meta.avatar_url, avatar: meta.avatar ?? null, x: where.x, y: where.y, t: where.t })
+            next.set(key, {
+              id: meta.id,
+              name: meta.name,
+              avatar_url: meta.avatar_url,
+              avatar: meta.avatar ?? null,
+              voice: Boolean(meta.voice),
+              muted: Boolean(meta.muted),
+              x: where.x,
+              y: where.y,
+              t: where.t,
+            })
           }
           return next
         })
@@ -437,6 +535,9 @@ export function useOfficeChannel(
           return next
         })
       })
+      .on('broadcast', { event: 'voice' }, ({ payload }: { payload: VoiceSignalMessage }) => {
+        if (payload.to === id) voiceListener.current?.(payload)
+      })
       .on('broadcast', { event: 'say' }, ({ payload }: { payload: SayPayload }) => {
         const inEarshot = canHear(getLayoutRef.current(), payload, getMyPosRef.current(), HEAR_RADIUS)
         const aimedAtMe = payload.to === id
@@ -444,16 +545,46 @@ export function useOfficeChannel(
         addBubble(payload.id, payload.text, payload.kind)
         addChat(payload.id, payload.name, payload.kind === 'emote' && aimedAtMe ? `${payload.text} (to you)` : payload.text)
       })
-      .subscribe((status) => {
-        if (status !== 'SUBSCRIBED') return
-        const me = identityRef.current
-        if (me) void channel.track({ ...me, ...getMyPosRef.current(), t: Date.now() })
+      .subscribe((status, err) => {
+        if (status === 'SUBSCRIBED') {
+          setConnection({ state: 'live' })
+          const me = identityRef.current
+          if (me) {
+            void channel.track({ ...me, ...getMyPosRef.current(), t: Date.now() }).then((result) => {
+              if (result !== 'ok') setConnection({ state: 'error', reason: `presence ${result}` })
+            })
+          }
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.error(`Office: couldn't join ${topic}`, status, err)
+          setConnection({ state: 'error', reason: err?.message ?? status.toLowerCase().replace('_', ' ') })
+        }
       })
 
+    const join = () => {
+      if (left) return
+      const ch = supabase.channel(topic, {
+        config: { presence: { key: id }, broadcast: { self: false } },
+      })
+      channel = ch
+      channelRef.current = ch
+      listen(ch)
+    }
+
+    const closing = closingChannels.get(topic)
+    if (closing) void closing.then(join)
+    else join()
+
     return () => {
+      left = true
       channelRef.current = null
-      void supabase.removeChannel(channel)
+      if (channel) {
+        const removal: Promise<unknown> = supabase.removeChannel(channel).finally(() => {
+          if (closingChannels.get(topic) === removal) closingChannels.delete(topic)
+        })
+        closingChannels.set(topic, removal)
+      }
       // Leaving the floor: its people and conversation stay behind.
+      setConnection({ state: 'connecting' })
       setPlayers(new Map())
       setBubbles([])
       setChat([])
@@ -495,5 +626,12 @@ export function useOfficeChannel(
     [addBubble, addChat],
   )
 
-  return { players, bubbles, chat, sendMove, syncPresence, say }
+  const sendVoiceSignal = useCallback((msg: VoiceSignalMessage) => {
+    void channelRef.current?.send({ type: 'broadcast', event: 'voice', payload: msg })
+  }, [])
+  const onVoiceSignal = useCallback((listener: ((msg: VoiceSignalMessage) => void) | null) => {
+    voiceListener.current = listener
+  }, [])
+
+  return { players, bubbles, chat, connection, sendMove, syncPresence, say, sendVoiceSignal, onVoiceSignal }
 }
