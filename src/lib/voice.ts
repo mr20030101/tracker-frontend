@@ -7,13 +7,26 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 // messages (offer/answer/ICE); audio never goes through Supabase.
 
 // Google's public STUN server lets two browsers find a direct route to each other, which works on
-// most networks. Strict corporate or mobile networks also need a TURN relay (a paid service) to
-// connect reliably; add one here if people can hear some colleagues but not others.
-const ICE_SERVERS: RTCIceServer[] = [{ urls: 'stun:stun.l.google.com:19302' }]
+// many networks. Behind carrier-grade NAT (common with home ISPs) or strict corporate/mobile
+// networks, a direct route often doesn't exist and calls need a TURN relay, set with
+// VITE_TURN_URL / VITE_TURN_USERNAME / VITE_TURN_CREDENTIAL (e.g. from Metered or Twilio). The relay
+// only forwards the encrypted audio; it can't listen in.
+const TURN_URL = import.meta.env.VITE_TURN_URL as string | undefined
+const ICE_SERVERS: RTCIceServer[] = [
+  { urls: 'stun:stun.l.google.com:19302' },
+  ...(TURN_URL
+    ? [{ urls: TURN_URL.split(',').map((u) => u.trim()), username: import.meta.env.VITE_TURN_USERNAME, credential: import.meta.env.VITE_TURN_CREDENTIAL }]
+    : []),
+]
+export const HAS_TURN = Boolean(TURN_URL)
 const CONNECT_TIMEOUT_MS = 10_000
 // Someone who drops out of earshot goes silent at once but stays connected this long, so walking
 // along the edge of someone's range doesn't hang up and redial over and over.
 const HANG_UP_AFTER_MS = 3_000
+// How often calls to people in range who aren't connected yet are tried again. A first call can go
+// out before the other side knows you've joined (they decline it), or simply fail; without retrying,
+// two people standing still next to each other would never connect.
+const RETRY_MS = 3_000
 
 export type VoiceSignal =
   | { kind: 'offer' | 'answer'; sdp: RTCSessionDescriptionInit }
@@ -59,6 +72,12 @@ export function useProximityVoice({
   const [micReady, setMicReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const state: VoiceState = !enabled ? (error ? 'error' : 'off') : micReady ? 'on' : error ? 'error' : 'starting'
+  const [retryTick, setRetryTick] = useState(0)
+  useEffect(() => {
+    if (state !== 'on') return
+    const timer = setInterval(() => setRetryTick((t) => t + 1), RETRY_MS)
+    return () => clearInterval(timer)
+  }, [state])
   const clearError = useCallback(() => setError(null), [])
   const [connected, setConnected] = useState<Set<string>>(new Set())
   const streamRef = useRef<MediaStream | null>(null)
@@ -184,7 +203,8 @@ export function useProximityVoice({
         if (!wantedRef.current.has(id)) closePeer(id, true)
       }, HANG_UP_AFTER_MS)
     }
-  }, [state, myId, wanted, openPeer, closePeer])
+    // retryTick re-runs this every few seconds, so anyone still wanted but not connected is called again.
+  }, [state, myId, wanted, openPeer, closePeer, retryTick])
 
   // Incoming set-up messages.
   useEffect(() => {

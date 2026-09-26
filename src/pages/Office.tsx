@@ -7,7 +7,7 @@ import { useMessaging } from '../lib/messagingContext'
 import { fetchDirectory } from '../lib/messages'
 import { isOnline } from '../lib/presence'
 import { useTheme } from '../lib/theme'
-import { useProximityVoice, type VoiceState } from '../lib/voice'
+import { HAS_TURN, useProximityVoice, type VoiceState } from '../lib/voice'
 import {
   ALL_FLOOR,
   HEAR_RADIUS,
@@ -362,7 +362,10 @@ export function Office() {
   useEffect(() => {
     if (voice.state === 'error') setVoiceOn(false)
   }, [voice.state])
-  const talkingTo = [...voice.connected].map((id) => players.get(id)?.name.split(/\s+/)[0] ?? 'Someone')
+  const firstName = (id: string) => players.get(id)?.name.split(/\s+/)[0] ?? 'Someone'
+  const talkingTo = [...voice.connected].map(firstName)
+  // In range and in voice, but not connected (yet): calls are retried every few seconds.
+  const connectingTo = voice.state === 'on' ? [...voiceWanted.keys()].filter((id) => !voice.connected.has(id)).map(firstName) : []
 
   // Who's physically in the office, as a value that only changes when someone arrives or leaves —
   // not on every step — so the memoised desks don't re-render while people walk around.
@@ -492,6 +495,7 @@ export function Office() {
               error: voice.error,
               muted: micMuted,
               talkingTo,
+              connectingTo,
               onJoin: () => {
                 voice.clearError()
                 setMicMuted(false)
@@ -555,8 +559,9 @@ function SidePanel({
     state: VoiceState
     error: string | null
     muted: boolean
-    // First names of the people you're connected to right now.
+    // First names of the people you're connected to right now, and of those in range still connecting.
     talkingTo: string[]
+    connectingTo: string[]
     onJoin: () => void
     onLeave: () => void
     onToggleMute: () => void
@@ -619,8 +624,16 @@ function SidePanel({
                 ? 'Starting your microphone...'
                 : voice.talkingTo.length
                   ? `Talking with ${voice.talkingTo.join(', ')}`
-                  : 'Nobody in voice near you. Walk up to someone who has joined.'}
+                  : voice.connectingTo.length
+                    ? null
+                    : 'Nobody in voice near you. Walk up to someone who has joined.'}
             </p>
+            {voice.connectingTo.length > 0 && (
+              <p className="mt-1 text-xs text-status-warning-text">
+                Connecting to {voice.connectingTo.join(', ')}...
+                {!HAS_TURN && ' If this never connects, your networks may block direct calls (it needs a TURN relay).'}
+              </p>
+            )}
             <div className="mt-2 flex gap-2">
               <button
                 type="button"
