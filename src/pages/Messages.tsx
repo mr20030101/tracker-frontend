@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Info, Search } from 'lucide-react'
+import { ArrowLeft, Info, Search } from 'lucide-react'
 import { useMessaging } from '../lib/messagingContext'
 import { convertEmoticons } from '../lib/emoticons'
 import { deleteConversationForMe, deleteMessageForMe, deleteMessagesForMe, markThreadRead, sendMessage } from '../lib/messages'
@@ -152,8 +152,9 @@ export function Messages() {
   }
 
   return (
-    <div className="flex h-full min-h-0 overflow-hidden rounded-xl border border-gray-200 bg-white">
-      <div className="flex w-80 shrink-0 flex-col border-r border-gray-200">
+    <div className="relative flex h-full min-h-0 overflow-hidden rounded-xl border border-gray-200 bg-white">
+      {/* Phones show one pane at a time: the list, or the open conversation (with a back button). */}
+      <div className={`${selectedUserId ? 'hidden md:flex' : 'flex'} w-full shrink-0 flex-col border-gray-200 md:w-80 md:border-r`}>
         <div className="border-b border-gray-100 p-3">
           <div className="relative">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -246,10 +247,18 @@ export function Messages() {
         )}
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className={`${selectedUserId ? 'flex' : 'hidden md:flex'} min-w-0 flex-1 flex-col`}>
         {selectedUserId ? (
           <>
-            <div className="flex items-center gap-3 border-b border-gray-100 px-5 py-3">
+            <div className="flex items-center gap-3 border-b border-gray-100 px-3 py-3 sm:px-5">
+              <button
+                type="button"
+                onClick={() => navigate('/messages')}
+                aria-label="Back to conversations"
+                className="-ml-1 shrink-0 rounded-md p-1 text-gray-500 hover:bg-gray-100 md:hidden"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </button>
               <AvatarWithStatus
                 name={selectedUser?.name ?? ''}
                 photoUrl={selectedUser?.avatar_url}
@@ -280,7 +289,7 @@ export function Messages() {
                 <Info className="h-5 w-5" />
               </button>
             </div>
-            <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4">
+            <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-4 sm:px-5">
               {hasOlder && (
                 <button
                   type="button"

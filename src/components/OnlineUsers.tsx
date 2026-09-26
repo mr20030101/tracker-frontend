@@ -23,7 +23,7 @@ export function OnlineUsers() {
   const overflow = online.length - shown.length
 
   return (
-    <div className="fixed bottom-6 right-6 z-40 flex flex-col items-center gap-2">
+    <div className="fixed bottom-6 right-6 z-40 hidden flex-col items-center gap-2 lg:flex">
       {shown.map((u) => (
         <button
           key={u.id}

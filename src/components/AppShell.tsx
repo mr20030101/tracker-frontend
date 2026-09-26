@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom'
-import { useLayoutEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { animate } from 'animejs'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -15,6 +15,8 @@ import {
   UserPlus,
   Hourglass,
   Building2,
+  Menu,
+  X,
   type LucideIcon,
 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
@@ -80,12 +82,69 @@ function navSections(
   ]
 }
 
+const DESKTOP_QUERY = '(min-width: 1024px)'
+const NAV_COLLAPSED_KEY = 'nav-collapsed'
+
+function useIsDesktop() {
+  const [matches, setMatches] = useState(() => window.matchMedia(DESKTOP_QUERY).matches)
+  useEffect(() => {
+    const query = window.matchMedia(DESKTOP_QUERY)
+    const onChange = () => setMatches(query.matches)
+    query.addEventListener('change', onChange)
+    return () => query.removeEventListener('change', onChange)
+  }, [])
+  return matches
+}
+
+function readNavCollapsed() {
+  try {
+    return localStorage.getItem(NAV_COLLAPSED_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+function writeNavCollapsed(collapsed: boolean) {
+  try {
+    localStorage.setItem(NAV_COLLAPSED_KEY, collapsed ? '1' : '0')
+  } catch {
+    // Private browsing etc.: the choice just isn't remembered.
+  }
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth()
   const location = useLocation()
   const isManager = Boolean(user && MANAGER_ROLES.includes(user.role))
   const isAdmin = user?.role === 'admin'
   const mainRef = useRef<HTMLElement>(null)
+  const onMessages = location.pathname.startsWith('/messages')
+  // On desktop the sidebar sits beside the page and the menu button hides/shows it (remembered).
+  // On smaller screens, and on Messages, it's a slide-out menu, closed again whenever you navigate.
+  const isDesktop = useIsDesktop()
+  const [collapsed, setCollapsed] = useState(() => readNavCollapsed())
+  const docked = isDesktop && !onMessages && !collapsed
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [menuPath, setMenuPath] = useState(location.pathname)
+  if (menuPath !== location.pathname) {
+    setMenuPath(location.pathname)
+    setMenuOpen(false)
+  }
+  useEffect(() => {
+    if (!menuOpen) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setMenuOpen(false)
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [menuOpen])
+  const navOpen = docked || menuOpen
+  const setNavOpen = (open: boolean) => {
+    if (isDesktop && !onMessages) {
+      setCollapsed(!open)
+      writeNavCollapsed(!open)
+    } else {
+      setMenuOpen(open)
+    }
+  }
 
   // The number on the Requests link, for the people who decide them. Refreshed after every review
   // on the Requests page (same ['task-requests'] key prefix) and every half minute in between.
@@ -141,11 +200,33 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <MessagingProvider>
       <div className="flex h-screen bg-gray-50">
-        {user && !location.pathname.startsWith('/messages') && <OnlineUsers />}
-        {!location.pathname.startsWith('/messages') && (
-          <aside className="flex w-64 shrink-0 flex-col border-r border-gray-200 bg-white">
-            <div className="px-5 py-5">
+        {user && !onMessages && <OnlineUsers />}
+        {menuOpen && !docked && (
+          <div className="fixed inset-0 z-40 bg-black/40" aria-hidden="true" onClick={() => setMenuOpen(false)} />
+        )}
+        <aside
+          id="app-menu"
+          inert={!navOpen}
+          onClick={(e) => {
+            if ((e.target as HTMLElement).closest('a')) setMenuOpen(false)
+          }}
+          className={`flex w-64 max-w-[85vw] flex-col border-r border-gray-200 bg-white ${
+            docked
+              ? 'shrink-0'
+              : `fixed inset-y-0 left-0 z-50 transition-transform duration-200 ${menuOpen ? 'translate-x-0 shadow-xl' : '-translate-x-full'}`
+          }`}
+        >
+            <div className="flex items-center justify-between px-5 py-5">
               <Logo />
+              <button
+                type="button"
+                onClick={() => setNavOpen(false)}
+                aria-label="Hide navigation"
+                title="Hide navigation"
+                className="rounded-md p-1 text-gray-500 hover:bg-gray-100"
+              >
+                <X className="h-5 w-5" />
+              </button>
             </div>
 
             <nav className="flex-1 overflow-y-auto px-3 py-2">
@@ -201,28 +282,38 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </div>
               </div>
             )}
-          </aside>
-        )}
+        </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-3">
-            <div className="flex items-center gap-4">
-              {location.pathname.startsWith('/messages') && (
-                <NavLink to="/" className="shrink-0" aria-label="Home">
+          <header className="flex items-center justify-between gap-2 border-b border-gray-200 bg-white px-3 py-2.5 sm:px-6 sm:py-3">
+            <div className="flex min-w-0 items-center gap-2 sm:gap-4">
+              <button
+                type="button"
+                onClick={() => setNavOpen(!navOpen)}
+                aria-label={navOpen ? 'Hide navigation' : 'Show navigation'}
+                title={navOpen ? 'Hide navigation' : 'Show navigation'}
+                aria-expanded={navOpen}
+                aria-controls="app-menu"
+                className="-ml-1 shrink-0 rounded-md p-1.5 text-gray-600 hover:bg-gray-100"
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+              {onMessages && (
+                <NavLink to="/" className="hidden shrink-0 sm:block" aria-label="Home">
                   <Logo className="h-6" />
                 </NavLink>
               )}
-              <div className="text-sm text-gray-500">
-                <NavLink to="/" className="font-medium text-gray-700 hover:underline">
+              <div className="min-w-0 truncate text-sm text-gray-500">
+                <NavLink to="/" className="hidden font-medium text-gray-700 hover:underline sm:inline">
                   Home
                 </NavLink>
-                <span className="mx-2">/</span>
-                <span>{crumb}</span>
+                <span className="mx-2 hidden sm:inline">/</span>
+                <span className="font-medium text-gray-700 sm:font-normal sm:text-gray-500">{crumb}</span>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
               <ThemeToggle />
-              {user && !location.pathname.startsWith('/messages') && <MessagesButton />}
+              {user && !onMessages && <MessagesButton />}
               {user && <NotificationBell />}
               {user && (
                 <NavLink to={ownProfilePath} aria-label="Open your profile" className="shrink-0 rounded-full">
@@ -234,9 +325,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
           <main
             ref={mainRef}
-            className={`flex-1 overflow-y-auto pl-6 py-6 ${
-              user && !location.pathname.startsWith('/messages') ? 'pr-20' : 'pr-6'
-            }`}
+            className={`flex-1 overflow-y-auto px-3 py-4 sm:px-6 sm:py-6 ${user && !onMessages ? 'lg:pr-20' : ''}`}
           >
             {children}
           </main>

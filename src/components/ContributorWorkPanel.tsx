@@ -601,161 +601,163 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
             <div className="border-b border-gray-200 bg-gray-50 px-5 py-3 text-sm font-semibold text-gray-700">
               Submissions — {rangeLabel()}
             </div>
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
-                <tr>
-                  <SortableHeader label="Task ID" active={sort.key === 'task_id'} dir={sort.dir} onClick={() => toggleSort('task_id')} />
-                  <SortableHeader label="Project" active={sort.key === 'project'} dir={sort.dir} onClick={() => toggleSort('project')} />
-                  <SortableHeader label="Stage" active={sort.key === 'stage'} dir={sort.dir} onClick={() => toggleSort('stage')} />
-                  <SortableHeader label="Status" active={sort.key === 'status'} dir={sort.dir} onClick={() => toggleSort('status')} />
-                  <th className="px-5 py-3">CTS</th>
-                  <th className="px-5 py-3">Extension</th>
-                  <SortableHeader label="Date" active={sort.key === 'date'} dir={sort.dir} onClick={() => toggleSort('date')} />
-                  <th className="px-5 py-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {pagedSubmissions.length === 0 && (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[40rem] text-left text-sm">
+                <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
                   <tr>
-                    <td colSpan={8} className="px-5 py-6 text-center text-gray-400">
-                      No submissions for this {viewMode}.
-                    </td>
+                    <SortableHeader label="Task ID" active={sort.key === 'task_id'} dir={sort.dir} onClick={() => toggleSort('task_id')} />
+                    <SortableHeader label="Project" active={sort.key === 'project'} dir={sort.dir} onClick={() => toggleSort('project')} />
+                    <SortableHeader label="Stage" active={sort.key === 'stage'} dir={sort.dir} onClick={() => toggleSort('stage')} />
+                    <SortableHeader label="Status" active={sort.key === 'status'} dir={sort.dir} onClick={() => toggleSort('status')} />
+                    <th className="px-5 py-3">CTS</th>
+                    <th className="px-5 py-3">Extension</th>
+                    <SortableHeader label="Date" active={sort.key === 'date'} dir={sort.dir} onClick={() => toggleSort('date')} />
+                    <th className="px-5 py-3 text-right">Actions</th>
                   </tr>
-                )}
-                {pagedSubmissions.map((row) => {
-                  const extension = extensionRequestFor(row.id)
-                  const canRequestExtension = !isManager && EXTENSION_ELIGIBLE_STATUSES.includes(row.status)
-                  const badVideoPending = taskRequests.some(
-                    (r) => r.task_submission_id === row.id && r.type === 'bad_video' && r.status === 'pending',
-                  )
-                  // A bad video is only reportable same-day — the video isn't expected to still
-                  // be reviewable once the day it was logged has passed.
-                  const canReportBadVideo = row.date?.slice(0, 10) === toISODate(new Date())
-                  return (
-                  <tr key={row.id} className="hover:bg-gray-50">
-                    <td className="max-w-40 truncate px-5 py-3 font-mono text-xs text-gray-500">
-                      <span className="inline-flex items-center gap-1.5">
-                        {row.task_id ? (
-                          <a href={remotasksDiffViewerUrl(row.task_id)} target="_blank" rel="noreferrer" className="text-sky-700 hover:underline">
-                            {row.task_id}
-                          </a>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {pagedSubmissions.length === 0 && (
+                    <tr>
+                      <td colSpan={8} className="px-5 py-6 text-center text-gray-400">
+                        No submissions for this {viewMode}.
+                      </td>
+                    </tr>
+                  )}
+                  {pagedSubmissions.map((row) => {
+                    const extension = extensionRequestFor(row.id)
+                    const canRequestExtension = !isManager && EXTENSION_ELIGIBLE_STATUSES.includes(row.status)
+                    const badVideoPending = taskRequests.some(
+                      (r) => r.task_submission_id === row.id && r.type === 'bad_video' && r.status === 'pending',
+                    )
+                    // A bad video is only reportable same-day — the video isn't expected to still
+                    // be reviewable once the day it was logged has passed.
+                    const canReportBadVideo = row.date?.slice(0, 10) === toISODate(new Date())
+                    return (
+                    <tr key={row.id} className="hover:bg-gray-50">
+                      <td className="max-w-40 truncate px-5 py-3 font-mono text-xs text-gray-500">
+                        <span className="inline-flex items-center gap-1.5">
+                          {row.task_id ? (
+                            <a href={remotasksDiffViewerUrl(row.task_id)} target="_blank" rel="noreferrer" className="text-sky-700 hover:underline">
+                              {row.task_id}
+                            </a>
+                          ) : (
+                            '—'
+                          )}
+                          {row.snipboard_url && (
+                            <a href={row.snipboard_url} target="_blank" rel="noreferrer" title="View screenshot" className="text-gray-400 hover:text-sky-700">
+                              <Image className="h-3.5 w-3.5" strokeWidth={2} />
+                            </a>
+                          )}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3 text-gray-600">{row.project?.name ?? '—'}</td>
+                      <td className="px-5 py-3 uppercase text-gray-600">{row.stage}</td>
+                      <td className="px-5 py-3">
+                        <StatusPill status={row.status} />
+                      </td>
+                      <td className="px-5 py-3">
+                        {row.cts_submitted_at ? (
+                          <span className="inline-flex items-center rounded-full bg-status-success-bg px-2.5 py-0.5 text-xs font-medium text-status-success-text">
+                            Sent
+                          </span>
                         ) : (
-                          '—'
+                          <span className="inline-flex items-center rounded-full bg-status-neutral-bg px-2.5 py-0.5 text-xs font-medium text-status-neutral-text">
+                            Pending
+                          </span>
                         )}
-                        {row.snipboard_url && (
-                          <a href={row.snipboard_url} target="_blank" rel="noreferrer" title="View screenshot" className="text-gray-400 hover:text-sky-700">
-                            <Image className="h-3.5 w-3.5" strokeWidth={2} />
-                          </a>
+                      </td>
+                      <td className="px-5 py-3">
+                        {extension ? (
+                          <span
+                            title={extension.reason ?? undefined}
+                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                              extension.status === 'approved'
+                                ? 'bg-status-success-bg text-status-success-text'
+                                : extension.status === 'denied'
+                                  ? 'bg-status-danger-bg text-status-danger-text'
+                                  : 'bg-status-warning-bg text-status-warning-text'
+                            }`}
+                          >
+                            {extension.status === 'approved' ? 'Approved' : extension.status === 'denied' ? 'Denied' : 'Pending'}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-300">—</span>
                         )}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3 text-gray-600">{row.project?.name ?? '—'}</td>
-                    <td className="px-5 py-3 uppercase text-gray-600">{row.stage}</td>
-                    <td className="px-5 py-3">
-                      <StatusPill status={row.status} />
-                    </td>
-                    <td className="px-5 py-3">
-                      {row.cts_submitted_at ? (
-                        <span className="inline-flex items-center rounded-full bg-status-success-bg px-2.5 py-0.5 text-xs font-medium text-status-success-text">
-                          Sent
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center rounded-full bg-status-neutral-bg px-2.5 py-0.5 text-xs font-medium text-status-neutral-text">
-                          Pending
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3">
-                      {extension ? (
-                        <span
-                          title={extension.reason ?? undefined}
-                          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                            extension.status === 'approved'
-                              ? 'bg-status-success-bg text-status-success-text'
-                              : extension.status === 'denied'
-                                ? 'bg-status-danger-bg text-status-danger-text'
-                                : 'bg-status-warning-bg text-status-warning-text'
-                          }`}
-                        >
-                          {extension.status === 'approved' ? 'Approved' : extension.status === 'denied' ? 'Denied' : 'Pending'}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-gray-300">—</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3 text-gray-500">
-                      {row.date?.slice(0, 10) ?? '—'}
-                      {row.date && <span className="ml-1.5 text-xs text-gray-400">{formatTime(row.created_at)}</span>}
-                    </td>
-                    <td className="px-5 py-3 text-right">
-                      <div className="flex justify-end">
-                        <ActionsMenu
-                          items={[
-                            { label: 'Edit', onClick: () => setFormTarget(row) },
-                            ...(canRequestExtension
-                              ? extension?.status === 'pending'
-                                ? [{ label: 'Withdraw extension request', onClick: () => withdrawRequestMutation.mutate(extension.id) }]
-                                : [
+                      </td>
+                      <td className="px-5 py-3 text-gray-500">
+                        {row.date?.slice(0, 10) ?? '—'}
+                        {row.date && <span className="ml-1.5 text-xs text-gray-400">{formatTime(row.created_at)}</span>}
+                      </td>
+                      <td className="px-5 py-3 text-right">
+                        <div className="flex justify-end">
+                          <ActionsMenu
+                            items={[
+                              { label: 'Edit', onClick: () => setFormTarget(row) },
+                              ...(canRequestExtension
+                                ? extension?.status === 'pending'
+                                  ? [{ label: 'Withdraw extension request', onClick: () => withdrawRequestMutation.mutate(extension.id) }]
+                                  : [
+                                      {
+                                        label: 'Request extension',
+                                        onClick: () => {
+                                          setRequestingExtensionFor(row)
+                                          setExtensionReason('')
+                                        },
+                                      },
+                                    ]
+                                : []),
+                              ...(isManager && extension?.status === 'pending'
+                                ? [
+                                    { label: 'Request extension', onClick: () => handleRequestExtension(extension, row) },
                                     {
-                                      label: 'Request extension',
+                                      label: 'Deny extension',
+                                      variant: 'danger' as const,
+                                      onClick: () => reviewRequestMutation.mutate({ id: extension.id, status: 'denied' }),
+                                    },
+                                  ]
+                                : []),
+                              ...(isManager && extension
+                                ? [
+                                    {
+                                      label: 'Delete extension request',
+                                      variant: 'danger' as const,
                                       onClick: () => {
-                                        setRequestingExtensionFor(row)
-                                        setExtensionReason('')
+                                        if (confirm('Delete this extension request? This cannot be undone.')) {
+                                          withdrawRequestMutation.mutate(extension.id)
+                                        }
                                       },
                                     },
                                   ]
-                              : []),
-                            ...(isManager && extension?.status === 'pending'
-                              ? [
-                                  { label: 'Request extension', onClick: () => handleRequestExtension(extension, row) },
-                                  {
-                                    label: 'Deny extension',
-                                    variant: 'danger' as const,
-                                    onClick: () => reviewRequestMutation.mutate({ id: extension.id, status: 'denied' }),
-                                  },
-                                ]
-                              : []),
-                            ...(isManager && extension
-                              ? [
-                                  {
-                                    label: 'Delete extension request',
-                                    variant: 'danger' as const,
-                                    onClick: () => {
-                                      if (confirm('Delete this extension request? This cannot be undone.')) {
-                                        withdrawRequestMutation.mutate(extension.id)
-                                      }
-                                    },
-                                  },
-                                ]
-                              : []),
-                            !canReportBadVideo
-                              ? {
-                                  label: 'Report bad video',
-                                  disabled: true,
-                                  title: 'Only reportable on the day it was logged.',
-                                  onClick: () => {},
-                                }
-                              : badVideoPending
-                                ? { label: 'Bad video report pending', disabled: true, onClick: () => {} }
-                                : { label: 'Report bad video', onClick: () => setReportingBadVideoFor(row) },
-                            {
-                              label: 'Delete',
-                              variant: 'danger',
-                              onClick: () => {
-                                if (confirm('Delete this submission?')) {
-                                  deleteMutation.mutate(row.id)
-                                }
+                                : []),
+                              !canReportBadVideo
+                                ? {
+                                    label: 'Report bad video',
+                                    disabled: true,
+                                    title: 'Only reportable on the day it was logged.',
+                                    onClick: () => {},
+                                  }
+                                : badVideoPending
+                                  ? { label: 'Bad video report pending', disabled: true, onClick: () => {} }
+                                  : { label: 'Report bad video', onClick: () => setReportingBadVideoFor(row) },
+                              {
+                                label: 'Delete',
+                                variant: 'danger',
+                                onClick: () => {
+                                  if (confirm('Delete this submission?')) {
+                                    deleteMutation.mutate(row.id)
+                                  }
+                                },
                               },
-                            },
-                          ]}
-                        />
-                      </div>
-                    </td>
-                  </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+                            ]}
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
             {sortedSubmissions.length > 0 && (
               <div className="flex items-center justify-between border-t border-gray-200 px-5 py-3 text-sm text-gray-500">
                 <span>

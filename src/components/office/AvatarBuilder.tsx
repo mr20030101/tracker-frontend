@@ -27,7 +27,7 @@ export function AvatarBuilder({
   const current = toSavedAvatar(avatarOptions(userId, draft))
 
   return (
-    <aside className="flex w-72 shrink-0 flex-col rounded-xl border border-gray-200 bg-white">
+    <aside className="flex max-h-[70vh] w-full shrink-0 flex-col rounded-xl lg:max-h-none lg:w-72 border border-gray-200 bg-white">
       <div className="border-b border-gray-200 p-4">
         <h2 className="text-sm font-bold text-gray-900">Your avatar</h2>
         <p className="text-xs text-gray-500">Changes show on your character right away. Everyone sees it once you save.</p>

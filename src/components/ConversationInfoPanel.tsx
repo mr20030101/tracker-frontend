@@ -19,7 +19,7 @@ export function ConversationInfoPanel({
   onClose: () => void
 }) {
   return (
-    <div className="flex w-80 shrink-0 flex-col border-l border-gray-200">
+    <div className="absolute inset-0 z-10 flex flex-col bg-white lg:static lg:w-80 lg:shrink-0 lg:border-l lg:border-gray-200">
       <div className="flex justify-end px-3 pt-3">
         <button onClick={onClose} className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700" aria-label="Close">
           <X className="h-4 w-4" />

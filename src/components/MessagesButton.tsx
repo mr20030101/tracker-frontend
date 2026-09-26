@@ -161,7 +161,7 @@ export function MessagesButton() {
       {isOpen && (
         <>
           <div className="fixed inset-0 z-40" onClick={close} />
-          <div className="fixed bottom-6 right-6 z-50 flex h-112 w-96 flex-col rounded-xl border border-gray-200 bg-white shadow-lg">
+          <div className="fixed inset-x-3 bottom-3 z-50 flex h-[min(28rem,80vh)] flex-col rounded-xl sm:inset-x-auto sm:bottom-6 sm:right-6 sm:w-96 border border-gray-200 bg-white shadow-lg">
             {activeUserId ? (
               <>
                 <div className="flex items-center gap-2 border-b border-gray-100 px-3 py-2.5">

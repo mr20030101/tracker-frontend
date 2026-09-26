@@ -34,8 +34,6 @@ interface DataTableProps<TData> {
   pageSize?: number
   paginate?: boolean
   rowClassName?: (row: TData) => string
-  /** Scroll sideways when the columns are wider than the container, instead of clipping them. */
-  scrollX?: boolean
   /** Called when a row is clicked anywhere except on a button, link or other control inside it. */
   onRowClick?: (row: TData) => void
   /** Skip the outer rounded border/background, for embedding inside a card that already has one. */
@@ -53,7 +51,6 @@ export function DataTable<TData>({
   pageSize = 10,
   paginate = true,
   rowClassName,
-  scrollX = false,
   onRowClick,
   bare = false,
 }: DataTableProps<TData>) {
@@ -93,8 +90,8 @@ export function DataTable<TData>({
   const to = Math.min(total, from + pagination.pageSize - 1)
 
   return (
-    <div className={bare ? '' : `${scrollX ? 'overflow-x-auto' : 'overflow-hidden'} rounded-xl border border-gray-200 bg-white`}>
-      <table className="w-full text-left text-sm">
+    <div className={bare ? 'overflow-x-auto' : 'overflow-x-auto rounded-xl border border-gray-200 bg-white'}>
+      <table className="w-full min-w-[36rem] text-left text-sm">
         <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id}>

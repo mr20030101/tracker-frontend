@@ -187,7 +187,7 @@ export function NotificationBell() {
           <>
             <div className="fixed inset-0" style={{ zIndex: PANEL_Z_INDEX }} onClick={close} />
             <div
-              style={{ position: 'fixed', zIndex: PANEL_Z_INDEX + 1, width: PANEL_WIDTH, ...pos }}
+              style={{ position: 'fixed', zIndex: PANEL_Z_INDEX + 1, width: PANEL_WIDTH, maxWidth: 'calc(100vw - 24px)', ...pos }}
               className="rounded-xl border border-gray-200 bg-white p-2 shadow-lg"
             >
               <div className="flex items-center justify-between px-2 py-1.5">

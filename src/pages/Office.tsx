@@ -387,7 +387,7 @@ export function Office() {
   const selectedDesk = selectedId ? layout.desks.find((d) => d.ownerId === selectedId) ?? null : null
 
   return (
-    <div className={expanded ? 'fixed inset-0 z-50 flex flex-col bg-gray-50 p-4' : 'flex h-full flex-col'}>
+    <div className={expanded ? 'fixed inset-0 z-50 flex flex-col overflow-y-auto bg-gray-50 p-3 sm:p-4' : 'flex h-full flex-col'}>
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
@@ -395,10 +395,11 @@ export function Office() {
             {floorLabel && <span className="font-medium text-gray-400"> · {floorLabel}</span>}
           </h1>
           <p className="text-sm text-gray-500">
-            Walk with WASD / arrow keys or click the floor. Drag to turn the camera, scroll to zoom. Walk up to people to chat.
+            <span className="hidden sm:inline">Walk with WASD / arrow keys or click the floor. Drag to turn the camera, scroll to zoom.</span>
+            <span className="sm:hidden">Tap the floor to walk. Drag to turn the camera, pinch to zoom.</span> Walk up to people to chat.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {canSwitchFloor && floor && (
             <Select
               value={floor}
@@ -443,9 +444,9 @@ export function Office() {
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 gap-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row">
         {/* `isolate` keeps the 3D labels' z-indexes from escaping above the app's menus and modals. */}
-        <div className="relative isolate min-h-[520px] flex-1 touch-none overflow-hidden rounded-xl border border-gray-200 bg-gray-100 select-none">
+        <div className="relative isolate min-h-[60vh] flex-1 touch-none lg:min-h-[520px] overflow-hidden rounded-xl border border-gray-200 bg-gray-100 select-none">
           {(isLoading || !user || !pos) && <div className="absolute inset-0 flex items-center justify-center text-gray-400">Loading office...</div>}
           {user && pos && (
             <Suspense fallback={<div className="absolute inset-0 flex items-center justify-center text-gray-400">Loading 3D office...</div>}>
@@ -484,7 +485,7 @@ export function Office() {
         </div>
 
         {draft && user ? (
-          <Suspense fallback={<div className="w-72 shrink-0" />}>
+          <Suspense fallback={<div className="shrink-0 lg:w-72" />}>
             <AvatarBuilder
               userId={user.id}
               draft={draft}
@@ -636,7 +637,7 @@ function SidePanel({
   }
 
   return (
-    <aside className="flex w-72 shrink-0 flex-col gap-4">
+    <aside className="flex w-full shrink-0 flex-col gap-4 lg:w-72">
       <section className="rounded-xl border border-gray-200 bg-white p-4">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-gray-400">Voice</h2>

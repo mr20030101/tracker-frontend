@@ -256,3 +256,12 @@ body {
     transform: translate(-50%, 0);
   }
 }
+
+/* Below the desktop layout, tables scroll sideways (their containers are overflow-x-auto) instead of
+   squeezing every column until dates and labels wrap one word per line. */
+@media (max-width: 1023px) {
+  table th,
+  table td {
+    white-space: nowrap;
+  }
+}

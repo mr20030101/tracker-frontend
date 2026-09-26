@@ -873,7 +873,6 @@ export function Hiring() {
         getRowId={(a) => String(a.id)}
         rowSelection={rowSelection}
         onRowSelectionChange={setRowSelection}
-        scrollX
         onRowClick={setDetails}
         isLoading={isLoading}
         emptyMessage={

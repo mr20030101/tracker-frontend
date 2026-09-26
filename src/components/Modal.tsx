@@ -41,8 +41,8 @@ export function Modal({
     // reachable, while dropdowns inside the card aren't clipped by an inner
     // scroll area. min-h-full keeps short modals vertically centred.
     <div ref={overlayRef} className="fixed inset-0 z-50 overflow-y-auto bg-black/30">
-      <div className="flex min-h-full items-center justify-center px-4 py-6">
-        <div ref={cardRef} className={`w-full ${maxWidthClassName} rounded-2xl bg-white p-6 shadow-xl`}>
+      <div className="flex min-h-full items-center justify-center px-3 py-6 sm:px-4">
+        <div ref={cardRef} className={`w-full ${maxWidthClassName} rounded-2xl bg-white p-4 shadow-xl sm:p-6`}>
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-700" aria-label="Close">
