@@ -7,7 +7,7 @@ import { useMessaging } from '../lib/messagingContext'
 import { fetchDirectory } from '../lib/messages'
 import { isOnline } from '../lib/presence'
 import { useTheme } from '../lib/theme'
-import { HAS_TURN, useProximityVoice, type VoiceState } from '../lib/voice'
+import { useProximityVoice, type VoiceState } from '../lib/voice'
 import {
   ALL_FLOOR,
   HEAR_RADIUS,
@@ -496,6 +496,7 @@ export function Office() {
               muted: micMuted,
               talkingTo,
               connectingTo,
+              hasRelay: voice.hasRelay,
               onJoin: () => {
                 voice.clearError()
                 setMicMuted(false)
@@ -562,6 +563,8 @@ function SidePanel({
     // First names of the people you're connected to right now, and of those in range still connecting.
     talkingTo: string[]
     connectingTo: string[]
+    // Whether a TURN relay is available for calls that can't connect directly.
+    hasRelay: boolean
     onJoin: () => void
     onLeave: () => void
     onToggleMute: () => void
@@ -631,7 +634,7 @@ function SidePanel({
             {voice.connectingTo.length > 0 && (
               <p className="mt-1 text-xs text-status-warning-text">
                 Connecting to {voice.connectingTo.join(', ')}...
-                {!HAS_TURN && ' If this never connects, your networks may block direct calls (it needs a TURN relay).'}
+                {!voice.hasRelay && ' If this never connects, your networks may block direct calls (it needs a TURN relay).'}
               </p>
             )}
             <div className="mt-2 flex gap-2">

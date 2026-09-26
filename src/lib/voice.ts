@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { supabase } from './api'
 
 // Proximity voice for the Office page: a direct WebRTC audio connection to each person in voice
 // you could hear anyway (see canHear in lib/office), with volume falling off with distance.
@@ -8,17 +9,29 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 
 // Google's public STUN server lets two browsers find a direct route to each other, which works on
 // many networks. Behind carrier-grade NAT (common with home ISPs) or strict corporate/mobile
-// networks, a direct route often doesn't exist and calls need a TURN relay, set with
-// VITE_TURN_URL / VITE_TURN_USERNAME / VITE_TURN_CREDENTIAL (e.g. from Metered or Twilio). The relay
-// only forwards the encrypted audio; it can't listen in.
+// networks, a direct route often doesn't exist and calls need a TURN relay. The relay only forwards
+// the encrypted audio; it can't listen in. Two ways to get one:
+// - the turn-credentials edge function (Cloudflare Realtime TURN), asked for fresh credentials each
+//   time you join voice; or
+// - fixed credentials from a provider like Metered, via VITE_TURN_URL / VITE_TURN_USERNAME /
+//   VITE_TURN_CREDENTIAL (visible in the site's JavaScript, so only for providers that allow that).
+const STUN: RTCIceServer = { urls: 'stun:stun.l.google.com:19302' }
 const TURN_URL = import.meta.env.VITE_TURN_URL as string | undefined
-const ICE_SERVERS: RTCIceServer[] = [
-  { urls: 'stun:stun.l.google.com:19302' },
-  ...(TURN_URL
-    ? [{ urls: TURN_URL.split(',').map((u) => u.trim()), username: import.meta.env.VITE_TURN_USERNAME, credential: import.meta.env.VITE_TURN_CREDENTIAL }]
-    : []),
-]
-export const HAS_TURN = Boolean(TURN_URL)
+const ENV_TURN: RTCIceServer[] = TURN_URL
+  ? [{ urls: TURN_URL.split(',').map((u) => u.trim()), username: import.meta.env.VITE_TURN_USERNAME, credential: import.meta.env.VITE_TURN_CREDENTIAL }]
+  : []
+
+// Relay servers from the edge function, or none if it isn't deployed/configured (calls then try
+// direct routes only).
+async function fetchRelayServers(): Promise<RTCIceServer[]> {
+  try {
+    const { data, error } = await supabase.functions.invoke('turn-credentials')
+    if (error || !Array.isArray(data?.iceServers)) return []
+    return data.iceServers as RTCIceServer[]
+  } catch {
+    return []
+  }
+}
 const CONNECT_TIMEOUT_MS = 10_000
 // Someone who drops out of earshot goes silent at once but stays connected this long, so walking
 // along the edge of someone's range doesn't hang up and redial over and over.
@@ -70,6 +83,8 @@ export function useProximityVoice({
   onSignal: (listener: ((msg: VoiceSignalMessage) => void) | null) => void
 }) {
   const [micReady, setMicReady] = useState(false)
+  const iceServers = useRef<RTCIceServer[]>([STUN, ...ENV_TURN])
+  const [hasRelay, setHasRelay] = useState(ENV_TURN.length > 0)
   const [error, setError] = useState<string | null>(null)
   const state: VoiceState = !enabled ? (error ? 'error' : 'off') : micReady ? 'on' : error ? 'error' : 'starting'
   const [retryTick, setRetryTick] = useState(0)
@@ -111,7 +126,7 @@ export function useProximityVoice({
     (id: string): Peer | null => {
       const stream = streamRef.current
       if (!stream || !myId) return null
-      const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS })
+      const pc = new RTCPeerConnection({ iceServers: iceServers.current })
       const audio = document.createElement('audio')
       audio.autoplay = true
       audio.volume = wantedRef.current.get(id) ?? 1
@@ -142,13 +157,18 @@ export function useProximityVoice({
   useEffect(() => {
     if (!enabled) return
     let cancelled = false
+    // Relay credentials are fetched alongside the microphone, so calls can use them from the start.
+    const relay = fetchRelayServers()
     navigator.mediaDevices
       .getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } })
-      .then((stream) => {
+      .then(async (stream) => {
+        const relayServers = await relay
         if (cancelled) {
           stream.getTracks().forEach((t) => t.stop())
           return
         }
+        iceServers.current = [STUN, ...ENV_TURN, ...relayServers]
+        setHasRelay(ENV_TURN.length > 0 || relayServers.length > 0)
         streamRef.current = stream
         setMicReady(true)
       })
@@ -251,5 +271,5 @@ export function useProximityVoice({
     return () => onSignal(null)
   }, [state, myId, openPeer, closePeer, onSignal])
 
-  return { state, error, clearError, connected }
+  return { state, error, clearError, connected, hasRelay }
 }
