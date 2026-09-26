@@ -1,22 +1,20 @@
-import { createContext, memo, useContext, useEffect, useMemo, useRef, type ComponentProps, type MutableRefObject, type RefObject } from 'react'
+import { createContext, memo, useContext, useEffect, useMemo, useRef, type ComponentProps, type MutableRefObject, type ReactNode, type RefObject } from 'react'
 import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
 import { Html as DreiHtml, OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
-import { AVATAR_R, BUBBLE_MS, NEAR_RADIUS, PX_PER_M, roomAt, type Desk, type OfficeBubble, type OfficeLayout, type OfficePlayer, type Point } from '../../lib/office'
+import { AVATAR_R, BUBBLE_MS, NEAR_RADIUS, PX_PER_M, roomAt, type Desk, type OfficeAvatar, type OfficeBubble, type OfficeLayout, type OfficePlayer, type Point } from '../../lib/office'
 import { isOnline } from '../../lib/presence'
 import type { DirectoryUser } from '../../types'
 import { Avatar } from '../Avatar'
-import { createOfficeAssets, type PersonMode } from './officeAssets.js'
+import { avatarOptions, hashSeed, kit } from './kit'
+import type { PersonMode } from './officeAssets.js'
 
 // The floor plan is in pixels; the 3D world is in metres (the kit's units), with the plan's
 // x → world x and the plan's y → world z.
 const S = PX_PER_M
 const toWorld = (p: Point) => new THREE.Vector3(p.x / S, 0, p.y / S)
-
-// One kit for the whole app: it caches materials, so every desk and person shares them.
-const kit = createOfficeAssets(THREE)
 
 // The camera looks from the north-west, as in the kit's showcase: towards the private offices' doors
 // (not their bookshelves) and away from the two full-height walls.
@@ -60,12 +58,6 @@ const DARK: Palette = {
   ring: '#f2b705',
 }
 
-function hashSeed(s: string) {
-  let hash = 0
-  for (let i = 0; i < s.length; i++) hash = (hash * 31 + s.charCodeAt(i)) | 0
-  return hash
-}
-
 // drei's Html mounts into the canvas's parent until the event layer connects, then moves — which
 // remounts every label once. Giving them all one fixed container from the start avoids that.
 const LabelLayer = createContext<RefObject<HTMLDivElement | null> | null>(null)
@@ -77,7 +69,8 @@ function Html(props: ComponentProps<typeof DreiHtml>) {
 export interface OfficeSceneProps {
   layout: OfficeLayout
   dark: boolean
-  me: { id: string; name: string; avatar_url: string | null }
+  // `avatar` is your saved character, or the builder's unsaved draft while it's open.
+  me: { id: string; name: string; avatar_url: string | null; avatar: OfficeAvatar | null }
   posRef: MutableRefObject<Point | null>
   // Written every frame with the camera's heading, so keyboard movement can be camera-relative.
   yawRef: MutableRefObject<number>
@@ -86,6 +79,8 @@ export interface OfficeSceneProps {
   players: Map<string, OfficePlayer>
   presentIds: Set<string>
   usersById: Map<string, DirectoryUser>
+  // Saved characters of the people on this floor, for those shown working at their desks.
+  avatars: Map<string, OfficeAvatar | null>
   bubbles: OfficeBubble[]
   nearIds: Set<string>
   selectedId: string | null
@@ -129,6 +124,7 @@ export function OfficeScene(props: OfficeSceneProps) {
             id={props.me.id}
             name={props.me.name}
             avatarUrl={props.me.avatar_url}
+            avatar={props.me.avatar}
             isMe
             getPos={() => props.posRef.current}
             desks={props.layout.desks}
@@ -142,6 +138,7 @@ export function OfficeScene(props: OfficeSceneProps) {
               id={p.id}
               name={p.name}
               avatarUrl={p.avatar_url}
+              avatar={p.avatar ?? props.avatars.get(p.id) ?? null}
               getPos={() => p}
               smooth
               desks={props.layout.desks}
@@ -156,6 +153,7 @@ export function OfficeScene(props: OfficeSceneProps) {
               id={owner.id}
               name={owner.name}
               avatarUrl={owner.avatar_url}
+              avatar={props.avatars.get(owner.id) ?? null}
               getPos={() => desk.seat}
               desks={props.layout.desks}
               bubbles={props.bubbles}
@@ -490,22 +488,46 @@ const DeskTag = memo(function DeskTag({
         </mesh>
       )}
       {!occupied && (
-        <Html position={[desk.seat.x / S, 1.25, desk.seat.y / S]} center zIndexRange={[20, 0]} distanceFactor={10}>
+        <ScaledHtml position={[desk.seat.x / S, 1.25, desk.seat.y / S]} zIndex={20}>
           <button
             type="button"
             onClick={() => owner && onSelect(owner.id)}
-            className={`flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold shadow-sm ${
+            className={`flex items-center gap-1 whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-semibold shadow-sm ${
               owner ? 'bg-white/90 text-gray-700' : 'bg-white/60 text-gray-400'
             } ${owner ? 'opacity-60' : ''}`}
           >
             {owner && <span className="h-1.5 w-1.5 rounded-full bg-gray-400" />}
             {owner ? owner.name.split(/\s+/)[0] : 'Free'}
           </button>
-        </Html>
+        </ScaledHtml>
       )}
     </group>
   )
 })
+
+// Labels shrink as the camera pulls back, so a zoomed-out floor isn't a wall of tags, but never grow
+// past their normal size when you zoom in close (drei's distanceFactor alone grows without limit).
+const LABEL_FULL_SIZE_AT = 11 // metres from the camera
+const LABEL_MIN_SCALE = 0.6
+
+function ScaledHtml({ position, zIndex, children }: { position?: [number, number, number]; zIndex: number; children: ReactNode }) {
+  const anchor = useRef<THREE.Group>(null)
+  const box = useRef<HTMLDivElement>(null)
+  const at = useRef(new THREE.Vector3())
+  useFrame(({ camera }) => {
+    if (!anchor.current || !box.current) return
+    anchor.current.getWorldPosition(at.current)
+    const scale = Math.min(1, Math.max(LABEL_MIN_SCALE, LABEL_FULL_SIZE_AT / camera.position.distanceTo(at.current)))
+    box.current.style.transform = `scale(${scale.toFixed(3)})`
+  })
+  return (
+    <group ref={anchor} position={position}>
+      <Html center zIndexRange={[zIndex, 0]}>
+        <div ref={box}>{children}</div>
+      </Html>
+    </group>
+  )
+}
 
 function Tag({
   name,
@@ -523,29 +545,29 @@ function Tag({
   onClick?: () => void
 }) {
   return (
-    <Html center zIndexRange={[30, 0]} distanceFactor={10}>
+    <ScaledHtml zIndex={30}>
       <div className="relative flex flex-col items-center" onClick={onClick} style={{ cursor: onClick ? 'pointer' : undefined }}>
         {say && <SpeechBubble key={say.key} text={say.text} />}
         {emote && (
-          <div key={emote.key} className="absolute bottom-full mb-1 animate-bounce text-3xl" style={{ animationIterationCount: 3 }}>
+          <div key={emote.key} className="absolute bottom-full mb-1 animate-bounce text-2xl" style={{ animationIterationCount: 3 }}>
             {emote.text}
           </div>
         )}
         <div className={`rounded-full shadow-md ring-2 ${isMe ? 'ring-accent' : 'ring-white'}`}>
-          <Avatar name={name} photoUrl={avatarUrl} size={26} />
+          <Avatar name={name} photoUrl={avatarUrl} size={20} />
         </div>
-        <div className={`mt-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold ${isMe ? 'bg-accent text-accent-foreground' : 'bg-[#1d1f22]/85 text-white'}`}>
+        <div className={`mt-0.5 whitespace-nowrap rounded-full px-1.5 py-px text-[10px] font-semibold ${isMe ? 'bg-accent text-accent-foreground' : 'bg-[#1d1f22]/85 text-white'}`}>
           {isMe ? 'You' : name.split(/\s+/)[0]}
         </div>
       </div>
-    </Html>
+    </ScaledHtml>
   )
 }
 
 function SpeechBubble({ text }: { text: string }) {
   return (
     <div
-      className="pointer-events-none absolute bottom-full left-1/2 mb-2 w-max max-w-[220px] rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-800 shadow-md"
+      className="pointer-events-none absolute bottom-full left-1/2 mb-2 w-max max-w-[200px] rounded-xl border border-gray-200 bg-white px-2.5 py-1 text-xs text-gray-800 shadow-md"
       style={{ animation: `office-bubble ${BUBBLE_MS}ms ease-out forwards` }}
     >
       {text}
@@ -580,13 +602,14 @@ function NearRing({ posRef, layout, color }: { posRef: MutableRefObject<Point | 
   )
 }
 
-// One person from the kit. Their look is picked from their user id, so everyone sees the same
-// character for the same person. They walk while moving, wave on a 👋, and sit down and type when
+// One person from the kit, in the look they saved in the avatar builder (or, until they do, one
+// picked from their user id), so everyone sees the same character for the same person. They walk while moving, wave on a 👋, and sit down and type when
 // standing on a desk's seat.
 function Character({
   id,
   name,
   avatarUrl,
+  avatar,
   isMe,
   getPos,
   smooth,
@@ -598,6 +621,7 @@ function Character({
   id: string
   name: string
   avatarUrl: string | null
+  avatar: OfficeAvatar | null
   isMe?: boolean
   getPos: () => Point | null
   smooth?: boolean
@@ -606,7 +630,9 @@ function Character({
   ring: string | null
   onSelect?: (id: string | null) => void
 }) {
-  const person = useMemo(() => kit.createPerson(kit.randomPersonOptions(hashSeed(id))), [id])
+  const avatarKey = JSON.stringify(avatar ?? null)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const person = useMemo(() => kit.createPerson(avatarOptions(id, avatar)), [id, avatarKey])
   useEffect(() => () => disposeGeometries(person), [person])
   const group = useRef<THREE.Group>(null)
   // Turned to face the way they're walking; a wrapper, so the kit's person object is only ever
@@ -615,6 +641,8 @@ function Character({
   const tag = useRef<THREE.Group>(null)
   const placed = useRef(false)
   const sitting = useRef(false)
+  // A new look is a new person object, standing; the sit check below re-seats it if needed.
+  const posedPerson = useRef(person)
   const plan = useRef<Point>({ x: 0, y: 0 })
 
   const say = bubbles.find((b) => b.userId === id && b.kind === 'say')
@@ -644,6 +672,10 @@ function Character({
     const moving = Math.hypot(dx, dy) / Math.max(dt, 1e-3) > 12 // px/s
 
     const seatDesk = moving ? null : desks.find((d) => Math.hypot(d.seat.x - target.x, d.seat.y - target.y) < SIT_RADIUS) ?? null
+    if (posedPerson.current !== person) {
+      posedPerson.current = person
+      sitting.current = false
+    }
     if (Boolean(seatDesk) !== sitting.current) {
       sitting.current = Boolean(seatDesk)
       kit.setPose(person, seatDesk ? 'sit' : 'stand')

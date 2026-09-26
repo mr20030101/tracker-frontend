@@ -107,6 +107,8 @@ export interface RosterUser {
   role: DirectoryUser['role']
   avatar_url: string | null
   lead_id: string | null
+  // Older databases' office_roster() doesn't return it yet.
+  office_avatar?: OfficeAvatar | null
 }
 
 // null when the database doesn't have office_roster() yet; the page then falls back to one
@@ -118,6 +120,17 @@ export async function fetchOfficeRoster(): Promise<RosterUser[] | null> {
     throw error
   }
   return (data ?? []) as RosterUser[]
+}
+
+// Saves your own Office character; null goes back to the automatic look.
+export async function saveOfficeAvatar(avatar: OfficeAvatar | null): Promise<void> {
+  const { error } = await supabase.rpc('set_office_avatar', { new_avatar: avatar })
+  if (error) {
+    if (error.code === 'PGRST202' || error.code === '42883') {
+      throw new Error("Avatars can't be saved yet: the database needs the latest supabase/schema.sql.")
+    }
+    throw error
+  }
 }
 
 // Floors: one per lead's team (keyed by the lead's id), 'none' for contributors without a lead,
@@ -315,10 +328,16 @@ export function distance(a: Point, b: Point): number {
   return Math.hypot(a.x - b.x, a.y - b.y)
 }
 
+// A saved Office character: the avatar builder's picks (see components/office/kit.ts), as stored
+// in profiles.office_avatar.
+export type OfficeAvatar = Record<string, string | number | boolean>
+
 export interface OfficePlayer extends Point {
   id: string
   name: string
   avatar_url: string | null
+  // Their character, carried in presence so it shows even for visitors from another floor.
+  avatar?: OfficeAvatar | null
   // Sender's clock at the time of this position; stale updates (a late presence sync arriving
   // after newer broadcasts) are dropped by comparing it.
   t: number
@@ -355,7 +374,7 @@ interface SayPayload {
 // the database. Chat is filtered on the receiving end (by distance, and by private-office walls —
 // see canHear), so it's "nearby only" by convention, not a private channel.
 export function useOfficeChannel(
-  identity: { id: string; name: string; avatar_url: string | null } | null,
+  identity: { id: string; name: string; avatar_url: string | null; avatar: OfficeAvatar | null } | null,
   floor: string | null,
   getMyPos: () => Point,
   getLayout: () => OfficeLayout,
@@ -401,7 +420,10 @@ export function useOfficeChannel(
             if (key === id || metas.length === 0) continue
             const meta = metas[metas.length - 1]
             const known = prev.get(key)
-            next.set(key, known && known.t > meta.t ? known : { id: meta.id, name: meta.name, avatar_url: meta.avatar_url, x: meta.x, y: meta.y, t: meta.t })
+            // Position from whichever is newer; name and character always from presence, which is
+            // re-sent when someone saves a new look.
+            const where = known && known.t > meta.t ? known : meta
+            next.set(key, { id: meta.id, name: meta.name, avatar_url: meta.avatar_url, avatar: meta.avatar ?? null, x: where.x, y: where.y, t: where.t })
           }
           return next
         })

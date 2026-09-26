@@ -22,6 +22,14 @@ export interface PersonOptions {
 
 export interface OfficeAssets {
   colors: Record<string, number>
+  palettes: { SKIN: number[]; HAIR: number[]; SHIRT: number[]; PANTS: number[] }
+  styles: {
+    HAIR_STYLES: { man: string[]; woman: string[] }
+    EYES: string[]
+    MOUTHS: string[]
+    BROWS: string[]
+    EXTRAS: string[]
+  }
   createDesk(opts?: { width?: number; depth?: number; height?: number; top?: number; frame?: number }): THREE.Group
   createChair(opts?: { color?: number; accent?: number; executive?: boolean }): THREE.Group
   createMonitor(opts?: { seed?: number }): THREE.Group

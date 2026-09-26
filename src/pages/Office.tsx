@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { Armchair, Crosshair, Map as MapIcon, Maximize2, MessageCircle, Minimize2, Minus, Plus, Send } from 'lucide-react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { Armchair, Crosshair, Map as MapIcon, Maximize2, MessageCircle, Minimize2, Minus, Plus, Send, Shirt } from 'lucide-react'
+import { errorMessage } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useMessaging } from '../lib/messagingContext'
 import { fetchDirectory } from '../lib/messages'
@@ -20,7 +21,9 @@ import {
   roomAt,
   step,
   useOfficeChannel,
+  saveOfficeAvatar,
   type Desk,
+  type OfficeAvatar,
   type Point,
 } from '../lib/office'
 import type { CameraApi, CameraMode } from '../components/office/OfficeScene'
@@ -30,6 +33,7 @@ import { Select } from '../components/Select'
 
 // three.js is heavy; it's only downloaded when someone actually opens the office.
 const OfficeScene = lazy(() => import('../components/office/OfficeScene').then((m) => ({ default: m.OfficeScene })))
+const AvatarBuilder = lazy(() => import('../components/office/AvatarBuilder').then((m) => ({ default: m.AvatarBuilder })))
 
 const EMOTES = ['👋', '👍', '😂', '🎉', '☕']
 // Screen-relative: "up" walks away from the camera, whichever way it's been turned.
@@ -118,12 +122,47 @@ export function Office() {
   }, [layout])
   const getLayout = useCallback(() => layoutRef.current, [])
 
+  // Everyone's saved characters, from the roster. Yours is overridden locally right after a save,
+  // until the roster refetch catches up.
+  const queryClient = useQueryClient()
+  const avatars = useMemo(() => new Map((roster ?? []).map((u) => [u.id, u.office_avatar ?? null])), [roster])
+  const [justSaved, setJustSaved] = useState<OfficeAvatar | null>(null)
+  const savedAvatar = justSaved ?? (user ? avatars.get(user.id) ?? null : null)
+  const savedAvatarKey = JSON.stringify(savedAvatar)
+
+  // The avatar builder: `draft` is non-null while it's open, and previews on your character.
+  const [draft, setDraft] = useState<OfficeAvatar | null>(null)
+  const [savingAvatar, setSavingAvatar] = useState(false)
+  const [avatarError, setAvatarError] = useState<string | null>(null)
+  const saveAvatar = async (avatar: OfficeAvatar) => {
+    setSavingAvatar(true)
+    setAvatarError(null)
+    try {
+      await saveOfficeAvatar(avatar)
+      setJustSaved(avatar)
+      setDraft(null)
+      void queryClient.invalidateQueries({ queryKey: ['office-roster'] })
+    } catch (err) {
+      setAvatarError(errorMessage(err, "Couldn't save your avatar."))
+    } finally {
+      setSavingAvatar(false)
+    }
+  }
+
   // Joining waits for the starting position so you never appear at 0,0.
   const identity = useMemo(
-    () => (user && ready ? { id: user.id, name: user.name, avatar_url: user.avatar_url } : null),
-    [user, ready],
+    () => (user && ready ? { id: user.id, name: user.name, avatar_url: user.avatar_url, avatar: savedAvatar } : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [user, ready, savedAvatarKey],
   )
   const { players, bubbles, chat, sendMove, syncPresence, say } = useOfficeChannel(identity, ready ? floor : null, getMyPos, getLayout)
+  // A newly saved look goes out in presence straight away, so everyone on the floor sees it.
+  const sentAvatarKey = useRef(savedAvatarKey)
+  useEffect(() => {
+    if (sentAvatarKey.current === savedAvatarKey) return
+    sentAvatarKey.current = savedAvatarKey
+    if (posRef.current) syncPresence(posRef.current)
+  }, [savedAvatarKey, syncPresence])
 
   const [mode, setMode] = useState<CameraMode>('follow')
   const [expanded, setExpanded] = useState(false)
@@ -291,6 +330,16 @@ export function Office() {
             <ToolButton label="Whole office view" onClick={() => setMode('overview')} active={mode === 'overview'}>
               <MapIcon className="h-4 w-4" />
             </ToolButton>
+            <ToolButton
+              label="Customize avatar"
+              active={draft !== null}
+              onClick={() => {
+                setAvatarError(null)
+                setDraft((d) => (d ? null : savedAvatar ?? {}))
+              }}
+            >
+              <Shirt className="h-4 w-4" />
+            </ToolButton>
             {myDesk && (
               <ToolButton label="Go to my desk" onClick={() => walkTo(myDesk.seat)}>
                 <Armchair className="h-4 w-4" />
@@ -312,7 +361,7 @@ export function Office() {
               <OfficeScene
                 layout={layout}
                 dark={theme === 'dark'}
-                me={{ id: user.id, name: user.name, avatar_url: user.avatar_url }}
+                me={{ id: user.id, name: user.name, avatar_url: user.avatar_url, avatar: draft ?? savedAvatar }}
                 posRef={posRef}
                 yawRef={yawRef}
                 apiRef={cameraApi}
@@ -320,6 +369,7 @@ export function Office() {
                 players={players}
                 presentIds={presentIds}
                 usersById={usersById}
+                avatars={avatars}
                 bubbles={bubbles}
                 nearIds={nearIds}
                 selectedId={selectedId}
@@ -334,23 +384,37 @@ export function Office() {
           </div>
         </div>
 
-        <SidePanel
-          roomOwner={myRoom ? (myRoom.ownerId === user?.id ? 'your' : `${myRoom.ownerFirstName}'s`) : null}
-          nearby={nearby}
-          chat={chat}
-          myId={user?.id ?? null}
-          selected={selectedUser}
-          selectedHere={Boolean(selectedPlayer)}
-          onSay={(text) => say(text)}
-          onEmote={(emoji, to) => say(emoji, 'emote', to)}
-          onMessage={(u) => openChatWith(u.id, u.name)}
-          onWalkTo={(id) => {
-            const target = players.get(id) ?? (layout.desks.find((d) => d.ownerId === id)?.seat ?? null)
-            if (target) walkTo(target)
-          }}
-          onSelect={setSelectedId}
-          selectedDesk={selectedDesk}
-        />
+        {draft && user ? (
+          <Suspense fallback={<div className="w-72 shrink-0" />}>
+            <AvatarBuilder
+              userId={user.id}
+              draft={draft}
+              onChange={setDraft}
+              onSave={(avatar) => void saveAvatar(avatar)}
+              onCancel={() => setDraft(null)}
+              saving={savingAvatar}
+              error={avatarError}
+            />
+          </Suspense>
+        ) : (
+          <SidePanel
+            roomOwner={myRoom ? (myRoom.ownerId === user?.id ? 'your' : `${myRoom.ownerFirstName}'s`) : null}
+            nearby={nearby}
+            chat={chat}
+            myId={user?.id ?? null}
+            selected={selectedUser}
+            selectedHere={Boolean(selectedPlayer)}
+            onSay={(text) => say(text)}
+            onEmote={(emoji, to) => say(emoji, 'emote', to)}
+            onMessage={(u) => openChatWith(u.id, u.name)}
+            onWalkTo={(id) => {
+              const target = players.get(id) ?? (layout.desks.find((d) => d.ownerId === id)?.seat ?? null)
+              if (target) walkTo(target)
+            }}
+            onSelect={setSelectedId}
+            selectedDesk={selectedDesk}
+          />
+        )}
       </div>
     </div>
   )
