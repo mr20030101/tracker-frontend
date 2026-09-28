@@ -17,7 +17,6 @@ import { TaskSubmissionForm } from '../components/TaskSubmissionForm'
 import { LevelPill } from '../components/LevelPill'
 import { Modal } from '../components/Modal'
 import { contributorPath } from '../lib/urlRef'
-import { RobotEmoji } from '../components/RobotEmoji'
 
 const TREND_DAYS = 30
 
@@ -183,7 +182,6 @@ export function ContributorDashboard() {
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
             Dashboard
-            <RobotEmoji page="dashboard" />
           </h1>
           <p className="text-sm text-gray-500">Welcome back, {data.user?.name ?? email}.</p>
         </div>

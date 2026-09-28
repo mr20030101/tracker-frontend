@@ -8,7 +8,6 @@ import { TaskSubmissionForm } from '../components/TaskSubmissionForm'
 import { DataTable } from '../components/DataTable'
 import type { TaskSubmission } from '../types'
 import { contributorPath } from '../lib/urlRef'
-import { RobotEmoji } from '../components/RobotEmoji'
 
 const HIGH_VOLUME_THRESHOLD = 20
 
@@ -339,7 +338,6 @@ export function DataQuality() {
       <div className="mb-6">
         <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
           Data Quality
-          <RobotEmoji page="dataQuality" />
         </h1>
         <p className="text-sm text-gray-500">Automated checks across all task log submissions.</p>
       </div>

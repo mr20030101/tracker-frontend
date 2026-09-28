@@ -17,7 +17,6 @@ import { Detail } from '../components/Detail'
 import { Modal } from '../components/Modal'
 import type { RequestStatus, RequestType } from '../types'
 import { contributorPath } from '../lib/urlRef'
-import { RobotEmoji } from '../components/RobotEmoji'
 
 const MANAGER_ROLES = ['admin', 'lead']
 
@@ -257,7 +256,6 @@ export function Requests() {
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
             Requests
-            <RobotEmoji page="requests" />
           </h1>
           <p className="text-sm text-gray-500">
             {isManager

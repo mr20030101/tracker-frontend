@@ -14,7 +14,6 @@ import { LineChart } from '../components/LineChart'
 import { ProgressBar } from '../components/ProgressBar'
 import { Select } from '../components/Select'
 import { contributorPath, messagePath } from '../lib/urlRef'
-import { RobotEmoji } from '../components/RobotEmoji'
 
 const percent = (n: number) => `${Math.round(n)}%`
 
@@ -176,7 +175,6 @@ export function LeadTeam() {
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
                 {lead.name}
-                <RobotEmoji page="team" />
               </h1>
               <span className="rounded-full bg-accent-bg px-2.5 py-0.5 text-xs font-semibold capitalize text-accent-foreground">
                 {lead.role}

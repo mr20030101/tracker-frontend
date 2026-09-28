@@ -14,7 +14,6 @@ import { LevelPill, LEVEL_TIERS } from '../components/LevelPill'
 import { ContributorWorkPanel } from '../components/ContributorWorkPanel'
 import { Modal } from '../components/Modal'
 import { Reveal } from '../components/Reveal'
-import { RobotEmoji } from '../components/RobotEmoji'
 
 const LEVEL_OPTIONS: ProjectLevel[] = ['contributor', 'l0', 'l1', 'l10']
 
@@ -326,7 +325,6 @@ export function CbProfile() {
           <div className="flex items-center gap-2">
             <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
               {displayName}
-              <RobotEmoji page="profile" />
             </h1>
             {data.user && (
               <span className="rounded-full bg-accent-bg px-3 py-1 text-xs font-medium capitalize text-accent-foreground">

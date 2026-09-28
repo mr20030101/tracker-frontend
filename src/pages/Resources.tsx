@@ -6,7 +6,6 @@ import type { Project, Resource } from '../types'
 import { Modal } from '../components/Modal'
 import { ActionsMenu } from '../components/ActionsMenu'
 import { Select } from '../components/Select'
-import { RobotEmoji } from '../components/RobotEmoji'
 
 const MANAGER_ROLES = ['admin', 'lead']
 
@@ -159,7 +158,6 @@ export function Resources() {
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
             Resources
-            <RobotEmoji page="resources" />
           </h1>
           <p className="text-sm text-gray-500">Guidelines, recordings, and reference links.</p>
         </div>

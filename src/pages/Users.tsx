@@ -14,7 +14,6 @@ import { ActionsMenu } from '../components/ActionsMenu'
 import { Select } from '../components/Select'
 import { BulkImportUsersModal } from '../components/BulkImportUsersModal'
 import { contributorPath } from '../lib/urlRef'
-import { RobotEmoji } from '../components/RobotEmoji'
 
 const ROLES: User['role'][] = ['contributor', 'lead', 'admin']
 const ROLE_OPTIONS = ROLES.map((r) => ({ value: r, label: r.charAt(0).toUpperCase() + r.slice(1) }))
@@ -470,7 +469,6 @@ export function Users() {
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
             Users
-            <RobotEmoji page="users" />
           </h1>
           <p className="text-sm text-gray-500">
             {isAdmin ? 'Manage CB logins, roles, and passwords.' : "Manage your team's logins and passwords."}

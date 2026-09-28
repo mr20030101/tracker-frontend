@@ -13,7 +13,6 @@ import { GrowBar } from '../components/GrowBar'
 import { SortableHeader } from '../components/SortableHeader'
 import { downloadCsv } from '../lib/csv'
 import { contributorPath } from '../lib/urlRef'
-import { RobotEmoji } from '../components/RobotEmoji'
 
 type Period = 'week' | 'month' | 'all'
 type StatusFilter = 'all' | 'active' | 'disabled'
@@ -59,7 +58,6 @@ function ContributorLeaderboard() {
       <div className="mb-6">
         <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
           Leaderboard
-          <RobotEmoji page="leaderboard" />
         </h1>
         <p className="text-sm text-gray-500">See who on your team has submitted the most tasks {periodLabel}.</p>
       </div>
@@ -246,7 +244,6 @@ function ManagerLeaderboard() {
       <div className="mb-6">
         <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
           Leaderboard
-          <RobotEmoji page="leaderboard" />
         </h1>
         <p className="text-sm text-gray-500">Filter, sort, and manage contributor progress.</p>
       </div>

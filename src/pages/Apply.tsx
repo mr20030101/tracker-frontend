@@ -13,7 +13,6 @@ import {
 import { prefersReducedMotion, useReveal } from '../lib/motion'
 import { Logo } from '../components/Logo'
 import { RobotStage } from '../components/robots/RobotStage'
-import { RobotEmoji } from '../components/RobotEmoji'
 
 const inputClass = 'w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent'
 // Same staggered entrance as the login card: everything above the form, then each field in turn.
@@ -231,7 +230,6 @@ function PersonalStep({
     <div ref={ref}>
       <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
         Robotics Project Application
-        <RobotEmoji page="apply" />
       </h1>
       <StepIndicator step={1} />
       <form onSubmit={onNext} className="flex flex-col gap-4">
@@ -330,7 +328,6 @@ function ComputerStep({
     <div ref={ref}>
       <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
         Robotics Project Application
-        <RobotEmoji page="apply" />
       </h1>
       <StepIndicator step={2} />
       <div className="mb-5 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">

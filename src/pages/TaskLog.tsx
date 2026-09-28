@@ -16,7 +16,6 @@ import { BulkImportModal } from '../components/BulkImportModal'
 import { ContributorWorkPanel } from '../components/ContributorWorkPanel'
 import { downloadCsv } from '../lib/csv'
 import { contributorPath } from '../lib/urlRef'
-import { RobotEmoji } from '../components/RobotEmoji'
 
 const MANAGER_ROLES = ['admin', 'lead']
 
@@ -52,7 +51,6 @@ function ContributorTaskLog() {
       <div className="mb-6">
         <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
           Task Log
-          <RobotEmoji page="taskLog" />
         </h1>
         <p className="text-sm text-gray-500">Your submissions, goals and CTS status.</p>
       </div>
@@ -170,7 +168,6 @@ function ManagerTaskLog() {
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
             Task Log
-            <RobotEmoji page="taskLog" />
           </h1>
           <p className="text-sm text-gray-500">
             {data ? `${data.total} ${isManager ? 'total' : 'of your'} submissions` : 'Loading...'}
