@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api, supabase } from '../lib/api'
+import { api, errorMessage, supabase } from '../lib/api'
+import { openResourceFile, resourceFilePath, uploadResourceFile } from '../lib/resourceFiles'
 import { useAuth } from '../lib/auth'
 import type { Project, Resource } from '../types'
 import { Modal } from '../components/Modal'
@@ -129,14 +130,18 @@ export function Resources() {
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
+    // The file goes into the chosen project's folder, which decides who can open it, so the project
+    // has to be picked first.
+    if (!isAdmin && !form.project_id) {
+      setError('Pick a project before uploading a file.')
+      e.target.value = ''
+      return
+    }
     setUploading(true)
     setError(null)
     try {
-      const path = `${crypto.randomUUID()}-${file.name}`
-      const { error: uploadError } = await supabase.storage.from('resources').upload(path, file)
-      if (uploadError) throw uploadError
-      const { data: publicUrlData } = supabase.storage.from('resources').getPublicUrl(path)
-      setForm((prev) => ({ ...prev, url: publicUrlData.publicUrl, title: prev.title || file.name }))
+      const url = await uploadResourceFile(file, form.project_id ? Number(form.project_id) : null)
+      setForm((prev) => ({ ...prev, url, title: prev.title || file.name }))
     } catch {
       setError('Could not upload this file. Try again.')
     } finally {
@@ -182,6 +187,7 @@ export function Resources() {
             <ul className="divide-y divide-gray-100">
               {items.map((item) => {
                 const embeddable = canvaEmbedUrl(item.url) !== null
+                const filePath = resourceFilePath(item.url)
                 return (
                 <li key={item.id} className="flex items-center justify-between px-5 py-3">
                   <div>
@@ -190,6 +196,16 @@ export function Resources() {
                         type="button"
                         onClick={() => setPreviewResource(item)}
                         className="text-sm font-medium text-sky-700 hover:underline"
+                      >
+                        {item.title}
+                      </button>
+                    ) : filePath ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          openResourceFile(filePath).catch((err) => alert(errorMessage(err, 'Could not open this file.')))
+                        }
+                        className="text-left text-sm font-medium text-sky-700 hover:underline"
                       >
                         {item.title}
                       </button>
@@ -242,7 +258,15 @@ export function Resources() {
               ) : (
                 <Select
                   value={form.project_id}
-                  onChange={(value) => setForm({ ...form, project_id: value })}
+                  onChange={(value) =>
+                    setForm((prev) => {
+                      // An uploaded file lives in its project's folder, so it can't follow the resource
+                      // to another project: clear it, to be uploaded again under the new one.
+                      const path = resourceFilePath(prev.url)
+                      const movedFile = path?.includes('/') && path.split('/')[0] !== (value || 'general')
+                      return { ...prev, project_id: value, url: movedFile ? '' : prev.url }
+                    })
+                  }
                   options={projectOptions}
                   placeholder={isAdmin ? undefined : 'Select a project...'}
                   fullWidth

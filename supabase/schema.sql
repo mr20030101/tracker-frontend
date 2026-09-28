@@ -236,29 +236,42 @@ create index if not exists messages_recipient_idx on public.messages(recipient_i
 create index if not exists task_extension_requests_submission_idx on public.task_requests(task_submission_id);
 create index if not exists task_extension_requests_requested_by_idx on public.task_requests(requested_by, status);
 
+-- "Active" here also means past the forced password change: an account still on a temporary
+-- password (must_change_password) can read its own profile and set a new password (the auth API
+-- plus clear_must_change_password()), and nothing else, until it does. The app's own
+-- change-password screen isn't enough on its own, since the API can be called directly. A
+-- deactivated account's session likewise stops working here, without waiting for it to expire.
 create or replace function public.is_active_user()
 returns boolean language sql stable security definer set search_path = public
-as $$ select exists (select 1 from public.profiles where id = auth.uid() and is_active) $$;
+as $$ select exists (select 1 from public.profiles where id = auth.uid() and is_active and not must_change_password) $$;
 
 create or replace function public.is_manager()
 returns boolean language sql stable security definer set search_path = public
-as $$ select exists (select 1 from public.profiles where id = auth.uid() and is_active and role in ('lead', 'admin')) $$;
+as $$ select exists (select 1 from public.profiles where id = auth.uid() and is_active and not must_change_password and role in ('lead', 'admin')) $$;
 
 -- Admins manage everyone; leads are scoped to their attached contributors
 -- (see is_own_or_attached below) rather than the whole roster.
 create or replace function public.is_admin()
 returns boolean language sql stable security definer set search_path = public
-as $$ select exists (select 1 from public.profiles where id = auth.uid() and is_active and role = 'admin') $$;
+as $$ select exists (select 1 from public.profiles where id = auth.uid() and is_active and not must_change_password and role = 'admin') $$;
 
 -- True when profile_id is the caller's own id, or a contributor whose
--- lead_id points back at the caller. Used both for a profiles row (by its
--- id) and for a task_submissions/weekly_targets row (by its user_id).
+-- lead_id points back at the caller — and the caller is active (see
+-- is_active_user above). Used both for a profiles row (by its id) and for a
+-- task_submissions/weekly_targets row (by its user_id).
 create or replace function public.is_own_or_attached(profile_id uuid)
 returns boolean language sql stable security definer set search_path = public
 as $$
-  select profile_id = auth.uid()
+  select public.is_active_user() and (
+    profile_id = auth.uid()
     or exists (select 1 from public.profiles where id = profile_id and lead_id = auth.uid())
+  )
 $$;
+
+-- The caller's own login email, for policies that tie a row to it (task_submissions.cb_email).
+create or replace function public.own_email()
+returns text language sql stable security definer set search_path = public
+as $$ select email from public.profiles where id = auth.uid() $$;
 
 -- Messaging needs names and avatars for the people in a conversation, which the profiles table's
 -- (deliberately) scoped read policy can't give a contributor, so it has its own RLS-independent
@@ -283,7 +296,7 @@ as $$
     p.avatar_url, p.role, p.is_bot,
     case when public.is_manager() then p.email end
   from public.profiles p
-  where p.is_active and (
+  where p.is_active and public.is_active_user() and (
     public.is_manager()
     or p.is_bot
     or p.role = 'admin'
@@ -314,7 +327,7 @@ language sql stable security definer set search_path = public
 as $$
   select p.id, p.name, p.role, p.avatar_url, p.lead_id, p.office_avatar
   from public.profiles p, public.profiles me
-  where me.id = auth.uid()
+  where me.id = auth.uid() and public.is_active_user()
     and p.is_active and not p.is_bot
     and (
       public.is_admin()
@@ -366,7 +379,7 @@ language sql stable security definer set search_path = public
 as $$
   select exists (
     select 1 from public.profiles me
-    where me.id = auth.uid() and me.is_active and (
+    where me.id = auth.uid() and me.is_active and not me.must_change_password and (
       me.role = 'admin'
       or (me.role = 'lead' and target_floor = me.id::text)
       or (me.role = 'contributor' and target_floor = coalesce(me.lead_id::text, 'none'))
@@ -451,7 +464,7 @@ as $$
         and (s.user_id = p.id or lower(s.cb_email) = lower(p.email))
     ) as tasks_submitted
   from public.profiles p
-  where p.role = 'contributor' and p.is_active
+  where p.role = 'contributor' and p.is_active and public.is_active_user()
     and p.lead_id is not distinct from (select lead_id from public.profiles where id = auth.uid())
   order by tasks_submitted desc, p.name asc
 $$;
@@ -486,7 +499,8 @@ returns table (
 language sql stable security definer set search_path = public
 as $$
   with target as (
-    select * from public.profiles p where lower(p.email) = lower(p_target_email) and p.role = 'contributor'
+    select * from public.profiles p
+    where lower(p.email) = lower(p_target_email) and p.role = 'contributor' and public.is_active_user()
   ),
   target_submissions as (
     select s.* from public.task_submissions s, target t
@@ -628,15 +642,15 @@ grant execute on function public.clear_must_change_password() to authenticated;
 -- RLS is row-level only, so a lead permitted to update their attached
 -- contributor's row could otherwise still smuggle a role change through.
 -- This column-level guard blocks that regardless of which policy allowed
--- the row through. is_admin() checks auth.uid(), so this only applies to
--- requests made with a real user session — service-role calls (e.g. the
--- manage-user function) are unaffected since they don't change role via
--- UPDATE against an existing different value.
+-- the row through. It only applies to requests made through the API as a
+-- user (anon/authenticated): the manage-user function (service role) sets
+-- the role of every account it creates — handle_new_user() always starts
+-- them as contributors — and the SQL editor has no JWT role at all.
 create or replace function public.prevent_non_admin_role_change()
 returns trigger language plpgsql security definer set search_path = public
 as $$
 begin
-  if new.role is distinct from old.role and not public.is_admin() then
+  if new.role is distinct from old.role and auth.role() in ('anon', 'authenticated') and not public.is_admin() then
     raise exception 'Only admins can change a user''s role.';
   end if;
   return new;
@@ -653,6 +667,22 @@ create trigger profiles_prevent_non_admin_role_change
 create or replace function public.is_project_lead(target_project_id bigint)
 returns boolean language sql stable security definer set search_path = public
 as $$ select exists (select 1 from public.project_leads where project_id = target_project_id and lead_id = auth.uid()) $$;
+
+-- Whether the caller may see a project's resources: the same rule as the resources and projects
+-- read policies below (an admin, a lead of the project, or a contributor whose lead leads it).
+-- Used by the resources storage bucket's policies, which key files by project folder.
+create or replace function public.can_view_project(target_project_id bigint)
+returns boolean language sql stable security definer set search_path = public
+as $$
+  select public.is_active_user() and (
+    public.is_admin()
+    or public.is_project_lead(target_project_id)
+    or exists (
+      select 1 from public.profiles p join public.project_leads pl on pl.lead_id = p.lead_id
+      where p.id = auth.uid() and pl.project_id = target_project_id
+    )
+  )
+$$;
 
 -- Messages allow two kinds of update: the recipient marking read_at, and
 -- either side hiding the message from their own view ("delete for me").
@@ -757,12 +787,17 @@ as $$ update public.profiles set last_seen_at = now() where id = auth.uid() $$;
 
 grant execute on function public.touch_presence() to authenticated;
 
+-- Every new login starts as an inactive contributor, whatever its metadata says:
+-- raw_user_meta_data is set by whoever calls sign-up, so trusting a 'role' in it let anyone holding
+-- the public anon key sign themselves up as an admin. Real accounts are made by the manage-user
+-- function (service role), which upserts the profile with the right role and is_active = true right
+-- after — see prevent_non_admin_role_change() for why that upsert is still allowed to set the role.
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path = public
 as $$
 begin
-  insert into public.profiles (id, name, email, role)
-  values (new.id, coalesce(new.raw_user_meta_data ->> 'name', split_part(new.email, '@', 1)), new.email, coalesce(new.raw_user_meta_data ->> 'role', 'contributor'))
+  insert into public.profiles (id, name, email, role, is_active)
+  values (new.id, coalesce(new.raw_user_meta_data ->> 'name', split_part(new.email, '@', 1)), new.email, 'contributor', false)
   on conflict (id) do update set email = excluded.email;
   return new;
 end;
@@ -848,9 +883,13 @@ alter table public.app_secrets enable row level security;
 -- Admins see every profile; a lead sees only their own row plus contributors
 -- attached to them (lead_id = their id); a contributor sees only their own row.
 drop policy if exists "profiles read own or manager" on public.profiles;
+-- Your own row is always readable, even while inactive or on a temporary password (the app reads it
+-- to show "Account disabled" or the change-password screen); everything else needs an active caller.
 create policy "profiles read own or manager" on public.profiles for select
-  using (public.is_admin() or public.is_own_or_attached(id));
-create policy "users create own profile" on public.profiles for insert with check (id = auth.uid() and role = 'contributor');
+  using (id = auth.uid() or public.is_admin() or public.is_own_or_attached(id));
+-- No client-side profile creation: handle_new_user() makes one for every login, and manage-user
+-- (service role) fills it in. A self-insert policy only gave a signed-up stranger a second way in.
+drop policy if exists "users create own profile" on public.profiles;
 drop policy if exists "profiles managers update" on public.profiles;
 create policy "profiles managers update" on public.profiles for update
   using (public.is_admin() or (public.is_manager() and public.is_own_or_attached(id)))
@@ -863,6 +902,33 @@ create policy "users log own auth events" on public.activity_logs for insert to 
 -- unauthenticated (anon) and are restricted to that one event type with no user_id.
 create policy "anon logs failed logins" on public.activity_logs for insert to anon
   with check (user_id is null and event = 'login_failed');
+
+-- That anon insert is open to anyone holding the public key, not just the login page, so it's
+-- capped here: long fields are trimmed, and past 30 failed-login rows a minute (far beyond any real
+-- burst of typos) further ones are quietly dropped (returning null skips the row without an error,
+-- so the login page's fire-and-forget log call never shows anything).
+create or replace function public.limit_failed_login_logs()
+returns trigger language plpgsql security definer set search_path = public
+as $$
+begin
+  if new.event <> 'login_failed' then
+    return new;
+  end if;
+  if (select count(*) from public.activity_logs where event = 'login_failed' and created_at > now() - interval '1 minute') >= 30 then
+    return null;
+  end if;
+  new.email := left(new.email, 254);
+  new.user_agent := left(new.user_agent, 500);
+  return new;
+end;
+$$;
+
+create index if not exists activity_logs_failed_login_idx on public.activity_logs(created_at) where event = 'login_failed';
+
+drop trigger if exists activity_logs_limit_failed_logins on public.activity_logs;
+create trigger activity_logs_limit_failed_logins
+  before insert on public.activity_logs
+  for each row execute function public.limit_failed_login_logs();
 -- The Activity Log page's "Clear log" is admin-only at the route level; this
 -- mirrors that so the delete isn't silently dropped by RLS.
 create policy "admins clear activity logs" on public.activity_logs for delete
@@ -957,12 +1023,22 @@ drop policy if exists "users read permitted submissions" on public.task_submissi
 create policy "users read permitted submissions" on public.task_submissions for select
   using (public.is_admin() or public.is_own_or_attached(user_id));
 drop policy if exists "users create own submissions" on public.task_submissions;
+-- The leaderboard, public stats, dashboard and daily digest all credit a submission to whoever its
+-- cb_email names (not only its user_id), so a contributor may only log rows under their own email —
+-- otherwise they could pad, or clutter, someone else's numbers. A lead/admin logs work for their
+-- team under the contributor's email, so they aren't held to this.
 create policy "users create own submissions" on public.task_submissions for insert
-  with check (public.is_admin() or public.is_own_or_attached(user_id));
+  with check (
+    (public.is_admin() or public.is_own_or_attached(user_id))
+    and (public.is_manager() or lower(cb_email) = lower(public.own_email()))
+  );
 drop policy if exists "users update permitted submissions" on public.task_submissions;
 create policy "users update permitted submissions" on public.task_submissions for update
   using (public.is_admin() or public.is_own_or_attached(user_id))
-  with check (public.is_admin() or public.is_own_or_attached(user_id));
+  with check (
+    (public.is_admin() or public.is_own_or_attached(user_id))
+    and (public.is_manager() or lower(cb_email) = lower(public.own_email()))
+  );
 drop policy if exists "users delete permitted submissions" on public.task_submissions;
 create policy "users delete permitted submissions" on public.task_submissions for delete
   using (public.is_admin() or public.is_own_or_attached(user_id));
@@ -986,9 +1062,12 @@ create policy "users read permitted requests" on public.task_requests for select
 -- rule as extension — but a manager can also flag any task directly (e.g. spot-checking).
 drop policy if exists "users create own extension requests" on public.task_requests;
 drop policy if exists "users create extension or bad video requests" on public.task_requests;
+-- Every request starts pending and unreviewed: without this, a contributor could insert one
+-- already marked approved (with any reviewer named), and it would never be filed with Scale.
 create policy "users create extension or bad video requests" on public.task_requests for insert
   with check (
     requested_by = auth.uid()
+    and status = 'pending' and reviewed_by is null and reviewed_at is null
     and (
       (type in ('extension', 'reclaim') and exists (
         select 1 from public.task_submissions s
@@ -1034,9 +1113,11 @@ drop policy if exists "users read own targets" on public.weekly_targets;
 create policy "users read own targets" on public.weekly_targets for select
   using (public.is_admin() or public.is_own_or_attached(user_id));
 drop policy if exists "managers manage targets" on public.weekly_targets;
+-- Only a lead (for their attached contributors) or an admin sets targets. is_own_or_attached() alone
+-- also matches the caller's own row, which let a contributor lower their own target.
 create policy "managers manage targets" on public.weekly_targets for all
-  using (public.is_admin() or public.is_own_or_attached(user_id))
-  with check (public.is_admin() or public.is_own_or_attached(user_id));
+  using (public.is_admin() or (public.is_manager() and public.is_own_or_attached(user_id) and user_id <> auth.uid()))
+  with check (public.is_admin() or (public.is_manager() and public.is_own_or_attached(user_id) and user_id <> auth.uid()));
 
 -- Messaging is open to any two active users, independent of lead attachment.
 create policy "users read own messages" on public.messages for select
@@ -1052,18 +1133,59 @@ create policy "senders update own messages" on public.messages for update
   using (sender_id = auth.uid())
   with check (sender_id = auth.uid());
 
+-- Private: a public bucket serves every file to anyone with its URL, no login needed, which made the
+-- per-project resources visibility above meaningless for uploaded files. The app opens them through
+-- short-lived signed URLs instead (see src/lib/resourceFiles.ts). The update below flips the bucket
+-- on a database where it was created public.
 insert into storage.buckets (id, name, public)
-values ('resources', 'resources', true)
+values ('resources', 'resources', false)
 on conflict (id) do nothing;
+update storage.buckets set public = false where id = 'resources';
 
-create policy "active users read resource files" on storage.objects for select
-  using (bucket_id = 'resources' and public.is_active_user());
-create policy "managers upload resource files" on storage.objects for insert
-  with check (bucket_id = 'resources' and public.is_manager());
-create policy "managers update resource files" on storage.objects for update
-  using (bucket_id = 'resources' and public.is_manager()) with check (bucket_id = 'resources' and public.is_manager());
-create policy "managers delete resource files" on storage.objects for delete
-  using (bucket_id = 'resources' and public.is_manager());
+-- Files are stored under "<project id>/..." or "general/..." (see the Resources page upload), so
+-- access follows the same rule as the resources rows: a project's files for whoever can see that
+-- project, general ones for every active user. Only that project's leads (or an admin) write or
+-- delete its files; general ones are admin-only, as with general resources. Files uploaded before
+-- this (at the bucket root, no folder) stay readable by active users so existing links keep working,
+-- and only an admin can change or remove them.
+create or replace function public.can_read_resource_file(object_name text)
+returns boolean language sql stable security definer set search_path = public
+as $$
+  select case
+    when (storage.foldername(object_name))[1] is null then public.is_active_user()
+    when (storage.foldername(object_name))[1] = 'general' then public.is_active_user()
+    when (storage.foldername(object_name))[1] ~ '^\d+$' then public.can_view_project(((storage.foldername(object_name))[1])::bigint)
+    else public.is_admin()
+  end
+$$;
+
+create or replace function public.can_write_resource_file(object_name text)
+returns boolean language sql stable security definer set search_path = public
+as $$
+  select public.is_admin() or (
+    (storage.foldername(object_name))[1] ~ '^\d+$'
+    and public.is_project_lead(((storage.foldername(object_name))[1])::bigint)
+    and public.is_manager()
+  )
+$$;
+
+drop policy if exists "active users read resource files" on storage.objects;
+drop policy if exists "managers upload resource files" on storage.objects;
+drop policy if exists "managers update resource files" on storage.objects;
+drop policy if exists "managers delete resource files" on storage.objects;
+drop policy if exists "users read permitted resource files" on storage.objects;
+drop policy if exists "project leads upload resource files" on storage.objects;
+drop policy if exists "project leads update resource files" on storage.objects;
+drop policy if exists "project leads delete resource files" on storage.objects;
+create policy "users read permitted resource files" on storage.objects for select
+  using (bucket_id = 'resources' and public.can_read_resource_file(name));
+create policy "project leads upload resource files" on storage.objects for insert
+  with check (bucket_id = 'resources' and public.can_write_resource_file(name));
+create policy "project leads update resource files" on storage.objects for update
+  using (bucket_id = 'resources' and public.can_write_resource_file(name))
+  with check (bucket_id = 'resources' and public.can_write_resource_file(name));
+create policy "project leads delete resource files" on storage.objects for delete
+  using (bucket_id = 'resources' and public.can_write_resource_file(name));
 
 insert into storage.buckets (id, name, public)
 values ('avatars', 'avatars', true)

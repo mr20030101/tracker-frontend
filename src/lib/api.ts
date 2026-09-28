@@ -51,21 +51,9 @@ async function currentProfile(): Promise<User> {
   if (!authData.user) throw new Error('Unauthenticated')
   const { data, error } = await supabase.from('profiles').select('*').eq('id', authData.user.id).maybeSingle()
   if (error) throw error
-  if (!data) {
-    const { data: created, error: createError } = await supabase
-      .from('profiles')
-      .insert({
-        id: authData.user.id,
-        name: authData.user.user_metadata.name ?? authData.user.email?.split('@')[0] ?? 'User',
-        email: authData.user.email,
-        role: 'contributor',
-      })
-      .select()
-      .single()
-    if (createError) throw createError
-    return created as User
-  }
-  if (!data.is_active) throw new Error('Account disabled')
+  // Every login gets a profile from the handle_new_user() trigger, filled in by manage-user; one
+  // without it (or not yet activated) has no business in the app.
+  if (!data || !data.is_active) throw new Error('Account disabled')
   return data as User
 }
 

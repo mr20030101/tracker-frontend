@@ -75,6 +75,15 @@ Deno.serve(async (request) => {
         return errorResponse('Forbidden: only active admins or leads can manage users.', 403)
     }
 
+    // Whether the caller may reset the password of, or delete, this account. An admin may act on
+    // anyone; a lead only on a contributor attached to them. Without this, any lead could set an
+    // admin's password and sign in as them.
+    async function canManageAccount(targetId: string): Promise<boolean> {
+        if (profile!.role === 'admin') return true
+        const { data: target } = await admin.from('profiles').select('role, lead_id').eq('id', targetId).maybeSingle()
+        return target?.role === 'contributor' && target.lead_id === caller.user!.id
+    }
+
     const body = await request.json()
     if (body.action === 'review-application') {
         if (!body.id || !['accept', 'deny'].includes(body.decision)) {
@@ -275,6 +284,9 @@ Deno.serve(async (request) => {
     if (body.action === 'delete-user') {
         if (!body.id) return errorResponse('A user id is required.', 400)
         if (body.id === caller.user.id) return errorResponse('You cannot delete your own account.', 422)
+        if (!(await canManageAccount(body.id))) {
+            return errorResponse('Forbidden: a lead can only delete contributors on their own team.', 403)
+        }
 
         const { error } = await admin.auth.admin.deleteUser(body.id)
         if (error) return errorResponse(`User deletion failed: ${error.message}`, 400)
@@ -289,6 +301,9 @@ Deno.serve(async (request) => {
             targetId = matchingUser?.id ?? targetId
         }
         if (!targetId) return errorResponse('Target Auth user was not found.', 404)
+        if (!(await canManageAccount(targetId))) {
+            return errorResponse('Forbidden: a lead can only reset passwords for contributors on their own team.', 403)
+        }
         const { data, error } = await admin.auth.admin.updateUserById(targetId, { password: body.password })
         if (error) return errorResponse(`Password reset failed: ${error.message}`, 400)
         // An admin/lead setting this password on someone else's behalf, not the user
@@ -326,6 +341,13 @@ Deno.serve(async (request) => {
     const existingUser = existingUsers.users.find((user) => user.email?.toLowerCase() === body.email.toLowerCase())
     let userId = existingUser?.id
 
+    // Creating a user with an email that already has a login would overwrite that login's password
+    // (and name and role) below: an admin may do that on purpose, but for a lead it was a second way
+    // to take over any account, admins included.
+    if (userId && profile.role !== 'admin') {
+        return errorResponse('An account with this email already exists. Ask an admin, or reset its password from its row.', 409)
+    }
+
     if (userId) {
         const { error } = await admin.auth.admin.updateUserById(userId, {
             password: body.password,
@@ -350,6 +372,8 @@ Deno.serve(async (request) => {
         email: body.email,
         role,
         shift: body.shift ?? null,
+        // A lead's new login joins their own team, so they can manage it afterwards (see canManageAccount).
+        ...(profile.role === 'lead' ? { lead_id: caller.user.id } : {}),
         is_active: true,
         must_change_password: true,
         updated_at: new Date().toISOString(),

@@ -72,6 +72,9 @@ async function handle(request: Request): Promise<Response> {
     if (!token) return errorResponse('Unauthorized: missing access token.', 401)
     const { data: caller } = await admin.auth.getUser(token)
     if (!caller.user) return errorResponse('Unauthorized: invalid access token.', 401)
+    // A valid session isn't enough: a deactivated account's token keeps working until it expires.
+    const { data: profile } = await admin.from('profiles').select('is_active, must_change_password').eq('id', caller.user.id).maybeSingle()
+    if (!profile?.is_active || profile.must_change_password) return errorResponse('Forbidden: this account is not active.', 403)
 
     const body = await request.json().catch(() => ({}))
     const usage = await relayUsage()
