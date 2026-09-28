@@ -67,7 +67,7 @@ export interface TaskSubmission {
   updated_at?: string
 }
 
-export type RequestType = 'extension' | 'bad_video'
+export type RequestType = 'extension' | 'reclaim' | 'bad_video'
 export type RequestStatus = 'pending' | 'approved' | 'denied'
 
 interface BaseTaskRequest {
@@ -86,6 +86,12 @@ export interface ExtensionTaskRequest extends BaseTaskRequest {
   type: 'extension'
 }
 
+// A contributor asking their lead to reclaim a task back for them — same self-service flow and
+// Scale form as an extension request, filed with "Reclaim" as the request type instead.
+export interface ReclaimTaskRequest extends BaseTaskRequest {
+  type: 'reclaim'
+}
+
 // A lead/admin flagging a claimed task's video as bad, needing validation/removal
 // (the ALOHA | URSA | YAM QA flow) — same pending/approved/denied lifecycle as an
 // extension request, but not self-service and not tied to team attachment.
@@ -97,7 +103,7 @@ export interface BadVideoTaskRequest extends BaseTaskRequest {
   bad_video_workforce_name: string
 }
 
-export type TaskRequest = ExtensionTaskRequest | BadVideoTaskRequest
+export type TaskRequest = ExtensionTaskRequest | ReclaimTaskRequest | BadVideoTaskRequest
 
 export interface Paginated<T> {
   data: T[]

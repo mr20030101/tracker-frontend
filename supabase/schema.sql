@@ -133,6 +133,13 @@ alter table public.task_requests add column if not exists bad_video_workforce te
   check (bad_video_workforce in ('REMOTE', 'ONSITE'));
 alter table public.task_requests add column if not exists bad_video_workforce_name text;
 
+-- 'reclaim': a contributor asking their lead to reclaim a task back for them — same self-service
+-- flow, fields and review rules as 'extension' (and the same Scale form, filed as "Reclaim").
+-- Replaced explicitly because `add column if not exists` above won't touch an existing check.
+alter table public.task_requests drop constraint if exists task_requests_type_check;
+alter table public.task_requests add constraint task_requests_type_check
+  check (type in ('extension', 'reclaim', 'bad_video'));
+
 -- Only one open request per submission *per type* at a time — resolve (or withdraw) the current
 -- one before asking again. Scoped by type (not just submission) so a pending extension request
 -- doesn't block a pending bad-video report on the same submission, or vice versa.
@@ -964,6 +971,7 @@ create policy "users delete permitted submissions" on public.task_submissions fo
 -- visible to whoever owns/is-attached-to the *flagged task's* contributor, even though that
 -- person isn't the requester (a manager flagging someone else's task is the normal case here).
 drop policy if exists "users read permitted extension requests" on public.task_requests;
+drop policy if exists "users read permitted requests" on public.task_requests;
 create policy "users read permitted requests" on public.task_requests for select
   using (
     public.is_admin()
@@ -973,15 +981,16 @@ create policy "users read permitted requests" on public.task_requests for select
       where s.id = task_submission_id and public.is_own_or_attached(s.user_id)
     ))
   );
--- Extension: only for a submission the caller (or their attached contributor) actually owns.
+-- Extension/reclaim: only for a submission the caller (or their attached contributor) actually owns.
 -- Bad video: the CB is the first touch — they flag it on their own claimed task, same ownership
 -- rule as extension — but a manager can also flag any task directly (e.g. spot-checking).
 drop policy if exists "users create own extension requests" on public.task_requests;
+drop policy if exists "users create extension or bad video requests" on public.task_requests;
 create policy "users create extension or bad video requests" on public.task_requests for insert
   with check (
     requested_by = auth.uid()
     and (
-      (type = 'extension' and exists (
+      (type in ('extension', 'reclaim') and exists (
         select 1 from public.task_submissions s
         where s.id = task_submission_id and public.is_own_or_attached(s.user_id)
       ))
@@ -994,24 +1003,26 @@ create policy "users create extension or bad video requests" on public.task_requ
       ))
     )
   );
--- Extension: only the requester's lead (or admin) decides it — never the requester themselves,
+-- Extension/reclaim: only the requester's lead (or admin) decides it — never the requester themselves,
 -- since it's self-service. Bad video: any manager (including the one who filed it — filing the
 -- external form themselves right after flagging it is the normal flow, not a rubber stamp).
 drop policy if exists "leads review extension requests" on public.task_requests;
+drop policy if exists "managers review requests" on public.task_requests;
 create policy "managers review requests" on public.task_requests for update
   using (
     public.is_admin()
     or (type = 'bad_video' and public.is_manager())
-    or (type = 'extension' and public.is_manager() and public.is_own_or_attached(requested_by) and requested_by <> auth.uid())
+    or (type in ('extension', 'reclaim') and public.is_manager() and public.is_own_or_attached(requested_by) and requested_by <> auth.uid())
   )
   with check (
     public.is_admin()
     or (type = 'bad_video' and public.is_manager())
-    or (type = 'extension' and public.is_manager() and public.is_own_or_attached(requested_by) and requested_by <> auth.uid())
+    or (type in ('extension', 'reclaim') and public.is_manager() and public.is_own_or_attached(requested_by) and requested_by <> auth.uid())
   );
 -- The requester can withdraw their own pending request; a lead/admin can remove one any time
 -- (any manager for bad_video, same reasoning as the review policy above).
 drop policy if exists "users delete own or managed extension requests" on public.task_requests;
+drop policy if exists "users delete own or managed requests" on public.task_requests;
 create policy "users delete own or managed requests" on public.task_requests for delete
   using (
     public.is_admin()

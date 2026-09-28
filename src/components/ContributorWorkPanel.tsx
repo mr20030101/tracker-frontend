@@ -31,6 +31,24 @@ const MANAGER_ROLES = ['admin', 'lead']
 // A request only makes sense before the outcome is settled.
 const EXTENSION_ELIGIBLE_STATUSES = ['in_progress', 'expired']
 
+// The two self-service requests a contributor can send their lead — both end up on the same Scale
+// "Reclaim / Extend" form, just with a different request type.
+type TimeRequestType = 'extension' | 'reclaim'
+const TIME_REQUEST_LABELS: Record<TimeRequestType, { noun: string; title: string; description: (task: ReactNode) => ReactNode; placeholder: string }> = {
+  extension: {
+    noun: 'extension',
+    title: 'Request an extension?',
+    description: (task) => <>Asks your lead for more time on {task} before it's marked expired.</>,
+    placeholder: 'Why do you need more time?',
+  },
+  reclaim: {
+    noun: 'reclaim',
+    title: 'Request a reclaim?',
+    description: (task) => <>Asks your lead to reclaim {task} back for you.</>,
+    placeholder: 'Why does this task need to be reclaimed?',
+  },
+}
+
 type SortKey = 'task_id' | 'project' | 'stage' | 'status' | 'date'
 type ViewMode = 'day' | 'week' | 'month'
 
@@ -68,7 +86,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
   const [showCtsModal, setShowCtsModal] = useState(false)
   const [formTarget, setFormTarget] = useState<'new' | TaskSubmission | null>(null)
   const [bulkImporting, setBulkImporting] = useState(false)
-  const [requestingExtensionFor, setRequestingExtensionFor] = useState<TaskSubmission | null>(null)
+  const [requestingExtensionFor, setRequestingExtensionFor] = useState<{ submission: TaskSubmission; type: TimeRequestType } | null>(null)
   const [extensionReason, setExtensionReason] = useState('')
   const [reportingBadVideoFor, setReportingBadVideoFor] = useState<TaskSubmission | null>(null)
   const pageSize = 10
@@ -109,8 +127,8 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
     enabled: submissionIds.length > 0,
   })
 
-  function extensionRequestFor(submissionId: number): TaskRequest | undefined {
-    return taskRequests.find((request) => request.task_submission_id === submissionId && request.type === 'extension')
+  function timeRequestFor(submissionId: number, type: TimeRequestType): TaskRequest | undefined {
+    return taskRequests.find((request) => request.task_submission_id === submissionId && request.type === type)
   }
 
   const deleteMutation = useMutation({
@@ -123,9 +141,9 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
   })
 
   const requestExtensionMutation = useMutation({
-    mutationFn: async ({ submissionId, reason }: { submissionId: number; reason: string }) => {
+    mutationFn: async ({ submissionId, reason, type }: { submissionId: number; reason: string; type: TimeRequestType }) => {
       if (!currentUser) throw new Error('Unauthenticated')
-      await requestExtension(submissionId, currentUser.id, reason)
+      await requestExtension(submissionId, currentUser.id, reason, type)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['task-requests'] })
@@ -147,11 +165,13 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['task-requests'] }),
   })
 
-  // Opens the actual Scale "Reclaim / Extend" form, prefilled from this request, then marks it
-  // approved here — filing that form is what approving really means.
+  // Opens the actual Scale "Reclaim / Extend" form, prefilled from this request (as Extend or
+  // Reclaim to match its type), then marks it approved here — filing that form is what approving
+  // really means.
   function handleRequestExtension(request: TaskRequest, submission: TaskSubmission | undefined) {
     window.open(
       buildExtensionRequestFormUrl({
+        requestType: request.type === 'reclaim' ? 'Reclaim' : 'Extend',
         taskId: submission?.task_id ?? null,
         cbEmail: submission?.cb_email ?? null,
         remotaskId: data?.user?.remotasks_id ?? null,
@@ -334,7 +354,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
             {pendingRequests.map((request) => {
               const submission = data.all_submissions.find((s) => s.id === request.task_submission_id)
               // A contributor can act (withdraw) on a request only if it's their own — either
-              // their extension request, or a bad_video report they flagged themselves. A
+              // their extension/reclaim request, or a bad_video report they flagged themselves. A
               // bad_video report someone else (their lead) filed about their work is view-only.
               const canAct = isManager || request.requested_by === currentUser?.id
               return (
@@ -343,16 +363,20 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                     <div className="flex items-center gap-2">
                       <span
                         className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                          request.type === 'extension' ? 'bg-sky-100 text-sky-700' : 'bg-violet-100 text-violet-700'
+                          request.type === 'extension'
+                            ? 'bg-sky-100 text-sky-700'
+                            : request.type === 'reclaim'
+                              ? 'bg-amber-100 text-amber-700'
+                              : 'bg-violet-100 text-violet-700'
                         }`}
                       >
-                        {request.type === 'extension' ? 'Extension' : 'Bad Video'}
+                        {request.type === 'extension' ? 'Extension' : request.type === 'reclaim' ? 'Reclaim' : 'Bad Video'}
                       </span>
                       <span className="font-mono font-medium text-gray-900">
                         {submission?.task_id ?? `Submission #${request.task_submission_id}`}
                       </span>
                     </div>
-                    {request.type === 'extension' ? (
+                    {request.type !== 'bad_video' ? (
                       request.reason && <div className="mt-0.5 text-xs text-gray-600">{request.reason}</div>
                     ) : (
                       <div className="mt-0.5 text-xs text-gray-600">
@@ -370,15 +394,15 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                         <>
                           <button
                             onClick={() =>
-                              request.type === 'extension'
-                                ? handleRequestExtension(request, submission)
-                                : handleFileBadVideoReport(request, submission)
+                              request.type === 'bad_video'
+                                ? handleFileBadVideoReport(request, submission)
+                                : handleRequestExtension(request, submission)
                             }
                             disabled={reviewRequestMutation.isPending}
                             title={
-                              request.type === 'extension'
-                                ? 'Opens the Reclaim / Extend form, prefilled, and marks this approved'
-                                : 'Opens the Bad Video Validation/Removal form, prefilled, and marks this approved'
+                              request.type === 'bad_video'
+                                ? 'Opens the Bad Video Validation/Removal form, prefilled, and marks this approved'
+                                : 'Opens the Reclaim / Extend form, prefilled, and marks this approved'
                             }
                             className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground disabled:opacity-50"
                           >
@@ -610,7 +634,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                     <SortableHeader label="Stage" active={sort.key === 'stage'} dir={sort.dir} onClick={() => toggleSort('stage')} />
                     <SortableHeader label="Status" active={sort.key === 'status'} dir={sort.dir} onClick={() => toggleSort('status')} />
                     <th className="px-5 py-3">CTS</th>
-                    <th className="px-5 py-3">Extension</th>
+                    <th className="px-5 py-3">Extension / Reclaim</th>
                     <SortableHeader label="Date" active={sort.key === 'date'} dir={sort.dir} onClick={() => toggleSort('date')} />
                     <th className="px-5 py-3 text-right">Actions</th>
                   </tr>
@@ -624,8 +648,52 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                     </tr>
                   )}
                   {pagedSubmissions.map((row) => {
-                    const extension = extensionRequestFor(row.id)
+                    const extension = timeRequestFor(row.id, 'extension')
+                    const reclaim = timeRequestFor(row.id, 'reclaim')
                     const canRequestExtension = !isManager && EXTENSION_ELIGIBLE_STATUSES.includes(row.status)
+                    // Menu items for one extension/reclaim request on this row: a contributor sends or
+                    // withdraws their own; a lead/admin files or denies a pending one, or deletes it.
+                    const timeRequestItems = (type: TimeRequestType, request: TaskRequest | undefined) => {
+                      const { noun } = TIME_REQUEST_LABELS[type]
+                      return [
+                        ...(canRequestExtension
+                          ? request?.status === 'pending'
+                            ? [{ label: `Withdraw ${noun} request`, onClick: () => withdrawRequestMutation.mutate(request.id) }]
+                            : [
+                                {
+                                  label: `Request ${noun}`,
+                                  onClick: () => {
+                                    setRequestingExtensionFor({ submission: row, type })
+                                    setExtensionReason('')
+                                  },
+                                },
+                              ]
+                          : []),
+                        ...(isManager && request?.status === 'pending'
+                          ? [
+                              { label: `Request ${noun}`, onClick: () => handleRequestExtension(request, row) },
+                              {
+                                label: `Deny ${noun}`,
+                                variant: 'danger' as const,
+                                onClick: () => reviewRequestMutation.mutate({ id: request.id, status: 'denied' }),
+                              },
+                            ]
+                          : []),
+                        ...(isManager && request
+                          ? [
+                              {
+                                label: `Delete ${noun} request`,
+                                variant: 'danger' as const,
+                                onClick: () => {
+                                  if (confirm(`Delete this ${noun} request? This cannot be undone.`)) {
+                                    withdrawRequestMutation.mutate(request.id)
+                                  }
+                                },
+                              },
+                            ]
+                          : []),
+                      ]
+                    }
                     const badVideoPending = taskRequests.some(
                       (r) => r.task_submission_id === row.id && r.type === 'bad_video' && r.status === 'pending',
                     )
@@ -667,19 +735,28 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                         )}
                       </td>
                       <td className="px-5 py-3">
-                        {extension ? (
-                          <span
-                            title={extension.reason ?? undefined}
-                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                              extension.status === 'approved'
-                                ? 'bg-status-success-bg text-status-success-text'
-                                : extension.status === 'denied'
-                                  ? 'bg-status-danger-bg text-status-danger-text'
-                                  : 'bg-status-warning-bg text-status-warning-text'
-                            }`}
-                          >
-                            {extension.status === 'approved' ? 'Approved' : extension.status === 'denied' ? 'Denied' : 'Pending'}
-                          </span>
+                        {extension || reclaim ? (
+                          <div className="flex flex-wrap gap-1">
+                            {[extension, reclaim].map(
+                              (request) =>
+                                request && (
+                                  <span
+                                    key={request.id}
+                                    title={request.reason ?? undefined}
+                                    className={`inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                                      request.status === 'approved'
+                                        ? 'bg-status-success-bg text-status-success-text'
+                                        : request.status === 'denied'
+                                          ? 'bg-status-danger-bg text-status-danger-text'
+                                          : 'bg-status-warning-bg text-status-warning-text'
+                                    }`}
+                                  >
+                                    {request.type === 'reclaim' && 'Reclaim '}
+                                    {request.status === 'approved' ? 'Approved' : request.status === 'denied' ? 'Denied' : 'Pending'}
+                                  </span>
+                                ),
+                            )}
+                          </div>
                         ) : (
                           <span className="text-xs text-gray-300">—</span>
                         )}
@@ -693,42 +770,8 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                           <ActionsMenu
                             items={[
                               { label: 'Edit', onClick: () => setFormTarget(row) },
-                              ...(canRequestExtension
-                                ? extension?.status === 'pending'
-                                  ? [{ label: 'Withdraw extension request', onClick: () => withdrawRequestMutation.mutate(extension.id) }]
-                                  : [
-                                      {
-                                        label: 'Request extension',
-                                        onClick: () => {
-                                          setRequestingExtensionFor(row)
-                                          setExtensionReason('')
-                                        },
-                                      },
-                                    ]
-                                : []),
-                              ...(isManager && extension?.status === 'pending'
-                                ? [
-                                    { label: 'Request extension', onClick: () => handleRequestExtension(extension, row) },
-                                    {
-                                      label: 'Deny extension',
-                                      variant: 'danger' as const,
-                                      onClick: () => reviewRequestMutation.mutate({ id: extension.id, status: 'denied' }),
-                                    },
-                                  ]
-                                : []),
-                              ...(isManager && extension
-                                ? [
-                                    {
-                                      label: 'Delete extension request',
-                                      variant: 'danger' as const,
-                                      onClick: () => {
-                                        if (confirm('Delete this extension request? This cannot be undone.')) {
-                                          withdrawRequestMutation.mutate(extension.id)
-                                        }
-                                      },
-                                    },
-                                  ]
-                                : []),
+                              ...timeRequestItems('extension', extension),
+                              ...timeRequestItems('reclaim', reclaim),
                               !canReportBadVideo
                                 ? {
                                     label: 'Report bad video',
@@ -796,12 +839,12 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
       )}
 
       {requestingExtensionFor && (
-        <Modal title="Request an extension?" onClose={() => setRequestingExtensionFor(null)}>
+        <Modal title={TIME_REQUEST_LABELS[requestingExtensionFor.type].title} onClose={() => setRequestingExtensionFor(null)}>
           <div className="flex flex-col gap-4">
             <p className="text-sm text-gray-600">
-              Asks your lead for more time on{' '}
-              <span className="font-mono text-gray-900">{requestingExtensionFor.task_id ?? 'this task'}</span> before it's marked
-              expired.
+              {TIME_REQUEST_LABELS[requestingExtensionFor.type].description(
+                <span className="font-mono text-gray-900">{requestingExtensionFor.submission.task_id ?? 'this task'}</span>,
+              )}
             </p>
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">Reason (optional)</label>
@@ -810,7 +853,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                 maxLength={500}
                 value={extensionReason}
                 onChange={(e) => setExtensionReason(e.target.value)}
-                placeholder="Why do you need more time?"
+                placeholder={TIME_REQUEST_LABELS[requestingExtensionFor.type].placeholder}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
               />
             </div>
@@ -831,7 +874,11 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                 type="button"
                 disabled={requestExtensionMutation.isPending}
                 onClick={() =>
-                  requestExtensionMutation.mutate({ submissionId: requestingExtensionFor.id, reason: extensionReason })
+                  requestExtensionMutation.mutate({
+                    submissionId: requestingExtensionFor.submission.id,
+                    reason: extensionReason,
+                    type: requestingExtensionFor.type,
+                  })
                 }
                 className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
               >

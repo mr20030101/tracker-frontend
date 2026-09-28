@@ -1,10 +1,10 @@
 import { supabase } from './api'
 import type { RequestStatus, TaskRequest } from '../types'
 
-// TaskRequest is a union (ExtensionTaskRequest | BadVideoTaskRequest) — an interface can't
+// TaskRequest is a union (ExtensionTaskRequest | ReclaimTaskRequest | BadVideoTaskRequest) — an interface can't
 // `extends` a union (only object types/intersections), so this intersects instead. That still
 // distributes correctly: TaskRequestWithContext is itself
-// (ExtensionTaskRequest & Context) | (BadVideoTaskRequest & Context), so `type` still narrows it.
+// (ExtensionTaskRequest & Context) | (ReclaimTaskRequest & Context) | (BadVideoTaskRequest & Context), so `type` still narrows it.
 export type TaskRequestWithContext = TaskRequest & {
   task_submission: {
     id: number
@@ -20,7 +20,7 @@ export type TaskRequestWithContext = TaskRequest & {
 }
 
 /**
- * Every request (extension or bad video) the caller can see: RLS scopes this to their own (a
+ * Every request (extension, reclaim or bad video) the caller can see: RLS scopes this to their own (a
  * contributor's extension requests), their attached contributors' (a lead), whichever task's
  * contributor they're attached to (a bad video report about that contributor's work), or
  * everyone's (an admin).
@@ -51,9 +51,15 @@ export async function fetchPendingRequestCount(): Promise<number> {
   return count ?? 0
 }
 
-export async function requestExtension(submissionId: number, requestedBy: string, reason: string): Promise<void> {
+/** An extension or reclaim request — both are self-service, with just an optional reason. */
+export async function requestExtension(
+  submissionId: number,
+  requestedBy: string,
+  reason: string,
+  type: 'extension' | 'reclaim' = 'extension',
+): Promise<void> {
   const { error } = await supabase.from('task_requests').insert({
-    type: 'extension',
+    type,
     task_submission_id: submissionId,
     requested_by: requestedBy,
     reason: reason.trim() || null,
@@ -147,6 +153,7 @@ const EXTENSION_FORM_ENTRY = {
 
 /** A link to the Reclaim/Extend form with as much of it prefilled as we have on hand. */
 export function buildExtensionRequestFormUrl(params: {
+  requestType: 'Extend' | 'Reclaim'
   taskId: string | null
   cbEmail: string | null
   remotaskId: string | null
@@ -157,7 +164,7 @@ export function buildExtensionRequestFormUrl(params: {
   if (params.taskId) query.set(EXTENSION_FORM_ENTRY.taskId, params.taskId)
   if (params.cbEmail) query.set(EXTENSION_FORM_ENTRY.cbEmail, params.cbEmail)
   if (params.remotaskId) query.set(EXTENSION_FORM_ENTRY.remotaskId, params.remotaskId)
-  query.set(EXTENSION_FORM_ENTRY.requestType, 'Extend')
+  query.set(EXTENSION_FORM_ENTRY.requestType, params.requestType)
   if (params.reason) query.set(EXTENSION_FORM_ENTRY.reason, params.reason)
   if (params.supportName) query.set(EXTENSION_FORM_ENTRY.supportName, params.supportName)
   return `${EXTENSION_REQUEST_FORM_URL}?${query.toString()}`

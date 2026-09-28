@@ -31,13 +31,13 @@ interface RequestAlert {
   id: string
   name: string
   email: string
-  type: 'extension' | 'bad_video'
+  type: 'extension' | 'reclaim' | 'bad_video'
 }
 
 interface TaskRequestRow {
   id: number
   requested_by: string
-  type: 'extension' | 'bad_video'
+  type: 'extension' | 'reclaim' | 'bad_video'
   status: string
 }
 
@@ -216,7 +216,12 @@ export function NotificationBell() {
                       <Avatar name={alert.name || alert.email} size={28} />
                       <div className="min-w-0">
                         <div className="truncate font-medium text-gray-900">
-                          {alert.name} {alert.type === 'extension' ? 'requested an extension' : 'flagged a bad video'}
+                          {alert.name}{' '}
+                          {alert.type === 'extension'
+                            ? 'requested an extension'
+                            : alert.type === 'reclaim'
+                              ? 'requested a reclaim'
+                              : 'flagged a bad video'}
                         </div>
                       </div>
                     </Link>

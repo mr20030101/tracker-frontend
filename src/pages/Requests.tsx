@@ -32,10 +32,11 @@ const STATUS_STYLES: Record<RequestStatus, string> = {
   denied: 'bg-status-danger-bg text-status-danger-text',
 }
 
-const TYPE_FILTERS: TypeFilter[] = ['all', 'extension', 'bad_video']
-const TYPE_LABELS: Record<TypeFilter, string> = { all: 'All types', extension: 'Extension', bad_video: 'Bad Video' }
+const TYPE_FILTERS: TypeFilter[] = ['all', 'extension', 'reclaim', 'bad_video']
+const TYPE_LABELS: Record<TypeFilter, string> = { all: 'All types', extension: 'Extension', reclaim: 'Reclaim', bad_video: 'Bad Video' }
 const TYPE_STYLES: Record<RequestType, string> = {
   extension: 'bg-sky-100 text-sky-700',
+  reclaim: 'bg-amber-100 text-amber-700',
   bad_video: 'bg-violet-100 text-violet-700',
 }
 
@@ -111,11 +112,13 @@ export function Requests() {
     },
   })
 
-  // Opens the actual Scale "Reclaim / Extend" form, prefilled from this request, then marks it
-  // approved here — filing that form is what approving really means.
+  // Opens the actual Scale "Reclaim / Extend" form, prefilled from this request (as Extend or
+  // Reclaim to match its type), then marks it approved here — filing that form is what approving
+  // really means.
   function handleRequestExtension(request: TaskRequestWithContext) {
     window.open(
       buildExtensionRequestFormUrl({
+        requestType: request.type === 'reclaim' ? 'Reclaim' : 'Extend',
         taskId: request.task_submission?.task_id ?? null,
         cbEmail: request.task_submission?.cb_email ?? null,
         remotaskId: request.requester?.remotasks_id ?? null,
@@ -148,7 +151,7 @@ export function Requests() {
   }
 
   // A contributor can act (withdraw) on a request only if it's their own — either their extension
-  // request, or a bad_video report they flagged themselves. A bad_video report someone else (their
+  // or reclaim request, or a bad_video report they flagged themselves. A bad_video report someone else (their
   // lead) filed about their work is view-only.
   const canAct = (request: TaskRequestWithContext) => isManager || request.requested_by === user?.id
 
@@ -161,15 +164,15 @@ export function Requests() {
           <>
             <button
               onClick={() => {
-                if (request.type === 'extension') handleRequestExtension(request)
-                else handleFileBadVideoReport(request)
+                if (request.type === 'bad_video') handleFileBadVideoReport(request)
+                else handleRequestExtension(request)
                 after?.()
               }}
               disabled={reviewMutation.isPending}
               title={
-                request.type === 'extension'
-                  ? 'Opens the Reclaim / Extend form, prefilled, and marks this approved'
-                  : 'Opens the Bad Video Validation/Removal form, prefilled, and marks this approved'
+                request.type === 'bad_video'
+                  ? 'Opens the Bad Video Validation/Removal form, prefilled, and marks this approved'
+                  : 'Opens the Reclaim / Extend form, prefilled, and marks this approved'
               }
               className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground disabled:opacity-50"
             >
@@ -259,8 +262,8 @@ export function Requests() {
           </h1>
           <p className="text-sm text-gray-500">
             {isManager
-              ? "Your team's extension requests and bad-video reports."
-              : 'Your extension requests, and any bad-video reports about your work.'}
+              ? "Your team's extension and reclaim requests and bad-video reports."
+              : 'Your extension and reclaim requests, and any bad-video reports about your work.'}
           </p>
         </div>
         {isManager && (
@@ -497,7 +500,7 @@ export function Requests() {
             <Detail label="Project">{viewing.task_submission?.project?.name ?? '—'}</Detail>
             <Detail label="For date">{viewing.task_submission?.date?.slice(0, 10) ?? '—'}</Detail>
             <Detail label="Task status">{viewing.task_submission ? humanize(viewing.task_submission.status) : '—'}</Detail>
-            {viewing.type === 'extension' ? (
+            {viewing.type !== 'bad_video' ? (
               <Detail label="Reason">
                 {viewing.reason ? <span className="whitespace-pre-wrap">{viewing.reason}</span> : <span className="text-gray-400">No reason given</span>}
               </Detail>
