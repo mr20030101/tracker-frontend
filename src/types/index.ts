@@ -30,6 +30,19 @@ export interface ActivityLog {
   user: Pick<User, 'id' | 'name' | 'email'> | null
 }
 
+// One manager action from the audit trail (see audit_logs in schema.sql). `action` is a short code
+// like 'role_changed' or 'request_approved'; `summary` is the readable sentence.
+export interface AuditLog {
+  id: number
+  actor_id: string | null
+  action: string
+  target_user_id: string | null
+  summary: string
+  details: Record<string, unknown> | null
+  created_at: string
+  actor: Pick<User, 'id' | 'name' | 'email' | 'avatar_url'> | null
+}
+
 export interface Project {
   id: number
   name: string
@@ -127,6 +140,7 @@ export interface DashboardRow {
   user_id: string
   cb_email: string
   name: string
+  lead_id: string | null
   is_active: boolean
   tasks_submitted: number
   weekly_target: number
@@ -138,6 +152,16 @@ export interface DashboardSummary {
   week_end: string
   data: DashboardRow[]
   daily_report: DailyReportRow[]
+  project_report: ProjectReportRow[]
+}
+
+// Totals per project for the range (submissions with no project under "Unassigned").
+export interface ProjectReportRow {
+  project_id: number | null
+  name: string
+  tasks_submitted: number
+  tasks_logged: number
+  contributors_submitted: number
 }
 
 export interface DailyReportRow {
@@ -163,6 +187,8 @@ export interface DirectoryUser {
   is_bot: boolean
   // For contributors, email is always null and last_seen_at is only set for people online right now.
   email: string | null
+  // Managers only (null for contributors): lets the group-chat picker add a whole team or project.
+  lead_id: string | null
 }
 
 export interface LeaderboardRow {
@@ -255,4 +281,72 @@ export interface HiringApplication {
   // The login created for this applicant. Accepting doesn't create it; a separate step does, so it is null until then.
   user_id: string | null
   created_at: string
+}
+
+export type AnnouncementAudience = 'everyone' | 'team' | 'project'
+
+export interface Announcement {
+  id: number
+  author_id: string
+  audience: AnnouncementAudience
+  team_lead_id: string | null
+  project_id: number | null
+  title: string
+  body: string
+  pinned: boolean
+  created_at: string
+  updated_at: string
+  author: Pick<User, 'id' | 'name' | 'avatar_url'> | null
+}
+
+// One person an announcement is for; read_at is null until they've opened Announcements since.
+export interface AnnouncementReader {
+  user_id: string
+  name: string
+  avatar_url: string | null
+  read_at: string | null
+}
+
+export type OnboardingStep = 'photo' | 'remotasks_id' | 'shift' | 'read_resources' | 'first_task' | 'message_lead'
+
+export interface OnboardingStatus {
+  user_id: string
+  steps: Record<OnboardingStep, boolean>
+  done: number
+  total: number
+  dismissed: boolean
+}
+
+export interface Achievements {
+  user_id: string
+  current_streak: number
+  best_streak: number
+  weeks_hit: number
+  total_submitted: number
+  best_week: number
+}
+
+export interface ChatGroupMember {
+  id: string
+  name: string
+  avatar_url: string | null
+  role: 'owner' | 'member'
+}
+
+export interface GroupMessage {
+  id: number
+  group_id: number
+  sender_id: string
+  body: string
+  created_at: string
+}
+
+export interface ChatGroupSummary {
+  id: number
+  name: string
+  my_role: 'owner' | 'member'
+  created_at: string
+  unread_count: number
+  last_message: GroupMessage | null
+  members: ChatGroupMember[]
 }

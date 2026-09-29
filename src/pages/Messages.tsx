@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Info, Search } from 'lucide-react'
+import { ArrowLeft, Info, Plus, Search } from 'lucide-react'
 import { useMessaging } from '../lib/messagingContext'
 import { deleteConversationForMe, deleteMessageForMe, deleteMessagesForMe, markThreadRead, sendMessage } from '../lib/messages'
 import { formatActiveStatus } from '../lib/presence'
@@ -22,16 +22,25 @@ import { useThread } from '../lib/useThread'
 import { messagePreview } from '../lib/callLog'
 import { useCall } from '../lib/call'
 import { errorMessage } from '../lib/api'
+import { useAuth } from '../lib/auth'
+import { groupPath } from '../lib/groupChats'
+import { GroupChatPane, GroupIcon, NewGroupModal } from '../components/GroupChat'
 
 // Messenger's own send-bubble blue, matching MessageBubble.tsx — kept local rather than
 // repointing the app's global --color-accent, which drives buttons everywhere else.
 const BUBBLE_BLUE = '#0084ff'
 
 export function Messages() {
-  const { userId: routeRef } = useParams<{ userId: string }>()
+  const { userId: routeRef, groupId: groupRef } = useParams<{ userId: string; groupId: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const { myId, usersById, conversations } = useMessaging()
+  const { user } = useAuth()
+  const { myId, usersById, conversations, groups, groupsLoaded } = useMessaging()
+  const canCreateGroups = user?.role === 'admin' || user?.role === 'lead'
+  const [creatingGroup, setCreatingGroup] = useState(false)
+  const selectedGroupId = groupRef ? Number(groupRef) : null
+  const selectedGroup = selectedGroupId ? groups.find((g) => g.id === selectedGroupId) : undefined
+  const paneOpen = Boolean(routeRef || selectedGroupId)
   const { startCall } = useCall()
   const [draft, setDraft] = useState('')
   const [userSearch, setUserSearch] = useState('')
@@ -157,7 +166,7 @@ export function Messages() {
   return (
     <div className="relative flex h-full min-h-0 overflow-hidden rounded-xl border border-gray-200 bg-white">
       {/* Phones show one pane at a time: the list, or the open conversation (with a back button). */}
-      <div className={`${selectedUserId ? 'hidden md:flex' : 'flex'} w-full shrink-0 flex-col border-gray-200 md:w-80 md:border-r`}>
+      <div className={`${paneOpen ? 'hidden md:flex' : 'flex'} w-full shrink-0 flex-col border-gray-200 md:w-80 md:border-r`}>
         <div className="border-b border-gray-100 p-3">
           <div className="relative">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -191,11 +200,61 @@ export function Messages() {
             ))}
           </div>
         ) : (
-          <>
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+            {(groups.length > 0 || canCreateGroups) && (
+              <>
+                <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Groups</span>
+                  {canCreateGroups && (
+                    <button
+                      type="button"
+                      onClick={() => setCreatingGroup(true)}
+                      className="flex items-center gap-1 text-xs font-semibold text-sky-700 hover:underline"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      New group
+                    </button>
+                  )}
+                </div>
+                {groups.length === 0 && (
+                  <div className="px-4 py-3 text-xs text-gray-400">Make a group for your team or a project.</div>
+                )}
+                {groups.map((g) => {
+                  const isSelected = selectedGroupId === g.id
+                  const last = g.last_message
+                  const lastSender = last ? (last.sender_id === myId ? 'You' : g.members.find((m) => m.id === last.sender_id)?.name.split(' ')[0]) : null
+                  return (
+                    <button
+                      key={g.id}
+                      onClick={() => navigate(groupPath(g.id))}
+                      className={`flex w-full items-center gap-3 px-4 py-3 text-left ${isSelected ? 'bg-accent-bg' : 'hover:bg-gray-50'}`}
+                    >
+                      <GroupIcon size={36} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className={`truncate text-sm font-medium ${isSelected ? 'text-accent-foreground' : 'text-gray-900'}`}>{g.name}</span>
+                          {last && (
+                            <span className={`shrink-0 text-[10px] ${isSelected ? 'text-accent-foreground/70' : 'text-gray-400'}`}>{formatTime(last.created_at)}</span>
+                          )}
+                        </div>
+                        <div className={`truncate text-xs ${isSelected ? 'text-accent-foreground/80' : 'text-gray-500'}`}>
+                          {last ? `${lastSender ?? 'Someone'}: ${last.body}` : `${g.members.length} members`}
+                        </div>
+                      </div>
+                      {g.unread_count > 0 && (
+                        <span className="flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-status-danger-text px-1 text-[10px] font-bold text-white">
+                          {g.unread_count}
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
+              </>
+            )}
             <div className="border-b border-gray-100 px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
               Conversations
             </div>
-            <div className="flex-1 overflow-y-auto">
+            <div>
               {conversations.length === 0 && (
                 <div className="px-4 py-6 text-center text-sm text-gray-400">
                   No conversations yet. Search above to message someone.
@@ -245,12 +304,25 @@ export function Messages() {
                 )
               })}
             </div>
-          </>
+          </div>
         )}
       </div>
 
-      <div className={`${selectedUserId ? 'flex' : 'hidden md:flex'} min-w-0 flex-1 flex-col`}>
-        {selectedUserId ? (
+      <div className={`${paneOpen ? 'flex' : 'hidden md:flex'} min-w-0 flex-1 flex-col`}>
+        {selectedGroupId ? (
+          selectedGroup ? (
+            <GroupChatPane
+              key={selectedGroup.id}
+              group={selectedGroup}
+              onBack={() => navigate('/messages')}
+              onGone={() => navigate('/messages')}
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center text-sm text-gray-400">
+              {groupsLoaded ? "This group doesn't exist, or you're not in it." : 'Loading...'}
+            </div>
+          )
+        ) : selectedUserId ? (
           <>
             <div className="flex items-center gap-3 border-b border-gray-100 px-3 py-3 sm:px-5">
               <button
@@ -394,6 +466,16 @@ export function Messages() {
           </div>
         )}
       </div>
+
+      {creatingGroup && (
+        <NewGroupModal
+          onClose={() => setCreatingGroup(false)}
+          onCreated={(groupId) => {
+            setCreatingGroup(false)
+            navigate(groupPath(groupId))
+          }}
+        />
+      )}
 
       {selectedUserId && selectedUser && infoPanelOpen && (
         <ConversationInfoPanel

@@ -14,6 +14,7 @@ import {
   Trophy,
   UserPlus,
   Hourglass,
+  Megaphone,
   Menu,
   X,
   type LucideIcon,
@@ -31,6 +32,7 @@ import { ThemeToggle } from './ThemeToggle'
 import { OnlineUsers } from './OnlineUsers'
 import { contributorPath } from '../lib/urlRef'
 import { fetchPendingRequestCount } from '../lib/taskRequests'
+import { fetchUnreadAnnouncementCount } from '../lib/announcements'
 
 const MANAGER_ROLES = ['admin', 'lead']
 
@@ -38,6 +40,7 @@ function navSections(
   isManager: boolean,
   isAdmin: boolean,
   pendingRequests: number,
+  unreadAnnouncements: number,
 ): { label: string; items: { to: string; label: string; icon: LucideIcon; badge?: number }[] }[] {
   return [
     {
@@ -70,12 +73,14 @@ function navSections(
       items: isManager
         ? [
           { to: '/messages', label: 'Messages', icon: MessageCircle },
+          { to: '/announcements', label: 'Announcements', icon: Megaphone, badge: unreadAnnouncements },
           { to: '/users', label: 'Users', icon: UsersIcon },
           { to: '/projects', label: 'Projects', icon: FolderKanban },
           { to: '/hiring', label: 'Hiring', icon: UserPlus },
         ]
         : [
           { to: '/messages', label: 'Messages', icon: MessageCircle },
+          { to: '/announcements', label: 'Announcements', icon: Megaphone, badge: unreadAnnouncements },
         ],
     },
   ]
@@ -154,6 +159,15 @@ export function AppShell({ children }: { children: ReactNode }) {
     refetchInterval: 30_000,
   })
 
+  // New announcements addressed to you. Cleared when the Announcements page marks them seen (it
+  // invalidates this key), otherwise checked every minute.
+  const { data: unreadAnnouncements = 0 } = useQuery({
+    queryKey: ['announcements', 'unread-count'],
+    queryFn: fetchUnreadAnnouncementCount,
+    enabled: Boolean(user),
+    refetchInterval: 60_000,
+  })
+
   // Fade the page area in on each route change. Opacity only: a transform here
   // would become the containing block for the page's position: fixed modals.
   useLayoutEffect(() => {
@@ -192,7 +206,9 @@ export function AppShell({ children }: { children: ReactNode }) {
                           : 'My Profile'
                         : location.pathname === '/hiring'
                           ? 'Hiring'
-                          : 'Dashboard'
+                          : location.pathname === '/announcements'
+                            ? 'Announcements'
+                            : 'Dashboard'
 
   return (
     <MessagingProvider>
@@ -229,7 +245,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               </div>
 
               <nav className="flex-1 overflow-y-auto px-3 py-2">
-                {navSections(isManager, isAdmin, pendingRequests).map((section) => (
+                {navSections(isManager, isAdmin, pendingRequests, unreadAnnouncements).map((section) => (
                   <div key={section.label} className="mb-4">
                     <div className="px-2 pb-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-gray-400">
                       {section.label}
@@ -249,7 +265,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                         {item.badge ? (
                           <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-status-danger-text px-1.5 text-[11px] font-bold text-white">
                             {item.badge > 99 ? '99+' : item.badge}
-                            <span className="sr-only"> pending</span>
+                            <span className="sr-only">{item.to === '/requests' ? ' pending' : ' new'}</span>
                           </span>
                         ) : null}
                       </NavLink>

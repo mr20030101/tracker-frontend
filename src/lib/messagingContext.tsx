@@ -3,9 +3,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from './api'
 import { useAuth } from './auth'
 import { buildConversations, fetchConversationSummaries, fetchDirectory } from './messages'
+import { fetchGroupSummaries } from './groupChats'
 import { MESSAGE_NOTIFICATION_SOUND, playSound } from './sound'
 import { botMessageRevealAt } from './useBotTyping'
-import type { Conversation, DirectoryUser } from '../types'
+import type { ChatGroupSummary, Conversation, DirectoryUser } from '../types'
 
 interface MessagingContextValue {
   isOpen: boolean
@@ -17,6 +18,10 @@ interface MessagingContextValue {
   myId: string | null
   usersById: Map<string, DirectoryUser>
   conversations: Conversation[]
+  // Group chats the caller is in, most recently active first.
+  groups: ChatGroupSummary[]
+  groupsLoaded: boolean
+  // Direct and group messages together.
   totalUnread: number
 }
 
@@ -89,7 +94,32 @@ export function MessagingProvider({ children }: { children: ReactNode }) {
     () => (myId ? buildConversations(myId, visibleMessages, usersById, unreadByOther) : []),
     [myId, visibleMessages, usersById, unreadByOther],
   )
-  const totalUnread = conversations.reduce((sum, c) => sum + c.unreadCount, 0)
+  const { data: groups = [], isSuccess: groupsLoaded } = useQuery({
+    queryKey: ['group-chats', myId],
+    queryFn: fetchGroupSummaries,
+    enabled: Boolean(myId),
+    refetchInterval: 15000,
+  })
+
+  const totalUnread =
+    conversations.reduce((sum, c) => sum + c.unreadCount, 0) + groups.reduce((sum, g) => sum + g.unread_count, 0)
+
+  // The same once-per-message sound for group chats, keyed on each group's newest message.
+  const previousGroupTailRef = useRef<Map<number, number> | null>(null)
+  useEffect(() => {
+    if (!groupsLoaded || !myId) return
+    const previous = previousGroupTailRef.current
+    if (previous) {
+      for (const g of groups) {
+        const last = g.last_message
+        if (last && last.sender_id !== myId && g.unread_count > 0 && (previous.get(g.id) ?? 0) < last.id) {
+          playSound(MESSAGE_NOTIFICATION_SOUND)
+          break
+        }
+      }
+    }
+    previousGroupTailRef.current = new Map(groups.map((g) => [g.id, g.last_message?.id ?? 0]))
+  }, [groups, groupsLoaded, myId])
 
   // Plays the notification sound exactly once per message, the moment it actually becomes visible
   // in `visibleMessages` — whether that's the instant a human's message arrives (immediately
@@ -122,6 +152,10 @@ export function MessagingProvider({ children }: { children: ReactNode }) {
       .channel('messages-live')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => {
         queryClient.invalidateQueries({ queryKey: ['messages', myId] })
+      })
+      // RLS limits this to groups the viewer is in.
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'group_messages' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['group-chats', myId] })
       })
       .subscribe()
     return () => {
@@ -157,6 +191,8 @@ export function MessagingProvider({ children }: { children: ReactNode }) {
         myId,
         usersById,
         conversations,
+        groups,
+        groupsLoaded,
         totalUnread,
       }}
     >

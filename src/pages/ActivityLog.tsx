@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ColumnDef } from '@tanstack/react-table'
 import { api, supabase } from '../lib/api'
-import type { ActivityEvent, ActivityLog } from '../types'
+import { AUDIT_CATEGORIES, auditCategory, fetchAuditLogs } from '../lib/auditLog'
+import type { ActivityEvent, ActivityLog, AuditLog } from '../types'
 import { Avatar } from '../components/Avatar'
 import { Select } from '../components/Select'
 import { DataTable } from '../components/DataTable'
@@ -27,7 +28,139 @@ function formatTimestamp(value: string) {
   })
 }
 
+type Tab = 'sign-ins' | 'actions'
+
 export function ActivityLog() {
+  const [tab, setTab] = useState<Tab>('sign-ins')
+
+  return (
+    <div>
+      <div className="mb-4 flex rounded-lg border border-gray-200 bg-white p-1 w-fit">
+        {(
+          [
+            ['sign-ins', 'Sign-ins'],
+            ['actions', 'Admin actions'],
+          ] as const
+        ).map(([value, label]) => (
+          <button
+            key={value}
+            onClick={() => setTab(value)}
+            className={`rounded-md px-4 py-1.5 text-sm font-medium ${tab === value ? 'bg-accent text-accent-foreground' : 'text-gray-600'}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {tab === 'sign-ins' ? <SignInLog /> : <AuditTrail />}
+    </div>
+  )
+}
+
+function AuditTrail() {
+  const [category, setCategory] = useState('all')
+  const [search, setSearch] = useState('')
+
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ['audit-logs'],
+    queryFn: fetchAuditLogs,
+    refetchInterval: 30_000,
+  })
+
+  const rows = useMemo(() => {
+    const term = search.trim().toLowerCase()
+    return (data ?? []).filter(
+      (row) =>
+        (category === 'all' || auditCategory(row.action) === category) &&
+        (!term || row.summary.toLowerCase().includes(term) || (row.actor?.name ?? '').toLowerCase().includes(term)),
+    )
+  }, [data, category, search])
+
+  const columns = useMemo<ColumnDef<AuditLog, any>[]>(
+    () => [
+      {
+        id: 'actor',
+        accessorFn: (row) => row.actor?.name ?? '',
+        header: 'Who',
+        cell: ({ row }) => (
+          <div className="flex items-center gap-3">
+            <Avatar name={row.original.actor?.name ?? 'Unknown'} photoUrl={row.original.actor?.avatar_url} size={28} />
+            <div className="min-w-0">
+              <div className="truncate font-medium text-gray-900">{row.original.actor?.name ?? 'Deleted user'}</div>
+              <div className="truncate text-xs text-gray-400">{row.original.actor?.email ?? '—'}</div>
+            </div>
+          </div>
+        ),
+      },
+      {
+        id: 'summary',
+        accessorFn: (row) => row.summary,
+        header: 'What',
+        cell: ({ row }) => <span className="text-gray-700">{row.original.summary}</span>,
+      },
+      {
+        id: 'category',
+        accessorFn: (row) => auditCategory(row.action),
+        header: 'Type',
+        cell: ({ row }) => (
+          <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">
+            {AUDIT_CATEGORIES.find((c) => c.value === auditCategory(row.original.action))?.label ?? 'Other'}
+          </span>
+        ),
+      },
+      {
+        id: 'time',
+        accessorFn: (row) => row.created_at,
+        header: 'Time',
+        cell: ({ row }) => <span className="whitespace-nowrap text-gray-500">{formatTimestamp(row.original.created_at)}</span>,
+      },
+    ],
+    [],
+  )
+
+  return (
+    <div>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">Admin Actions</h1>
+          <p className="text-sm text-gray-500">
+            What leads and admins changed: accounts, teams, requests, levels, targets, projects and hiring. Kept permanently.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            type="search"
+            placeholder="Search..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-48 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
+          />
+          <Select
+            value={category}
+            onChange={setCategory}
+            options={[{ value: 'all', label: 'All actions' }, ...AUDIT_CATEGORIES.map((c) => ({ value: c.value, label: c.label }))]}
+            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
+          />
+        </div>
+      </div>
+
+      {isError ? (
+        <div className="rounded-xl border border-status-danger-text bg-status-danger-bg px-5 py-4 text-sm text-status-danger-text">
+          Could not load the audit log: {(error as Error).message}
+        </div>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={rows}
+          getRowId={(row) => String(row.id)}
+          isLoading={isLoading}
+          emptyMessage="No actions recorded yet."
+        />
+      )}
+    </div>
+  )
+}
+
+function SignInLog() {
   const queryClient = useQueryClient()
   const [eventFilter, setEventFilter] = useState<ActivityEvent | 'all'>('all')
   const [clearConfirm, setClearConfirm] = useState(false)

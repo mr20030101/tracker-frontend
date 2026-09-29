@@ -18,6 +18,8 @@ import { CallButton } from './CallBar'
 import { messagePreview } from '../lib/callLog'
 import { useCall } from '../lib/call'
 import { errorMessage } from '../lib/api'
+import { groupPath } from '../lib/groupChats'
+import { Users } from 'lucide-react'
 
 // Messenger's own send-bubble blue, matching MessageBubble.tsx — kept local rather than
 // repointing the app's global --color-accent, which drives buttons everywhere else.
@@ -30,7 +32,7 @@ function formatTime(iso: string) {
 export function MessagesButton() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
-  const { isOpen, activeUserId, activeUserName, openInbox, openChatWith, close, myId, usersById, conversations, totalUnread } =
+  const { isOpen, activeUserId, activeUserName, openInbox, openChatWith, close, myId, usersById, conversations, groups, totalUnread } =
     useMessaging()
   const [draft, setDraft] = useState('')
   const [selectMode, setSelectMode] = useState(false)
@@ -308,11 +310,42 @@ export function MessagesButton() {
                   </Link>
                 </div>
                 <div className="flex-1 overflow-y-auto">
-                  {conversations.length === 0 && (
+                  {conversations.length === 0 && groups.length === 0 && (
                     <div className="flex h-full items-center justify-center px-4 text-center text-sm text-gray-400">
                       No conversations yet. Click someone online to start one.
                     </div>
                   )}
+                  {/* Group chats open in the full Messages view. */}
+                  {groups.map((g) => (
+                    <Link
+                      key={`group-${g.id}`}
+                      to={groupPath(g.id)}
+                      onClick={close}
+                      className="flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50"
+                    >
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-100 text-violet-600">
+                        <Users className="h-4 w-4" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="truncate text-sm font-medium text-gray-900">{g.name}</span>
+                          {g.last_message && (
+                            <span className="shrink-0 text-[10px] text-gray-400">{formatTime(g.last_message.created_at)}</span>
+                          )}
+                        </div>
+                        <div className="truncate text-xs text-gray-500">
+                          {g.last_message
+                            ? `${g.last_message.sender_id === myId ? 'You' : (g.members.find((m) => m.id === g.last_message!.sender_id)?.name.split(' ')[0] ?? 'Someone')}: ${g.last_message.body}`
+                            : `${g.members.length} members`}
+                        </div>
+                      </div>
+                      {g.unread_count > 0 && (
+                        <span className="flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-status-danger-text px-1 text-[10px] font-bold text-white">
+                          {g.unread_count}
+                        </span>
+                      )}
+                    </Link>
+                  ))}
                   {conversations.map((c) => (
                     <div key={c.otherUserId} className="flex items-center hover:bg-gray-50">
                       <button

@@ -1,14 +1,21 @@
 import { useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { MessageCircle } from 'lucide-react'
-import { api } from '../lib/api'
+import { api, functionErrorMessage, supabase } from '../lib/api'
+import { useAuth } from '../lib/auth'
+import { downloadCsv } from '../lib/csv'
+import { Select } from '../components/Select'
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, yearMonth, toISODate, formatRange } from '../lib/week'
 import { useMessaging } from '../lib/messagingContext'
 import type { DashboardSummary } from '../types'
 import { LineChart } from '../components/LineChart'
 
+type ExportKind = 'daily' | 'contributors' | 'projects' | 'leads'
+
 export function Dashboard() {
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'admin'
   const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('week')
   const [anchorDate, setAnchorDate] = useState(() => new Date())
   const { usersById, myId, openChatWith } = useMessaging()
@@ -78,6 +85,74 @@ export function Dashboard() {
   const dailyReport = data?.daily_report ?? []
   const periodPhrase = viewMode === 'day' ? 'today' : viewMode === 'week' ? 'this week' : 'this month'
 
+  function exportCsv(kind: ExportKind) {
+    if (!data) return
+    const suffix = `${rangeStart}-to-${rangeEnd}.csv`
+    if (kind === 'daily') {
+      downloadCsv(`daily-report-${suffix}`, dailyReport.map((day) => ({ ...day })))
+    } else if (kind === 'contributors') {
+      downloadCsv(
+        `contributors-${suffix}`,
+        allRows.map((r) => ({
+          name: r.name,
+          cb_email: r.cb_email,
+          lead: (r.lead_id && usersById.get(r.lead_id)?.name) || '',
+          tasks_submitted: r.tasks_submitted,
+          target: r.weekly_target,
+          progress_pct: Math.round(r.progress * 100),
+          is_active: r.is_active,
+        })),
+      )
+    } else if (kind === 'projects') {
+      downloadCsv(
+        `projects-${suffix}`,
+        data.project_report.map((p) => ({
+          project: p.name,
+          tasks_submitted: p.tasks_submitted,
+          tasks_logged: p.tasks_logged,
+          contributors_submitted: p.contributors_submitted,
+        })),
+      )
+    } else {
+      // One row per lead (and one for contributors without a lead), summing their team.
+      const teams = new Map<string, typeof allRows>()
+      for (const row of allRows) {
+        const key = row.lead_id ?? ''
+        teams.set(key, [...(teams.get(key) ?? []), row])
+      }
+      downloadCsv(
+        `teams-${suffix}`,
+        [...teams.entries()]
+          .map(([leadId, team]) => {
+            const active = team.filter((r) => r.is_active)
+            const submitted = team.reduce((sum, r) => sum + r.tasks_submitted, 0)
+            const target = active.reduce((sum, r) => sum + r.weekly_target, 0)
+            return {
+              lead: leadId ? (usersById.get(leadId)?.name ?? 'Unknown lead') : 'No lead',
+              contributors: active.length,
+              tasks_submitted: submitted,
+              combined_target: target,
+              progress_pct: target ? Math.round((submitted / target) * 100) : 0,
+              contributors_on_target: active.filter((r) => r.progress >= 1).length,
+              contributors_with_no_submissions: active.filter((r) => r.tasks_submitted === 0).length,
+            }
+          })
+          .sort((a, b) => b.tasks_submitted - a.tasks_submitted),
+      )
+    }
+  }
+
+  const weeklyReportMutation = useMutation({
+    mutationFn: async () => {
+      const { data: result, error } = await supabase.functions.invoke<{ sent: number; week_start: string; week_end: string }>(
+        'daily-digest',
+        { body: { mode: 'weekly' } },
+      )
+      if (error) throw await functionErrorMessage(error)
+      return result!
+    },
+  })
+
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -90,7 +165,30 @@ export function Dashboard() {
             {disabledCount > 0 && ` · ${disabledCount} disabled`}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <Select
+            value=""
+            onChange={(value) => exportCsv(value as ExportKind)}
+            placeholder="Export CSV..."
+            disabled={!data}
+            options={[
+              { value: 'daily', label: 'Daily report' },
+              { value: 'contributors', label: 'By contributor' },
+              { value: 'projects', label: 'By project' },
+              ...(isAdmin ? [{ value: 'leads', label: 'By team (lead)' }] : []),
+            ]}
+            className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+          />
+          {isAdmin && (
+            <button
+              onClick={() => weeklyReportMutation.mutate()}
+              disabled={weeklyReportMutation.isPending}
+              title="Messages every lead a summary of last week (Tuesday–Monday), and every admin an all-teams overview."
+              className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            >
+              {weeklyReportMutation.isPending ? 'Sending...' : 'Send weekly report'}
+            </button>
+          )}
           {noProgressCount > 0 && (
             <Link
               to="/leaderboard"
@@ -111,6 +209,18 @@ export function Dashboard() {
           )}
         </div>
       </div>
+
+      {weeklyReportMutation.isSuccess && (
+        <div className="mb-4 rounded-lg bg-status-success-bg px-4 py-2 text-sm text-status-success-text">
+          Weekly report for {formatRange(weeklyReportMutation.data.week_start, weeklyReportMutation.data.week_end)} sent to{' '}
+          {weeklyReportMutation.data.sent} {weeklyReportMutation.data.sent === 1 ? 'person' : 'people'} in Messages.
+        </div>
+      )}
+      {weeklyReportMutation.isError && (
+        <div className="mb-4 rounded-lg bg-status-danger-bg px-4 py-2 text-sm text-status-danger-text">
+          {(weeklyReportMutation.error as Error).message}
+        </div>
+      )}
 
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <div className="flex rounded-lg border border-gray-200 bg-white p-1">

@@ -14,6 +14,9 @@ import { LevelPill, LEVEL_TIERS } from '../components/LevelPill'
 import { ContributorWorkPanel } from '../components/ContributorWorkPanel'
 import { Modal } from '../components/Modal'
 import { Reveal } from '../components/Reveal'
+import { AchievementsCard } from '../components/Achievements'
+import { OnboardingProgress } from '../components/OnboardingChecklist'
+import { useOnboardingStatus } from '../lib/onboarding'
 
 const LEVEL_OPTIONS: ProjectLevel[] = ['contributor', 'l0', 'l1', 'l10']
 
@@ -188,6 +191,10 @@ export function CbProfile() {
     },
     enabled: Boolean(contributorId),
   })
+
+  // Null unless the viewer is this contributor's lead or an admin (the database leaves anyone else out).
+  const isManagerViewer = Boolean(currentUser && MANAGER_ROLES.includes(currentUser.role))
+  const { data: onboarding } = useOnboardingStatus(isManagerViewer && !isOwnProfile ? contributorId : null)
 
   const levelMutation = useMutation({
     mutationFn: async ({ projectId, level }: { projectId: number; level: ProjectLevel }) => {
@@ -531,6 +538,12 @@ export function CbProfile() {
           )}
         </div>
       )}
+
+      {isContributorRole && !isOwnProfile && onboarding && onboarding.done < onboarding.total && (
+        <OnboardingProgress status={onboarding} hasLead={Boolean(contributorLeadId)} />
+      )}
+
+      {isContributorRole && contributorId && <AchievementsCard userId={contributorId} />}
 
       {/* Same for Project Levels — a CB sees their own on the Dashboard now; this stays only
           for a lead/admin reviewing someone else. */}

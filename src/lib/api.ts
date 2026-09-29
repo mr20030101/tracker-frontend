@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { WEEK_LENGTH_DAYS } from './week'
-import type { ActivityEvent, ActivityLog, ContributorProfile, DashboardSummary, DailyReportRow, LeaderboardRow, Paginated, Project, ProjectBreakdown, ProjectLevel, Resource, Stage, TaskSubmission, User } from '../types'
+import type { ActivityEvent, ActivityLog, ContributorProfile, DashboardSummary, DailyReportRow, LeaderboardRow, Paginated, Project, ProjectBreakdown, ProjectLevel, ProjectReportRow, Resource, Stage, TaskSubmission, User } from '../types'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim() || 'https://ieovepkcseytccagzedg.supabase.co'
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() ||
@@ -112,10 +112,11 @@ async function dashboard(params: Record<string, unknown>): Promise<DashboardSumm
   targetWeekStart.setUTCDate(targetWeekStart.getUTCDate() - ((targetWeekStart.getUTCDay() - 2 + 7) % 7))
   const targetWeekStartIso = targetWeekStart.toISOString().slice(0, 10)
 
-  const [{ data: users }, { data: submissions }, { data: targets }] = await Promise.all([
+  const [{ data: users }, { data: submissions }, { data: targets }, projectList] = await Promise.all([
     supabase.from('profiles').select('*').eq('role', 'contributor').order('name'),
     supabase.from('task_submissions').select('user_id, cb_email, project_id, status, date').gte('date', rangeStart).lte('date', rangeEnd),
     supabase.from('weekly_targets').select('*').eq('week_start', targetWeekStartIso),
+    projects(),
   ])
   const projectId = params.project_id ? Number(params.project_id) : null
   const filteredSubmissions = (submissions ?? []).filter((submission) => !projectId || submission.project_id === projectId)
@@ -128,7 +129,7 @@ async function dashboard(params: Record<string, unknown>): Promise<DashboardSumm
     const submitted = entries.filter((entry) => entry.status === 'submitted').length
     const baseTarget = (targets ?? []).find((item) => item.user_id === user.id)?.target ?? 50
     const target = Math.round(baseTarget * multiplier)
-    return { user_id: user.id, cb_email: user.email, name: user.name, is_active: user.is_active, tasks_submitted: submitted, weekly_target: target, progress: target ? submitted / target : 0 }
+    return { user_id: user.id, cb_email: user.email, name: user.name, lead_id: user.lead_id ?? null, is_active: user.is_active, tasks_submitted: submitted, weekly_target: target, progress: target ? submitted / target : 0 }
   })
   // Match submissions to active contributors by email only — mixing user_id and
   // cb_email as the same identity key in one Set let a contributor with both kinds
@@ -159,7 +160,29 @@ async function dashboard(params: Record<string, unknown>): Promise<DashboardSumm
     })
     day.setUTCDate(day.getUTCDate() + 1)
   }
-  return { week_start: rangeStart, week_end: rangeEnd, data: rows, daily_report: dailyReport }
+  const byProject = new Map<number | null, ProjectReportRow & { submitters: Set<string> }>()
+  for (const submission of filteredSubmissions) {
+    const key = submission.project_id ?? null
+    const entry = byProject.get(key) ?? {
+      project_id: key,
+      name: projectList.find((project) => project.id === key)?.name ?? 'Unassigned',
+      tasks_submitted: 0,
+      tasks_logged: 0,
+      contributors_submitted: 0,
+      submitters: new Set<string>(),
+    }
+    entry.tasks_logged += 1
+    if (submission.status === 'submitted') {
+      entry.tasks_submitted += 1
+      if (submission.cb_email) entry.submitters.add(submission.cb_email.toLowerCase())
+    }
+    byProject.set(key, entry)
+  }
+  const projectReport: ProjectReportRow[] = [...byProject.values()]
+    .map(({ submitters, ...row }) => ({ ...row, contributors_submitted: submitters.size }))
+    .sort((a, b) => b.tasks_submitted - a.tasks_submitted)
+
+  return { week_start: rangeStart, week_end: rangeEnd, data: rows, daily_report: dailyReport, project_report: projectReport }
 }
 
 // Looked up by `id` when the caller doesn't know the person's email (a contributor opening a peer's

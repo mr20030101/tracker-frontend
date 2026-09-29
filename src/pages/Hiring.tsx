@@ -34,6 +34,7 @@ import { downloadCsv } from '../lib/csv'
 import { Modal } from '../components/Modal'
 import { Select } from '../components/Select'
 import { contributorPath } from '../lib/urlRef'
+import { fetchOnboardingStatus, ONBOARDING_STEPS } from '../lib/onboarding'
 
 type StatusFilter = HiringStatus | 'all'
 type Notice = { tone: 'success' | 'error'; text: string }
@@ -464,6 +465,17 @@ export function Hiring() {
   // Only rows that are showing count, so a search or filter can't leave someone hidden but still selected.
   const selected = rows.filter((a) => rowSelection[String(a.id)])
 
+  // The new hire's in-app checklist (photo, Remotasks ID, first task, ...), once they have an account.
+  const linkedUserIds = useMemo(
+    () => applications.filter((a) => a.status === 'accepted' && a.user_id).map((a) => a.user_id!),
+    [applications],
+  )
+  const { data: checklist } = useQuery({
+    queryKey: ['onboarding', 'hiring', linkedUserIds],
+    queryFn: async () => new Map((await fetchOnboardingStatus(linkedUserIds)).map((status) => [status.user_id, status])),
+    enabled: statusFilter === 'accepted' && linkedUserIds.length > 0,
+  })
+
   const columns = useMemo<ColumnDef<HiringApplication, any>[]>(
     () => [
       {
@@ -571,6 +583,16 @@ export function Hiring() {
                     >
                       Onboarded
                     </button>
+                    {(() => {
+                      const status = application.user_id ? checklist?.get(application.user_id) : undefined
+                      if (!status) return null
+                      const missing = ONBOARDING_STEPS.filter((s) => s.step in status.steps && !status.steps[s.step]).map((s) => s.label)
+                      return badge(
+                        `Checklist ${status.done}/${status.total}`,
+                        status.done >= status.total,
+                        status.done >= status.total ? 'Finished the in-app getting-started checklist' : `Still to do: ${missing.join(', ')}`,
+                      )
+                    })()}
                   </div>
                 )
               },
@@ -649,7 +671,7 @@ export function Hiring() {
         },
       },
     ],
-    [isAdmin, leadNameById, statusFilter, onboardMutation, navigate],
+    [isAdmin, leadNameById, statusFilter, onboardMutation, navigate, checklist],
   )
 
   const loginDetails = credentials

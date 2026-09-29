@@ -17,6 +17,8 @@ import { TaskSubmissionForm } from '../components/TaskSubmissionForm'
 import { LevelPill } from '../components/LevelPill'
 import { Modal } from '../components/Modal'
 import { contributorPath } from '../lib/urlRef'
+import { OnboardingChecklist } from '../components/OnboardingChecklist'
+import { AchievementsCard } from '../components/Achievements'
 
 const TREND_DAYS = 30
 
@@ -141,6 +143,8 @@ export function ContributorDashboard() {
     { to: '/messages', label: 'Messages', icon: MessageCircle },
   ]
 
+  const lead = contributorLeadId ? usersById.get(contributorLeadId) : undefined
+
   const submittedToday = data.all_submissions.filter((r) => r.date?.slice(0, 10) === today && r.status === 'submitted').length
   const loggedToday = data.all_submissions.filter((r) => r.date?.slice(0, 10) === today).length
   const dayTarget = Math.round(data.weekly_target / 5)
@@ -261,6 +265,18 @@ export function ContributorDashboard() {
 
       {submitting && <TaskSubmissionForm onClose={() => setSubmitting(false)} />}
 
+      {contributorId && (
+        <OnboardingChecklist
+          userId={contributorId}
+          hasLead={Boolean(contributorLeadId)}
+          profilePath={contributorPath(email)}
+          actions={{
+            first_task: { label: 'Submit a task', onClick: () => setSubmitting(true) },
+            ...(lead ? { message_lead: { label: `Message ${lead.name}`, onClick: () => openChatWith(lead.id, lead.name) } } : {}),
+          }}
+        />
+      )}
+
       {showCtsModal && <CtsFormModal email={email} submissions={todaysSubmissions} onClose={() => setShowCtsModal(false)} />}
 
       <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
@@ -304,6 +320,8 @@ export function ContributorDashboard() {
           <LineChart data={trendData} color="#d4a017" unitLabel="submitted" />
         </div>
       </div>
+
+      {contributorId && <AchievementsCard userId={contributorId} title="Your streak & badges" />}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="rounded-xl border border-gray-200 bg-white p-5">

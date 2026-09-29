@@ -84,6 +84,20 @@ Deno.serve(async (request) => {
         return target?.role === 'contributor' && target.lead_id === caller.user!.id
     }
 
+    // Account and hiring actions run as the service role, which the audit_logs triggers can't
+    // attribute to anyone, so they're recorded here with the caller as the actor. Best effort:
+    // a failed audit write never undoes or fails the action itself.
+    async function audit(action: string, targetUserId: string | null, summary: string, details?: Record<string, unknown>) {
+        const { error } = await admin.from('audit_logs').insert({
+            actor_id: caller.user!.id,
+            action,
+            target_user_id: targetUserId,
+            summary: summary.slice(0, 500),
+            details: details ?? null,
+        })
+        if (error) console.warn('Could not record audit log:', error.message)
+    }
+
     const body = await request.json()
     if (body.action === 'review-application') {
         if (!body.id || !['accept', 'deny'].includes(body.decision)) {
@@ -109,6 +123,7 @@ Deno.serve(async (request) => {
                 .select('id')
             if (error) return errorResponse(`Could not deny this application: ${error.message}`, 400)
             if (!denied?.length) return errorResponse('This application was already reviewed.', 409)
+            await audit('application_denied', null, `Denied ${application.full_name}'s application`, { application_id: application.id })
             return Response.json({ id: application.id, status: 'denied' }, { headers: corsHeaders })
         }
 
@@ -122,6 +137,7 @@ Deno.serve(async (request) => {
             .select('id')
         if (acceptError) return errorResponse(`Could not accept this application: ${acceptError.message}`, 400)
         if (!accepted?.length) return errorResponse('This application was already reviewed.', 409)
+        await audit('application_accepted', null, `Accepted ${application.full_name}'s application`, { application_id: application.id })
         return Response.json({ id: application.id, status: 'accepted' }, { headers: corsHeaders })
     }
 
@@ -188,6 +204,9 @@ Deno.serve(async (request) => {
                 }),
         })
         if (!outcome.ok) return errorResponse(outcome.error, outcome.status)
+        await audit('account_created', outcome.user_id, `Created an account for ${application?.full_name ?? outcome.email} (${outcome.email}) from their application`, {
+            application_id: outcome.id,
+        })
         const { ok: _ok, ...result } = outcome
         return Response.json(result, { headers: corsHeaders })
     }
@@ -198,7 +217,7 @@ Deno.serve(async (request) => {
         if (!body.id || typeof body.onboarded !== 'boolean') {
             return errorResponse('An application id and onboarded (true or false) are required.', 400)
         }
-        const { data: application } = await admin.from('hiring_applications').select('id, lead_id, status').eq('id', body.id).maybeSingle()
+        const { data: application } = await admin.from('hiring_applications').select('id, lead_id, status, full_name, user_id').eq('id', body.id).maybeSingle()
         if (!application) return errorResponse('Application not found.', 404)
         if (profile.role !== 'admin' && application.lead_id !== caller.user.id) {
             return errorResponse('Forbidden: this application belongs to another lead.', 403)
@@ -212,6 +231,12 @@ Deno.serve(async (request) => {
             .select('id, onboarded_at')
             .single()
         if (error) return errorResponse(`Could not update onboarding status: ${error.message}`, 400)
+        await audit(
+            body.onboarded ? 'applicant_onboarded' : 'applicant_not_onboarded',
+            application.user_id,
+            `${body.onboarded ? 'Marked' : 'Unmarked'} ${application.full_name} as onboarded`,
+            { application_id: application.id },
+        )
         return Response.json(updated, { headers: corsHeaders })
     }
 
@@ -221,13 +246,14 @@ Deno.serve(async (request) => {
     // from it lives in profiles/auth, not here, so it is untouched.
     if (body.action === 'delete-application') {
         if (!body.id) return errorResponse('An application id is required.', 400)
-        const { data: application } = await admin.from('hiring_applications').select('id, lead_id').eq('id', body.id).maybeSingle()
+        const { data: application } = await admin.from('hiring_applications').select('id, lead_id, full_name, status').eq('id', body.id).maybeSingle()
         if (!application) return errorResponse('Application not found.', 404)
         if (profile.role !== 'admin' && application.lead_id !== caller.user.id) {
             return errorResponse('Forbidden: this application belongs to another lead.', 403)
         }
         const { error } = await admin.from('hiring_applications').delete().eq('id', application.id)
         if (error) return errorResponse(`Could not delete this application: ${error.message}`, 400)
+        await audit('application_deleted', null, `Deleted ${application.full_name}'s ${application.status} application`, { application_id: application.id })
         return Response.json({ id: application.id }, { headers: corsHeaders })
     }
 
@@ -238,6 +264,7 @@ Deno.serve(async (request) => {
         if (profile.role !== 'admin') return errorResponse('Forbidden: only an admin can clear hiring data.', 403)
         const { error, count } = await admin.from('hiring_applications').delete({ count: 'exact' }).gt('id', 0)
         if (error) return errorResponse(`Could not clear hiring applications: ${error.message}`, 400)
+        await audit('hiring_cleared', null, `Deleted all hiring applications (${count ?? 0})`)
         return Response.json({ deleted: count ?? 0 }, { headers: corsHeaders })
     }
 
@@ -277,6 +304,9 @@ Deno.serve(async (request) => {
 
         if (outcome.sent.length) {
             await admin.from('hiring_applications').update({ emailed_at: new Date().toISOString() }).in('id', outcome.sent)
+            await audit('applicants_emailed', null, `Emailed the bootcamp details to ${outcome.sent.length} applicant${outcome.sent.length === 1 ? '' : 's'}`, {
+                application_ids: outcome.sent,
+            })
         }
         return Response.json({ sent: outcome.sent, failed: outcome.failed }, { headers: corsHeaders })
     }
@@ -288,8 +318,11 @@ Deno.serve(async (request) => {
             return errorResponse('Forbidden: a lead can only delete contributors on their own team.', 403)
         }
 
+        // Read before deleting: afterwards there is no profile left to name in the log.
+        const { data: doomed } = await admin.from('profiles').select('name, email, role').eq('id', body.id).maybeSingle()
         const { error } = await admin.auth.admin.deleteUser(body.id)
         if (error) return errorResponse(`User deletion failed: ${error.message}`, 400)
+        await audit('account_deleted', null, `Deleted ${doomed?.name ?? 'an account'}${doomed ? ` (${doomed.email}, ${doomed.role})` : ''}`, { user_id: body.id })
         return Response.json({ id: body.id }, { headers: corsHeaders })
     }
 
@@ -320,6 +353,7 @@ Deno.serve(async (request) => {
             .order('reviewed_at', { ascending: false })
             .limit(1)
         const loginEmail = data.user.email ?? target?.email ?? ''
+        await audit('password_reset', data.user.id, `Reset ${target?.name ?? loginEmail}'s password`)
         const emailStatus = await emailAccount(request, {
             kind: 'reset',
             to: hiredAs?.[0]?.active_email ?? loginEmail,
@@ -379,5 +413,13 @@ Deno.serve(async (request) => {
         updated_at: new Date().toISOString(),
     })
     if (profileError) return errorResponse(`Profile update failed: ${profileError.message}`, 400)
+    await audit(
+        existingUser ? 'account_updated' : 'account_created',
+        userId ?? null,
+        existingUser
+            ? `Reset the existing ${role} account for ${body.name} (${body.email})`
+            : `Created a ${role} account for ${body.name} (${body.email})`,
+        { role },
+    )
     return Response.json({ id: userId }, { headers: corsHeaders })
 })

@@ -13,6 +13,8 @@ import { GrowBar } from '../components/GrowBar'
 import { SortableHeader } from '../components/SortableHeader'
 import { downloadCsv } from '../lib/csv'
 import { contributorPath } from '../lib/urlRef'
+import { StreakChip } from '../components/Achievements'
+import { useAchievements } from '../lib/achievements'
 
 type Period = 'week' | 'month' | 'all'
 type StatusFilter = 'all' | 'active' | 'disabled'
@@ -51,6 +53,7 @@ function ContributorLeaderboard() {
 
   const rows = data ?? []
   const topScore = rows[0]?.tasks_submitted ?? 0
+  const { data: achievements } = useAchievements(rows.map((r) => r.user_id))
   const periodLabel = period === 'week' ? 'this week' : period === 'month' ? 'this month' : 'all time'
 
   return (
@@ -98,6 +101,9 @@ function ContributorLeaderboard() {
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-sm font-medium text-gray-900">
                         {row.name}
+                        <span className="ml-2">
+                          <StreakChip streak={achievements?.get(row.user_id)?.current_streak} />
+                        </span>
                         {isMe && <span className="ml-2 text-xs font-semibold text-accent">You</span>}
                       </div>
                       <div className="mt-1 h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-gray-100">
@@ -235,6 +241,7 @@ function ManagerLeaderboard() {
       return matchesSearch && matchesStatus && matchesActivity
     })
     .sort((a, b) => (progressSort === 'desc' ? b.progress - a.progress : a.progress - b.progress))
+  const { data: achievements } = useAchievements(allRows.map((r) => r.user_id))
 
   const viewLabel = viewMode === 'day' ? 'Day' : viewMode === 'week' ? 'Week' : 'Month'
   const periodPhrase = viewMode === 'day' ? 'today' : viewMode === 'week' ? 'this week' : 'this month'
@@ -351,6 +358,7 @@ function ManagerLeaderboard() {
                 tasks_submitted: r.tasks_submitted,
                 target: r.weekly_target,
                 progress_pct: Math.round(r.progress * 100),
+                current_streak_weeks: achievements?.get(r.user_id)?.current_streak ?? 0,
                 is_active: r.is_active,
               })),
             )
@@ -405,7 +413,10 @@ function ManagerLeaderboard() {
                     >
                       <Avatar name={row.name || row.cb_email} />
                       <div className="min-w-0">
-                        <div className="truncate font-medium text-gray-900">{row.name}</div>
+                        <div className="flex items-center gap-2 truncate font-medium text-gray-900">
+                          {row.name}
+                          <StreakChip streak={achievements?.get(row.user_id)?.current_streak} />
+                        </div>
                         <div className="truncate text-xs text-gray-400">{row.cb_email}</div>
                       </div>
                     </Link>
