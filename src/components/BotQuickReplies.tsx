@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronDown, ChevronUp } from 'lucide-react'
+import { ChevronDown, ChevronUp, SpellCheck } from 'lucide-react'
 
 // Messenger's own send-bubble blue, matching MessageBubble.tsx — kept local rather than
 // repointing the app's global --color-accent, which drives buttons everywhere else.
@@ -8,10 +8,8 @@ const BUBBLE_BLUE = '#0084ff'
 const HIDDEN_KEY = 'botQuickRepliesHidden'
 
 // Each phrase contains a keyword from a bot_faqs row, since bot-reply matches by literal substring —
-// reword one of these and check it still hits a row. The exception is "Check my grammar", which
-// bot-reply recognises itself (GRAMMAR_REQUEST) and answers by asking for the text to check.
+// reword one of these and check it still hits a row.
 const QUICK_REPLIES = [
-  'Check my grammar',
   'How do I request an extension?',
   'How do I report a bad video?',
   'When is Platform Movement Yes?',
@@ -28,6 +26,31 @@ function readHidden(): boolean {
   } catch {
     return false
   }
+}
+
+// What the header's grammar button sends. bot-reply recognises it (GRAMMAR_REQUEST) and asks for
+// the text; the next message is then checked.
+export const GRAMMAR_CHECK_MESSAGE = 'Check my grammar'
+
+// Sits in the bot chat's header, next to the info/actions buttons, rather than among the suggested
+// questions, so it stays one tap away even with the suggestions hidden.
+export function GrammarCheckButton({ onClick, disabled, compact = false }: { onClick: () => void; disabled: boolean; compact?: boolean }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title="Have Meera check the grammar and spelling of your text"
+      aria-label="Check grammar"
+      style={{ borderColor: BUBBLE_BLUE, color: BUBBLE_BLUE }}
+      className={`flex shrink-0 items-center gap-1.5 rounded-full border bg-transparent font-medium hover:bg-sky-500/10 disabled:opacity-50 ${
+        compact ? 'h-8 w-8 justify-center' : 'px-3 py-1.5 text-xs'
+      }`}
+    >
+      <SpellCheck className="h-4 w-4" />
+      {!compact && <span className="hidden sm:inline">Check grammar</span>}
+    </button>
+  )
 }
 
 export function BotQuickReplies({

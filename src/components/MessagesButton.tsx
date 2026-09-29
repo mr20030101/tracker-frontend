@@ -8,7 +8,7 @@ import { formatActiveStatus } from '../lib/presence'
 import type { Message } from '../types'
 import { ActionsMenu } from './ActionsMenu'
 import { AvatarWithStatus } from './AvatarWithStatus'
-import { BotQuickReplies } from './BotQuickReplies'
+import { BotQuickReplies, GRAMMAR_CHECK_MESSAGE, GrammarCheckButton } from './BotQuickReplies'
 import { MessageBubble } from './MessageBubble'
 import { TypingIndicator } from './TypingIndicator'
 import { EmojiPickerButton } from './EmojiPickerButton'
@@ -190,6 +190,13 @@ export function MessagesButton() {
                     )}
                   </div>
                   <div className="ml-auto flex items-center gap-1">
+                    {activeUserIsBot && (
+                      <GrammarCheckButton
+                        compact
+                        onClick={() => sendMutation.mutate(GRAMMAR_CHECK_MESSAGE)}
+                        disabled={sendMutation.isPending || isTyping || selectMode}
+                      />
+                    )}
                     <CallButton
                       peer={activeUserId && activeUserName ? { id: activeUserId, name: activeUserName, avatar_url: activeUserAvatarUrl } : null}
                       isBot={activeUserIsBot}

@@ -11,7 +11,7 @@ import type { Message } from '../types'
 import { ActionsMenu } from '../components/ActionsMenu'
 import { Avatar } from '../components/Avatar'
 import { AvatarWithStatus } from '../components/AvatarWithStatus'
-import { BotQuickReplies } from '../components/BotQuickReplies'
+import { BotQuickReplies, GRAMMAR_CHECK_MESSAGE, GrammarCheckButton } from '../components/BotQuickReplies'
 import { ConversationInfoPanel } from '../components/ConversationInfoPanel'
 import { CallButton } from '../components/CallBar'
 import { MessageBubble } from '../components/MessageBubble'
@@ -357,11 +357,19 @@ export function Messages() {
                 isBot={selectedUser?.is_bot}
                 className="ml-auto"
               />
+              {selectedUser?.is_bot && (
+                <div className="ml-auto">
+                  <GrammarCheckButton
+                    onClick={() => sendMutation.mutate(GRAMMAR_CHECK_MESSAGE)}
+                    disabled={sendMutation.isPending || isTyping || selectMode}
+                  />
+                </div>
+              )}
               <button
                 type="button"
                 onClick={() => setInfoPanelOpen((v) => !v)}
                 aria-label="Conversation info"
-                className={`${selectedUser && !selectedUser.is_bot ? '' : 'ml-auto'} flex h-9 w-9 items-center justify-center rounded-full ${
+                className={`${selectedUser ? '' : 'ml-auto'} flex h-9 w-9 items-center justify-center rounded-full ${
                   infoPanelOpen ? 'bg-violet-100 text-violet-600' : 'text-violet-500 hover:bg-violet-50'
                 }`}
               >

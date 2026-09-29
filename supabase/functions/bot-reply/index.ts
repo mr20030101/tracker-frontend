@@ -13,7 +13,7 @@ const FALLBACK_REPLY = "Sorry, I'm having trouble answering right now — try ag
 
 // Grammar checking. A message asks for it by starting with "Grammar:", "Proofread:", "/grammar", or a
 // phrase like "check my grammar" / "fix the spelling"; the text after that is what gets checked. A
-// bare request (e.g. the "Check my grammar" quick reply) gets GRAMMAR_ASK back, and the next message
+// bare request (e.g. the chat header's "Check grammar" button) gets GRAMMAR_ASK back, and the next message
 // after it is checked whole. A colon is required after the plain keywords so an ordinary question
 // such as "Grammar is part of QA?" still goes to the FAQ answers.
 const GRAMMAR_REQUEST =
