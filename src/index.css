@@ -240,23 +240,6 @@ body {
   fill-opacity: 0.3;
 }
 
-/* Office speech bubbles: pop in, hold, then fade before they're removed. */
-@keyframes office-bubble {
-  0% {
-    opacity: 0;
-    transform: translate(-50%, 4px);
-  }
-  6%,
-  85% {
-    opacity: 1;
-    transform: translate(-50%, 0);
-  }
-  100% {
-    opacity: 0;
-    transform: translate(-50%, 0);
-  }
-}
-
 /* Below the desktop layout, tables scroll sideways (their containers are overflow-x-auto) instead of
    squeezing every column until dates and labels wrap one word per line. */
 @media (max-width: 1023px) {

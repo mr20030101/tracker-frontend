@@ -14,7 +14,6 @@ import {
   Trophy,
   UserPlus,
   Hourglass,
-  Building2,
   Menu,
   X,
   type LucideIcon,
@@ -71,14 +70,12 @@ function navSections(
       items: isManager
         ? [
           { to: '/messages', label: 'Messages', icon: MessageCircle },
-          { to: '/office', label: 'Office', icon: Building2 },
           { to: '/users', label: 'Users', icon: UsersIcon },
           { to: '/projects', label: 'Projects', icon: FolderKanban },
           { to: '/hiring', label: 'Hiring', icon: UserPlus },
         ]
         : [
           { to: '/messages', label: 'Messages', icon: MessageCircle },
-          { to: '/office', label: 'Office', icon: Building2 },
         ],
     },
   ]
@@ -195,9 +192,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                           : 'My Profile'
                         : location.pathname === '/hiring'
                           ? 'Hiring'
-                          : location.pathname === '/office'
-                            ? 'Office'
-                            : 'Dashboard'
+                          : 'Dashboard'
 
   return (
     <MessagingProvider>

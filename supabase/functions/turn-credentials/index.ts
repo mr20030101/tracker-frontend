@@ -1,6 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-// Short-lived TURN relay credentials for the Office page's voice calls (src/lib/voice.ts), from
+// Short-lived TURN relay credentials for voice calls from Messages (src/lib/voice.ts), from
 // Cloudflare Realtime TURN. Cloudflare hands out credentials per request rather than a fixed
 // password, so the TURN key's API token stays here as a secret and signed-in users get a fresh
 // set (valid for a day) whenever they join voice.
@@ -15,7 +15,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 // CLOUDFLARE_ANALYTICS_API_TOKEN (a token with the "Account Analytics: Read" permission). Without
 // them credentials are still given out, unmonitored, and the usage reports why.
 //
-// POST {"usageOnly": true} returns just the usage, for the Office page's voice panel.
+// POST {"usageOnly": true} returns just the usage (for checking the month's relay data).
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',

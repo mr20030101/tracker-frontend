@@ -16,8 +16,7 @@ interface Props {
 // only once the content exists, e.g. after data has loaded, so the entrance
 // plays when the content appears.
 export function Reveal({ as = 'div', className, children, ...options }: Props) {
-  // Typed as a div for JSX's sake: a bare ElementType would also span three.js's JSX elements (from
-  // the office's react-three-fiber), whose props don't fit these. Any of the allowed tags works the same.
+  // Typed as a div for JSX's sake; any of the allowed tags works the same.
   const ref = useReveal<HTMLDivElement>(options)
   const Component = as as 'div'
   return (

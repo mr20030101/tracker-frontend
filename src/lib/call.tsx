@@ -9,7 +9,7 @@ import { CALL_RINGBACK_SOUND, CALL_RINGTONE_SOUND, loopSound } from './sound'
 import { VOICE_PAUSED_MESSAGE, fetchIceServers } from './voice'
 
 // One-to-one voice calls, started from a conversation in Messages. The call itself is a direct
-// WebRTC audio connection (relayed through Cloudflare TURN when needed, like Office voice); a shared
+// WebRTC audio connection (relayed through Cloudflare TURN when needed, see lib/voice); a shared
 // Realtime broadcast channel carries the ringing and connection set-up messages, each addressed to
 // one person. Incoming calls ring anywhere in the app, since the provider sits in the app shell.
 
