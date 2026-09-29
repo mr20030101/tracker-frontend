@@ -8,8 +8,10 @@ const BUBBLE_BLUE = '#0084ff'
 const HIDDEN_KEY = 'botQuickRepliesHidden'
 
 // Each phrase contains a keyword from a bot_faqs row, since bot-reply matches by literal substring —
-// reword one of these and check it still hits a row.
+// reword one of these and check it still hits a row. The exception is "Check my grammar", which
+// bot-reply recognises itself (GRAMMAR_REQUEST) and answers by asking for the text to check.
 const QUICK_REPLIES = [
+  'Check my grammar',
   'How do I request an extension?',
   'How do I report a bad video?',
   'When is Platform Movement Yes?',

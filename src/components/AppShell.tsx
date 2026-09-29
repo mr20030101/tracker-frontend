@@ -15,6 +15,7 @@ import {
   UserPlus,
   Hourglass,
   Megaphone,
+  UserRound,
   Menu,
   X,
   type LucideIcon,
@@ -30,6 +31,7 @@ import { NotificationBell } from './NotificationBell'
 import { MessagesButton } from './MessagesButton'
 import { ThemeToggle } from './ThemeToggle'
 import { OnlineUsers } from './OnlineUsers'
+import { GlobalSearch } from './GlobalSearch'
 import { contributorPath } from '../lib/urlRef'
 import { fetchPendingRequestCount } from '../lib/taskRequests'
 import { fetchUnreadAnnouncementCount } from '../lib/announcements'
@@ -180,6 +182,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [location.pathname])
 
   const ownProfilePath = user ? contributorPath(user.email) : '/'
+  const sections = navSections(isManager, isAdmin, pendingRequests, unreadAnnouncements)
+  const searchPages = [
+    ...sections.flatMap((section) => section.items.map(({ to, label, icon }) => ({ to, label, icon }))),
+    { to: ownProfilePath, label: 'My profile', icon: UserRound },
+  ]
 
   const crumb =
     location.pathname === '/leaderboard'
@@ -245,7 +252,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               </div>
 
               <nav className="flex-1 overflow-y-auto px-3 py-2">
-                {navSections(isManager, isAdmin, pendingRequests, unreadAnnouncements).map((section) => (
+                {sections.map((section) => (
                   <div key={section.label} className="mb-4">
                     <div className="px-2 pb-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-gray-400">
                       {section.label}
@@ -327,6 +334,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </div>
               </div>
               <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
+                {user && <GlobalSearch pages={searchPages} />}
                 <ThemeToggle />
                 {user && !onMessages && <MessagesButton />}
                 {user && <NotificationBell />}
