@@ -18,8 +18,10 @@ export function Projects() {
   const queryClient = useQueryClient()
   const [adding, setAdding] = useState(false)
   const [name, setName] = useState('')
+  const [code, setCode] = useState('')
   const [editTarget, setEditTarget] = useState<Project | null>(null)
   const [editName, setEditName] = useState('')
+  const [editCode, setEditCode] = useState('')
   const [assignTarget, setAssignTarget] = useState<Project | null>(null)
   const [selectedLeadId, setSelectedLeadId] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -54,24 +56,25 @@ export function Projects() {
   const leadNameById = new Map(leads.map((lead) => [lead.id, lead.name]))
 
   const createMutation = useMutation({
-    mutationFn: async () => api.post('/projects', { name }),
+    mutationFn: async () => api.post('/projects', { name, code: code.trim() || null }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] })
       setAdding(false)
       setName('')
+      setCode('')
       setError(null)
     },
     onError: () => setError('Could not create this project. The name may already be in use.'),
   })
 
   const updateMutation = useMutation({
-    mutationFn: async () => api.patch(`/projects/${editTarget!.id}`, { name: editName }),
+    mutationFn: async () => api.patch(`/projects/${editTarget!.id}`, { name: editName, code: editCode.trim() || null }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] })
       setEditTarget(null)
       setError(null)
     },
-    onError: () => setError('Could not rename this project. The name may already be in use.'),
+    onError: () => setError('Could not update this project. The name may already be in use.'),
   })
 
   const addProjectLeadMutation = useMutation({
@@ -161,6 +164,7 @@ export function Projects() {
           <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
             <tr>
               <th className="px-5 py-3">Name</th>
+              <th className="px-5 py-3">Project Code</th>
               {isAdmin && <th className="px-5 py-3">Leads</th>}
               <th className="px-5 py-3 text-right">Actions</th>
             </tr>
@@ -168,14 +172,14 @@ export function Projects() {
           <tbody className="divide-y divide-gray-100">
             {isLoading && (
               <tr>
-                <td colSpan={isAdmin ? 3 : 2} className="px-5 py-6 text-center text-gray-400">
+                <td colSpan={isAdmin ? 4 : 3} className="px-5 py-6 text-center text-gray-400">
                   Loading...
                 </td>
               </tr>
             )}
             {!isLoading && data?.length === 0 && (
               <tr>
-                <td colSpan={isAdmin ? 3 : 2} className="px-5 py-6 text-center text-gray-400">
+                <td colSpan={isAdmin ? 4 : 3} className="px-5 py-6 text-center text-gray-400">
                   No projects yet.
                 </td>
               </tr>
@@ -185,6 +189,7 @@ export function Projects() {
               return (
                 <tr key={project.id} className="hover:bg-gray-50">
                   <td className="px-5 py-3 font-medium text-gray-900">{project.name}</td>
+                  <td className="px-5 py-3 font-mono text-xs text-gray-600">{project.code ?? '—'}</td>
                   {isAdmin && (
                     <td className="px-5 py-3">
                       {assignedLeadIds.length > 0 && (
@@ -228,10 +233,11 @@ export function Projects() {
                         <ActionsMenu
                           items={[
                             {
-                              label: 'Rename',
+                              label: 'Edit',
                               onClick: () => {
                                 setEditTarget(project)
                                 setEditName(project.name)
+                                setEditCode(project.code ?? '')
                                 setError(null)
                               },
                             },
@@ -272,6 +278,16 @@ export function Projects() {
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
               />
             </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Project Code</label>
+              <input
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="e.g. aloha_data_collection_v1"
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 font-mono text-sm outline-none focus:border-accent"
+              />
+              <p className="mt-1 text-xs text-gray-400">Exactly as it's listed under Tracking Project in the CTS Tracker.</p>
+            </div>
             {error && <div className="text-sm text-status-danger-text">{error}</div>}
             <div className="mt-2 flex justify-end gap-2">
               <button
@@ -294,7 +310,7 @@ export function Projects() {
       )}
 
       {editTarget && (
-        <Modal title="Rename Project" onClose={() => setEditTarget(null)}>
+        <Modal title="Edit Project" onClose={() => setEditTarget(null)}>
           <form onSubmit={handleUpdate} className="flex flex-col gap-3">
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">Project Name</label>
@@ -304,6 +320,16 @@ export function Projects() {
                 onChange={(e) => setEditName(e.target.value)}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
               />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Project Code</label>
+              <input
+                value={editCode}
+                onChange={(e) => setEditCode(e.target.value)}
+                placeholder="e.g. aloha_data_collection_v1"
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 font-mono text-sm outline-none focus:border-accent"
+              />
+              <p className="mt-1 text-xs text-gray-400">Exactly as it's listed under Tracking Project in the CTS Tracker.</p>
             </div>
             {error && <div className="text-sm text-status-danger-text">{error}</div>}
             <div className="mt-2 flex justify-end gap-2">

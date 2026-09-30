@@ -46,6 +46,8 @@ export interface AuditLog {
 export interface Project {
   id: number
   name: string
+  // The project's option in the CTS Tracker form's "Tracking Project" question.
+  code: string | null
 }
 
 export type Stage = 'attempt' | 'l0' | 'l1'
