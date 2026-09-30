@@ -22,6 +22,27 @@ const GRAMMAR_ASK =
     "Sure! Send me the text you'd like checked in your next message, and I'll fix the grammar, spelling and punctuation. Tip: next time you can start a message with **Grammar:** followed by your text."
 const GRAMMAR_MAX_CHARS = 2000
 
+// How the Tracker app itself works, sent with every answer. bot_faqs is matched by keyword, so an
+// app question worded without the right keyword ("how delete messsages", "how to create a task
+// log") used to get "I'm not sure" about features the app has. Kept here, next to the code, so it
+// changes when the app does. Facts only: Meera was filling gaps by guessing (it expanded CTS into a
+// made-up name and gave bulk-import examples in formats the importer rejects).
+const APP_GUIDE = `GREY OWLS TRACKER — HOW THE APP WORKS
+- This app is the Grey Owls Tracker, where the team logs and tracks its annotation tasks. Aloha is one of the client projects contributors work on; Aloha's own hub, guidelines and tools are separate from this app.
+- Dashboard (contributors): "+ Submit a Task", "CTS Form", "Attendance Form" (open 6:00 AM to 1:30 PM Singapore/Philippines time), "Chat with Meera", today's goal, the submission trend, your streak and badges, and a "Getting started" checklist for new people.
+- Logging a task: "+ Submit a Task" on the Dashboard, or "Add Submission" on Task Log. Fields: CB Email, Task ID (required, and each Task ID can only be logged once), Project, Date, Stage (Attempt, L0 or L1), Status (Submitted, In Progress, Empty, Expired, or Claimed by Another Person), Screenshot link (Snipboard, Lightshot, etc.) and Notes.
+- Task Log: your submissions with goals and charts. The ⋮ menu on a row has Edit, Request extension, Request reclaim, Report bad video (same-day tasks only) and Delete. Your lead or an admin reviews requests; you can follow them on the Requests page.
+- Bulk Import (Task Log): paste tab-separated rows copied from a spreadsheet, one task per row, with NO header row. Columns in order: Date, Task ID, Status, Stage, Notes, Date Submitted, Project, Screenshot link. Dates are month/day/year (e.g. 09/23/2026). Status must be one of the statuses above and Stage one of Attempt, L0, L1; an unrecognised status is imported as In Progress. Project must match a project name exactly. Type NONE for an empty cell. Check the preview, then import.
+- CTS Form: opens the team's CTS Google Form already filled in with your email and the Task IDs and screenshot links of the tasks you pick (today's are pre-selected; the last few days' unsent tasks can be added). Submit the Google Form, then confirm in the app so those tasks show as sent to CTS.
+- Messages: search people at the top of Messages to start a chat. Hover a message and use its ⋮ menu to delete it for yourself; the info (i) button in a chat lets you select several messages or delete the whole conversation. Deleting only hides messages for you; the other person keeps theirs. One-to-one voice calls use the phone button. Leads and admins can create group chats for a team or project.
+- Announcements: updates from leads and admins; new ones show a badge in the sidebar.
+- Leaderboard: your team ranked by tasks submitted this week, month or all time; 🔥 shows a weekly-target streak.
+- Resources: guides and links for your projects.
+- Profile: click your photo, then "Edit Profile" to change your name, photo, Remotasks ID, shift, bio and password. Forgot your password or account disabled: ask your lead or an admin.
+- Search: the Search box at the top (Ctrl+K, or ⌘K on a Mac) finds people, tasks, resources, pages and announcements.
+- Grammar check: the "Check grammar" button in this chat, or start a message with "Grammar:" followed by the text.
+- Meera can't see anyone's account, tasks or who leads which team; for those, ask a lead or admin.`
+
 interface BotReplyRequest {
     message_id: number
     sender_id: string
@@ -161,7 +182,8 @@ async function checkGrammar(groqApiKey: string, text: string): Promise<string> {
     }
     return callGroq(groqApiKey, {
         temperature: 0,
-        max_tokens: 1500,
+        max_tokens: 2500,
+        reasoning_effort: 'low',
         messages: [
             {
                 role: 'system',
@@ -189,11 +211,29 @@ async function getReply(
 ): Promise<string> {
     return callGroq(groqApiKey, {
         temperature: 0.3,
-        max_tokens: 400,
+        // gpt-oss thinks before it answers, and that counts against max_tokens: at 400, longer
+        // answers were cut off mid-sentence ("2. **push the"). Low reasoning effort plus a bigger
+        // budget leaves room for the answer itself.
+        max_tokens: 1500,
+        reasoning_effort: 'low',
         messages: [
             {
                 role: 'system',
-                content: `You are Meera, a helpful assistant inside the Grey Owls Tracker app for contributors, leads, and admins. When introducing yourself, just say you're Meera — never mention pronouns. Answer only using the reference info below; if it doesn't cover the question, say you're not sure and suggest messaging a lead or admin. You can also check grammar and spelling: if someone asks what you can do or wants their writing checked, tell them to start a message with "Grammar:" followed by their text. Keep answers concise. The chat only renders **bold**, "- " bullet lists and "1. " numbered lists — use those when listing multiple items, plain sentences otherwise. No headers, tables, or other markdown.\n\nReference info:\n${reference}`,
+                content: `You are Meera, a helpful assistant inside the Grey Owls Tracker app for contributors, leads, and admins. When introducing yourself, just say you're Meera — never mention pronouns.
+
+Rules:
+- Answer only from the app guide and the reference info below. If they don't cover the question, say you're not sure and suggest messaging a lead or admin.
+- Never invent anything the reference doesn't state: no made-up category names, labels, verbs, statuses, acronym expansions, rules or example values. If asked for an example, only use values the reference gives.
+- Describe objects with the user's own words, or "the item" if unclear. "Like a sword" is a comparison, not the object's name.
+- Stay consistent with your earlier answers in this conversation. If you realise an earlier answer was wrong, say so plainly and give the corrected answer once.
+- If the user says you're wrong, don't repeat yourself: say the reference may be out of date and suggest confirming with a lead or admin.
+- You can also check grammar and spelling (see the app guide) and can mention that when asked what you can do.
+- Keep answers concise. The chat only renders **bold**, "- " bullet lists and "1. " numbered lists — use those when listing multiple items, plain sentences otherwise. No headers, tables, or other markdown.
+
+${APP_GUIDE}
+
+Reference info:
+${reference || '(nothing in the reference matched this question)'}`,
             },
             ...conversation,
         ],
@@ -202,16 +242,29 @@ async function getReply(
 
 async function callGroq(
     groqApiKey: string,
-    options: { temperature: number; max_tokens: number; messages: { role: 'system' | 'user' | 'assistant'; content: string }[] },
+    options: {
+        temperature: number
+        max_tokens: number
+        reasoning_effort: 'low' | 'medium' | 'high'
+        messages: { role: 'system' | 'user' | 'assistant'; content: string }[]
+    },
 ): Promise<string> {
-    const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-            Authorization: `Bearer ${groqApiKey}`,
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ model: 'openai/gpt-oss-120b', ...options }),
-    })
+    const send = () =>
+        fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${groqApiKey}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ model: 'openai/gpt-oss-120b', ...options }),
+        })
+    let groqResponse = await send()
+    // Rate limits and brief outages showed up as "I'm having trouble answering" on questions that
+    // worked a minute later; one retry after a short pause covers most of them.
+    if (groqResponse.status === 429 || groqResponse.status >= 500) {
+        await new Promise((resolve) => setTimeout(resolve, 1500))
+        groqResponse = await send()
+    }
 
     if (!groqResponse.ok) {
         const errorText = await groqResponse.text()
@@ -237,10 +290,16 @@ async function callGroq(
     }
 
     const groqData = await groqResponse.json()
-    const reply = groqData.choices?.[0]?.message?.content?.trim()
+    const choice = groqData.choices?.[0]
+    const reply = choice?.message?.content?.trim()
     if (!reply) {
-        console.error('Groq returned an empty response.')
+        console.error(`Groq returned an empty response (finish_reason: ${choice?.finish_reason ?? 'unknown'}).`)
         return FALLBACK_REPLY
+    }
+    // Still out of room: say so, rather than ending mid-word as if that were the whole answer.
+    if (choice.finish_reason === 'length') {
+        console.error('Groq reply was cut off at max_tokens.')
+        return `${reply}…\n\n(My answer was cut short. Ask me to continue, or ask about one part at a time.)`
     }
     return reply
 }
