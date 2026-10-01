@@ -216,7 +216,7 @@ function ComputerStep({
         {hasComputer && <ComputerDetails form={form} set={set} />}
         {issues.length > 0 && (
           <div role="status" className="rounded-xl bg-status-warning-bg px-3 py-2 text-sm text-status-warning-text">
-            Your answers are below the requirements ({describeIssues(issues)}). You can still submit, but your lead may not be
+            Your answers are below the requirements ({describeIssues(issues)}). You can still submit, but we may not be
             able to accept your application.
           </div>
         )}
@@ -238,13 +238,17 @@ function ComputerStep({
   )
 }
 
+// "shean louise margallo" → "Shean Louise Margallo". Only first letters are raised, so names
+// already typed with their own capitals (McDonald, JR) keep them.
+const capitalizeWords = (text: string) => text.replace(/(^|[\s-])(\p{Ll})/gu, (_, start: string, letter: string) => start + letter.toUpperCase())
+
 function Submitted({ name }: { name: string }) {
   const ref = useReveal<HTMLDivElement>(REVEAL)
   return (
     <div ref={ref} role="status">
       <CardHeading
         title="Hoo-ray, you're in!"
-        subtitle={`Thanks, ${name}. Your lead will review your application and be in touch through the active email you gave.`}
+        subtitle={`Thanks, ${capitalizeWords(name)}. We'll review your application and get in touch through the active email you gave.`}
       />
     </div>
   )
@@ -417,7 +421,7 @@ export function Apply() {
   } else if (!lead.accepting) {
     content = (
       <Notice title="Applications are closed">
-        {lead.name} isn't accepting applications right now. Please check back later or ask them directly.
+        We're not accepting applications right now. Please check back later.
       </Notice>
     )
   } else if (!eligible) {
