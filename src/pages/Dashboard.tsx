@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { MessageCircle } from 'lucide-react'
+import { Coffee, MessageCircle } from 'lucide-react'
 import { api, functionErrorMessage, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { downloadCsv } from '../lib/csv'
@@ -207,6 +207,16 @@ export function Dashboard() {
               Message {admin.name}
             </button>
           )}
+          {/* New tab: the donate page is public and has no app navigation to come back by. */}
+          <a
+            href="/donate"
+            target="_blank"
+            rel="noopener"
+            className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+          >
+            Buy me a cup of coffee
+            <Coffee className="h-4 w-4 text-accent" />
+          </a>
         </div>
       </div>
 

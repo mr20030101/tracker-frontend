@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { BookOpen, ClipboardList, MessageCircle, Trophy, User, type LucideIcon } from 'lucide-react'
+import { BookOpen, ClipboardList, Coffee, MessageCircle, Trophy, User, type LucideIcon } from 'lucide-react'
 import { api, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useMessaging } from '../lib/messagingContext'
@@ -227,6 +227,16 @@ export function ContributorDashboard() {
               Chat with {bot.name}
             </button>
           )}
+          {/* New tab: the donate page is public and has no app navigation to come back by. */}
+          <a
+            href="/donate"
+            target="_blank"
+            rel="noopener"
+            className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+          >
+            Buy me a cup of coffee
+            <Coffee className="h-4 w-4 text-accent" />
+          </a>
         </div>
       </div>
 
