@@ -156,9 +156,10 @@ function Field({
   id,
   label,
   hint,
+  highlightHint = false,
   optional = false,
   ...input
-}: { id: string; label: string; hint?: string; optional?: boolean } & InputHTMLAttributes<HTMLInputElement>) {
+}: { id: string; label: string; hint?: string; highlightHint?: boolean; optional?: boolean } & InputHTMLAttributes<HTMLInputElement>) {
   return (
     <div>
       <label htmlFor={id} className="mb-1 block text-sm font-medium text-gray-700">
@@ -166,7 +167,12 @@ function Field({
         {optional && <span className="font-normal text-gray-400"> (optional)</span>}
       </label>
       <input id={id} required={!optional} className={inputClass} {...input} />
-      {hint && <p className="mt-1 text-xs text-gray-400">{hint}</p>}
+      {hint &&
+        (highlightHint ? (
+          <p className="mt-1.5 rounded-md bg-status-warning-bg px-2.5 py-1.5 text-xs font-medium text-status-warning-text">{hint}</p>
+        ) : (
+          <p className="mt-1 text-xs text-gray-400">{hint}</p>
+        ))}
     </div>
   )
 }
@@ -240,7 +246,8 @@ function PersonalStep({
         <Field
           id="facebook_url"
           label="Facebook Profile Link"
-          hint="Used to add you to the group chat. Please do not put N/A."
+          hint="Used to add you to the group chat. Your profile must be set to public and have a profile picture. Please do not put N/A."
+          highlightHint
           placeholder="https://facebook.com/your.profile"
           maxLength={500}
           value={form.facebook_url}
