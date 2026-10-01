@@ -1,10 +1,11 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type FormEvent, type InputHTMLAttributes, type ReactNode } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { supabase } from '../lib/api'
-import { Logo } from '../components/Logo'
-import { OwlField } from '../components/OwlField'
-import { useReducedMotion, useReveal } from '../lib/motion'
+import { Eye, EyeOff, Lock, Mail, type LucideIcon } from 'lucide-react'
+import { LoginOwl, type OwlMood } from '../components/LoginOwl'
+import { LoginSky } from '../components/LoginSky'
+import { useReveal } from '../lib/motion'
 
 // Shows the "Forgot password?" link. It relies on Supabase delivering the reset
 // email, which needs custom SMTP under Authentication > SMTP (the built-in sender
@@ -22,10 +23,9 @@ export function Login() {
   const { login, recovering, clearRecovery } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const reducedMotion = useReducedMotion()
   const cardRef = useReveal<HTMLDivElement>({
     self: true,
-    selector: ':scope > div:first-child, :scope > form > *',
+    selector: ':scope > div:nth-child(2), :scope > form > *',
     step: 70,
   })
   const [email, setEmail] = useState('')
@@ -35,6 +35,16 @@ export function Login() {
   const [notice, setNotice] = useState<string | null>((location.state as { notice?: string } | null)?.notice ?? null)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [focused, setFocused] = useState<'email' | 'password' | null>(null)
+  const [showPassword, setShowPassword] = useState(false)
+  // Set on a failed sign-in; cleared when the card's shake finishes, so the next failure replays it.
+  const [shaking, setShaking] = useState(false)
+
+  function switchMode(next: 'login' | 'forgot') {
+    setMode(next)
+    setError(null)
+    setNotice(null)
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -45,6 +55,7 @@ export function Login() {
       navigate('/')
     } catch (loginError) {
       setError(loginError instanceof Error ? loginError.message : 'Unable to sign in.')
+      setShaking(true)
     } finally {
       setSubmitting(false)
     }
@@ -85,103 +96,200 @@ export function Login() {
     }
   }
 
-  return (
-    <div
-      className={`relative flex min-h-screen items-center justify-center overflow-hidden bg-gray-50 px-4 ${
-        reducedMotion ? 'pattern-owls' : ''
-      }`}
-    >
-      {!reducedMotion && <OwlField />}
-      <div
-        ref={cardRef}
-        className="relative w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-8 shadow-sm"
-      >
-        <div className="mb-6">
-          <Logo />
-        </div>
+  // The mascot follows the email caret, hides its eyes for the password, and peeks when it's shown.
+  const lookX = focused === 'email' ? Math.min(email.length / 28, 1) * 2 - 1 : 0
+  const mood: OwlMood = focused === 'password' ? (showPassword ? 'peek' : 'cover') : 'idle'
+  // Down at the form while typing, but up over the wings when peeking.
+  const lookY = mood === 'peek' ? -1 : focused ? 1 : 0
 
-        {mode === 'recovery' ? (
-          <form onSubmit={handleRecovery} className="flex flex-col gap-4">
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">New password</label>
-              <input
-                type="password"
-                required
-                minLength={8}
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
-              />
+  const heading =
+    mode === 'recovery'
+      ? { title: 'Fresh start!', subtitle: 'Pick a new password. At least 8 characters.' }
+      : mode === 'forgot'
+        ? { title: 'Forgot? No worries.', subtitle: "Enter your email and we'll send a reset link." }
+        : { title: "Hoo's there?", subtitle: 'Welcome back! Sign in to Grey Owls Tracker.' }
+
+  const focusHandlers = (field: 'email' | 'password') => ({
+    onFocus: () => setFocused(field),
+    onBlur: () => setFocused((current) => (current === field ? null : current)),
+  })
+
+  return (
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gray-50 px-4 py-16">
+      <LoginSky />
+      <div className="relative w-full max-w-sm pt-20">
+        {/* Perched on the card: the bottom of the owl tucks behind its top edge. */}
+        <div className="absolute left-1/2 top-0 w-28 -translate-x-1/2">
+          <LoginOwl lookX={lookX} lookY={lookY} mood={mood} />
+        </div>
+        <div className={`relative ${shaking ? 'login-shake' : ''}`} onAnimationEnd={(e) => e.animationName === 'login-shake' && setShaking(false)}>
+          <div
+            ref={cardRef}
+            className="relative rounded-3xl border border-gray-200 bg-white px-7 pb-7 pt-8 shadow-xl shadow-black/5"
+          >
+            {/* Talons gripping the edge, in front of the card. */}
+            <div className="absolute -top-1.5 left-1/2 flex -translate-x-1/2 gap-7" aria-hidden="true">
+              <span className="h-3 w-5 rounded-full bg-[#f5b301]" />
+              <span className="h-3 w-5 rounded-full bg-[#f5b301]" />
             </div>
-            {error && <div className="text-sm text-status-danger-text">{error}</div>}
-            <button type="submit" disabled={submitting} className="mt-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50">
-              {submitting ? 'Updating...' : 'Update password'}
-            </button>
-          </form>
-        ) : mode === 'forgot' ? (
-          <form onSubmit={handleForgotPassword} className="flex flex-col gap-4">
-            <p className="text-sm text-gray-500">Enter your email and we will send a password reset link.</p>
-            <input
-              type="email"
-              required
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
-            />
-            {error && <div className="text-sm text-status-danger-text">{error}</div>}
-            {notice && <div className="text-sm text-status-success-text">{notice}</div>}
-            <button type="submit" disabled={submitting} className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50">
-              {submitting ? 'Sending...' : 'Send reset link'}
-            </button>
-            <button type="button" onClick={() => { setMode('login'); setError(null); setNotice(null) }} className="text-sm text-sky-700 hover:underline">
-              Back to sign in
-            </button>
-          </form>
-        ) : (
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Email</label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
-              />
+
+            <div className="mb-6 text-center">
+              <h1 className="text-2xl font-bold text-gray-900">{heading.title}</h1>
+              <p className="mt-1 text-sm text-gray-500">{heading.subtitle}</p>
             </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Password</label>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
-              />
-            </div>
-            {error && <div className="text-sm text-status-danger-text">{error}</div>}
-            {/* e.g. "Password updated" after resetting: they land back here, so it has to show here. */}
-            {notice && (
-              <div role="status" className="text-sm text-status-success-text">
-                {notice}
-              </div>
+
+            {mode === 'recovery' ? (
+              <form onSubmit={handleRecovery} className="flex flex-col gap-4">
+                <PlayfulInput
+                  id="new_password"
+                  label="New password"
+                  icon={Lock}
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  minLength={8}
+                  autoComplete="new-password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  {...focusHandlers('password')}
+                  trailing={<RevealToggle shown={showPassword} onToggle={() => setShowPassword((v) => !v)} />}
+                />
+                {error && <ErrorNote message={error} />}
+                <SubmitButton pending={submitting} pendingLabel="Updating..." label="Update password" />
+              </form>
+            ) : mode === 'forgot' ? (
+              <form onSubmit={handleForgotPassword} className="flex flex-col gap-4">
+                <PlayfulInput
+                  id="reset_email"
+                  label="Email"
+                  icon={Mail}
+                  type="email"
+                  required
+                  autoComplete="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  {...focusHandlers('email')}
+                />
+                {error && <ErrorNote message={error} />}
+                {notice && <SuccessNote message={notice} />}
+                <SubmitButton pending={submitting} pendingLabel="Sending..." label="Send reset link" />
+                <LinkButton onClick={() => switchMode('login')}>Back to sign in</LinkButton>
+              </form>
+            ) : (
+              <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                <PlayfulInput
+                  id="email"
+                  label="Email"
+                  icon={Mail}
+                  type="email"
+                  required
+                  autoComplete="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  {...focusHandlers('email')}
+                />
+                <PlayfulInput
+                  id="password"
+                  label="Password"
+                  icon={Lock}
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  autoComplete="current-password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  {...focusHandlers('password')}
+                  trailing={<RevealToggle shown={showPassword} onToggle={() => setShowPassword((v) => !v)} />}
+                />
+                {error && <ErrorNote message={error} />}
+                {/* e.g. "Password updated" after resetting: they land back here, so it has to show here. */}
+                {notice && <SuccessNote message={notice} />}
+                <SubmitButton pending={submitting} pendingLabel="Signing in..." label="Sign in" />
+                {FORGOT_PASSWORD_ENABLED && <LinkButton onClick={() => switchMode('forgot')}>Forgot password?</LinkButton>}
+              </form>
             )}
-            <button
-              type="submit"
-              disabled={submitting}
-              className="mt-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
-            >
-              {submitting ? 'Signing in...' : 'Sign in'}
-            </button>
-            {FORGOT_PASSWORD_ENABLED && (
-              <button type="button" onClick={() => { setMode('forgot'); setError(null); setNotice(null) }} className="text-sm text-sky-700 hover:underline">
-                Forgot password?
-              </button>
-            )}
-          </form>
-        )}
+          </div>
+        </div>
       </div>
+    </div>
+  )
+}
+
+function PlayfulInput({
+  id,
+  label,
+  icon: Icon,
+  trailing,
+  ...input
+}: { id: string; label: string; icon: LucideIcon; trailing?: ReactNode } & InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <div>
+      <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-gray-700">
+        {label}
+      </label>
+      <div className="group relative">
+        <Icon className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-accent" />
+        <input
+          id={id}
+          className="w-full rounded-xl border-2 border-gray-200 bg-gray-50 py-2.5 pl-10 pr-10 text-sm outline-none transition-all placeholder:text-gray-400 focus:border-accent focus:bg-white focus:shadow-[0_0_0_4px_rgba(212,160,23,0.15)]"
+          {...input}
+        />
+        {trailing && <div className="absolute right-2 top-1/2 -translate-y-1/2">{trailing}</div>}
+      </div>
+    </div>
+  )
+}
+
+function RevealToggle({ shown, onToggle }: { shown: boolean; onToggle: () => void }) {
+  const Icon = shown ? EyeOff : Eye
+  return (
+    <button
+      type="button"
+      // Keep focus in the password field, so the owl stays in peek/cover mode while toggling.
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={onToggle}
+      aria-label={shown ? 'Hide password' : 'Show password'}
+      aria-pressed={shown}
+      className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+    >
+      <Icon className="h-4 w-4" />
+    </button>
+  )
+}
+
+function SubmitButton({ pending, label, pendingLabel }: { pending: boolean; label: string; pendingLabel: string }) {
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="mt-1 rounded-xl bg-accent px-4 py-3 text-sm font-bold text-accent-foreground shadow-[0_4px_0_0_#a87c0c] transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_0_0_#a87c0c] active:translate-y-1 active:shadow-[0_0_0_0_#a87c0c] disabled:translate-y-0 disabled:opacity-60 disabled:shadow-[0_4px_0_0_#a87c0c]"
+    >
+      {pending ? pendingLabel : label}
+    </button>
+  )
+}
+
+function LinkButton({ onClick, children }: { onClick: () => void; children: ReactNode }) {
+  return (
+    <button type="button" onClick={onClick} className="text-sm font-medium text-sky-700 hover:underline">
+      {children}
+    </button>
+  )
+}
+
+function ErrorNote({ message }: { message: string }) {
+  return (
+    <div role="alert" className="rounded-xl bg-status-danger-bg px-3 py-2 text-sm text-status-danger-text">
+      {message}
+    </div>
+  )
+}
+
+function SuccessNote({ message }: { message: string }) {
+  return (
+    <div role="status" className="rounded-xl bg-status-success-bg px-3 py-2 text-sm text-status-success-text">
+      {message}
     </div>
   )
 }

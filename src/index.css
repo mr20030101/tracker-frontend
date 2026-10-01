@@ -248,3 +248,130 @@ body {
     white-space: nowrap;
   }
 }
+
+/* Login page: sky background (<LoginSky />) and mascot (<LoginOwl />). */
+.login-sky-day {
+  background: linear-gradient(170deg, #fff8e7 0%, #fdeccc 45%, #fbdcd0 100%);
+}
+
+.login-sky-night {
+  background: linear-gradient(170deg, #0b1230 0%, #171c45 55%, #2a1f50 100%);
+}
+
+.login-sky-eye {
+  fill: #f5b301;
+  filter: drop-shadow(0 0 6px rgba(245, 179, 1, 0.9));
+}
+
+@keyframes login-sky-blob {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(40px, -30px) scale(1.08); }
+  66% { transform: translate(-30px, 25px) scale(0.95); }
+}
+
+.login-sky-blob {
+  animation: login-sky-blob 18s ease-in-out infinite;
+}
+
+@keyframes login-sky-cloud {
+  from { transform: translateX(-260px); }
+  to { transform: translateX(calc(100vw + 40px)); }
+}
+
+.login-sky-cloud {
+  left: 0;
+  animation: login-sky-cloud linear infinite;
+}
+
+@keyframes login-sky-bob {
+  0%, 100% { transform: translateY(0) rotate(var(--tilt, 0deg)); }
+  50% { transform: translateY(-14px) rotate(calc(var(--tilt, 0deg) * -1)); }
+}
+
+.login-sky-bob {
+  animation: login-sky-bob 5s ease-in-out infinite;
+}
+
+@keyframes login-sky-twinkle {
+  0%, 100% { opacity: 0.25; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+.login-sky-twinkle {
+  animation: login-sky-twinkle 3s ease-in-out infinite;
+}
+
+/* Mascot: Owl Grey on the light theme; lighter on the dark one so it shows against the night sky. */
+.login-owl-body {
+  fill: #32373f;
+}
+
+.login-owl-wing {
+  fill: #4a515c;
+}
+
+:root[data-theme='dark'] .login-owl-body {
+  fill: #5d6573;
+}
+
+:root[data-theme='dark'] .login-owl-wing {
+  fill: #747d8c;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .login-owl-body {
+    fill: #5d6573;
+  }
+
+  :root:not([data-theme='light']) .login-owl-wing {
+    fill: #747d8c;
+  }
+}
+
+.login-owl-pupil {
+  transition: transform 160ms ease-out;
+}
+
+.login-owl-wings {
+  transition: transform 420ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes login-owl-blink {
+  0%, 94%, 100% { transform: scaleY(0); }
+  97% { transform: scaleY(1); }
+}
+
+.login-owl-lid {
+  transform-box: fill-box;
+  transform-origin: top;
+  animation: login-owl-blink 4.5s infinite;
+}
+
+@keyframes login-shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-8px); }
+  40%, 80% { transform: translateX(8px); }
+}
+
+.login-shake {
+  animation: login-shake 400ms ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-sky-blob,
+  .login-sky-cloud,
+  .login-sky-bob,
+  .login-sky-twinkle,
+  .login-shake {
+    animation: none;
+  }
+
+  .login-sky-cloud {
+    display: none;
+  }
+
+  .login-owl-lid {
+    animation: none;
+    transform: scaleY(0);
+  }
+}
