@@ -7,7 +7,8 @@ export interface AccountApplication {
     lead_id: string
     full_name: string
     active_email: string
-    remotasks_email: string
+    /** Null when the applicant had no Remotasks account yet (it's optional on the form). */
+    remotasks_email: string | null
     status: string
     /** Set once an account exists for this applicant. */
     user_id: string | null
@@ -63,8 +64,10 @@ export async function createAccount(caller: Caller, deps: CreateAccountDeps): Pr
     if (application.user_id) return fail(409, 'An account has already been created for this applicant.')
 
     // The login is the applicant's Remotasks email: tasks are matched to a contributor
-    // by profiles.email = cb_email, so their submissions attach to this account.
-    const email = application.remotasks_email
+    // by profiles.email = cb_email, so their submissions attach to this account. Someone who
+    // applied without a Remotasks account gets their active email instead; their email needs
+    // changing to the Remotasks one once they have it, or their tasks won't attach.
+    const email = application.remotasks_email ?? application.active_email
     const password = deps.newPassword()
     const login = await deps.createLogin({ email, password, name: application.full_name })
     if ('error' in login) return fail(422, `Could not create a login for ${email}: ${login.error}`)

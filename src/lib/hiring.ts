@@ -109,8 +109,9 @@ export async function setAcceptingApplications(leadId: string, accepting: boolea
 export async function submitApplication(leadId: string, input: ApplicationInput): Promise<void> {
   const { error } = await supabase.rpc('submit_hiring_application', {
     p_lead_id: leadId,
-    p_remotasks_email: input.remotasks_email,
-    p_remotasks_id: input.remotasks_id,
+    // Optional: blank when the applicant has no Remotasks account yet.
+    p_remotasks_email: input.remotasks_email || null,
+    p_remotasks_id: input.remotasks_id || null,
     p_full_name: input.full_name,
     p_active_email: input.active_email,
     p_facebook_url: input.facebook_url,

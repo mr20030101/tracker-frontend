@@ -1,7 +1,7 @@
-import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type InputHTMLAttributes, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { useParams } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { animate, type JSAnimation } from 'animejs'
+import { CircuitBoard, Cpu, IdCard, Link as LinkIcon, Mail, MailCheck, MemoryStick, User } from 'lucide-react'
 import {
   describeIssues,
   fetchApplicationLead,
@@ -10,19 +10,19 @@ import {
   submitApplication,
   type ApplicationInput,
 } from '../lib/hiring'
-import { prefersReducedMotion, useReveal } from '../lib/motion'
+import { useReveal } from '../lib/motion'
 import { fetchVisitorCountry } from '../lib/geo'
-import { Logo } from '../components/Logo'
-import { RobotStage } from '../components/robots/RobotStage'
+import { CardHeading, PerchedCard } from '../components/PerchedCard'
+import { ErrorNote, PlayfulInput, PlayfulSwitch, SubmitButton, YesNoPills } from '../components/PlayfulForm'
 
-const inputClass = 'w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent'
 // Same staggered entrance as the login card: everything above the form, then each field in turn.
 const REVEAL = { selector: ':scope > :not(form), :scope > form > *', step: 60 }
 
 type YesNo = '' | 'yes' | 'no'
 
 const emptyForm = {
-  // Step 1: personal information
+  // Step 1: personal information. The Remotasks details are optional, behind a "have an account" switch.
+  has_remotasks: false,
   remotasks_email: '',
   remotasks_id: '',
   full_name: '',
@@ -38,218 +38,61 @@ const emptyForm = {
 }
 
 type FormState = typeof emptyForm
-type SetField = (field: keyof FormState) => (e: { target: { value: string } }) => void
+type TextField = Exclude<keyof FormState, 'has_remotasks'>
+type SetField = (field: TextField) => (e: { target: { value: string } }) => void
 
 const STEP_TITLES = ['Personal information', 'Your computer']
+
+// Where applicants without a Remotasks account sign up first.
+const REMOTASKS_SIGNUP_URL = 'https://www.remotasks.com/en'
 
 // Applications are open to people in the Philippines only (checked by IP address, see api/country.ts).
 const ELIGIBLE_COUNTRY = 'PH'
 
-// The photo eases in from a closer, fainter frame once it has loaded, then
-// drifts very slowly so the panel stays alive. The entrance runs on the wrapper
-// and the drift on the <img>, so the two never fight over one transform. The
-// image is scaled past 100% throughout (drift travel stays inside the extra
-// 3-6%), so the panel's overflow-hidden edge never shows a gap.
-function ApplyPhoto() {
-  const wrapRef = useRef<HTMLDivElement>(null)
-  const imgRef = useRef<HTMLImageElement>(null)
-
-  useLayoutEffect(() => {
-    const wrap = wrapRef.current
-    const img = imgRef.current
-    if (!wrap || !img || prefersReducedMotion()) return
-
-    let animations: JSAnimation[] = []
-    let cancelled = false
-    // Hidden before first paint, and until the file is in, so it never fades in empty.
-    wrap.style.opacity = '0'
-    const start = () => {
-      if (cancelled) return
-      animations = [
-        animate(wrap, { opacity: [0, 1], scale: [1.12, 1], duration: 1400, ease: 'outCubic' }),
-        animate(img, {
-          scale: [1.06, 1.12],
-          translateX: ['0%', '-1.5%'],
-          translateY: ['0%', '1.5%'],
-          duration: 22_000,
-          ease: 'inOutSine',
-          alternate: true,
-          loop: true,
-        }),
-      ]
-    }
-    if (img.complete) start()
-    else img.addEventListener('load', start, { once: true })
-
-    return () => {
-      cancelled = true
-      img.removeEventListener('load', start)
-      animations.forEach((animation) => animation.revert())
-      wrap.style.opacity = ''
-    }
-  }, [])
-
-  return (
-    <div ref={wrapRef} className="absolute inset-0">
-      {/* Photo from Pexels (free to use, no attribution required). Decorative, so no alt text. */}
-      <img
-        ref={imgRef}
-        src="/images/apply-robot.jpg"
-        alt=""
-        className="h-full w-full object-cover object-[50%_15%] will-change-transform lg:object-[50%_35%]"
-      />
-    </div>
-  )
-}
-
-// Rises in line by line once the photo has settled.
-function Pitch() {
-  const ref = useReveal<HTMLDivElement>({ selector: ':scope > p', delay: 700, step: 140 })
-  return (
-    <div ref={ref} className="absolute inset-x-0 bottom-0 hidden p-10 text-[#ffffff] lg:block">
-      <p className="text-3xl font-bold leading-tight">Join the team.</p>
-      <p className="mt-2 max-w-sm text-sm text-[#ffffff]/85">
-        Answer a few quick questions and your lead will review your application.
-      </p>
-    </div>
-  )
-}
-
-// Photo on the left, content on the right. On a phone the photo becomes a
-// banner above the content. The pitch over the photo only shows while the form
-// is open. Text on the photo uses an explicit hex rather than
-// text-white because the dark theme remaps --color-white to a dark colour.
-function ApplyShell({ pitch, children }: { pitch: boolean; children: ReactNode }) {
-  return (
-    <div className="min-h-screen bg-white lg:grid lg:grid-cols-[5fr_6fr]">
-      <div className="relative h-44 overflow-hidden sm:h-60 lg:sticky lg:top-0 lg:h-screen">
-        <ApplyPhoto />
-        <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/10 to-transparent" />
-        {pitch && <Pitch />}
-      </div>
-      <div className="flex flex-col justify-center px-6 py-10 sm:px-12 lg:min-h-screen">
-        <RobotStage />
-        {/* Above the robot walking behind it. */}
-        <div className="relative z-10 mx-auto w-full max-w-md">
-          <div className="mb-8">
-            <Logo />
-          </div>
-          {children}
-        </div>
-      </div>
-    </div>
-  )
-}
-
 function StepIndicator({ step }: { step: 1 | 2 }) {
   return (
-    <div className="mt-3 mb-6">
-      <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+    <div className="mb-6">
+      <p className="text-center text-xs font-semibold uppercase tracking-wider text-gray-400">
         Step {step} of {STEP_TITLES.length} · {STEP_TITLES[step - 1]}
       </p>
       <div className="mt-2 flex gap-2" aria-hidden="true">
         {STEP_TITLES.map((title, i) => (
-          <div key={title} className={`h-1.5 flex-1 rounded-full ${i < step ? 'bg-accent' : 'bg-gray-200'}`} />
+          <div key={title} className={`h-2 flex-1 rounded-full ${i < step ? 'bg-accent' : 'bg-gray-200'}`} />
         ))}
       </div>
     </div>
-  )
-}
-
-function Field({
-  id,
-  label,
-  hint,
-  highlightHint = false,
-  optional = false,
-  ...input
-}: { id: string; label: string; hint?: string; highlightHint?: boolean; optional?: boolean } & InputHTMLAttributes<HTMLInputElement>) {
-  return (
-    <div>
-      <label htmlFor={id} className="mb-1 block text-sm font-medium text-gray-700">
-        {label}
-        {optional && <span className="font-normal text-gray-400"> (optional)</span>}
-      </label>
-      <input id={id} required={!optional} className={inputClass} {...input} />
-      {hint &&
-        (highlightHint ? (
-          <p className="mt-1.5 rounded-md bg-status-warning-bg px-2.5 py-1.5 text-xs font-medium text-status-warning-text">{hint}</p>
-        ) : (
-          <p className="mt-1 text-xs text-gray-400">{hint}</p>
-        ))}
-    </div>
-  )
-}
-
-function YesNoField({
-  legend,
-  name,
-  value,
-  onChange,
-}: {
-  legend: string
-  name: string
-  value: YesNo
-  onChange: (e: { target: { value: string } }) => void
-}) {
-  return (
-    <fieldset>
-      <legend className="mb-1 block text-sm font-medium text-gray-700">{legend}</legend>
-      <div className="flex gap-5">
-        {(['yes', 'no'] as const).map((answer) => (
-          <label key={answer} className="flex items-center gap-2 text-sm text-gray-700">
-            <input
-              type="radio"
-              name={name}
-              required
-              value={answer}
-              checked={value === answer}
-              onChange={onChange}
-              className="h-4 w-4 border-gray-300 text-accent focus:ring-accent"
-            />
-            {answer === 'yes' ? 'Yes' : 'No'}
-          </label>
-        ))}
-      </div>
-    </fieldset>
   )
 }
 
 function FormError({ message }: { message: string | null }) {
-  if (!message) return null
-  return (
-    <div role="alert" className="text-sm text-status-danger-text">
-      {message}
-    </div>
-  )
+  return message ? <ErrorNote message={message} /> : null
 }
 
 function PersonalStep({
   form,
   set,
+  setHasRemotasks,
   error,
   onNext,
 }: {
   form: FormState
   set: SetField
+  setHasRemotasks: (value: boolean) => void
   error: string | null
   onNext: (e: FormEvent) => void
 }) {
   const ref = useReveal<HTMLDivElement>(REVEAL)
   return (
     <div ref={ref}>
-      <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
-        Robotics Project Application
-      </h1>
+      <CardHeading title="Join the flock!" subtitle="Robotics Project Application" />
       <StepIndicator step={1} />
       <form onSubmit={onNext} className="flex flex-col gap-4">
-        <Field id="remotasks_email" label="Remotasks Email" type="email" maxLength={254} value={form.remotasks_email} onChange={set('remotasks_email')} />
-        <Field id="remotasks_id" label="Remotasks ID" maxLength={200} value={form.remotasks_id} onChange={set('remotasks_id')} />
-        <Field id="full_name" label="Full Name" maxLength={200} value={form.full_name} onChange={set('full_name')} />
-        <Field id="active_email" label="Active Email" type="email" maxLength={254} value={form.active_email} onChange={set('active_email')} />
-        <Field
+        <PlayfulInput id="full_name" label="Full Name" icon={User} maxLength={200} value={form.full_name} onChange={set('full_name')} />
+        <PlayfulInput id="active_email" label="Active Email" icon={MailCheck} type="email" maxLength={254} value={form.active_email} onChange={set('active_email')} />
+        <PlayfulInput
           id="facebook_url"
           label="Facebook Profile Link"
+          icon={LinkIcon}
           hint="Used to add you to the group chat. Your profile must be set to public and have a profile picture. Please do not put N/A."
           highlightHint
           placeholder="https://facebook.com/your.profile"
@@ -257,11 +100,29 @@ function PersonalStep({
           value={form.facebook_url}
           onChange={set('facebook_url')}
         />
-        <YesNoField legend="Do you have a background working on Robotics?" name="robotics" value={form.robotics} onChange={set('robotics')} />
+        <YesNoPills legend="Do you have a background working on Robotics?" name="robotics" value={form.robotics} onChange={set('robotics')} />
+        <PlayfulSwitch
+          id="has_remotasks"
+          label="I already have a Remotasks account"
+          checked={form.has_remotasks}
+          onChange={setHasRemotasks}
+        />
+        {form.has_remotasks ? (
+          <>
+            <PlayfulInput id="remotasks_email" label="Remotasks Email" icon={Mail} optional type="email" maxLength={254} value={form.remotasks_email} onChange={set('remotasks_email')} />
+            <PlayfulInput id="remotasks_id" label="Remotasks ID" icon={IdCard} optional maxLength={200} value={form.remotasks_id} onChange={set('remotasks_id')} />
+          </>
+        ) : (
+          <p className="rounded-xl bg-accent-bg/60 px-3 py-2 text-center text-sm text-accent-foreground">
+            No Remotasks account yet?{' '}
+            <a href={REMOTASKS_SIGNUP_URL} target="_blank" rel="noopener noreferrer" className="font-semibold underline">
+              Create one on Remotasks
+            </a>
+            . You can still apply without one.
+          </p>
+        )}
         <FormError message={error} />
-        <button type="submit" className="mt-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-accent-foreground">
-          Next
-        </button>
+        <SubmitButton pending={false} label="Next" pendingLabel="Next" />
       </form>
     </div>
   )
@@ -274,27 +135,30 @@ function ComputerDetails({ form, set }: { form: FormState; set: SetField }) {
   const ref = useReveal<HTMLDivElement>({ step: 60 })
   return (
     <div ref={ref} className="flex flex-col gap-4">
-      <Field
+      <PlayfulInput
         id="cpu"
         label="Processor (CPU)"
+        icon={Cpu}
         optional
         placeholder="e.g. Ryzen 5 3600 or Intel Core i5-10400"
         maxLength={200}
         value={form.cpu}
         onChange={set('cpu')}
       />
-      <Field
+      <PlayfulInput
         id="gpu"
         label="Graphics card (GPU)"
+        icon={CircuitBoard}
         optional
         placeholder="e.g. NVIDIA GTX 1650"
         maxLength={200}
         value={form.gpu}
         onChange={set('gpu')}
       />
-      <Field
+      <PlayfulInput
         id="gpu_memory_gb"
         label="GPU memory (GB)"
+        icon={MemoryStick}
         optional
         hint="Enter 0 if you have no dedicated GPU."
         type="number"
@@ -337,11 +201,9 @@ function ComputerStep({
 
   return (
     <div ref={ref}>
-      <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
-        Robotics Project Application
-      </h1>
+      <CardHeading title="Almost there!" subtitle="Robotics Project Application" />
       <StepIndicator step={2} />
-      <div className="mb-5 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+      <div className="mb-5 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
         <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-gray-400">Requirements</p>
         <ul className="list-disc space-y-1 pl-5">
           <li>Must have a personal computer and a stable internet connection</li>
@@ -349,31 +211,27 @@ function ComputerStep({
         </ul>
       </div>
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
-        <YesNoField legend="Do you have a personal computer?" name="personal_computer" value={form.personal_computer} onChange={set('personal_computer')} />
-        <YesNoField legend="Do you have a stable internet connection?" name="stable_internet" value={form.stable_internet} onChange={set('stable_internet')} />
+        <YesNoPills legend="Do you have a personal computer?" name="personal_computer" value={form.personal_computer} onChange={set('personal_computer')} />
+        <YesNoPills legend="Do you have a stable internet connection?" name="stable_internet" value={form.stable_internet} onChange={set('stable_internet')} />
         {hasComputer && <ComputerDetails form={form} set={set} />}
         {issues.length > 0 && (
-          <div role="status" className="rounded-lg bg-status-warning-bg px-3 py-2 text-sm text-status-warning-text">
+          <div role="status" className="rounded-xl bg-status-warning-bg px-3 py-2 text-sm text-status-warning-text">
             Your answers are below the requirements ({describeIssues(issues)}). You can still submit, but your lead may not be
             able to accept your application.
           </div>
         )}
         <FormError message={error} />
-        <div className="mt-2 flex gap-3">
+        <div className="mt-1 flex gap-3">
           <button
             type="button"
             onClick={onBack}
-            className="rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
+            className="mt-1 rounded-xl border-2 border-gray-200 px-5 text-sm font-semibold text-gray-600 hover:bg-gray-50"
           >
             Back
           </button>
-          <button
-            type="submit"
-            disabled={pending}
-            className="flex-1 rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-accent-foreground disabled:opacity-50"
-          >
-            {pending ? 'Submitting...' : 'Submit application'}
-          </button>
+          <div className="flex flex-1 flex-col">
+            <SubmitButton pending={pending} label="Submit application" pendingLabel="Submitting..." />
+          </div>
         </div>
       </form>
     </div>
@@ -384,10 +242,10 @@ function Submitted({ name }: { name: string }) {
   const ref = useReveal<HTMLDivElement>(REVEAL)
   return (
     <div ref={ref} role="status">
-      <h1 className="text-2xl font-bold text-gray-900">Application submitted</h1>
-      <p className="mt-2 text-sm text-gray-500">
-        Thanks, {name}. Your lead will review your application and be in touch through the active email you gave.
-      </p>
+      <CardHeading
+        title="Hoo-ray, you're in!"
+        subtitle={`Thanks, ${name}. Your lead will review your application and be in touch through the active email you gave.`}
+      />
     </div>
   )
 }
@@ -439,8 +297,9 @@ function ApplicationForm({ leadId }: { leadId: string }) {
     }
     setError(null)
     submitMutation.mutate({
-      remotasks_email: form.remotasks_email,
-      remotasks_id: form.remotasks_id,
+      // Only sent when the switch is on, so anything typed before switching it off is dropped.
+      remotasks_email: form.has_remotasks ? form.remotasks_email.trim() : '',
+      remotasks_id: form.has_remotasks ? form.remotasks_id.trim() : '',
       full_name: form.full_name,
       active_email: form.active_email,
       facebook_url: facebookUrl,
@@ -455,7 +314,17 @@ function ApplicationForm({ leadId }: { leadId: string }) {
 
   if (submitMutation.isSuccess) return <Submitted name={form.full_name.trim()} />
 
-  if (step === 1) return <PersonalStep form={form} set={set} error={error} onNext={handleNext} />
+  if (step === 1) {
+    return (
+      <PersonalStep
+        form={form}
+        set={set}
+        setHasRemotasks={(value) => setForm((prev) => ({ ...prev, has_remotasks: value }))}
+        error={error}
+        onNext={handleNext}
+      />
+    )
+  }
 
   return (
     <ComputerStep
@@ -472,10 +341,51 @@ function ApplicationForm({ leadId }: { leadId: string }) {
   )
 }
 
+// A centred title and message, for the screens shown instead of the form.
+function Notice({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="text-center">
+      <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
+      <p className="mt-2 text-sm text-gray-500">{children}</p>
+    </div>
+  )
+}
+
 // Public page a lead shares with applicants: no sign-in, so it talks to the
 // database only through the hiring RPCs (see supabase/schema.sql).
 export function Apply() {
   const { leadId = '' } = useParams()
+  // The owl watches whichever field is being filled in, following the text as it grows (like the
+  // login page). Handled here, around the whole card, so the form steps don't need to know.
+  // The update waits a frame: re-rendering this page while a keystroke is still being handled made
+  // React put the input's old value back before its onChange ran, so the typing was lost.
+  const [look, setLook] = useState({ x: 0, y: 0 })
+  const watchRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const area = watchRef.current
+    if (!area) return
+    let frame = 0
+    const later = (next: { x: number; y: number }) => {
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(() => setLook(next))
+    }
+    function watch(e: Event) {
+      const field = e.target
+      if (!(field instanceof HTMLInputElement)) return
+      const length = field.type === 'radio' || field.type === 'checkbox' ? 14 : field.value.length
+      later({ x: Math.min(length / 28, 1) * 2 - 1, y: 1 })
+    }
+    const rest = () => later({ x: 0, y: 0 })
+    area.addEventListener('focusin', watch)
+    area.addEventListener('input', watch)
+    area.addEventListener('focusout', rest)
+    return () => {
+      cancelAnimationFrame(frame)
+      area.removeEventListener('focusin', watch)
+      area.removeEventListener('input', watch)
+      area.removeEventListener('focusout', rest)
+    }
+  }, [])
 
   const { data: lead, isLoading, error: leadError } = useQuery({
     queryKey: ['application-lead', leadId],
@@ -495,47 +405,38 @@ export function Apply() {
 
   let content
   if (isLoading || countryLoading) {
-    content = <p className="text-sm text-gray-400">Loading...</p>
+    content = <p className="text-center text-sm text-gray-400">Loading...</p>
   } else if (leadError) {
     content = (
-      <div role="alert" className="text-sm text-status-danger-text">
-        Could not load this application form. Please try again later.
-      </div>
+      <ErrorNote message="Could not load this application form. Please try again later." />
     )
   } else if (!lead) {
     content = (
-      <>
-        <h1 className="text-2xl font-bold text-gray-900">Link not valid</h1>
-        <p className="mt-2 text-sm text-gray-500">
-          This application link isn't active. Ask the person who sent it for a new one.
-        </p>
-      </>
+      <Notice title="Link not valid">This application link isn't active. Ask the person who sent it for a new one.</Notice>
     )
   } else if (!lead.accepting) {
     content = (
-      <>
-        <h1 className="text-2xl font-bold text-gray-900">Applications are closed</h1>
-        <p className="mt-2 text-sm text-gray-500">
-          {lead.name} isn't accepting applications right now. Please check back later or ask them directly.
-        </p>
-      </>
+      <Notice title="Applications are closed">
+        {lead.name} isn't accepting applications right now. Please check back later or ask them directly.
+      </Notice>
     )
   } else if (!eligible) {
     content = (
-      <>
-        <h1 className="text-2xl font-bold text-gray-900">Not eligible</h1>
-        <p className="mt-2 text-sm text-gray-500">
-          Sorry, this project is only open to applicants based in the Philippines, so we can't accept an application from
-          your location.
-        </p>
-        <p className="mt-2 text-sm text-gray-500">
-          If you are in the Philippines and using a VPN, turn it off and reload this page.
-        </p>
-      </>
+      <Notice title="Not eligible">
+        Sorry, this project is only open to applicants based in the Philippines, so we can't accept an application from
+        your location.
+        <span className="mt-2 block">If you are in the Philippines and using a VPN, turn it off and reload this page.</span>
+      </Notice>
     )
   } else {
     content = <ApplicationForm leadId={leadId} />
   }
 
-  return <ApplyShell pitch={Boolean(lead?.accepting) && eligible}>{content}</ApplyShell>
+  return (
+    <PerchedCard lookX={look.x} lookY={look.y} maxWidthClassName="max-w-md">
+      <div ref={watchRef}>
+        {content}
+      </div>
+    </PerchedCard>
+  )
 }

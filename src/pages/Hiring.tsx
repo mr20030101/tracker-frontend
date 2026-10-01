@@ -422,8 +422,8 @@ export function Hiring() {
       list.map((a) => ({
         full_name: a.full_name,
         active_email: a.active_email,
-        remotasks_email: a.remotasks_email,
-        remotasks_id: a.remotasks_id,
+        remotasks_email: a.remotasks_email ?? '',
+        remotasks_id: a.remotasks_id ?? '',
         facebook_url: a.facebook_url,
         has_robotics_background: yesNo(a.has_robotics_background) ?? '',
         has_personal_computer: yesNo(a.has_personal_computer) ?? '',
@@ -459,7 +459,7 @@ export function Hiring() {
     .filter(
       (a) =>
         !normalizedSearch ||
-        [a.full_name, a.remotasks_email, a.active_email, a.remotasks_id].some((v) => v.toLowerCase().includes(normalizedSearch)),
+        [a.full_name, a.remotasks_email, a.active_email, a.remotasks_id].some((v) => v?.toLowerCase().includes(normalizedSearch)),
     )
 
   // Only rows that are showing count, so a search or filter can't leave someone hidden but still selected.
@@ -658,7 +658,8 @@ export function Hiring() {
                       ? [
                           {
                             label: 'View profile',
-                            onClick: () => navigate(contributorPath(application.remotasks_email)),
+                            // Their login email: Remotasks, or active when they applied without one.
+                            onClick: () => navigate(contributorPath(application.remotasks_email ?? application.active_email)),
                           },
                         ]
                       : [{ label: 'Create account', onClick: () => openCreate(application) }]
@@ -911,8 +912,8 @@ export function Hiring() {
                 <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">Personal information</h3>
                 <dl className="grid grid-cols-[9rem_1fr] gap-x-4 gap-y-2 text-sm">
                   <Detail label="Active email">{details.active_email}</Detail>
-                  <Detail label="Remotasks email">{details.remotasks_email}</Detail>
-                  <Detail label="Remotasks ID">{details.remotasks_id}</Detail>
+                  <Detail label="Remotasks email">{details.remotasks_email ?? 'No Remotasks account yet'}</Detail>
+                  <Detail label="Remotasks ID">{details.remotasks_id ?? '—'}</Detail>
                   <Detail label="Facebook">
                     <ProfileLink url={details.facebook_url}>Open profile</ProfileLink>
                   </Detail>
@@ -1144,12 +1145,20 @@ export function Hiring() {
         <Modal title={`Create an account for ${creating.full_name}?`} onClose={() => setCreating(null)}>
           <div className="flex flex-col gap-3">
             <p className="text-sm text-gray-600">
-              This creates a login for <span className="font-medium text-gray-900">{creating.full_name}</span> with the Remotasks email{' '}
-              <span className="font-medium text-gray-900">{creating.remotasks_email}</span>, on{' '}
+              This creates a login for <span className="font-medium text-gray-900">{creating.full_name}</span> with{' '}
+              {creating.remotasks_email ? 'the Remotasks email' : 'their active email (they applied without a Remotasks account)'}{' '}
+              <span className="font-medium text-gray-900">{creating.remotasks_email ?? creating.active_email}</span>, on{' '}
               {isAdmin ? `${leadNameById.get(creating.lead_id) ?? "the lead's"} team` : 'your team'}. A temporary password is emailed to{' '}
               <span className="font-medium text-gray-900">{creating.active_email}</span> and shown to you once. They'll choose their own
               password when they first sign in.
             </p>
+            {!creating.remotasks_email && (
+              <p className="rounded-lg bg-status-warning-bg px-3 py-2 text-sm text-status-warning-text">
+                Tasks are matched to people by their login email. Once they have a Remotasks account, an admin needs to change
+                their login email to the Remotasks one (in Supabase, as the app can't change emails yet), or their task
+                submissions won't attach to this account.
+              </p>
+            )}
             {error && (
               <div role="alert" className="text-sm text-status-danger-text">
                 {error}

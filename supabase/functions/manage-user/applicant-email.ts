@@ -328,7 +328,8 @@ export interface ApplicationRow {
     lead_id: string
     full_name: string
     active_email: string
-    remotasks_email: string
+    /** Null when the applicant had no Remotasks account yet. */
+    remotasks_email: string | null
     status: string
 }
 
@@ -400,7 +401,8 @@ export async function emailApplicants(requestedIds: number[], caller: Caller, de
             name: row.full_name,
             firstName: row.full_name.trim().split(/\s+/)[0] ?? row.full_name,
             lead: lead?.name ?? 'Grey Owls Tracker',
-            email: row.remotasks_email,
+            // Their login: the Remotasks email, or the active email when they gave none (create-account.ts).
+            email: row.remotasks_email ?? row.active_email,
             loginUrl: deps.loginUrl,
         }
         try {

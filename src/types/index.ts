@@ -261,8 +261,8 @@ export type HiringStatus = 'pending' | 'accepted' | 'denied'
 export interface HiringApplication {
   id: number
   lead_id: string
-  remotasks_email: string
-  remotasks_id: string
+  remotasks_email: string | null
+  remotasks_id: string | null
   full_name: string
   active_email: string
   facebook_url: string

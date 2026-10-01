@@ -1,12 +1,12 @@
-import { useState, type FormEvent, type InputHTMLAttributes, type ReactNode } from 'react'
+import { useState, type FormEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { supabase } from '../lib/api'
-import { Eye, EyeOff, Lock, Mail, type LucideIcon } from 'lucide-react'
-import { LoginOwl, type OwlMood } from '../components/LoginOwl'
-import { SkyBackdrop } from '../components/SkyBackdrop'
+import { Lock, Mail } from 'lucide-react'
+import { ErrorNote, LinkButton, PlayfulInput, RevealToggle, SubmitButton, SuccessNote } from '../components/PlayfulForm'
+import type { OwlMood } from '../components/LoginOwl'
+import { CardHeading, PerchedCard } from '../components/PerchedCard'
 import { useReveal } from '../lib/motion'
-import { useNightSky } from '../lib/theme'
 
 // Shows the "Forgot password?" link. It relies on Supabase delivering the reset
 // email, which needs custom SMTP under Authentication > SMTP (the built-in sender
@@ -37,7 +37,6 @@ export function Login() {
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [focused, setFocused] = useState<'email' | 'password' | null>(null)
-  const nightSky = useNightSky()
   const [showPassword, setShowPassword] = useState(false)
   // Set on a failed sign-in; cleared when the card's shake finishes, so the next failure replays it.
   const [shaking, setShaking] = useState(false)
@@ -117,181 +116,87 @@ export function Login() {
   })
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gray-50 px-4 py-16">
-      <SkyBackdrop />
-      <div className="relative w-full max-w-sm pt-20">
-        {/* Perched on the card: the bottom of the owl tucks behind its top edge. */}
-        <div className="absolute left-1/2 top-0 w-28 -translate-x-1/2">
-          <LoginOwl lookX={lookX} lookY={lookY} mood={mood} night={nightSky} />
-        </div>
-        <div className={`relative ${shaking ? 'login-shake' : ''}`} onAnimationEnd={(e) => e.animationName === 'login-shake' && setShaking(false)}>
-          <div
-            ref={cardRef}
-            className="relative rounded-3xl border border-gray-200 bg-white px-7 pb-7 pt-8 shadow-xl shadow-black/5"
-          >
-            {/* Talons gripping the edge, in front of the card. */}
-            <div className="absolute -top-1.5 left-1/2 flex -translate-x-1/2 gap-7" aria-hidden="true">
-              <span className="h-3 w-5 rounded-full bg-[#f5b301]" />
-              <span className="h-3 w-5 rounded-full bg-[#f5b301]" />
-            </div>
-
-            <div className="mb-6 text-center">
-              <h1 className="text-2xl font-bold text-gray-900">{heading.title}</h1>
-              <p className="mt-1 text-sm text-gray-500">{heading.subtitle}</p>
-            </div>
-
-            {mode === 'recovery' ? (
-              <form onSubmit={handleRecovery} className="flex flex-col gap-4">
-                <PlayfulInput
-                  id="new_password"
-                  label="New password"
-                  icon={Lock}
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  minLength={8}
-                  autoComplete="new-password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  {...focusHandlers('password')}
-                  trailing={<RevealToggle shown={showPassword} onToggle={() => setShowPassword((v) => !v)} />}
-                />
-                {error && <ErrorNote message={error} />}
-                <SubmitButton pending={submitting} pendingLabel="Updating..." label="Update password" />
-              </form>
-            ) : mode === 'forgot' ? (
-              <form onSubmit={handleForgotPassword} className="flex flex-col gap-4">
-                <PlayfulInput
-                  id="reset_email"
-                  label="Email"
-                  icon={Mail}
-                  type="email"
-                  required
-                  autoComplete="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  {...focusHandlers('email')}
-                />
-                {error && <ErrorNote message={error} />}
-                {notice && <SuccessNote message={notice} />}
-                <SubmitButton pending={submitting} pendingLabel="Sending..." label="Send reset link" />
-                <LinkButton onClick={() => switchMode('login')}>Back to sign in</LinkButton>
-              </form>
-            ) : (
-              <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                <PlayfulInput
-                  id="email"
-                  label="Email"
-                  icon={Mail}
-                  type="email"
-                  required
-                  autoComplete="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  {...focusHandlers('email')}
-                />
-                <PlayfulInput
-                  id="password"
-                  label="Password"
-                  icon={Lock}
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  autoComplete="current-password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  {...focusHandlers('password')}
-                  trailing={<RevealToggle shown={showPassword} onToggle={() => setShowPassword((v) => !v)} />}
-                />
-                {error && <ErrorNote message={error} />}
-                {/* e.g. "Password updated" after resetting: they land back here, so it has to show here. */}
-                {notice && <SuccessNote message={notice} />}
-                <SubmitButton pending={submitting} pendingLabel="Signing in..." label="Sign in" />
-                {FORGOT_PASSWORD_ENABLED && <LinkButton onClick={() => switchMode('forgot')}>Forgot password?</LinkButton>}
-              </form>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function PlayfulInput({
-  id,
-  label,
-  icon: Icon,
-  trailing,
-  ...input
-}: { id: string; label: string; icon: LucideIcon; trailing?: ReactNode } & InputHTMLAttributes<HTMLInputElement>) {
-  return (
-    <div>
-      <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-gray-700">
-        {label}
-      </label>
-      <div className="group relative">
-        <Icon className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-accent" />
-        <input
-          id={id}
-          className="w-full rounded-xl border-2 border-gray-200 bg-gray-50 py-2.5 pl-10 pr-10 text-sm outline-none transition-all placeholder:text-gray-400 focus:border-accent focus:bg-white focus:shadow-[0_0_0_4px_rgba(212,160,23,0.15)]"
-          {...input}
-        />
-        {trailing && <div className="absolute right-2 top-1/2 -translate-y-1/2">{trailing}</div>}
-      </div>
-    </div>
-  )
-}
-
-function RevealToggle({ shown, onToggle }: { shown: boolean; onToggle: () => void }) {
-  const Icon = shown ? EyeOff : Eye
-  return (
-    <button
-      type="button"
-      // Keep focus in the password field, so the owl stays in peek/cover mode while toggling.
-      onMouseDown={(e) => e.preventDefault()}
-      onClick={onToggle}
-      aria-label={shown ? 'Hide password' : 'Show password'}
-      aria-pressed={shown}
-      className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+    <PerchedCard
+      lookX={lookX}
+      lookY={lookY}
+      mood={mood}
+      cardRef={cardRef}
+      shaking={shaking}
+      onShakeEnd={() => setShaking(false)}
     >
-      <Icon className="h-4 w-4" />
-    </button>
-  )
-}
+      <CardHeading title={heading.title} subtitle={heading.subtitle} />
 
-function SubmitButton({ pending, label, pendingLabel }: { pending: boolean; label: string; pendingLabel: string }) {
-  return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="mt-1 rounded-xl bg-accent px-4 py-3 text-sm font-bold text-accent-foreground shadow-[0_4px_0_0_#a87c0c] transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_0_0_#a87c0c] active:translate-y-1 active:shadow-[0_0_0_0_#a87c0c] disabled:translate-y-0 disabled:opacity-60 disabled:shadow-[0_4px_0_0_#a87c0c]"
-    >
-      {pending ? pendingLabel : label}
-    </button>
-  )
-}
-
-function LinkButton({ onClick, children }: { onClick: () => void; children: ReactNode }) {
-  return (
-    <button type="button" onClick={onClick} className="text-sm font-medium text-sky-700 hover:underline">
-      {children}
-    </button>
-  )
-}
-
-function ErrorNote({ message }: { message: string }) {
-  return (
-    <div role="alert" className="rounded-xl bg-status-danger-bg px-3 py-2 text-sm text-status-danger-text">
-      {message}
-    </div>
-  )
-}
-
-function SuccessNote({ message }: { message: string }) {
-  return (
-    <div role="status" className="rounded-xl bg-status-success-bg px-3 py-2 text-sm text-status-success-text">
-      {message}
-    </div>
+      {mode === 'recovery' ? (
+        <form onSubmit={handleRecovery} className="flex flex-col gap-4">
+          <PlayfulInput
+            id="new_password"
+            label="New password"
+            icon={Lock}
+            type={showPassword ? 'text' : 'password'}
+            required
+            minLength={8}
+            autoComplete="new-password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            {...focusHandlers('password')}
+            trailing={<RevealToggle shown={showPassword} onToggle={() => setShowPassword((v) => !v)} />}
+          />
+          {error && <ErrorNote message={error} />}
+          <SubmitButton pending={submitting} pendingLabel="Updating..." label="Update password" />
+        </form>
+      ) : mode === 'forgot' ? (
+        <form onSubmit={handleForgotPassword} className="flex flex-col gap-4">
+          <PlayfulInput
+            id="reset_email"
+            label="Email"
+            icon={Mail}
+            type="email"
+            required
+            autoComplete="email"
+            placeholder="you@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            {...focusHandlers('email')}
+          />
+          {error && <ErrorNote message={error} />}
+          {notice && <SuccessNote message={notice} />}
+          <SubmitButton pending={submitting} pendingLabel="Sending..." label="Send reset link" />
+          <LinkButton onClick={() => switchMode('login')}>Back to sign in</LinkButton>
+        </form>
+      ) : (
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <PlayfulInput
+            id="email"
+            label="Email"
+            icon={Mail}
+            type="email"
+            required
+            autoComplete="email"
+            placeholder="you@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            {...focusHandlers('email')}
+          />
+          <PlayfulInput
+            id="password"
+            label="Password"
+            icon={Lock}
+            type={showPassword ? 'text' : 'password'}
+            required
+            autoComplete="current-password"
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            {...focusHandlers('password')}
+            trailing={<RevealToggle shown={showPassword} onToggle={() => setShowPassword((v) => !v)} />}
+          />
+          {error && <ErrorNote message={error} />}
+          {/* e.g. "Password updated" after resetting: they land back here, so it has to show here. */}
+          {notice && <SuccessNote message={notice} />}
+          <SubmitButton pending={submitting} pendingLabel="Signing in..." label="Sign in" />
+          {FORGOT_PASSWORD_ENABLED && <LinkButton onClick={() => switchMode('forgot')}>Forgot password?</LinkButton>}
+        </form>
+      )}
+    </PerchedCard>
   )
 }
