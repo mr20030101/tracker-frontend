@@ -11,6 +11,7 @@ import {
   type ApplicationInput,
 } from '../lib/hiring'
 import { prefersReducedMotion, useReveal } from '../lib/motion'
+import { fetchVisitorCountry } from '../lib/geo'
 import { Logo } from '../components/Logo'
 import { RobotStage } from '../components/robots/RobotStage'
 
@@ -40,6 +41,9 @@ type FormState = typeof emptyForm
 type SetField = (field: keyof FormState) => (e: { target: { value: string } }) => void
 
 const STEP_TITLES = ['Personal information', 'Your computer']
+
+// Applications are open to people in the Philippines only (checked by IP address, see api/country.ts).
+const ELIGIBLE_COUNTRY = 'PH'
 
 // The photo eases in from a closer, fainter frame once it has loaded, then
 // drifts very slowly so the panel stays alive. The entrance runs on the wrapper
@@ -479,8 +483,18 @@ export function Apply() {
     retry: false,
   })
 
+  // If the country can't be told (null), the form stays open rather than turning away
+  // someone who may well be eligible; only a known non-Philippines address is blocked.
+  const { data: country, isLoading: countryLoading } = useQuery({
+    queryKey: ['visitor-country'],
+    queryFn: fetchVisitorCountry,
+    retry: false,
+    staleTime: Infinity,
+  })
+  const eligible = !country || country === ELIGIBLE_COUNTRY
+
   let content
-  if (isLoading) {
+  if (isLoading || countryLoading) {
     content = <p className="text-sm text-gray-400">Loading...</p>
   } else if (leadError) {
     content = (
@@ -506,9 +520,22 @@ export function Apply() {
         </p>
       </>
     )
+  } else if (!eligible) {
+    content = (
+      <>
+        <h1 className="text-2xl font-bold text-gray-900">Not eligible</h1>
+        <p className="mt-2 text-sm text-gray-500">
+          Sorry, this project is only open to applicants based in the Philippines, so we can't accept an application from
+          your location.
+        </p>
+        <p className="mt-2 text-sm text-gray-500">
+          If you are in the Philippines and using a VPN, turn it off and reload this page.
+        </p>
+      </>
+    )
   } else {
     content = <ApplicationForm leadId={leadId} />
   }
 
-  return <ApplyShell pitch={Boolean(lead?.accepting)}>{content}</ApplyShell>
+  return <ApplyShell pitch={Boolean(lead?.accepting) && eligible}>{content}</ApplyShell>
 }
