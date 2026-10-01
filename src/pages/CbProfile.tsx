@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { Navigate, useParams, Link } from 'react-router-dom'
-import { Camera, ChevronDown, Lock, MessageCircle, Trophy } from 'lucide-react'
+import { Camera, ChevronDown, Eye, Lock, MessageCircle, Trophy } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, functionErrorMessage, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
@@ -17,6 +17,7 @@ import { Reveal } from '../components/Reveal'
 import { AchievementsCard } from '../components/Achievements'
 import { OnboardingProgress } from '../components/OnboardingChecklist'
 import { useOnboardingStatus } from '../lib/onboarding'
+import { recordProfileView, useProfileViewCount } from '../lib/profileViews'
 
 const LEVEL_OPTIONS: ProjectLevel[] = ['contributor', 'l0', 'l1', 'l10']
 
@@ -158,6 +159,18 @@ export function CbProfile() {
 
   const contributorId = data?.user?.id ?? null
   const contributorLeadId = data?.user?.lead_id ?? null
+
+  // Opening someone else's profile counts as a view (the database keeps one per viewer per day).
+  // The count is refetched afterwards so it includes this visit.
+  const viewCount = useProfileViewCount(contributorId)
+  useEffect(() => {
+    if (!contributorId || isOwnProfile) return
+    recordProfileView(contributorId)
+      .then(() => queryClient.invalidateQueries({ queryKey: ['profile-views', contributorId] }))
+      .catch(() => {
+        // A missed view isn't worth bothering the person about.
+      })
+  }, [contributorId, isOwnProfile, queryClient])
 
   const { data: allProjects = [] } = useQuery({
     queryKey: ['projects'],
@@ -342,6 +355,15 @@ export function CbProfile() {
           {decodedEmail && <p className="text-sm text-gray-500">{decodedEmail}</p>}
           {(isOwnProfile ? currentUser?.bio : data.user?.bio) && (
             <p className="mt-1 max-w-xl text-sm text-gray-600">{isOwnProfile ? currentUser?.bio : data.user?.bio}</p>
+          )}
+          {viewCount.data && (
+            <p
+              className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600"
+              title={`${viewCount.data.viewers} ${viewCount.data.viewers === 1 ? 'person has' : 'different people have'} viewed this profile`}
+            >
+              <Eye className="h-3.5 w-3.5" />
+              {viewCount.data.views.toLocaleString()} profile {viewCount.data.views === 1 ? 'view' : 'views'}
+            </p>
           )}
         </div>
         <div className="ml-auto flex items-center gap-2">

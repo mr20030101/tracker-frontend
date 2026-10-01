@@ -15,6 +15,7 @@ import { downloadCsv } from '../lib/csv'
 import { contributorPath } from '../lib/urlRef'
 import { StreakChip } from '../components/Achievements'
 import { useAchievements } from '../lib/achievements'
+import { MostViewedProfiles } from '../components/MostViewedProfiles'
 
 type Period = 'week' | 'month' | 'all'
 type StatusFilter = 'all' | 'active' | 'disabled'
@@ -120,6 +121,8 @@ function ContributorLeaderboard() {
           </Reveal>
         )}
       </div>
+
+      <MostViewedProfiles />
     </div>
   )
 }
@@ -469,6 +472,8 @@ function ManagerLeaderboard() {
           </tbody>
         </table>
       </div>
+
+      <MostViewedProfiles />
     </div>
   )
 }
