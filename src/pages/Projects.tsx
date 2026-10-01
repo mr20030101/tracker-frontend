@@ -6,6 +6,7 @@ import type { Project, User } from '../types'
 import { Modal } from '../components/Modal'
 import { Combobox } from '../components/Combobox'
 import { ActionsMenu } from '../components/ActionsMenu'
+import { confirmDialog } from '../lib/dialog'
 
 interface ProjectLead {
   project_id: number
@@ -244,10 +245,11 @@ export function Projects() {
                             {
                               label: 'Delete',
                               variant: 'danger',
-                              onClick: () => {
+                              onClick: async () => {
                                 if (
-                                  confirm(
+                                  await confirmDialog(
                                     `Delete "${project.name}"? Existing task submissions and resources linked to it will keep their history but lose this project reference.`,
+                                    { confirmLabel: 'Delete', danger: true },
                                   )
                                 ) {
                                   deleteMutation.mutate(project.id)

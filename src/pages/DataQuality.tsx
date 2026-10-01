@@ -8,6 +8,7 @@ import { TaskSubmissionForm } from '../components/TaskSubmissionForm'
 import { DataTable } from '../components/DataTable'
 import type { TaskSubmission } from '../types'
 import { contributorPath } from '../lib/urlRef'
+import { confirmDialog } from '../lib/dialog'
 
 const HIGH_VOLUME_THRESHOLD = 20
 
@@ -147,14 +148,14 @@ export function DataQuality() {
   })
 
   const handleDelete = useCallback(
-    (id: number) => {
-      if (confirm('Delete this submission?')) deleteMutation.mutate(id)
+    async (id: number) => {
+      if (await confirmDialog('Delete this submission?', { confirmLabel: 'Delete', danger: true })) deleteMutation.mutate(id)
     },
     [deleteMutation],
   )
 
-  function handleDeleteAll(ids: number[]) {
-    if (confirm(`Delete all ${ids.length} submissions with no Task ID? This cannot be undone.`)) {
+  async function handleDeleteAll(ids: number[]) {
+    if (await confirmDialog(`Delete all ${ids.length} submissions with no Task ID? This cannot be undone.`, { confirmLabel: 'Delete', danger: true })) {
       deleteAllMutation.mutate(ids)
     }
   }

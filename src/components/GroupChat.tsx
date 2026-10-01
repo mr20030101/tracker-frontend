@@ -21,6 +21,7 @@ import type { ChatGroupSummary, GroupMessage, Project } from '../types'
 import { Avatar } from './Avatar'
 import { EmojiPickerButton } from './EmojiPickerButton'
 import { Modal } from './Modal'
+import { confirmDialog } from '../lib/dialog'
 
 // Messenger's send-bubble blue, as in MessageBubble.tsx.
 const BUBBLE_BLUE = '#0084ff'
@@ -504,8 +505,8 @@ function GroupSettingsModal({ group, onClose, onGone }: { group: ChatGroupSummar
                   {canManage && m.id !== myId && (
                     <button
                       type="button"
-                      onClick={() => {
-                        if (confirm(`Remove ${m.name} from ${group.name}?`)) removeMutation.mutate(m.id)
+                      onClick={async () => {
+                        if (await confirmDialog(`Remove ${m.name} from ${group.name}?`, { confirmLabel: 'Remove', danger: true })) removeMutation.mutate(m.id)
                       }}
                       className="text-xs font-medium text-status-danger-text hover:underline"
                     >
@@ -523,8 +524,8 @@ function GroupSettingsModal({ group, onClose, onGone }: { group: ChatGroupSummar
         <div className="flex flex-wrap justify-end gap-2 border-t border-gray-100 pt-4">
           <button
             type="button"
-            onClick={() => {
-              if (confirm(`Leave ${group.name}? You'll stop getting its messages.`)) removeMutation.mutate(myId!)
+            onClick={async () => {
+              if (await confirmDialog(`Leave ${group.name}? You'll stop getting its messages.`, { confirmLabel: 'Leave', danger: true })) removeMutation.mutate(myId!)
             }}
             className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
           >
@@ -533,8 +534,8 @@ function GroupSettingsModal({ group, onClose, onGone }: { group: ChatGroupSummar
           {canManage && (
             <button
               type="button"
-              onClick={() => {
-                if (confirm(`Delete ${group.name} and all its messages for everyone? This cannot be undone.`)) deleteMutation.mutate()
+              onClick={async () => {
+                if (await confirmDialog(`Delete ${group.name} and all its messages for everyone? This cannot be undone.`, { confirmLabel: 'Delete', danger: true })) deleteMutation.mutate()
               }}
               className="rounded-lg bg-status-danger-text px-4 py-2 text-sm font-semibold text-white"
             >

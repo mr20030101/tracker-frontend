@@ -15,6 +15,7 @@ import { Avatar } from './Avatar'
 import { GroupIcon } from './GroupChat'
 import { StatusPill } from './StatusPill'
 import { SubmissionDetailsModal } from './SubmissionDetailsModal'
+import { alertDialog } from '../lib/dialog'
 
 export interface SearchPage {
   to: string
@@ -199,7 +200,7 @@ function Palette({ pages, onClose }: { pages: SearchPage[]; onClose: () => void 
         run: () => {
           onClose()
           const path = resourceFilePath(r.url)
-          if (path) openResourceFile(path).catch((err) => alert(errorMessage(err, 'Could not open this file.')))
+          if (path) openResourceFile(path).catch((err) => alertDialog(errorMessage(err, 'Could not open this file.')))
           else window.open(r.url, '_blank', 'noopener,noreferrer')
         },
       })

@@ -25,6 +25,7 @@ import { TaskSubmissionForm } from './TaskSubmissionForm'
 import { BulkImportModal } from './BulkImportModal'
 import { BadVideoReportModal } from './BadVideoReportModal'
 import { Modal } from './Modal'
+import { confirmDialog } from '../lib/dialog'
 
 const TREND_DAYS = 30
 const MANAGER_ROLES = ['admin', 'lead']
@@ -416,8 +417,8 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                             Deny
                           </button>
                           <button
-                            onClick={() => {
-                              if (confirm('Delete this request? This cannot be undone.')) {
+                            onClick={async () => {
+                              if (await confirmDialog('Delete this request? This cannot be undone.', { confirmLabel: 'Delete', danger: true })) {
                                 withdrawRequestMutation.mutate(request.id)
                               }
                             }}
@@ -684,8 +685,8 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                               {
                                 label: `Delete ${noun} request`,
                                 variant: 'danger' as const,
-                                onClick: () => {
-                                  if (confirm(`Delete this ${noun} request? This cannot be undone.`)) {
+                                onClick: async () => {
+                                  if (await confirmDialog(`Delete this ${noun} request? This cannot be undone.`, { confirmLabel: 'Delete', danger: true })) {
                                     withdrawRequestMutation.mutate(request.id)
                                   }
                                 },
@@ -785,8 +786,8 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                               {
                                 label: 'Delete',
                                 variant: 'danger',
-                                onClick: () => {
-                                  if (confirm('Delete this submission?')) {
+                                onClick: async () => {
+                                  if (await confirmDialog('Delete this submission?', { confirmLabel: 'Delete', danger: true })) {
                                     deleteMutation.mutate(row.id)
                                   }
                                 },

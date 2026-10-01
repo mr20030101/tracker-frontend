@@ -7,6 +7,7 @@ import type { Project, Resource } from '../types'
 import { Modal } from '../components/Modal'
 import { ActionsMenu } from '../components/ActionsMenu'
 import { Select } from '../components/Select'
+import { confirmDialog, alertDialog } from '../lib/dialog'
 
 const MANAGER_ROLES = ['admin', 'lead']
 
@@ -203,7 +204,7 @@ export function Resources() {
                       <button
                         type="button"
                         onClick={() =>
-                          openResourceFile(filePath).catch((err) => alert(errorMessage(err, 'Could not open this file.')))
+                          openResourceFile(filePath).catch((err) => alertDialog(errorMessage(err, 'Could not open this file.')))
                         }
                         className="text-left text-sm font-medium text-sky-700 hover:underline"
                       >
@@ -229,8 +230,8 @@ export function Resources() {
                           {
                             label: 'Delete',
                             variant: 'danger',
-                            onClick: () => {
-                              if (confirm('Delete this resource?')) {
+                            onClick: async () => {
+                              if (await confirmDialog('Delete this resource?', { confirmLabel: 'Delete', danger: true })) {
                                 deleteMutation.mutate(item.id)
                               }
                             },

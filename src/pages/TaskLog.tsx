@@ -16,6 +16,7 @@ import { BulkImportModal } from '../components/BulkImportModal'
 import { ContributorWorkPanel } from '../components/ContributorWorkPanel'
 import { downloadCsv } from '../lib/csv'
 import { contributorPath } from '../lib/urlRef'
+import { confirmDialog, alertDialog } from '../lib/dialog'
 
 const MANAGER_ROLES = ['admin', 'lead']
 
@@ -139,7 +140,7 @@ function ManagerTaskLog() {
         })),
       )
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Export failed.')
+      alertDialog(err instanceof Error ? err.message : 'Export failed.')
     } finally {
       setExporting(false)
     }
@@ -342,8 +343,8 @@ function ManagerTaskLog() {
                         {
                           label: 'Delete',
                           variant: 'danger',
-                          onClick: () => {
-                            if (confirm('Delete this submission?')) {
+                          onClick: async () => {
+                            if (await confirmDialog('Delete this submission?', { confirmLabel: 'Delete', danger: true })) {
                               deleteMutation.mutate(row.id)
                             }
                           },
@@ -393,8 +394,8 @@ function ManagerTaskLog() {
             setViewingId(null)
             setFormTarget(viewing)
           }}
-          onDelete={() => {
-            if (confirm('Delete this submission?')) {
+          onDelete={async () => {
+            if (await confirmDialog('Delete this submission?', { confirmLabel: 'Delete', danger: true })) {
               deleteMutation.mutate(viewing.id)
               setViewingId(null)
             }

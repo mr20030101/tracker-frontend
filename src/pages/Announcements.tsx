@@ -20,6 +20,7 @@ import { Avatar } from '../components/Avatar'
 import { Modal } from '../components/Modal'
 import { Reveal } from '../components/Reveal'
 import { Select } from '../components/Select'
+import { confirmDialog } from '../lib/dialog'
 
 const MANAGER_ROLES = ['admin', 'lead']
 
@@ -156,8 +157,8 @@ export function Announcements() {
                         {
                           label: 'Delete',
                           variant: 'danger',
-                          onClick: () => {
-                            if (confirm(`Delete "${a.title}"? Everyone it was sent to loses it too.`)) deleteMutation.mutate(a.id)
+                          onClick: async () => {
+                            if (await confirmDialog(`Delete "${a.title}"? Everyone it was sent to loses it too.`, { confirmLabel: 'Delete', danger: true })) deleteMutation.mutate(a.id)
                           },
                         },
                       ]}

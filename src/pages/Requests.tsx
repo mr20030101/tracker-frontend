@@ -17,6 +17,7 @@ import { Detail } from '../components/Detail'
 import { Modal } from '../components/Modal'
 import type { RequestStatus, RequestType } from '../types'
 import { contributorPath } from '../lib/urlRef'
+import { confirmDialog } from '../lib/dialog'
 
 const MANAGER_ROLES = ['admin', 'lead']
 
@@ -206,8 +207,8 @@ export function Requests() {
         )}
         {isManager && (
           <button
-            onClick={() => {
-              if (confirm('Delete this request? This cannot be undone.')) {
+            onClick={async () => {
+              if (await confirmDialog('Delete this request? This cannot be undone.', { confirmLabel: 'Delete', danger: true })) {
                 withdrawMutation.mutate(request.id)
                 after?.()
               }
@@ -339,8 +340,8 @@ export function Requests() {
               </button>
             ) : (
               <button
-                onClick={() => {
-                  if (confirm(`Withdraw ${plural(selected.length, 'request')}?`)) {
+                onClick={async () => {
+                  if (await confirmDialog(`Withdraw ${plural(selected.length, 'request')}?`, { confirmLabel: 'Withdraw' })) {
                     bulkDeleteMutation.mutate(selected.map((r) => r.id))
                   }
                 }}
@@ -352,8 +353,8 @@ export function Requests() {
             ))}
           {isManager && (
             <button
-              onClick={() => {
-                if (confirm(`Delete ${plural(selected.length, 'request')}? This cannot be undone.`)) {
+              onClick={async () => {
+                if (await confirmDialog(`Delete ${plural(selected.length, 'request')}? This cannot be undone.`, { confirmLabel: 'Delete', danger: true })) {
                   bulkDeleteMutation.mutate(selected.map((r) => r.id))
                 }
               }}

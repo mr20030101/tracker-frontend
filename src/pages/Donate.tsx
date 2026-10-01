@@ -179,7 +179,7 @@ export function Donate() {
   const amount = customValue !== null ? (customInvalid ? null : Math.round(customValue * 100) / 100) : preset
 
   return (
-    <div className="min-h-screen bg-gray-50 px-4 py-10 sm:py-16">
+    <div className="flex min-h-screen flex-col justify-center bg-gray-50 px-4 py-10 sm:py-16">
       <div ref={ref} className="mx-auto w-full max-w-md md:max-w-4xl">
         <div className="mb-8">
           <Logo />

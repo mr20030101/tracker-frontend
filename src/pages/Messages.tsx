@@ -25,6 +25,7 @@ import { errorMessage } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { groupPath } from '../lib/groupChats'
 import { GroupChatPane, GroupIcon, NewGroupModal } from '../components/GroupChat'
+import { confirmDialog } from '../lib/dialog'
 
 // Messenger's own send-bubble blue, matching MessageBubble.tsx — kept local rather than
 // repointing the app's global --color-accent, which drives buttons everywhere else.
@@ -126,8 +127,8 @@ export function Messages() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['messages', myId] }),
   })
 
-  function handleDelete(message: Message) {
-    if (confirm('Delete this message for you? The other person will still see it.')) {
+  async function handleDelete(message: Message) {
+    if (await confirmDialog('Delete this message for you? The other person will still see it.', { confirmLabel: 'Delete', danger: true })) {
       deleteMutation.mutate(message)
     }
   }
@@ -141,10 +142,10 @@ export function Messages() {
     },
   })
 
-  function handleBulkDelete() {
+  async function handleBulkDelete() {
     const selected = thread.filter((m) => selectedIds.has(m.id))
     if (selected.length === 0) return
-    if (confirm(`Delete ${selected.length} message${selected.length === 1 ? '' : 's'} for you? The other person will still see them.`)) {
+    if (await confirmDialog(`Delete ${selected.length} message${selected.length === 1 ? '' : 's'} for you? The other person will still see them.`, { confirmLabel: 'Delete', danger: true })) {
       bulkDeleteMutation.mutate(selected)
     }
   }
@@ -157,8 +158,8 @@ export function Messages() {
     },
   })
 
-  function handleDeleteConversation(otherUserId: string, otherUserName: string) {
-    if (confirm(`Delete your whole conversation with ${otherUserName}? The other person will still see their copy.`)) {
+  async function handleDeleteConversation(otherUserId: string, otherUserName: string) {
+    if (await confirmDialog(`Delete your whole conversation with ${otherUserName}? The other person will still see their copy.`, { confirmLabel: 'Delete', danger: true })) {
       deleteConversationMutation.mutate(otherUserId)
     }
   }
