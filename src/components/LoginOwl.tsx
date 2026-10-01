@@ -10,12 +10,23 @@ export type OwlMood = 'idle' | 'cover' | 'peek'
 
 const WING_LIFT: Record<OwlMood, number> = { idle: 0, cover: -78, peek: -58 }
 
-export function LoginOwl({ lookX = 0, lookY = 0, mood = 'idle' }: { lookX?: number; lookY?: number; mood?: OwlMood }) {
+export function LoginOwl({
+  lookX = 0,
+  lookY = 0,
+  mood = 'idle',
+  night = false,
+}: {
+  lookX?: number
+  lookY?: number
+  mood?: OwlMood
+  /** Lighter feathers so the owl shows against the night sky. */
+  night?: boolean
+}) {
   const pupil = { transform: `translate(${lookX * 6}px, ${lookY * 4}px)` }
   const wing = { transform: `translateY(${WING_LIFT[mood]}px)` }
 
   return (
-    <svg viewBox="0 0 120 170" className="login-owl h-auto w-full overflow-visible" aria-hidden="true">
+    <svg viewBox="0 0 120 170" className={`login-owl h-auto w-full overflow-visible ${night ? 'login-owl-night' : ''}`} aria-hidden="true">
       <path className="login-owl-body" d="M60 35 L14 13 L14 61 A46 46 0 0 0 106 61 L106 13 Z" />
       {[42, 78].map((cx) => (
         <g key={cx}>

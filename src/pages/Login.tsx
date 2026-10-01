@@ -4,8 +4,9 @@ import { useAuth } from '../lib/auth'
 import { supabase } from '../lib/api'
 import { Eye, EyeOff, Lock, Mail, type LucideIcon } from 'lucide-react'
 import { LoginOwl, type OwlMood } from '../components/LoginOwl'
-import { LoginSky } from '../components/LoginSky'
+import { SkyBackdrop } from '../components/SkyBackdrop'
 import { useReveal } from '../lib/motion'
+import { useNightSky } from '../lib/theme'
 
 // Shows the "Forgot password?" link. It relies on Supabase delivering the reset
 // email, which needs custom SMTP under Authentication > SMTP (the built-in sender
@@ -36,6 +37,7 @@ export function Login() {
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [focused, setFocused] = useState<'email' | 'password' | null>(null)
+  const nightSky = useNightSky()
   const [showPassword, setShowPassword] = useState(false)
   // Set on a failed sign-in; cleared when the card's shake finishes, so the next failure replays it.
   const [shaking, setShaking] = useState(false)
@@ -116,11 +118,11 @@ export function Login() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gray-50 px-4 py-16">
-      <LoginSky />
+      <SkyBackdrop />
       <div className="relative w-full max-w-sm pt-20">
         {/* Perched on the card: the bottom of the owl tucks behind its top edge. */}
         <div className="absolute left-1/2 top-0 w-28 -translate-x-1/2">
-          <LoginOwl lookX={lookX} lookY={lookY} mood={mood} />
+          <LoginOwl lookX={lookX} lookY={lookY} mood={mood} night={nightSky} />
         </div>
         <div className={`relative ${shaking ? 'login-shake' : ''}`} onAnimationEnd={(e) => e.animationName === 'login-shake' && setShaking(false)}>
           <div

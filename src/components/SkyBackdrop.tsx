@@ -1,8 +1,10 @@
 import type { CSSProperties } from 'react'
+import { useNightSky } from '../lib/theme'
 
-// Login background: a daytime sky on the light theme and a night sky on the dark one, swapped by
-// the same theme classes as the logo (index.css). All motion is CSS (.login-sky-* keyframes),
+// Playful backdrop for the login page and the dashboard banner: a daytime or night sky, by the
+// clock unless the person picked a theme (useNightSky). All motion is CSS (.login-sky-* keyframes),
 // which index.css switches off under prefers-reduced-motion.
+// `compact` shrinks everything to suit a banner rather than a full page.
 
 const OWL_PATH = 'M60 35 L14 13 L14 61 A46 46 0 0 0 106 61 L106 13 Z'
 
@@ -11,7 +13,8 @@ const OWLS = [
   { left: '8%', top: '18%', size: 54, delay: 0, rotate: -12 },
   { left: '84%', top: '12%', size: 40, delay: 1.2, rotate: 10 },
   { left: '14%', top: '72%', size: 36, delay: 2.1, rotate: 8 },
-  { left: '78%', top: '68%', size: 62, delay: 0.6, rotate: -8 },
+  // Left out of the compact sky: that's where the dashboard mascot peeks up.
+  { left: '78%', top: '68%', size: 62, delay: 0.6, rotate: -8, fullOnly: true },
   { left: '48%', top: '88%', size: 30, delay: 1.7, rotate: 14 },
 ]
 
@@ -51,21 +54,21 @@ function Owl({ size, eyes, className }: { size: number; eyes: boolean; className
   )
 }
 
-function FloatingOwls({ night }: { night: boolean }) {
-  return OWLS.map((owl, i) => (
+function FloatingOwls({ night, scale }: { night: boolean; scale: number }) {
+  return OWLS.filter((owl) => scale === 1 || !('fullOnly' in owl)).map((owl, i) => (
     <div
       key={i}
       className="login-sky-bob absolute"
       style={{ left: owl.left, top: owl.top, animationDelay: `${owl.delay}s`, '--tilt': `${owl.rotate}deg` } as CSSProperties}
     >
-      <Owl size={owl.size} eyes={night} className={night ? 'text-[#0a0e24]' : 'text-[#32373f] opacity-20'} />
+      <Owl size={owl.size * scale} eyes={night} className={night ? 'text-[#0a0e24]' : 'text-[#32373f] opacity-20'} />
     </div>
   ))
 }
 
-function DaySky() {
+function DaySky({ scale }: { scale: number }) {
   return (
-    <div className="logo-on-light login-sky-day absolute inset-0">
+    <div className="login-sky-day absolute inset-0">
       <div className="login-sky-blob absolute -left-24 -top-24 h-96 w-96 rounded-full bg-[#f5b301]/35 blur-3xl" />
       <div
         className="login-sky-blob absolute -right-20 top-1/3 h-80 w-80 rounded-full bg-[#7dd3fc]/40 blur-3xl"
@@ -79,7 +82,7 @@ function DaySky() {
         <svg
           key={i}
           viewBox="0 0 200 100"
-          width={cloud.width}
+          width={cloud.width * scale}
           className="login-sky-cloud absolute"
           style={{ top: cloud.top, opacity: cloud.opacity, animationDuration: `${cloud.duration}s`, animationDelay: `${cloud.delay}s` }}
           aria-hidden="true"
@@ -93,14 +96,14 @@ function DaySky() {
           </g>
         </svg>
       ))}
-      <FloatingOwls night={false} />
+      <FloatingOwls night={false} scale={scale} />
     </div>
   )
 }
 
-function NightSky() {
+function NightSky({ scale }: { scale: number }) {
   return (
-    <div className="logo-on-dark login-sky-night absolute inset-0">
+    <div className="login-sky-night absolute inset-0">
       {STARS.map((star, i) => (
         <span
           key={i}
@@ -109,20 +112,24 @@ function NightSky() {
         />
       ))}
       {/* Moon with a soft glow. */}
-      <div className="absolute right-[10%] top-[8%] h-24 w-24 rounded-full bg-[#fef3c7] shadow-[0_0_80px_30px_rgba(254,243,199,0.25)]">
+      <div
+        className="absolute right-[10%] top-[8%] h-24 w-24 origin-top-right rounded-full bg-[#fef3c7] shadow-[0_0_80px_30px_rgba(254,243,199,0.25)]"
+        style={{ transform: `scale(${scale})` }}
+      >
         <span className="absolute left-5 top-6 h-4 w-4 rounded-full bg-[#fde68a]" />
         <span className="absolute bottom-6 right-6 h-6 w-6 rounded-full bg-[#fde68a]" />
       </div>
-      <FloatingOwls night />
+      <FloatingOwls night scale={scale} />
     </div>
   )
 }
 
-export function LoginSky() {
+export function SkyBackdrop({ compact = false }: { compact?: boolean }) {
+  const night = useNightSky()
+  const scale = compact ? 0.55 : 1
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-      <DaySky />
-      <NightSky />
+      {night ? <NightSky scale={scale} /> : <DaySky scale={scale} />}
     </div>
   )
 }

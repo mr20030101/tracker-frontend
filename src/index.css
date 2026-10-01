@@ -249,7 +249,7 @@ body {
   }
 }
 
-/* Login page: sky background (<LoginSky />) and mascot (<LoginOwl />). */
+/* Playful sky (<SkyBackdrop />: login page, dashboard banner) and owl mascot (<LoginOwl />). */
 .login-sky-day {
   background: linear-gradient(170deg, #fff8e7 0%, #fdeccc 45%, #fbdcd0 100%);
 }
@@ -301,7 +301,7 @@ body {
   animation: login-sky-twinkle 3s ease-in-out infinite;
 }
 
-/* Mascot: Owl Grey on the light theme; lighter on the dark one so it shows against the night sky. */
+/* Mascot: Owl Grey by day; lighter at night (.login-owl-night) so it shows against the night sky. */
 .login-owl-body {
   fill: #32373f;
 }
@@ -310,22 +310,12 @@ body {
   fill: #4a515c;
 }
 
-:root[data-theme='dark'] .login-owl-body {
+.login-owl-night .login-owl-body {
   fill: #5d6573;
 }
 
-:root[data-theme='dark'] .login-owl-wing {
+.login-owl-night .login-owl-wing {
   fill: #747d8c;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) .login-owl-body {
-    fill: #5d6573;
-  }
-
-  :root:not([data-theme='light']) .login-owl-wing {
-    fill: #747d8c;
-  }
 }
 
 .login-owl-pupil {

@@ -19,6 +19,7 @@ import { Modal } from '../components/Modal'
 import { contributorPath } from '../lib/urlRef'
 import { OnboardingChecklist } from '../components/OnboardingChecklist'
 import { AchievementsCard } from '../components/Achievements'
+import { DashboardHero } from '../components/DashboardHero'
 
 const TREND_DAYS = 30
 
@@ -182,63 +183,60 @@ export function ContributorDashboard() {
 
   return (
     <Reveal>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
-            Dashboard
-          </h1>
-          <p className="text-sm text-gray-500">Welcome back, {data.user?.name ?? email}.</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setSubmitting(true)}
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
-          >
-            + Submit a Task
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowCtsModal(true)}
-            className="animate-heartbeat-soft rounded-lg bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600"
-          >
-            CTS Form
-          </button>
-          <button
-            type="button"
-            onClick={handleAttendanceClick}
-            disabled={attendanceNotYetOpen}
-            title={attendanceNotYetOpen ? 'Opens at 6:00 AM' : undefined}
-            className={`rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold ${
-              attendanceNotYetOpen
-                ? 'cursor-not-allowed bg-gray-100 text-gray-400'
-                : 'bg-white text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            Attendance Form
-          </button>
-          {bot && (
-            <button
-              type="button"
-              onClick={() => openChatWith(bot.id, bot.name)}
-              className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-            >
-              <MessageCircle className="h-4 w-4" />
-              Chat with {bot.name}
-            </button>
-          )}
-          {/* New tab: the donate page is public and has no app navigation to come back by. */}
-          <a
-            href="/donate"
-            target="_blank"
-            rel="noopener"
-            className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-          >
-            Buy me a cup of coffee
-            <Coffee className="h-4 w-4 text-accent" />
-          </a>
-        </div>
-      </div>
+      <DashboardHero
+        subtitle="Ready to make today count? Here's how your week is going."
+        actions={
+          <>
+              <button
+                type="button"
+                onClick={() => setSubmitting(true)}
+                className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
+              >
+                + Submit a Task
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowCtsModal(true)}
+                className="animate-heartbeat-soft rounded-lg bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600"
+              >
+                CTS Form
+              </button>
+              <button
+                type="button"
+                onClick={handleAttendanceClick}
+                disabled={attendanceNotYetOpen}
+                title={attendanceNotYetOpen ? 'Opens at 6:00 AM' : undefined}
+                className={`rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold ${
+                  attendanceNotYetOpen
+                    ? 'cursor-not-allowed bg-gray-100 text-gray-400'
+                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                Attendance Form
+              </button>
+              {bot && (
+                <button
+                  type="button"
+                  onClick={() => openChatWith(bot.id, bot.name)}
+                  className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  Chat with {bot.name}
+                </button>
+              )}
+              {/* New tab: the donate page is public and has no app navigation to come back by. */}
+              <a
+                href="/donate"
+                target="_blank"
+                rel="noopener"
+                className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+              >
+                Buy me a cup of coffee
+                <Coffee className="h-4 w-4 text-accent" />
+              </a>
+          </>
+        }
+      />
 
       {showAttendanceEnded && (
         <Modal title="Attendance has ended" onClose={() => setShowAttendanceEnded(false)}>

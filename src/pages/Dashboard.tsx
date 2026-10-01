@@ -10,6 +10,7 @@ import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, yearMonth, toISODate,
 import { useMessaging } from '../lib/messagingContext'
 import type { DashboardSummary } from '../types'
 import { LineChart } from '../components/LineChart'
+import { DashboardHero } from '../components/DashboardHero'
 
 type ExportKind = 'daily' | 'contributors' | 'projects' | 'leads'
 
@@ -155,70 +156,69 @@ export function Dashboard() {
 
   return (
     <div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
-            Dashboard
-          </h1>
-          <p className="text-sm text-gray-500">
-            {formatRange(rangeStart, rangeEnd)} · {submittedCount} contributors submitted {periodPhrase}
-            {disabledCount > 0 && ` · ${disabledCount} disabled`}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <Select
-            value=""
-            onChange={(value) => exportCsv(value as ExportKind)}
-            placeholder="Export CSV..."
-            disabled={!data}
-            options={[
-              { value: 'daily', label: 'Daily report' },
-              { value: 'contributors', label: 'By contributor' },
-              { value: 'projects', label: 'By project' },
-              ...(isAdmin ? [{ value: 'leads', label: 'By team (lead)' }] : []),
-            ]}
-            className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-          />
-          {isAdmin && (
-            <button
-              onClick={() => weeklyReportMutation.mutate()}
-              disabled={weeklyReportMutation.isPending}
-              title="Messages every lead a summary of last week (Tuesday–Monday), and every admin an all-teams overview."
-              className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-            >
-              {weeklyReportMutation.isPending ? 'Sending...' : 'Send weekly report'}
-            </button>
-          )}
-          {noProgressCount > 0 && (
-            <Link
-              to="/leaderboard"
-              className="flex items-center gap-2 rounded-full border border-status-danger-text/30 bg-status-danger-bg px-4 py-2 text-sm font-semibold text-status-danger-text hover:border-status-danger-text"
-            >
-              <span className="h-2 w-2 rounded-full bg-current" />
-              {noProgressCount} with no progress
-            </Link>
-          )}
-          {admin && (
-            <button
-              onClick={() => openChatWith(admin.id, admin.name)}
-              className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-            >
-              <MessageCircle className="h-4 w-4" />
-              Message {admin.name}
-            </button>
-          )}
-          {/* New tab: the donate page is public and has no app navigation to come back by. */}
-          <a
-            href="/donate"
-            target="_blank"
-            rel="noopener"
-            className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-          >
-            Buy me a cup of coffee
-            <Coffee className="h-4 w-4 text-accent" />
-          </a>
-        </div>
-      </div>
+      <DashboardHero
+        subtitle={
+          <>
+                {formatRange(rangeStart, rangeEnd)} · {submittedCount} contributors submitted {periodPhrase}
+                {disabledCount > 0 && ` · ${disabledCount} disabled`}
+          </>
+        }
+        actions={
+          <>
+              <Select
+                value=""
+                onChange={(value) => exportCsv(value as ExportKind)}
+                placeholder="Export CSV..."
+                disabled={!data}
+                options={[
+                  { value: 'daily', label: 'Daily report' },
+                  { value: 'contributors', label: 'By contributor' },
+                  { value: 'projects', label: 'By project' },
+                  ...(isAdmin ? [{ value: 'leads', label: 'By team (lead)' }] : []),
+                ]}
+                className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+              />
+              {isAdmin && (
+                <button
+                  onClick={() => weeklyReportMutation.mutate()}
+                  disabled={weeklyReportMutation.isPending}
+                  title="Messages every lead a summary of last week (Tuesday–Monday), and every admin an all-teams overview."
+                  className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  {weeklyReportMutation.isPending ? 'Sending...' : 'Send weekly report'}
+                </button>
+              )}
+              {noProgressCount > 0 && (
+                <Link
+                  to="/leaderboard"
+                  className="flex items-center gap-2 rounded-full border border-status-danger-text/30 bg-status-danger-bg px-4 py-2 text-sm font-semibold text-status-danger-text hover:border-status-danger-text"
+                >
+                  <span className="h-2 w-2 rounded-full bg-current" />
+                  {noProgressCount} with no progress
+                </Link>
+              )}
+              {admin && (
+                <button
+                  onClick={() => openChatWith(admin.id, admin.name)}
+                  className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  Message {admin.name}
+                </button>
+              )}
+              {/* New tab: the donate page is public and has no app navigation to come back by. */}
+              <a
+                href="/donate"
+                target="_blank"
+                rel="noopener"
+                className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+              >
+                Buy me a cup of coffee
+                <Coffee className="h-4 w-4 text-accent" />
+              </a>
+          </>
+        }
+      />
 
       {weeklyReportMutation.isSuccess && (
         <div className="mb-4 rounded-lg bg-status-success-bg px-4 py-2 text-sm text-status-success-text">
