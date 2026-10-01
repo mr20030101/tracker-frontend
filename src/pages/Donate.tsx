@@ -11,22 +11,27 @@ const GCASH_QR_URL = (import.meta.env.VITE_GCASH_QR_URL as string | undefined)?.
 // Just the PayPal.Me handle, e.g. "greyowls" for paypal.me/greyowls.
 const PAYPAL_ME = (import.meta.env.VITE_PAYPAL_ME as string | undefined)?.trim().replace(/^@/, '') || ''
 
-const CURRENCY = 'PHP'
-const PRESETS = [100, 250, 500, 1000]
-const MAX_AMOUNT = 1_000_000
+type Method = 'gcash' | 'paypal'
+
+// GCash only moves pesos; PayPal donors give in US dollars.
+const CURRENCIES = {
+  gcash: { code: 'PHP', symbol: '₱', presets: [100, 250, 500, 1000], defaultPreset: 250, max: 1_000_000, example: '750' },
+  paypal: { code: 'USD', symbol: '$', presets: [1, 3, 4, 5], defaultPreset: 1, max: 5, example: '2' },
+} as const
+
+const formatters = {
+  gcash: new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', maximumFractionDigits: 2 }),
+  paypal: new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }),
+}
 
 const inputClass = 'w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent'
 const REVEAL = { selector: ':scope > *', step: 60 }
 
-type Method = 'gcash' | 'paypal'
-
-const peso = new Intl.NumberFormat('en-PH', { style: 'currency', currency: CURRENCY, maximumFractionDigits: 2 })
-
-// PayPal.Me takes the amount and currency in the path, e.g. paypal.me/name/500PHP,
+// PayPal.Me takes the amount and currency in the path, e.g. paypal.me/name/10USD,
 // and opens with that amount filled in.
 function paypalLink(amount: number | null): string {
   const base = `https://www.paypal.com/paypalme/${encodeURIComponent(PAYPAL_ME)}`
-  return amount ? `${base}/${amount}${CURRENCY}` : base
+  return amount ? `${base}/${amount}${CURRENCIES.paypal.code}` : base
 }
 
 function CopyButton({ value, label }: { value: string; label: string }) {
@@ -87,7 +92,7 @@ function GcashPanel({ amount }: { amount: number | null }) {
         <li>Open the GCash app and tap {GCASH_QR_URL ? <strong>Scan QR</strong> : <strong>Send Money</strong>}.</li>
         <li>
           {GCASH_QR_URL ? 'Scan the code above' : 'Enter the number above'}
-          {amount ? <> and send <strong>{peso.format(amount)}</strong></> : ' and enter the amount you’d like to give'}.
+          {amount ? <> and send <strong>{formatters.gcash.format(amount)}</strong></> : ' and enter the amount you’d like to give'}.
         </li>
         <li>Keep the reference number from your receipt in case we need to confirm it.</li>
       </ol>
@@ -101,7 +106,7 @@ function PaypalPanel({ amount }: { amount: number | null }) {
   return (
     <div className="rounded-lg border border-gray-200 p-4">
       <p className="text-sm text-gray-600">
-        You'll go to PayPal to finish{amount ? <> with <strong>{peso.format(amount)}</strong> filled in</> : ''}. You can pay with
+        You'll go to PayPal to finish{amount ? <> with <strong>{formatters.paypal.format(amount)}</strong> filled in</> : ''}. You can pay with
         your PayPal balance or a card, and change the amount there if you like.
       </p>
       <a
@@ -138,12 +143,21 @@ function MethodTab({ active, onClick, children }: { active: boolean; onClick: ()
 export function Donate() {
   const ref = useReveal<HTMLDivElement>(REVEAL)
   const [method, setMethod] = useState<Method>(PAYPAL_ME && !GCASH_NUMBER && !GCASH_QR_URL ? 'paypal' : 'gcash')
-  const [preset, setPreset] = useState<number | null>(PRESETS[1])
+  const [preset, setPreset] = useState<number | null>(CURRENCIES[method].defaultPreset)
   const [custom, setCustom] = useState('')
+  const currency = CURRENCIES[method]
+
+  // ₱250 and $250 are very different gifts, so switching method starts the amount over.
+  function chooseMethod(next: Method) {
+    if (next === method) return
+    setMethod(next)
+    setPreset(CURRENCIES[next].defaultPreset)
+    setCustom('')
+  }
 
   const customValue = custom.trim() === '' ? null : Number(custom)
-  const customInvalid = customValue !== null && (!Number.isFinite(customValue) || customValue <= 0 || customValue > MAX_AMOUNT)
-  // Rounded to centavos so the PayPal link never carries a long float.
+  const customInvalid = customValue !== null && (!Number.isFinite(customValue) || customValue <= 0 || customValue > currency.max)
+  // Rounded to two decimals so the PayPal link never carries a long float.
   const amount = customValue !== null ? (customInvalid ? null : Math.round(customValue * 100) / 100) : preset
 
   return (
@@ -162,10 +176,22 @@ export function Donate() {
             Your donation helps keep the tracker running and the team growing. Every amount helps. Thank you!
           </p>
 
+          <div className="mt-6">
+            <p className="mb-2 text-sm font-medium text-gray-700">Pay with</p>
+            <div role="tablist" className="flex gap-1 rounded-lg bg-gray-100 p-1">
+              <MethodTab active={method === 'gcash'} onClick={() => chooseMethod('gcash')}>
+                GCash <span className="font-normal text-gray-400">(₱ PHP)</span>
+              </MethodTab>
+              <MethodTab active={method === 'paypal'} onClick={() => chooseMethod('paypal')}>
+                PayPal <span className="font-normal text-gray-400">($ USD)</span>
+              </MethodTab>
+            </div>
+          </div>
+
           <fieldset className="mt-6">
             <legend className="mb-2 block text-sm font-medium text-gray-700">Amount</legend>
             <div className="grid grid-cols-4 gap-2">
-              {PRESETS.map((value) => {
+              {currency.presets.map((value) => {
                 const selected = customValue === null && preset === value
                 return (
                   <button
@@ -180,41 +206,32 @@ export function Donate() {
                       selected ? 'border-accent bg-accent-bg text-accent-foreground' : 'border-gray-200 text-gray-700 hover:bg-gray-50'
                     }`}
                   >
-                    ₱{value.toLocaleString('en-PH')}
+                    {currency.symbol}{value.toLocaleString('en-US')}
                   </button>
                 )
               })}
             </div>
             <label htmlFor="custom_amount" className="mt-3 mb-1 block text-xs text-gray-400">
-              Or enter your own amount (₱)
+              Or enter your own amount ({currency.symbol} {currency.code})
             </label>
             <input
               id="custom_amount"
               type="number"
               inputMode="decimal"
               min={1}
-              max={MAX_AMOUNT}
+              max={currency.max}
               step="any"
-              placeholder="e.g. 750"
+              placeholder={`e.g. ${currency.example}`}
               value={custom}
               onChange={(e) => setCustom(e.target.value)}
               aria-invalid={customInvalid}
               className={inputClass}
             />
-            {customInvalid && <p className="mt-1 text-xs text-status-danger-text">Please enter an amount between ₱1 and ₱1,000,000.</p>}
+            {customInvalid && <p className="mt-1 text-xs text-status-danger-text">Please enter an amount between {formatters[method].format(1)} and {formatters[method].format(currency.max)}.</p>}
           </fieldset>
 
-          <div className="mt-6">
-            <p className="mb-2 text-sm font-medium text-gray-700">Pay with</p>
-            <div role="tablist" className="mb-4 flex gap-1 rounded-lg bg-gray-100 p-1">
-              <MethodTab active={method === 'gcash'} onClick={() => setMethod('gcash')}>
-                GCash
-              </MethodTab>
-              <MethodTab active={method === 'paypal'} onClick={() => setMethod('paypal')}>
-                PayPal
-              </MethodTab>
-            </div>
-            <div role="tabpanel">{method === 'gcash' ? <GcashPanel amount={amount} /> : <PaypalPanel amount={amount} />}</div>
+          <div role="tabpanel" className="mt-6">
+            {method === 'gcash' ? <GcashPanel amount={amount} /> : <PaypalPanel amount={amount} />}
           </div>
         </div>
 
