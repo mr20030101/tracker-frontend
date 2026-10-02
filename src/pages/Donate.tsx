@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { Check, Copy, Download, ExternalLink, Heart } from 'lucide-react'
 import { useReveal } from '../lib/motion'
 import { Logo } from '../components/Logo'
+import { AppFooter } from '../components/AppFooter'
 
 // Payment details come from the environment so they can change without a code edit
 // (see .env.example). A method with nothing set shows as unavailable rather than broken.
@@ -261,6 +262,7 @@ export function Donate() {
           Payments are handled by GCash and PayPal. We never see your card or account details.
         </p>
       </div>
+      <AppFooter className="mt-6" />
     </div>
   )
 }

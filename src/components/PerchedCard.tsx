@@ -2,6 +2,7 @@ import type { ReactNode, Ref } from 'react'
 import { useNightSky } from '../lib/theme'
 import { LoginOwl, type OwlMood } from './LoginOwl'
 import { SkyBackdrop } from './SkyBackdrop'
+import { AppFooter } from './AppFooter'
 
 // The playful full-page layout shared by the login page and the application form: the day/night
 // sky, and a centred card with the owl mascot perched on its top edge (the bottom of the owl
@@ -47,6 +48,7 @@ export function PerchedCard({
             {children}
           </div>
         </div>
+        <AppFooter className="mt-6" />
       </div>
     </div>
   )

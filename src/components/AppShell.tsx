@@ -35,6 +35,7 @@ import { GlobalSearch } from './GlobalSearch'
 import { contributorPath } from '../lib/urlRef'
 import { fetchPendingRequestCount } from '../lib/taskRequests'
 import { fetchUnreadAnnouncementCount } from '../lib/announcements'
+import { AppFooter } from './AppFooter'
 
 const MANAGER_ROLES = ['admin', 'lead']
 
@@ -351,6 +352,9 @@ export function AppShell({ children }: { children: ReactNode }) {
               className={`flex-1 overflow-y-auto px-3 py-4 sm:px-6 sm:py-6 ${user && !onMessages ? 'lg:pr-20' : ''}`}
             >
               {children}
+              {/* Under the page's content, not pinned to the window: it scrolls into view at the
+                  end. Left off Messages, which fills the screen with the conversation. */}
+              {!onMessages && <AppFooter className="mt-10 pb-2" />}
             </main>
           </div>
         </div>
