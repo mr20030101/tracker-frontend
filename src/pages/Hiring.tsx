@@ -25,12 +25,15 @@ import {
   setAcceptingApplications,
   setOnboarded,
   setOnboardedBulk,
+  resendAccountEmail,
   saveApplicationNotes,
   duplicateRemotasksIds,
   hasDuplicateRemotasksId,
   type BootcampDetails,
 } from '../lib/hiring'
 import { HiringBoard } from '../components/HiringBoard'
+import { EditApplicantModal } from '../components/EditApplicantModal'
+import { confirmDialog } from '../lib/dialog'
 import type { HiringApplication, HiringStatus, User } from '../types'
 import { ActionsMenu } from '../components/ActionsMenu'
 import { DataTable } from '../components/DataTable'
@@ -44,7 +47,8 @@ type StatusFilter = HiringStatus | 'all'
 type Notice = { tone: 'success' | 'error'; text: string }
 // One applicant (a row's own Accept/Deny) or several at once (bulk, from "select all").
 type Review = { applications: HiringApplication[]; decision: 'accept' | 'deny' }
-type Credentials = { name: string; email: string; password: string; emailedTo?: string; emailError?: string }
+// `resent`: a new temporary password for an existing account (Resend account email), not a new account.
+type Credentials = { name: string; email: string; password: string; emailedTo?: string; emailError?: string; resent?: boolean }
 
 const STATUS_FILTERS: StatusFilter[] = ['pending', 'accepted', 'denied', 'all']
 const STATUS_LABELS: Record<StatusFilter, string> = { pending: 'Pending', accepted: 'Accepted', denied: 'Denied', all: 'All' }
@@ -204,6 +208,8 @@ export function Hiring() {
   const [search, setSearch] = useState('')
   const [review, setReview] = useState<Review | null>(null)
   const [details, setDetails] = useState<HiringApplication | null>(null)
+  // Correcting an applicant's details (opened from their details).
+  const [editingApplicant, setEditingApplicant] = useState<HiringApplication | null>(null)
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
   const [emailing, setEmailing] = useState<HiringApplication[] | null>(null)
   // The bootcamp the email is about. Remembered on this device after each send.
@@ -321,6 +327,31 @@ export function Hiring() {
     },
     onError: (mutationError: Error) => setError(mutationError.message || 'Could not create this account.'),
   })
+
+  // The account email again, with a new temporary password (the first went astray).
+  const resendAccountMutation = useMutation({
+    mutationFn: (application: HiringApplication) => resendAccountEmail(application.id),
+    onSuccess: (result, application) => {
+      setError(null)
+      setCredentials({
+        name: application.full_name,
+        email: result.email,
+        password: result.temporary_password,
+        emailedTo: result.emailed_to,
+        emailError: result.email_error,
+        resent: true,
+      })
+    },
+    onError: (mutationError: Error) => setNotice({ tone: 'error', text: mutationError.message || 'Could not resend the account email.' }),
+  })
+
+  async function confirmResendAccountEmail(application: HiringApplication) {
+    const ok = await confirmDialog(
+      `This gives ${application.full_name} a new temporary password and emails it to ${application.active_email}. The previous one stops working.`,
+      { title: 'Resend account email?', confirmLabel: 'Resend' },
+    )
+    if (ok) resendAccountMutation.mutate(application)
+  }
 
   // A simple toggle, not a confirmed step like accept/deny: it just flips onboarded_at.
   const onboardMutation = useMutation({
@@ -1063,6 +1094,35 @@ export function Hiring() {
                 >
                   Close
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setEditingApplicant(details)}
+                  className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Edit details
+                </button>
+                {/* Both go to the active email as it is now, so a corrected address gets them. */}
+                {details.status === 'accepted' && (
+                  <button
+                    type="button"
+                    onClick={() => setEmailing([details])}
+                    title={`Emails the bootcamp details to ${details.active_email}`}
+                    className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    {details.emailed_at ? 'Resend bootcamp email' : 'Send bootcamp email'}
+                  </button>
+                )}
+                {details.status === 'accepted' && details.user_id && (
+                  <button
+                    type="button"
+                    onClick={() => confirmResendAccountEmail(details)}
+                    disabled={resendAccountMutation.isPending}
+                    title={`Emails their login and a new temporary password to ${details.active_email}`}
+                    className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    {resendAccountMutation.isPending ? 'Resending...' : 'Resend account email'}
+                  </button>
+                )}
                 {details.status === 'accepted' && !details.user_id && (
                   <button
                     type="button"
@@ -1123,6 +1183,19 @@ export function Hiring() {
             </div>
           </div>
         </Modal>
+      )}
+
+      {editingApplicant && (
+        <EditApplicantModal
+          application={editingApplicant}
+          onClose={() => setEditingApplicant(null)}
+          onSaved={(updated) => {
+            setEditingApplicant(null)
+            setDetails((current) => (current && current.id === updated.id ? updated : current))
+            queryClient.invalidateQueries({ queryKey: ['hiring-applications'] })
+            setNotice({ tone: 'success', text: `${updated.full_name}'s details were updated.` })
+          }}
+        />
       )}
 
       {emailing && (
@@ -1360,10 +1433,18 @@ export function Hiring() {
         })()}
 
       {credentials && (
-        <Modal title="Account created" onClose={() => setCredentials(null)}>
+        <Modal title={credentials.resent ? 'New temporary password' : 'Account created'} onClose={() => setCredentials(null)}>
           <div className="flex flex-col gap-3">
             <p className="text-sm text-gray-600">
-              <span className="font-medium text-gray-900">{credentials.name}</span>'s account has been created and added to the team.{' '}
+              {credentials.resent ? (
+                <>
+                  <span className="font-medium text-gray-900">{credentials.name}</span> has a new temporary password; the old one no longer works.{' '}
+                </>
+              ) : (
+                <>
+                  <span className="font-medium text-gray-900">{credentials.name}</span>'s account has been created and added to the team.{' '}
+                </>
+              )}
               {credentials.emailedTo
                 ? "They'll choose their own password when they first sign in."
                 : "Send them these details — they'll choose their own password when they first sign in."}

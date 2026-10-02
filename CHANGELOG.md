@@ -14,6 +14,11 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Added
+
+- **Edit applicant details**: leads and admins can correct an applicant's name, emails, Remotasks ID, Facebook link and computer answers from **Edit details** in their details. Each change is recorded in the Activity Log.
+- **Resend emails to an applicant**: from their details, **Resend bootcamp email**, and for someone whose account is created but who hasn't signed in yet, **Resend account email** (with a new temporary password). Both go to their active email as it is now, so a corrected address gets them.
+
 ### Fixed
 
 - On desktop, the menu button now shrinks the sidebar to a row of icons instead of hiding it completely. Hover an icon for its name; click the menu button again to expand it. Phones, tablets and Messages still use the slide-out menu.

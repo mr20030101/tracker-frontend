@@ -211,6 +211,60 @@ Deno.serve(async (request) => {
         return Response.json(result, { headers: corsHeaders })
     }
 
+    // Sends a hired applicant their account email again, with a new temporary password: the first
+    // one went to a mistyped address, or never arrived. The original password was never stored, so
+    // it can't be re-sent as it was. Refused once they've signed in and chosen their own password —
+    // replacing that would lock them out, and they've plainly received their details already.
+    if (body.action === 'resend-account-email') {
+        if (!body.id) return errorResponse('An application id is required.', 400)
+        const { data: application } = await admin
+            .from('hiring_applications')
+            .select('id, lead_id, full_name, active_email, status, user_id')
+            .eq('id', body.id)
+            .maybeSingle()
+        if (!application) return errorResponse('Application not found.', 404)
+        if (profile.role !== 'admin' && application.lead_id !== caller.user.id) {
+            return errorResponse('Forbidden: this application belongs to another lead.', 403)
+        }
+        if (application.status !== 'accepted' || !application.user_id) {
+            return errorResponse("This applicant doesn't have an account yet. Create it first.", 409)
+        }
+
+        const { data: account } = await admin
+            .from('profiles')
+            .select('id, email, must_change_password')
+            .eq('id', application.user_id)
+            .maybeSingle()
+        if (!account) return errorResponse('Their account no longer exists.', 404)
+        if (!account.must_change_password) {
+            return errorResponse("They've already signed in and set their own password. Use a password reset from the Users page if they're locked out.", 409)
+        }
+
+        const password = generateTemporaryPassword()
+        const { error: passwordError } = await admin.auth.admin.updateUserById(account.id, { password })
+        if (passwordError) return errorResponse(`Could not set a new temporary password: ${passwordError.message}`, 400)
+
+        const { data: leadProfile } = await admin.from('profiles').select('name, email').eq('id', application.lead_id).maybeSingle()
+        // To the active email as it is now (it may just have been corrected); the login itself is
+        // the account's email, which editing the application doesn't change.
+        const emailStatus = await emailAccount(request, {
+            kind: 'activation',
+            to: application.active_email,
+            name: application.full_name,
+            loginEmail: account.email,
+            password,
+            from: { name: leadProfile?.name ?? profile.name, email: leadProfile?.email ?? profile.email },
+        })
+        await audit('account_email_resent', account.id, `Re-sent ${application.full_name}'s account email to ${application.active_email} with a new temporary password`, {
+            application_id: application.id,
+            emailed: Boolean(emailStatus.emailed_to),
+        })
+        return Response.json(
+            { id: application.id, user_id: account.id, email: account.email, temporary_password: password, ...emailStatus },
+            { headers: corsHeaders },
+        )
+    }
+
     // Marks an accepted applicant onboarded (after the bootcamp), or reverses that. Separate from
     // creating their account. A lead may only mark their own applicants; an admin anyone's.
     if (body.action === 'set-onboarded') {
