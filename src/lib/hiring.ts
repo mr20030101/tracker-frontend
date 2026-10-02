@@ -269,6 +269,17 @@ export async function createAccount(id: number): Promise<AccountResult> {
   return data as AccountResult
 }
 
+/**
+ * Emails a hired applicant their account details again, to their active email as it is now, with a
+ * new temporary password (the first one was never stored). Refused once they've signed in and set
+ * their own password.
+ */
+export async function resendAccountEmail(id: number): Promise<AccountResult> {
+  const { data, error } = await supabase.functions.invoke('manage-user', { body: { action: 'resend-account-email', id } })
+  if (error) throw await functionErrorMessage(error)
+  return data as AccountResult
+}
+
 export interface OnboardResult {
   id: number
   onboarded_at: string | null

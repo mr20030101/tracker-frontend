@@ -14,6 +14,7 @@ export const AUDIT_CATEGORIES: { value: string; label: string; actions: string[]
       'account_enabled',
       'account_disabled',
       'password_reset',
+      'account_email_resent',
       'role_changed',
       'lead_changed',
       'profile_renamed',
