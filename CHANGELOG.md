@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 2.8.0 — 2026-10-02
+
 ### Changed
 
 - On public pages (sign-in, the application form and donations) the version number is shown as plain text: the release notes open only for people signed in to the Tracker.
