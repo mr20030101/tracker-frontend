@@ -14,6 +14,10 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Added
+
+- **Overdue request reminders**: a request still pending after 4 hours is marked **Overdue**. Leads see it in a red Requests badge, a banner on the Requests page and a pill on the dashboard, and every pending request shows how long it has been waiting.
+
 ## 2.4.0 — 2026-10-02
 
 ### Removed

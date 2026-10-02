@@ -11,12 +11,16 @@ import {
   reviewTaskRequestsBulk,
   deleteTaskRequest,
   type TaskRequestWithContext,
+  OVERDUE_HOURS,
+  isOverdue,
+  waitingFor,
 } from '../lib/taskRequests'
 import { BadVideoReportModal } from '../components/BadVideoReportModal'
 import { Detail } from '../components/Detail'
 import { Modal } from '../components/Modal'
 import type { RequestStatus, RequestType } from '../types'
 import { contributorPath } from '../lib/urlRef'
+import { useNow } from '../lib/useNow'
 import { confirmDialog } from '../lib/dialog'
 
 const MANAGER_ROLES = ['admin', 'lead']
@@ -247,6 +251,9 @@ export function Requests() {
   }
 
   const countOf = (status: StatusFilter) => (status === 'all' ? requests.length : requests.filter((r) => r.status === status).length)
+  // Re-read every minute, so a request crosses into Overdue without a reload.
+  const now = useNow(60_000)
+  const overdueCount = requests.filter((r) => isOverdue(r, now)).length
   const rows = requests.filter((r) => (statusFilter === 'all' || r.status === statusFilter) && (typeFilter === 'all' || r.type === typeFilter))
   const selected = rows.filter((r) => selectedIds.has(r.id))
   const allVisibleSelected = rows.length > 0 && rows.every((r) => selectedIds.has(r.id))
@@ -290,6 +297,25 @@ export function Requests() {
           <button onClick={() => setNotice(null)} className="opacity-60 hover:opacity-100" aria-label="Dismiss">
             ✕
           </button>
+        </div>
+      )}
+
+      {isManager && overdueCount > 0 && (
+        <div
+          role="alert"
+          className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-status-danger-text/30 bg-status-danger-bg px-4 py-2.5 text-sm text-status-danger-text"
+        >
+          <span>
+            <strong>
+              {overdueCount} request{overdueCount === 1 ? ' has' : 's have'} been waiting over {OVERDUE_HOURS} hours.
+            </strong>{' '}
+            They're marked Overdue below.
+          </span>
+          {statusFilter !== 'pending' && (
+            <button onClick={() => setStatusFilter('pending')} className="font-semibold underline">
+              Show pending
+            </button>
+          )}
         </div>
       )}
 
@@ -437,7 +463,14 @@ export function Requests() {
                 <td className="px-5 py-3">
                   <span className={`${pillClass} ${TYPE_STYLES[request.type]}`}>{TYPE_LABELS[request.type]}</span>
                 </td>
-                <td className="px-5 py-3 text-gray-500">{new Date(request.requested_at).toLocaleString()}</td>
+                <td className="px-5 py-3 text-gray-500">
+                  {new Date(request.requested_at).toLocaleString()}
+                  {request.status === 'pending' && (
+                    <div className={`mt-0.5 text-xs ${isOverdue(request, now) ? 'font-semibold text-status-danger-text' : 'text-gray-400'}`}>
+                      {isOverdue(request, now) ? 'Overdue · ' : ''}waiting {waitingFor(request.requested_at, now)}
+                    </div>
+                  )}
+                </td>
                 <td className="px-5 py-3">
                   <span className={`${pillClass} ${STATUS_STYLES[request.status]}`}>{STATUS_LABELS[request.status]}</span>
                 </td>

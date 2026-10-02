@@ -51,6 +51,35 @@ export async function fetchPendingRequestCount(): Promise<number> {
   return count ?? 0
 }
 
+// A request still pending this long is overdue: leads are reminded (a red Requests badge, a
+// banner on the Requests page and a pill on the dashboard) until someone decides it.
+export const OVERDUE_HOURS = 4
+
+export function isOverdue(request: { status: string; requested_at: string }, now = Date.now()): boolean {
+  return request.status === 'pending' && now - new Date(request.requested_at).getTime() >= OVERDUE_HOURS * 3_600_000
+}
+
+/** "45 min", "5 h", "2 days" — how long a request has been waiting. */
+export function waitingFor(requestedAt: string, now = Date.now()): string {
+  const minutes = Math.max(0, Math.floor((now - new Date(requestedAt).getTime()) / 60_000))
+  if (minutes < 60) return `${minutes} min`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 48) return `${hours} h`
+  return `${Math.floor(hours / 24)} days`
+}
+
+/** Pending requests older than OVERDUE_HOURS, out of the ones the caller can see. */
+export async function fetchOverdueRequestCount(): Promise<number> {
+  const cutoff = new Date(Date.now() - OVERDUE_HOURS * 3_600_000).toISOString()
+  const { count, error } = await supabase
+    .from('task_requests')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'pending')
+    .lte('requested_at', cutoff)
+  if (error) throw error
+  return count ?? 0
+}
+
 /** An extension or reclaim request — both are self-service, with just an optional reason. */
 export async function requestExtension(
   submissionId: number,
