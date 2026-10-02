@@ -17,6 +17,7 @@ each stretch of work by the date it shipped.
 ### Fixed
 
 - On desktop, the menu button now shrinks the sidebar to a row of icons instead of hiding it completely. Hover an icon for its name; click the menu button again to expand it. Phones, tablets and Messages still use the slide-out menu.
+- The sidebar no longer shows a scrollbar beside the links; it still scrolls when they don't all fit.
 
 ## 2.6.0 — 2026-10-02
 

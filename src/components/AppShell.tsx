@@ -290,7 +290,10 @@ export function AppShell({ children }: { children: ReactNode }) {
               </div>
             )}
 
-              <nav className={`flex-1 overflow-y-auto py-2 ${rail ? 'px-2' : 'px-3'}`}>
+              {/* Still scrolls when the links don't fit, just without a scrollbar alongside them. */}
+              <nav
+                className={`flex-1 overflow-y-auto py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${rail ? 'px-2' : 'px-3'}`}
+              >
                 {sections.map((section) => (
                   <div key={section.label} className={rail ? 'mb-2 border-b border-gray-100 pb-2 last:border-0' : 'mb-4'}>
                     {/* On the rail a thin divider stands in for the section's name. */}
