@@ -8,6 +8,7 @@ import { AuthProvider } from './lib/auth.tsx'
 import { ThemeProvider } from './lib/theme.tsx'
 import { SpeedInsightsTracker } from './components/SpeedInsightsTracker.tsx'
 import { DialogHost } from './lib/dialog.tsx'
+import { UpdateBanner } from './components/UpdateBanner.tsx'
 import './lib/sound.ts'
 import './lib/consoleWarning.ts'
 
@@ -24,6 +25,7 @@ createRoot(document.getElementById('root')!).render(
           <SpeedInsightsTracker />
         </BrowserRouter>
         <DialogHost />
+        <UpdateBanner />
       </QueryClientProvider>
     </ThemeProvider>
   </StrictMode>,
