@@ -14,6 +14,12 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 2.4.0 — 2026-10-02
+
+### Removed
+
+- The **Most viewed profiles** ("Most famous") table on the Leaderboard. Each profile still shows how many times it has been viewed.
+
 ## 2.3.0 — 2026-10-02
 
 ### Added
