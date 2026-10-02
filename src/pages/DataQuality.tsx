@@ -9,6 +9,7 @@ import { DataTable } from '../components/DataTable'
 import type { TaskSubmission } from '../types'
 import { contributorPath } from '../lib/urlRef'
 import { confirmDialog } from '../lib/dialog'
+import { fetchAllPages } from '../lib/fetchAll'
 
 const HIGH_VOLUME_THRESHOLD = 20
 
@@ -28,13 +29,16 @@ interface HighVolumeRow {
   count: number
 }
 
+// Every submission, paged: there are more than the 1,000 rows one request returns (see fetchAll).
 async function fetchAll(): Promise<Row[]> {
-  const { data, error } = await supabase
-    .from('task_submissions')
-    .select('id, task_id, cb_email, project_id, date, status, stage')
-    .order('date', { ascending: false })
-  if (error) throw error
-  return (data ?? []) as Row[]
+  return fetchAllPages<Row>((from, to) =>
+    supabase
+      .from('task_submissions')
+      .select('id, task_id, cb_email, project_id, date, status, stage')
+      .order('date', { ascending: false })
+      .order('id')
+      .range(from, to),
+  )
 }
 
 function Section({

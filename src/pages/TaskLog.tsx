@@ -17,6 +17,7 @@ import { ContributorWorkPanel } from '../components/ContributorWorkPanel'
 import { downloadCsv } from '../lib/csv'
 import { contributorPath } from '../lib/urlRef'
 import { confirmDialog, alertDialog } from '../lib/dialog'
+import { fetchAllPages } from '../lib/fetchAll'
 
 const MANAGER_ROLES = ['admin', 'lead']
 
@@ -111,19 +112,24 @@ function ManagerTaskLog() {
   async function handleExport() {
     setExporting(true)
     try {
-      let query = supabase
-        .from('task_submissions')
-        .select('date, cb_email, task_id, project_id, stage, status, notes, submitted_at, snipboard_url')
-        .order(sort.key, { ascending: sort.dir === 'asc' })
-      if (stage) query = query.eq('stage', stage)
-      if (search) {
-        const term = search.replace(/[%,]/g, '')
-        query = query.or(`cb_email.ilike.%${term}%,task_id.ilike.%${term}%`)
+      // A fresh query per page, fetched in pages: the whole log is more than the 1,000 rows one
+      // request returns, so a plain query exported only part of it (see fetchAll).
+      const pageOf = (from: number, to: number) => {
+        let query = supabase
+          .from('task_submissions')
+          .select('date, cb_email, task_id, project_id, stage, status, notes, submitted_at, snipboard_url')
+          .order(sort.key, { ascending: sort.dir === 'asc' })
+          .order('id')
+        if (stage) query = query.eq('stage', stage)
+        if (search) {
+          const term = search.replace(/[%,]/g, '')
+          query = query.or(`cb_email.ilike.%${term}%,task_id.ilike.%${term}%`)
+        }
+        if (dateFrom) query = query.gte('date', dateFrom)
+        if (dateTo) query = query.lte('date', dateTo)
+        return query.range(from, to)
       }
-      if (dateFrom) query = query.gte('date', dateFrom)
-      if (dateTo) query = query.lte('date', dateTo)
-      const { data: rows, error } = await query
-      if (error) throw error
+      const rows = await fetchAllPages(pageOf)
 
       const projectById = new Map((projects ?? []).map((p) => [p.id, p.name]))
       downloadCsv(
