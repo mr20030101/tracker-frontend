@@ -146,6 +146,49 @@ export async function fetchApplications(): Promise<HiringApplication[]> {
   return (data ?? []) as HiringApplication[]
 }
 
+/** Saves the lead's notes on an applicant; blank clears them. Only that lead or an admin may. */
+export async function saveApplicationNotes(id: number, notes: string): Promise<void> {
+  const { error } = await supabase.rpc('set_hiring_application_notes', { p_id: id, p_notes: notes })
+  if (error) throw error
+}
+
+// The Hiring board's columns, worked out from what already happened to each application rather
+// than a stage stored on it, so the board can never disagree with the list.
+export type PipelineStage = 'applied' | 'accepted' | 'account' | 'onboarded' | 'denied'
+
+export const PIPELINE_STAGES: { stage: PipelineStage; label: string; hint: string }[] = [
+  { stage: 'applied', label: 'Applied', hint: 'Waiting for a decision' },
+  { stage: 'accepted', label: 'Accepted', hint: 'No account yet' },
+  { stage: 'account', label: 'Account created', hint: 'Not onboarded yet' },
+  { stage: 'onboarded', label: 'Onboarded', hint: 'Finished the bootcamp' },
+  { stage: 'denied', label: 'Denied', hint: '' },
+]
+
+export function pipelineStage(application: HiringApplication): PipelineStage {
+  if (application.status === 'pending') return 'applied'
+  if (application.status === 'denied') return 'denied'
+  if (application.onboarded_at) return 'onboarded'
+  return application.user_id ? 'account' : 'accepted'
+}
+
+/**
+ * Remotasks IDs used on more than one application — the same person applying twice (or to two
+ * leads), or someone entering another person's ID. Compared case- and space-insensitively.
+ */
+export function duplicateRemotasksIds(applications: HiringApplication[]): Set<string> {
+  const seen = new Map<string, number>()
+  for (const application of applications) {
+    const id = application.remotasks_id?.trim().toLowerCase()
+    if (id) seen.set(id, (seen.get(id) ?? 0) + 1)
+  }
+  return new Set([...seen].filter(([, count]) => count > 1).map(([id]) => id))
+}
+
+export function hasDuplicateRemotasksId(application: HiringApplication, duplicates: Set<string>): boolean {
+  const id = application.remotasks_id?.trim().toLowerCase()
+  return Boolean(id && duplicates.has(id))
+}
+
 export async function reviewApplication(id: number, decision: 'accept' | 'deny'): Promise<ReviewResult> {
   const { data, error } = await supabase.functions.invoke('manage-user', {
     body: { action: 'review-application', id, decision },

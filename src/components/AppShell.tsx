@@ -33,7 +33,7 @@ import { ThemeToggle } from './ThemeToggle'
 import { OnlineUsers } from './OnlineUsers'
 import { GlobalSearch } from './GlobalSearch'
 import { contributorPath } from '../lib/urlRef'
-import { fetchPendingRequestCount } from '../lib/taskRequests'
+import { OVERDUE_HOURS, fetchOverdueRequestCount, fetchPendingRequestCount } from '../lib/taskRequests'
 import { fetchUnreadAnnouncementCount } from '../lib/announcements'
 import { AppFooter } from './AppFooter'
 
@@ -43,8 +43,13 @@ function navSections(
   isManager: boolean,
   isAdmin: boolean,
   pendingRequests: number,
+  overdueRequests: number,
   unreadAnnouncements: number,
-): { label: string; items: { to: string; label: string; icon: LucideIcon; badge?: number }[] }[] {
+): {
+  label: string
+  // `urgent`: the badge turns red with `badgeTitle` explaining why (overdue requests).
+  items: { to: string; label: string; icon: LucideIcon; badge?: number; urgent?: boolean; badgeTitle?: string }[]
+}[] {
   return [
     {
       label: 'Overview',
@@ -58,7 +63,17 @@ function navSections(
       items: isManager
         ? [
           { to: '/task-log', label: 'Task Log', icon: ClipboardList },
-          { to: '/requests', label: 'Requests', icon: Hourglass, badge: pendingRequests },
+          {
+            to: '/requests',
+            label: 'Requests',
+            icon: Hourglass,
+            badge: pendingRequests,
+            urgent: overdueRequests > 0,
+            badgeTitle:
+              overdueRequests > 0
+                ? `${overdueRequests} waiting over ${OVERDUE_HOURS} hours`
+                : `${pendingRequests} pending`,
+          },
           { to: '/data-quality', label: 'Data Quality', icon: ShieldCheck },
           ...(isAdmin ? [{ to: '/activity-log', label: 'Activity Log', icon: History }] : []),
         ]
@@ -161,6 +176,13 @@ export function AppShell({ children }: { children: ReactNode }) {
     enabled: isManager,
     refetchInterval: 30_000,
   })
+  // Of those, the ones waiting past OVERDUE_HOURS — what turns the badge red as a reminder.
+  const { data: overdueRequests = 0 } = useQuery({
+    queryKey: ['task-requests', 'overdue-count'],
+    queryFn: fetchOverdueRequestCount,
+    enabled: isManager,
+    refetchInterval: 60_000,
+  })
 
   // New announcements addressed to you. Cleared when the Announcements page marks them seen (it
   // invalidates this key), otherwise checked every minute.
@@ -183,7 +205,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [location.pathname])
 
   const ownProfilePath = user ? contributorPath(user.email) : '/'
-  const sections = navSections(isManager, isAdmin, pendingRequests, unreadAnnouncements)
+  const sections = navSections(isManager, isAdmin, pendingRequests, overdueRequests, unreadAnnouncements)
   const searchPages = [
     ...sections.flatMap((section) => section.items.map(({ to, label, icon }) => ({ to, label, icon }))),
     { to: ownProfilePath, label: 'My profile', icon: UserRound },
@@ -271,9 +293,19 @@ export function AppShell({ children }: { children: ReactNode }) {
                         <item.icon className="h-4 w-4 shrink-0" strokeWidth={2} />
                         {item.label}
                         {item.badge ? (
-                          <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-status-danger-text px-1.5 text-[11px] font-bold text-white">
+                          <span
+                            title={item.badgeTitle}
+                            // Requests: accent while merely pending, red once any are overdue.
+                            className={`ml-auto flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-bold ${
+                              item.to === '/requests' && !item.urgent
+                                ? 'bg-accent text-accent-foreground'
+                                : 'bg-status-danger-text text-white'
+                            }`}
+                          >
                             {item.badge > 99 ? '99+' : item.badge}
-                            <span className="sr-only">{item.to === '/requests' ? ' pending' : ' new'}</span>
+                            <span className="sr-only">
+                              {item.to === '/requests' ? ` pending${item.urgent ? `, ${item.badgeTitle}` : ''}` : ' new'}
+                            </span>
                           </span>
                         ) : null}
                       </NavLink>

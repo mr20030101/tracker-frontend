@@ -282,6 +282,8 @@ export interface HiringApplication {
   onboarded_at: string | null
   // The login created for this applicant. Accepting doesn't create it; a separate step does, so it is null until then.
   user_id: string | null
+  // The lead's own notes on the applicant; never shown to them. Null when there are none.
+  notes: string | null
   created_at: string
 }
 

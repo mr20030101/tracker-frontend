@@ -11,6 +11,7 @@ import { useMessaging } from '../lib/messagingContext'
 import type { DashboardSummary } from '../types'
 import { LineChart } from '../components/LineChart'
 import { DashboardHero } from '../components/DashboardHero'
+import { OVERDUE_HOURS, fetchOverdueRequestCount } from '../lib/taskRequests'
 
 type ExportKind = 'daily' | 'contributors' | 'projects' | 'leads'
 
@@ -69,6 +70,12 @@ export function Dashboard() {
     return new Date(`${rangeStart}T00:00:00`).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
   }
 
+  // Same key as the sidebar's count, so both read one request.
+  const { data: overdueRequests = 0 } = useQuery({
+    queryKey: ['task-requests', 'overdue-count'],
+    queryFn: fetchOverdueRequestCount,
+    refetchInterval: 60_000,
+  })
   const { data, isLoading } = useQuery({
     queryKey: ['dashboard-summary', rangeStart, rangeEnd, viewMode],
     queryFn: async () =>
@@ -195,6 +202,16 @@ export function Dashboard() {
                 >
                   <span className="h-2 w-2 rounded-full bg-current" />
                   {noProgressCount} with no progress
+                </Link>
+              )}
+              {overdueRequests > 0 && (
+                <Link
+                  to="/requests"
+                  title={`Pending for more than ${OVERDUE_HOURS} hours`}
+                  className="flex items-center gap-2 rounded-full border border-status-danger-text/30 bg-status-danger-bg px-4 py-2 text-sm font-semibold text-status-danger-text hover:border-status-danger-text"
+                >
+                  <span className="h-2 w-2 rounded-full bg-current" />
+                  {overdueRequests} overdue request{overdueRequests === 1 ? '' : 's'}
                 </Link>
               )}
               {admin && (
