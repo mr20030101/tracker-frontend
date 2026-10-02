@@ -14,6 +14,10 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Added
+## 2.5.1 — 2026-10-02
+
+- When a new version of the Tracker is released, a tab that's already open says so, with a **Reload** button to switch to it.
 ## 2.5.0 — 2026-10-02
 
 ### Added

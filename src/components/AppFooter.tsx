@@ -1,19 +1,13 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import changelog from '../../CHANGELOG.md?raw'
-import { version } from '../../package.json'
+import { APP_VERSION } from '../lib/version'
 import { boldSegments, parseChangelog } from '../lib/changelog'
 import { Modal } from './Modal'
 
 // The footer under every page's content — signed in or not — stating the build's version.
 // Clicking the version opens "What's new": CHANGELOG.md, bundled at build time, so the notes
 // always match the version that opened them.
-
-// Imported from package.json, the one place it's set (bumped with `npm run release`). An
-// import rather than a build-time constant, so a running dev server picks up a new version
-// straight away instead of showing the old one until it's restarted. Only `version` is
-// bundled, not the rest of package.json.
-export const APP_VERSION = version
 
 const RELEASES = parseChangelog(changelog)
 
