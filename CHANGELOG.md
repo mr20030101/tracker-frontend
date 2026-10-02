@@ -18,6 +18,7 @@ each stretch of work by the date it shipped.
 
 - When a new version of the Tracker is released, a tab that's already open says so, with a **Reload** button to switch to it.
 - **Featured badge**: contributors can pin one badge they've earned, shown beside their name on their profile and the Leaderboard. Click an earned badge in your streak & badges card to feature it.
+- **Team Reports**: each lead's team compared week by week, on tasks submitted, active contributors and bad-video reports, with a chart, a table showing the change from the week before, and CSV export. Admins see every team; leads see their own.
 
 ## 2.5.0 — 2026-10-02
 

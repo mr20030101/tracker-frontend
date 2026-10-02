@@ -14,6 +14,7 @@ import { Users } from './pages/Users'
 import { LeadTeam } from './pages/LeadTeam'
 import { Projects } from './pages/Projects'
 import { DataQuality } from './pages/DataQuality'
+import { TeamReports } from './pages/TeamReports'
 import { ActivityLog } from './pages/ActivityLog'
 import { Apply } from './pages/Apply'
 import { Hiring } from './pages/Hiring'
@@ -58,6 +59,7 @@ function ProtectedLayout() {
         {isManager && <Route path="/projects" element={<Projects />} />}
         {isManager && <Route path="/hiring" element={<Hiring />} />}
         {isManager && <Route path="/data-quality" element={<DataQuality />} />}
+        {isManager && <Route path="/team-reports" element={<TeamReports />} />}
         {isAdmin && <Route path="/activity-log" element={<ActivityLog />} />}
         {isAdmin && <Route path="/leads/:leadId" element={<LeadTeam />} />}
         <Route path="*" element={<Navigate to="/" replace />} />
