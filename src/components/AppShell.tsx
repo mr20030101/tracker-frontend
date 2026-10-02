@@ -433,7 +433,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               {children}
               {/* Under the page's content, not pinned to the window: it scrolls into view at the
                   end. Left off Messages, which fills the screen with the conversation. */}
-              {!onMessages && <AppFooter className="mt-10 pb-2" />}
+              {!onMessages && <AppFooter className="mt-10 pb-2" releaseNotes />}
             </main>
           </div>
         </div>

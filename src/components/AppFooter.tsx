@@ -1,15 +1,30 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import changelog from '../../CHANGELOG.md?raw'
 import { APP_VERSION } from '../lib/version'
-import { boldSegments, parseChangelog } from '../lib/changelog'
+import { boldSegments, parseChangelog, type Release } from '../lib/changelog'
 import { Modal } from './Modal'
 
 // The footer under every page's content — signed in or not — stating the build's version.
-// Clicking the version opens "What's new": CHANGELOG.md, bundled at build time, so the notes
-// always match the version that opened them.
+// Inside the app (`releaseNotes`) the version opens "What's new": CHANGELOG.md, bundled at build
+// time, so the notes always match the version that opened them. On public pages (sign-in, the
+// application form, donations) it's plain text: the release notes describe the app's internals
+// and aren't for people outside the team. Off unless asked for, so a new public page is safe.
 
-const RELEASES = parseChangelog(changelog)
+// Loaded only when "What's new" is opened, as its own file, so public pages (which never show
+// it) don't download the release notes at all.
+function useReleases(): Release[] | null {
+  const [releases, setReleases] = useState<Release[] | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    import('../../CHANGELOG.md?raw').then(({ default: changelog }) => {
+      if (!cancelled) setReleases(parseChangelog(changelog))
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+  return releases
+}
 
 function Text({ value }: { value: string }) {
   return boldSegments(value).map((segment, index) =>
@@ -18,12 +33,14 @@ function Text({ value }: { value: string }) {
 }
 
 function WhatsNew({ onClose }: { onClose: () => void }) {
+  const releases = useReleases()
   return (
     <Modal title="What's new" onClose={onClose} maxWidthClassName="max-w-2xl">
       <div className="max-h-[70vh] space-y-6 overflow-y-auto pr-1 text-sm">
-        {RELEASES.length === 0 && <p className="text-gray-600">No release notes yet.</p>}
+        {releases === null && <p className="text-gray-400">Loading...</p>}
+        {releases?.length === 0 && <p className="text-gray-600">No release notes yet.</p>}
 
-        {RELEASES.map((release) => (
+        {(releases ?? []).map((release) => (
           <section key={release.version}>
             <div className="mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-gray-200 pb-1">
               <h3 className="text-base font-semibold text-gray-900">v{release.version}</h3>
@@ -56,23 +73,27 @@ function WhatsNew({ onClose }: { onClose: () => void }) {
   )
 }
 
-export function AppFooter({ className = '' }: { className?: string }) {
+export function AppFooter({ className = '', releaseNotes = false }: { className?: string; releaseNotes?: boolean }) {
   const [showNotes, setShowNotes] = useState(false)
 
   return (
     <footer className={`flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs text-gray-400 ${className}`}>
       <span>&copy; {new Date().getFullYear()} Grey Owls Tracker</span>
       <span aria-hidden="true">&bull;</span>
-      <button
-        type="button"
-        onClick={() => setShowNotes(true)}
-        title="What's new"
-        className="tabular-nums hover:text-gray-700 hover:underline"
-      >
-        v{APP_VERSION}
-      </button>
+      {releaseNotes ? (
+        <button
+          type="button"
+          onClick={() => setShowNotes(true)}
+          title="What's new"
+          className="tabular-nums hover:text-gray-700 hover:underline"
+        >
+          v{APP_VERSION}
+        </button>
+      ) : (
+        <span className="tabular-nums">v{APP_VERSION}</span>
+      )}
       {/* Portaled, so a footer inside a transformed or clipped container can't trap it. */}
-      {showNotes && createPortal(<WhatsNew onClose={() => setShowNotes(false)} />, document.body)}
+      {releaseNotes && showNotes && createPortal(<WhatsNew onClose={() => setShowNotes(false)} />, document.body)}
     </footer>
   )
 }
