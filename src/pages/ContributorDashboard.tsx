@@ -329,7 +329,7 @@ export function ContributorDashboard() {
         </div>
       </div>
 
-      {contributorId && <AchievementsCard userId={contributorId} title="Your streak & badges" />}
+      {contributorId && <AchievementsCard userId={contributorId} title="Your streak & badges" canFeature />}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="rounded-xl border border-gray-200 bg-white p-5">

@@ -15,9 +15,10 @@ each stretch of work by the date it shipped.
 ## Unreleased
 
 ### Added
-## 2.5.1 — 2026-10-02
 
 - When a new version of the Tracker is released, a tab that's already open says so, with a **Reload** button to switch to it.
+- **Featured badge**: contributors can pin one badge they've earned, shown beside their name on their profile and the Leaderboard. Click an earned badge in your streak & badges card to feature it.
+
 ## 2.5.0 — 2026-10-02
 
 ### Added
