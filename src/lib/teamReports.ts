@@ -1,5 +1,6 @@
 import { supabase } from './api'
 import { startOfWeek, toISODate, WEEK_LENGTH_DAYS } from './week'
+import { fetchAllPages } from './fetchAll'
 
 // Team Reports: each lead's team, week by week (Tuesday–Monday, Singapore time, like the rest of
 // the app). Worked out from the same tables the dashboard reads, so the numbers agree with it.
@@ -62,15 +63,29 @@ export async function fetchTeamReports(weekCount: number, onlyLeadId: string | n
   const [contributors, leads, submissions, badVideos] = await Promise.all([
     supabase.from('profiles').select('id, email, lead_id, is_active').eq('role', 'contributor'),
     supabase.from('profiles').select('id, name').in('role', ['lead', 'admin']),
-    supabase.from('task_submissions').select('user_id, cb_email, date').eq('status', 'submitted').gte('date', from).lte('date', to),
-    supabase
-      .from('task_requests')
-      .select('requested_at, task_submission:task_submissions(cb_email)')
-      .eq('type', 'bad_video')
-      .gte('requested_at', `${from}T00:00:00+08:00`)
-      .lte('requested_at', `${to}T23:59:59+08:00`),
+    // Paged: weeks of submissions are far more than the 1,000 rows one request returns.
+    fetchAllPages<{ user_id: string | null; cb_email: string | null; date: string | null }>((start, end) =>
+      supabase
+        .from('task_submissions')
+        .select('user_id, cb_email, date')
+        .eq('status', 'submitted')
+        .gte('date', from)
+        .lte('date', to)
+        .order('id')
+        .range(start, end),
+    ),
+    fetchAllPages<unknown>((start, end) =>
+      supabase
+        .from('task_requests')
+        .select('requested_at, task_submission:task_submissions(cb_email)')
+        .eq('type', 'bad_video')
+        .gte('requested_at', `${from}T00:00:00+08:00`)
+        .lte('requested_at', `${to}T23:59:59+08:00`)
+        .order('id')
+        .range(start, end),
+    ),
   ])
-  for (const result of [contributors, leads, submissions, badVideos]) {
+  for (const result of [contributors, leads]) {
     if (result.error) throw result.error
   }
 
@@ -90,7 +105,7 @@ export async function fetchTeamReports(weekCount: number, onlyLeadId: string | n
     return weeks.get(week)!
   }
 
-  for (const row of (submissions.data ?? []) as { user_id: string | null; cb_email: string | null; date: string | null }[]) {
+  for (const row of submissions) {
     const person = (row.user_id && byId.get(row.user_id)) || (row.cb_email ? byEmail.get(row.cb_email.toLowerCase()) : undefined)
     const team = teamKey(person)
     const week = row.date ? weekOf(row.date, weekStarts) : null
@@ -100,7 +115,7 @@ export async function fetchTeamReports(weekCount: number, onlyLeadId: string | n
     tally.active.add(person.id)
   }
 
-  for (const row of (badVideos.data ?? []) as unknown as { requested_at: string; task_submission: { cb_email: string } | null }[]) {
+  for (const row of badVideos as { requested_at: string; task_submission: { cb_email: string } | null }[]) {
     const person = row.task_submission ? byEmail.get(row.task_submission.cb_email.toLowerCase()) : undefined
     const team = teamKey(person)
     // The report's own day, in Singapore time.

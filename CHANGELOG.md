@@ -14,6 +14,10 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Fixed
+
+- The dashboard's Month view (and busy weeks) showed nobody submitting toward the end of the period, because only the first 1,000 submissions were read. All of them are read now. The same fix applies to Team Reports, Data Quality, the Task Log CSV export and long contributor histories.
+
 ## 2.7.0 — 2026-10-02
 
 ### Added

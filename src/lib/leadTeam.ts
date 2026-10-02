@@ -1,11 +1,10 @@
 import { supabase } from './api'
 import { WEEK_LENGTH_DAYS } from './week'
 import type { User } from '../types'
+import { fetchAllPages } from './fetchAll'
 
 // Matches the default the dashboard and leaderboard use for a contributor with no target row.
 const DEFAULT_WEEKLY_TARGET = 50
-// PostgREST returns at most this many rows per request, so a busy week is fetched in pages.
-const PAGE_SIZE = 1000
 
 export interface TeamMember {
   user: User
@@ -30,18 +29,6 @@ interface SubmissionRow {
   cb_email: string | null
   status: string
   date: string | null
-}
-
-type PageResult<T> = PromiseLike<{ data: T[] | null; error: { message: string } | null }>
-
-async function fetchAllPages<T>(page: (from: number, to: number) => PageResult<T>): Promise<T[]> {
-  const rows: T[] = []
-  for (let from = 0; ; from += PAGE_SIZE) {
-    const { data, error } = await page(from, from + PAGE_SIZE - 1)
-    if (error) throw error
-    rows.push(...(data ?? []))
-    if ((data?.length ?? 0) < PAGE_SIZE) return rows
-  }
 }
 
 function addDays(isoDate: string, days: number): string {

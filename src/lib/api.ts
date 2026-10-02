@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { WEEK_LENGTH_DAYS } from './week'
 import type { ActivityEvent, ActivityLog, ContributorProfile, DashboardSummary, DailyReportRow, LeaderboardRow, Paginated, Project, ProjectBreakdown, ProjectLevel, ProjectReportRow, Resource, Stage, TaskSubmission, User } from '../types'
+import { fetchAllPages } from './fetchAll'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim() || 'https://ieovepkcseytccagzedg.supabase.co'
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() ||
@@ -114,7 +115,17 @@ async function dashboard(params: Record<string, unknown>): Promise<DashboardSumm
 
   const [{ data: users }, { data: submissions }, { data: targets }, projectList] = await Promise.all([
     supabase.from('profiles').select('*').eq('role', 'contributor').order('name'),
-    supabase.from('task_submissions').select('user_id, cb_email, project_id, status, date').gte('date', rangeStart).lte('date', rangeEnd),
+    // Paged: a month of submissions is well over the 1,000 rows one request returns (see fetchAll).
+    fetchAllPages<{ user_id: string | null; cb_email: string | null; project_id: number | null; status: string; date: string | null }>(
+      (from, to) =>
+        supabase
+          .from('task_submissions')
+          .select('user_id, cb_email, project_id, status, date')
+          .gte('date', rangeStart)
+          .lte('date', rangeEnd)
+          .order('id')
+          .range(from, to),
+    ).then((data) => ({ data })),
     supabase.from('weekly_targets').select('*').eq('week_start', targetWeekStartIso),
     projects(),
   ])
@@ -248,7 +259,10 @@ async function contributor(params: Record<string, unknown>): Promise<Contributor
   }
 
   const [{ data: rows }, { data: target }] = await Promise.all([
-    supabase.from('task_submissions').select('*').eq('cb_email', email).order('date', { ascending: false }),
+    // Paged: one contributor's whole history can pass 1,000 rows.
+    fetchAllPages<TaskSubmission>((from, to) =>
+      supabase.from('task_submissions').select('*').eq('cb_email', email).order('date', { ascending: false }).order('id').range(from, to),
+    ).then((data) => ({ data })),
     supabase.from('weekly_targets').select('target').eq('user_id', user?.id ?? '').eq('week_start', weekStart).maybeSingle(),
   ])
   const submissions = withProject((rows ?? []) as TaskSubmission[], await projects())
