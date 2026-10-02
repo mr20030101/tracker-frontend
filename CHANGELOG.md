@@ -14,6 +14,12 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Added
+
+- **Hiring board**: a Board view on the Hiring page shows every applicant by stage (Applied, Accepted, Account created, Onboarded, Denied). Click a card to open their details.
+- Private **notes** on each applicant, for the lead and admins only.
+- Applicants whose Remotasks ID appears on more than one application are flagged **Duplicate ID**.
+
 ## 2.4.0 — 2026-10-02
 
 ### Removed
