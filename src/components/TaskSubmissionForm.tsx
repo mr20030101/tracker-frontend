@@ -6,6 +6,7 @@ import { toISODate } from '../lib/week'
 import type { Project, Stage, SubmissionStatus, TaskSubmission } from '../types'
 import { Modal } from './Modal'
 import { Select } from './Select'
+import { isNetworkError, queueSubmission } from '../lib/offlineQueue'
 
 const MANAGER_ROLES = ['admin', 'lead']
 
@@ -139,8 +140,27 @@ export function TaskSubmissionForm({ submission, onClose }: Props) {
 
       if (submission) {
         await api.patch(`/task-submissions/${submission.id}`, payload)
-      } else {
+        return
+      }
+
+      // A new task with the connection down is saved on this device and sent when it's back
+      // (OfflineQueueBanner), rather than lost with the form. Only a plain new submission: one
+      // that also creates a project already failed above without a connection.
+      const queueIt = () => {
+        if (!user) return false
+        try {
+          queueSubmission(user.id, payload)
+          return true
+        } catch {
+          return false
+        }
+      }
+      if (!navigator.onLine && queueIt()) return
+      try {
         await api.post('/task-submissions', payload)
+      } catch (err) {
+        if (isNetworkError(err) && queueIt()) return
+        throw err
       }
     },
     onSuccess: () => {

@@ -14,6 +14,10 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Added
+
+- **Offline task logging**: a new task submitted while the connection is down is saved on your device and sent automatically when you're back online. A banner shows how many are waiting, and any the server refuses (such as a duplicate task ID) can be retried or discarded.
+
 ## 2.5.0 — 2026-10-02
 
 ### Added
