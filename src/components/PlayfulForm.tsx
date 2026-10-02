@@ -12,6 +12,7 @@ export function PlayfulInput({
   hint,
   highlightHint = false,
   optional = false,
+  invalid = false,
   ...input
 }: {
   id: string
@@ -23,6 +24,8 @@ export function PlayfulInput({
   highlightHint?: boolean
   /** Adds "(optional)" to the label and leaves the field not required. */
   optional?: boolean
+  /** Red border, for a value the form rejected. */
+  invalid?: boolean
 } & InputHTMLAttributes<HTMLInputElement>) {
   return (
     <div>
@@ -34,7 +37,12 @@ export function PlayfulInput({
         <Icon className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-accent" />
         <input
           id={id}
-          className="w-full rounded-xl border-2 border-gray-200 bg-gray-50 py-2.5 pl-10 pr-10 text-sm outline-none transition-all placeholder:text-gray-400 focus:border-accent focus:bg-white focus:shadow-[0_0_0_4px_rgba(212,160,23,0.15)]"
+          className={`w-full rounded-xl border-2 bg-gray-50 py-2.5 pl-10 pr-10 text-sm outline-none transition-all placeholder:text-gray-400 focus:bg-white ${
+            invalid
+              ? 'border-status-danger-text focus:border-status-danger-text focus:shadow-[0_0_0_4px_rgba(220,38,38,0.15)]'
+              : 'border-gray-200 focus:border-accent focus:shadow-[0_0_0_4px_rgba(212,160,23,0.15)]'
+          }`}
+          aria-invalid={invalid || undefined}
           {...(optional ? {} : { required: true })}
           {...input}
         />
@@ -50,7 +58,7 @@ export function PlayfulInput({
   )
 }
 
-/** A required Yes/No question as two chunky toggle pills (radio inputs underneath). */
+/** A Yes/No question as two chunky toggle pills (radio inputs underneath). The form checks it's answered. */
 export function YesNoPills({
   legend,
   name,
@@ -68,11 +76,10 @@ export function YesNoPills({
       <div className="grid grid-cols-2 gap-2">
         {(['yes', 'no'] as const).map((answer) => (
           <label key={answer} className="relative cursor-pointer">
-            {/* Visually hidden but still focusable and required, so the browser's own check runs. */}
+            {/* Visually hidden but still focusable. */}
             <input
               type="radio"
               name={name}
-              required
               value={answer}
               checked={value === answer}
               onChange={onChange}

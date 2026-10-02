@@ -83,6 +83,17 @@ export function normalizeProfileUrl(input: string): string | null {
   }
 }
 
+const REMOTASKS_ID_PATTERN = /^[0-9a-f]{24}$/i
+
+/**
+ * A Remotasks worker ID is 24 characters of 0-9 and a-f; returns it trimmed and lower-cased,
+ * or null when it isn't one (so "N/A", a name, or a typo'd length is rejected).
+ */
+export function normalizeRemotasksId(input: string): string | null {
+  const trimmed = input.trim()
+  return REMOTASKS_ID_PATTERN.test(trimmed) ? trimmed.toLowerCase() : null
+}
+
 /** The link as an href only when it is safe to navigate to; stored URLs are applicant input. */
 export function safeExternalHref(url: string): string | null {
   try {
@@ -109,7 +120,7 @@ export async function setAcceptingApplications(leadId: string, accepting: boolea
 export async function submitApplication(leadId: string, input: ApplicationInput): Promise<void> {
   const { error } = await supabase.rpc('submit_hiring_application', {
     p_lead_id: leadId,
-    // Optional: blank when the applicant has no Remotasks account yet.
+    // Required by the form; null only on older applications sent without a Remotasks account.
     p_remotasks_email: input.remotasks_email || null,
     p_remotasks_id: input.remotasks_id || null,
     p_full_name: input.full_name,
