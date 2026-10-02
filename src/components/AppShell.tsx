@@ -7,6 +7,7 @@ import {
   MessageCircle,
   ClipboardList,
   ShieldCheck,
+  LineChart as LineChartIcon,
   History,
   BookOpen,
   Users as UsersIcon,
@@ -75,6 +76,7 @@ function navSections(
                 : `${pendingRequests} pending`,
           },
           { to: '/data-quality', label: 'Data Quality', icon: ShieldCheck },
+          { to: '/team-reports', label: 'Team Reports', icon: LineChartIcon },
           ...(isAdmin ? [{ to: '/activity-log', label: 'Activity Log', icon: History }] : []),
         ]
         : [
@@ -226,6 +228,8 @@ export function AppShell({ children }: { children: ReactNode }) {
                 ? 'Projects'
                 : location.pathname === '/data-quality'
                   ? 'Data Quality'
+                  : location.pathname === '/team-reports'
+                  ? 'Team Reports'
                   : location.pathname === '/activity-log'
                     ? 'Activity Log'
                     : location.pathname.startsWith('/leads/')

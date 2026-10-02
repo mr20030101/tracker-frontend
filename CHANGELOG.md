@@ -14,6 +14,10 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Added
+
+- **Team Reports**: each lead's team compared week by week, on tasks submitted, active contributors and bad-video reports, with a chart, a table showing the change from the week before, and CSV export. Admins see every team; leads see their own.
+
 ## 2.5.0 — 2026-10-02
 
 ### Added
