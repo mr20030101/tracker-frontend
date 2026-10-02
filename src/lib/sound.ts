@@ -31,20 +31,39 @@ export function playSound(src: string) {
   }
 }
 
-// Plays a sound on repeat until the returned function is called.
+// Plays a sound on repeat until the returned function is called. If the browser blocks it (no click or
+// key press on the page yet, e.g. a tab left open since it loaded), it starts on the next one instead,
+// as long as it hasn't been stopped by then.
 export function loopSound(src: string): () => void {
   let audio: HTMLAudioElement | null = null
+  let stopped = false
+  const retry = () => {
+    removeRetry()
+    if (stopped || !audio) return
+    void audio.play().catch(() => {
+      // still blocked; nothing more to do
+    })
+  }
+  const removeRetry = () => {
+    window.removeEventListener('pointerdown', retry)
+    window.removeEventListener('keydown', retry)
+  }
   try {
     audio = getAudio(src)
     audio.loop = true
+    audio.muted = false
     audio.currentTime = 0
     void audio.play().catch(() => {
-      // Blocked by the browser's autoplay policy until the page is unlocked; ignore.
+      if (stopped) return
+      window.addEventListener('pointerdown', retry)
+      window.addEventListener('keydown', retry)
     })
   } catch {
     // ignore (e.g. no Audio support)
   }
   return () => {
+    stopped = true
+    removeRetry()
     if (!audio) return
     audio.loop = false
     audio.pause()
@@ -68,6 +87,8 @@ function unlock() {
     audio
       .play()
       .then(() => {
+        // A ringtone that started meanwhile (looping) keeps playing; only the priming play is stopped.
+        if (audio.loop) return
         audio.pause()
         audio.currentTime = 0
       })

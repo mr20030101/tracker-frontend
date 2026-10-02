@@ -410,6 +410,23 @@ export function CallProvider({ children }: { children: ReactNode }) {
   }, [muted])
   const dismissNotice = useCallback(() => setState((s) => ({ ...s, notice: null })), [])
 
+  // While a call rings in, the tab title flashes, so it's noticed in another tab or when the
+  // browser blocked the ringtone (no click on the page since it loaded).
+  const incomingName = state.phase === 'incoming' ? state.peer?.name ?? null : null
+  useEffect(() => {
+    if (!incomingName) return
+    const original = document.title
+    let flash = false
+    const id = setInterval(() => {
+      flash = !flash
+      document.title = flash ? `📞 ${incomingName} is calling...` : original
+    }, 1000)
+    return () => {
+      clearInterval(id)
+      document.title = original
+    }
+  }, [incomingName])
+
   return (
     <CallContext.Provider value={{ ...state, muted, startCall, accept, decline, hangUp, toggleMute, dismissNotice }}>
       {children}
