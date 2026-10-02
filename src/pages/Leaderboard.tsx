@@ -13,8 +13,8 @@ import { GrowBar } from '../components/GrowBar'
 import { SortableHeader } from '../components/SortableHeader'
 import { downloadCsv } from '../lib/csv'
 import { contributorPath } from '../lib/urlRef'
-import { StreakChip } from '../components/Achievements'
-import { useAchievements } from '../lib/achievements'
+import { FeaturedBadgeChip, StreakChip } from '../components/Achievements'
+import { useAchievements, useFeaturedBadges } from '../lib/achievements'
 
 type Period = 'week' | 'month' | 'all'
 type StatusFilter = 'all' | 'active' | 'disabled'
@@ -54,6 +54,7 @@ function ContributorLeaderboard() {
   const rows = data ?? []
   const topScore = rows[0]?.tasks_submitted ?? 0
   const { data: achievements } = useAchievements(rows.map((r) => r.user_id))
+  const { data: featuredBadges } = useFeaturedBadges(rows.map((r) => r.user_id))
   const periodLabel = period === 'week' ? 'this week' : period === 'month' ? 'this month' : 'all time'
 
   return (
@@ -103,6 +104,9 @@ function ContributorLeaderboard() {
                         {row.name}
                         <span className="ml-2">
                           <StreakChip streak={achievements?.get(row.user_id)?.current_streak} />
+                        </span>
+                        <span className="ml-1.5">
+                          <FeaturedBadgeChip badgeId={featuredBadges?.get(row.user_id)} />
                         </span>
                         {isMe && <span className="ml-2 text-xs font-semibold text-accent">You</span>}
                       </div>
@@ -242,6 +246,7 @@ function ManagerLeaderboard() {
     })
     .sort((a, b) => (progressSort === 'desc' ? b.progress - a.progress : a.progress - b.progress))
   const { data: achievements } = useAchievements(allRows.map((r) => r.user_id))
+  const { data: featuredBadges } = useFeaturedBadges(allRows.map((r) => r.user_id))
 
   const viewLabel = viewMode === 'day' ? 'Day' : viewMode === 'week' ? 'Week' : 'Month'
   const periodPhrase = viewMode === 'day' ? 'today' : viewMode === 'week' ? 'this week' : 'this month'
@@ -416,6 +421,7 @@ function ManagerLeaderboard() {
                         <div className="flex items-center gap-2 truncate font-medium text-gray-900">
                           {row.name}
                           <StreakChip streak={achievements?.get(row.user_id)?.current_streak} />
+                          <FeaturedBadgeChip badgeId={featuredBadges?.get(row.user_id)} />
                         </div>
                         <div className="truncate text-xs text-gray-400">{row.cb_email}</div>
                       </div>

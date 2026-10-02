@@ -102,3 +102,29 @@ export const BADGES: Badge[] = [
     earned: (a) => a.best_week >= 100,
   },
 ]
+
+export function badgeById(id: string | null | undefined): Badge | undefined {
+  return id ? BADGES.find((badge) => badge.id === id) : undefined
+}
+
+// Featured badge (supabase/migrations/20261002_featured_badge.sql): one earned badge a
+// contributor pins, shown next to their name. Keyed by user id, like useAchievements.
+export function useFeaturedBadges(userIds: string[]) {
+  const ids = [...userIds].sort()
+  return useQuery({
+    queryKey: ['featured-badges', ids],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('featured_badges', { p_user_ids: ids })
+      if (error) throw error
+      return new Map(((data ?? []) as { user_id: string; badge: string }[]).map((row) => [row.user_id, row.badge]))
+    },
+    enabled: ids.length > 0,
+    staleTime: 60_000,
+  })
+}
+
+/** Pins one of your own earned badges, or clears it with null. The database refuses one you haven't earned. */
+export async function setFeaturedBadge(badgeId: string | null): Promise<void> {
+  const { error } = await supabase.rpc('set_featured_badge', { p_badge: badgeId })
+  if (error) throw error
+}

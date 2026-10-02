@@ -14,10 +14,11 @@ import { LevelPill, LEVEL_TIERS } from '../components/LevelPill'
 import { ContributorWorkPanel } from '../components/ContributorWorkPanel'
 import { Modal } from '../components/Modal'
 import { Reveal } from '../components/Reveal'
-import { AchievementsCard } from '../components/Achievements'
+import { AchievementsCard, FeaturedBadgeChip } from '../components/Achievements'
 import { OnboardingProgress } from '../components/OnboardingChecklist'
 import { useOnboardingStatus } from '../lib/onboarding'
 import { recordProfileView, useProfileViewCount } from '../lib/profileViews'
+import { useFeaturedBadges } from '../lib/achievements'
 
 const LEVEL_OPTIONS: ProjectLevel[] = ['contributor', 'l0', 'l1', 'l10']
 
@@ -163,6 +164,7 @@ export function CbProfile() {
   // Opening someone else's profile counts as a view (the database keeps one per viewer per day).
   // The count is refetched afterwards so it includes this visit.
   const viewCount = useProfileViewCount(contributorId)
+  const { data: featuredBadges } = useFeaturedBadges(contributorId ? [contributorId] : [])
   useEffect(() => {
     if (!contributorId || isOwnProfile) return
     recordProfileView(contributorId)
@@ -351,6 +353,7 @@ export function CbProfile() {
                 {data.user.role}
               </span>
             )}
+            {contributorId && <FeaturedBadgeChip badgeId={featuredBadges?.get(contributorId)} />}
           </div>
           {decodedEmail && <p className="text-sm text-gray-500">{decodedEmail}</p>}
           {(isOwnProfile ? currentUser?.bio : data.user?.bio) && (
@@ -565,7 +568,7 @@ export function CbProfile() {
         <OnboardingProgress status={onboarding} hasLead={Boolean(contributorLeadId)} />
       )}
 
-      {isContributorRole && contributorId && <AchievementsCard userId={contributorId} />}
+      {isContributorRole && contributorId && <AchievementsCard userId={contributorId} canFeature={isOwnProfile} />}
 
       {/* Same for Project Levels — a CB sees their own on the Dashboard now; this stays only
           for a lead/admin reviewing someone else. */}
