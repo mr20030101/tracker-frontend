@@ -4,6 +4,7 @@ import { animate } from 'animejs'
 import { useQuery } from '@tanstack/react-query'
 import {
   LayoutDashboard,
+  LogOut,
   MessageCircle,
   ClipboardList,
   ShieldCheck,
@@ -144,11 +145,13 @@ export function AppShell({ children }: { children: ReactNode }) {
   const isAdmin = user?.role === 'admin'
   const mainRef = useRef<HTMLElement>(null)
   const onMessages = location.pathname.startsWith('/messages')
-  // On desktop the sidebar sits beside the page and the menu button hides/shows it (remembered).
-  // On smaller screens, and on Messages, it's a slide-out menu, closed again whenever you navigate.
+  // On desktop the sidebar sits beside the page, and the menu button switches it between full width
+  // and a narrow rail of icons (remembered). On smaller screens, and on Messages, it's a slide-out
+  // menu, closed again whenever you navigate.
   const isDesktop = useIsDesktop()
   const [collapsed, setCollapsed] = useState(() => readNavCollapsed())
   const docked = isDesktop && !onMessages && !collapsed
+  const rail = isDesktop && !onMessages && collapsed
   const [menuOpen, setMenuOpen] = useState(false)
   const [menuPath, setMenuPath] = useState(location.pathname)
   if (menuPath !== location.pathname) {
@@ -256,33 +259,46 @@ export function AppShell({ children }: { children: ReactNode }) {
           )}
           <aside
             id="app-menu"
-            inert={!navOpen}
+            inert={!navOpen && !rail}
             onClick={(e) => {
               if ((e.target as HTMLElement).closest('a')) setMenuOpen(false)
             }}
-            className={`flex w-64 max-w-[85vw] flex-col border-r border-gray-200 bg-white ${
+            className={`flex flex-col border-r border-gray-200 bg-white ${
               docked
-                ? 'shrink-0'
-                : `fixed inset-y-0 left-0 z-50 transition-transform duration-200 ${menuOpen ? 'translate-x-0 shadow-xl' : '-translate-x-full'}`
+                ? 'w-64 shrink-0'
+                : rail
+                  ? 'w-16 shrink-0'
+                  : `fixed inset-y-0 left-0 z-50 w-64 max-w-[85vw] transition-transform duration-200 ${menuOpen ? 'translate-x-0 shadow-xl' : '-translate-x-full'}`
             }`}
           >
+            {rail ? (
+              <div className="flex justify-center px-2 py-5">
+                <Logo mark className="h-9" />
+              </div>
+            ) : (
               <div className="flex items-center justify-between px-5 py-5">
                 <Logo />
                 <button
                   type="button"
                   onClick={() => setNavOpen(false)}
-                  aria-label="Hide navigation"
-                  title="Hide navigation"
+                  aria-label={docked ? 'Collapse navigation' : 'Hide navigation'}
+                  title={docked ? 'Collapse navigation' : 'Hide navigation'}
                   className="rounded-md p-1 text-gray-500 hover:bg-gray-100"
                 >
                   <X className="h-5 w-5" />
                 </button>
               </div>
+            )}
 
-              <nav className="flex-1 overflow-y-auto px-3 py-2">
+              <nav className={`flex-1 overflow-y-auto py-2 ${rail ? 'px-2' : 'px-3'}`}>
                 {sections.map((section) => (
-                  <div key={section.label} className="mb-4">
-                    <div className="px-2 pb-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-gray-400">
+                  <div key={section.label} className={rail ? 'mb-2 border-b border-gray-100 pb-2 last:border-0' : 'mb-4'}>
+                    {/* On the rail a thin divider stands in for the section's name. */}
+                    <div
+                      className={
+                        rail ? 'sr-only' : 'px-2 pb-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-gray-400'
+                      }
+                    >
                       {section.label}
                     </div>
                     {section.items.map((item) => (
@@ -290,18 +306,24 @@ export function AppShell({ children }: { children: ReactNode }) {
                         key={item.to}
                         to={item.to}
                         end
+                        // On the rail the icon is all that shows, so the name comes from the tooltip.
+                        title={rail ? item.label : undefined}
                         className={({ isActive }) =>
-                          `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium ${isActive ? 'bg-accent-bg text-accent-foreground' : 'text-gray-600 hover:bg-gray-100'
-                          }`
+                          `relative flex items-center rounded-lg text-sm font-medium ${
+                            rail ? 'justify-center px-0 py-2.5' : 'gap-2.5 px-3 py-2'
+                          } ${isActive ? 'bg-accent-bg text-accent-foreground' : 'text-gray-600 hover:bg-gray-100'}`
                         }
                       >
-                        <item.icon className="h-4 w-4 shrink-0" strokeWidth={2} />
-                        {item.label}
+                        <item.icon className={`${rail ? 'h-5 w-5' : 'h-4 w-4'} shrink-0`} strokeWidth={2} />
+                        <span className={rail ? 'sr-only' : undefined}>{item.label}</span>
                         {item.badge ? (
                           <span
                             title={item.badgeTitle}
-                            // Requests: accent while merely pending, red once any are overdue.
-                            className={`ml-auto flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-bold ${
+                            // Requests: accent while merely pending, red once any are overdue. On the rail
+                            // it sits on the icon's corner.
+                            className={`flex items-center justify-center rounded-full font-bold ${
+                              rail ? 'absolute right-1 top-0.5 h-4 min-w-4 px-1 text-[10px]' : 'ml-auto h-5 min-w-5 px-1.5 text-[11px]'
+                            } ${
                               item.to === '/requests' && !item.urgent
                                 ? 'bg-accent text-accent-foreground'
                                 : 'bg-status-danger-text text-white'
@@ -319,7 +341,22 @@ export function AppShell({ children }: { children: ReactNode }) {
                 ))}
               </nav>
 
-              {user && (
+              {user && rail && (
+                <div className="flex flex-col items-center gap-2 border-t border-gray-200 py-3">
+                  <NavLink to={ownProfilePath} aria-label="Open your profile" title={user.name} className="rounded-full">
+                    <Avatar name={user.name} photoUrl={user.avatar_url} size={32} />
+                  </NavLink>
+                  <button
+                    onClick={() => logout()}
+                    aria-label="Sign out"
+                    title="Sign out"
+                    className="rounded-md p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                  >
+                    <LogOut className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+              {user && !rail && (
                 <div className="border-t border-gray-200 p-3">
                   <div className="flex items-center gap-2 rounded-lg p-2 hover:bg-gray-100">
                     <NavLink
@@ -350,8 +387,8 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <button
                   type="button"
                   onClick={() => setNavOpen(!navOpen)}
-                  aria-label={navOpen ? 'Hide navigation' : 'Show navigation'}
-                  title={navOpen ? 'Hide navigation' : 'Show navigation'}
+                  aria-label={rail ? 'Expand navigation' : navOpen ? (docked ? 'Collapse navigation' : 'Hide navigation') : 'Show navigation'}
+                  title={rail ? 'Expand navigation' : navOpen ? (docked ? 'Collapse navigation' : 'Hide navigation') : 'Show navigation'}
                   aria-expanded={navOpen}
                   aria-controls="app-menu"
                   className="-ml-1 shrink-0 rounded-md p-1.5 text-gray-600 hover:bg-gray-100"
