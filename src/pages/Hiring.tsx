@@ -31,6 +31,7 @@ import {
   type BootcampDetails,
 } from '../lib/hiring'
 import { HiringBoard } from '../components/HiringBoard'
+import { EditApplicantModal } from '../components/EditApplicantModal'
 import type { HiringApplication, HiringStatus, User } from '../types'
 import { ActionsMenu } from '../components/ActionsMenu'
 import { DataTable } from '../components/DataTable'
@@ -204,6 +205,8 @@ export function Hiring() {
   const [search, setSearch] = useState('')
   const [review, setReview] = useState<Review | null>(null)
   const [details, setDetails] = useState<HiringApplication | null>(null)
+  // Correcting an applicant's details (opened from their details).
+  const [editingApplicant, setEditingApplicant] = useState<HiringApplication | null>(null)
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
   const [emailing, setEmailing] = useState<HiringApplication[] | null>(null)
   // The bootcamp the email is about. Remembered on this device after each send.
@@ -1063,6 +1066,13 @@ export function Hiring() {
                 >
                   Close
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setEditingApplicant(details)}
+                  className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Edit details
+                </button>
                 {details.status === 'accepted' && !details.user_id && (
                   <button
                     type="button"
@@ -1123,6 +1133,19 @@ export function Hiring() {
             </div>
           </div>
         </Modal>
+      )}
+
+      {editingApplicant && (
+        <EditApplicantModal
+          application={editingApplicant}
+          onClose={() => setEditingApplicant(null)}
+          onSaved={(updated) => {
+            setEditingApplicant(null)
+            setDetails((current) => (current && current.id === updated.id ? updated : current))
+            queryClient.invalidateQueries({ queryKey: ['hiring-applications'] })
+            setNotice({ tone: 'success', text: `${updated.full_name}'s details were updated.` })
+          }}
+        />
       )}
 
       {emailing && (

@@ -146,6 +146,44 @@ export async function fetchApplications(): Promise<HiringApplication[]> {
   return (data ?? []) as HiringApplication[]
 }
 
+/** The applicant's own answers, as a lead or admin corrects them (a mistyped email, ID or link). */
+export interface ApplicationEdit {
+  full_name: string
+  active_email: string
+  remotasks_email: string
+  remotasks_id: string
+  facebook_url: string
+  has_robotics_background: boolean
+  has_personal_computer: boolean | null
+  has_stable_internet: boolean | null
+  cpu: string
+  gpu: string
+  gpu_memory_gb: number | null
+}
+
+/**
+ * Corrects an applicant's details. Only an admin or the application's own lead may; the database
+ * applies the public form's checks and records what changed in the audit log
+ * (supabase/migrations/20261002_edit_hiring_application.sql).
+ */
+export async function updateApplication(id: number, edit: ApplicationEdit): Promise<void> {
+  const { error } = await supabase.rpc('update_hiring_application', {
+    p_id: id,
+    p_full_name: edit.full_name,
+    p_active_email: edit.active_email,
+    p_remotasks_email: edit.remotasks_email,
+    p_remotasks_id: edit.remotasks_id,
+    p_facebook_url: edit.facebook_url,
+    p_has_robotics_background: edit.has_robotics_background,
+    p_has_personal_computer: edit.has_personal_computer,
+    p_has_stable_internet: edit.has_stable_internet,
+    p_cpu: edit.cpu,
+    p_gpu: edit.gpu,
+    p_gpu_memory_gb: edit.gpu_memory_gb,
+  })
+  if (error) throw error
+}
+
 /** Saves the lead's notes on an applicant; blank clears them. Only that lead or an admin may. */
 export async function saveApplicationNotes(id: number, notes: string): Promise<void> {
   const { error } = await supabase.rpc('set_hiring_application_notes', { p_id: id, p_notes: notes })

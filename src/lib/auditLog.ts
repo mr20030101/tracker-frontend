@@ -31,6 +31,7 @@ export const AUDIT_CATEGORIES: { value: string; label: string; actions: string[]
     label: 'Hiring',
     actions: [
       'application_accepted',
+      'application_edited',
       'application_denied',
       'application_deleted',
       'applicant_onboarded',

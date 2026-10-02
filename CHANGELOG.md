@@ -14,6 +14,10 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Added
+
+- **Edit applicant details**: leads and admins can correct an applicant's name, emails, Remotasks ID, Facebook link and computer answers from **Edit details** in their details. Each change is recorded in the Activity Log.
+
 ## 2.6.0 — 2026-10-02
 
 ### Added
