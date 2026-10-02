@@ -25,8 +25,12 @@ import {
   setAcceptingApplications,
   setOnboarded,
   setOnboardedBulk,
+  saveApplicationNotes,
+  duplicateRemotasksIds,
+  hasDuplicateRemotasksId,
   type BootcampDetails,
 } from '../lib/hiring'
+import { HiringBoard } from '../components/HiringBoard'
 import type { HiringApplication, HiringStatus, User } from '../types'
 import { ActionsMenu } from '../components/ActionsMenu'
 import { DataTable } from '../components/DataTable'
@@ -152,6 +156,45 @@ function Switch({ checked, onChange, disabled, label }: { checked: boolean; onCh
   )
 }
 
+// The lead's private notes on an applicant, saved explicitly (not on every keystroke), so a
+// half-typed thought isn't stored. Keyed by application id by the caller, so it resets per person.
+function NotesEditor({ application, onSaved }: { application: HiringApplication; onSaved: (notes: string | null) => void }) {
+  const [draft, setDraft] = useState(application.notes ?? '')
+  const save = useMutation({
+    mutationFn: () => saveApplicationNotes(application.id, draft),
+    onSuccess: () => onSaved(draft.trim() || null),
+  })
+  const changed = draft.trim() !== (application.notes ?? '')
+
+  return (
+    <section>
+      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">Notes</h3>
+      <textarea
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        maxLength={2000}
+        rows={3}
+        placeholder="Interview impressions, follow-ups... Only you (and admins) can see these."
+        aria-label="Notes about this applicant"
+        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
+      />
+      <div className="mt-1 flex items-center justify-between gap-3">
+        <span className="text-xs text-gray-400">
+          {save.isError ? <span className="text-status-danger-text">{(save.error as Error).message}</span> : save.isSuccess && !changed ? 'Saved.' : ''}
+        </span>
+        <button
+          type="button"
+          onClick={() => save.mutate()}
+          disabled={!changed || save.isPending}
+          className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground disabled:opacity-50"
+        >
+          {save.isPending ? 'Saving...' : 'Save notes'}
+        </button>
+      </div>
+    </section>
+  )
+}
+
 export function Hiring() {
   const { user: currentUser, refreshUser } = useAuth()
   const isAdmin = currentUser?.role === 'admin'
@@ -193,12 +236,14 @@ export function Hiring() {
   const leadOptions = useMemo(() => leads.map((lead) => ({ value: lead.id, label: lead.name })), [leads])
   const leadNameById = useMemo(() => new Map(leads.map((lead) => [lead.id, lead.name])), [leads])
 
+  // List (the default) or the pipeline board, kept in the address so it survives a reload.
+  const isBoard = searchParams.get('view') === 'board'
   const statusParam = searchParams.get('status')
   const statusFilter: StatusFilter = STATUS_FILTERS.find((s) => s === statusParam) ?? 'pending'
   const leadParam = searchParams.get('lead') ?? ''
   const leadFilter = isAdmin && leads.some((lead) => lead.id === leadParam) ? leadParam : ''
 
-  function setFilter(key: 'status' | 'lead', value: string) {
+  function setFilter(key: 'status' | 'lead' | 'view', value: string) {
     setRowSelection({})
     setSearchParams(
       (prev) => {
@@ -462,6 +507,15 @@ export function Hiring() {
         [a.full_name, a.remotasks_email, a.active_email, a.remotasks_id].some((v) => v?.toLowerCase().includes(normalizedSearch)),
     )
 
+  // The board shows every stage at once, so only the lead filter and the search apply to it.
+  const boardRows = inScope.filter(
+    (a) =>
+      !normalizedSearch ||
+      [a.full_name, a.remotasks_email, a.active_email, a.remotasks_id].some((v) => v?.toLowerCase().includes(normalizedSearch)),
+  )
+  // Across every application, not just the visible ones: a duplicate is a duplicate whoever's list it's in.
+  const duplicates = useMemo(() => duplicateRemotasksIds(applications), [applications])
+
   // Only rows that are showing count, so a search or filter can't leave someone hidden but still selected.
   const selected = rows.filter((a) => rowSelection[String(a.id)])
 
@@ -526,6 +580,14 @@ export function Hiring() {
                   className="mt-1 inline-flex rounded-full bg-status-danger-bg px-2 py-0.5 text-[10px] font-medium text-status-danger-text"
                 >
                   Below requirements
+                </span>
+              )}
+              {hasDuplicateRemotasksId(applicant, duplicates) && (
+                <span
+                  title="This Remotasks ID is on more than one application."
+                  className="ml-1 mt-1 inline-flex rounded-full bg-status-danger-bg px-2 py-0.5 text-[10px] font-medium text-status-danger-text"
+                >
+                  Duplicate ID
                 </span>
               )}
             </div>
@@ -672,7 +734,7 @@ export function Hiring() {
         },
       },
     ],
-    [isAdmin, leadNameById, statusFilter, onboardMutation, navigate, checklist],
+    [isAdmin, leadNameById, statusFilter, onboardMutation, navigate, checklist, duplicates],
   )
 
   const loginDetails = credentials
@@ -765,6 +827,22 @@ export function Hiring() {
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
+        <div role="group" aria-label="View" className="inline-flex rounded-lg border border-gray-200 bg-white p-0.5">
+          {(['list', 'board'] as const).map((view) => (
+            <button
+              key={view}
+              type="button"
+              aria-pressed={isBoard === (view === 'board')}
+              onClick={() => setFilter('view', view === 'board' ? 'board' : '')}
+              className={`rounded-md px-3 py-1.5 text-sm font-medium capitalize ${
+                isBoard === (view === 'board') ? 'bg-accent-bg text-accent-foreground' : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              {view}
+            </button>
+          ))}
+        </div>
+        {!isBoard && (
         <div role="tablist" aria-label="Filter by status" className="inline-flex rounded-lg border border-gray-200 bg-white p-0.5">
           {STATUS_FILTERS.map((status) => (
             <button
@@ -781,6 +859,7 @@ export function Hiring() {
             </button>
           ))}
         </div>
+        )}
         <input
           type="search"
           placeholder="Search by name, email or ID..."
@@ -817,6 +896,15 @@ export function Hiring() {
         </div>
       )}
 
+      {isBoard ? (
+        <HiringBoard
+          applications={boardRows}
+          duplicates={duplicates}
+          leadNameById={isAdmin ? leadNameById : null}
+          onOpen={setDetails}
+        />
+      ) : (
+        <>
       {selected.length > 0 && (
         <div className="sticky top-0 z-10 mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 shadow-sm">
           <span className="text-sm font-medium text-gray-700">{selected.length} selected</span>
@@ -903,6 +991,8 @@ export function Hiring() {
         }
         rowClassName={(a) => (a.status === 'denied' ? 'opacity-60' : '')}
       />
+        </>
+      )}
 
       {details && (
         <Modal title={details.full_name} onClose={() => setDetails(null)} maxWidthClassName="max-w-4xl">
@@ -949,6 +1039,20 @@ export function Hiring() {
                 </dl>
               </section>
             </div>
+            {hasDuplicateRemotasksId(details, duplicates) && (
+              <div role="alert" className="rounded-lg bg-status-danger-bg px-3 py-2 text-sm text-status-danger-text">
+                This Remotasks ID ({details.remotasks_id}) is on more than one application. Check it isn't the same person
+                applying twice, or someone using another person's ID.
+              </div>
+            )}
+            <NotesEditor
+              key={details.id}
+              application={details}
+              onSaved={(notes) => {
+                setDetails((current) => (current && current.id === details.id ? { ...current, notes } : current))
+                queryClient.invalidateQueries({ queryKey: ['hiring-applications'] })
+              }}
+            />
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className={`${pillClass} ${STATUS_STYLES[details.status]}`}>{STATUS_LABELS[details.status]}</span>
               <div className="flex gap-2">
