@@ -14,6 +14,13 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 2.9.0 — 2026-10-03
+
+### Changed
+
+- Tables are less crowded at the top. Search and filters now sit in a toolbar inside the table card instead of floating above it. Every control is the same height, search has a magnifier icon, and Task Log's two dates are one compact range. This applies to Task Log, Hiring, Users, Requests, Leaderboard and the Activity Log.
+- Task Log's Export CSV is now at the right end of the table's toolbar, and Hiring's List/Board switch is next to the page title.
+
 ## 2.8.2 — 2026-10-03
 
 ### Fixed

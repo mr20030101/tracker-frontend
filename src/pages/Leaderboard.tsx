@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, supabase } from '../lib/api'
@@ -8,6 +9,7 @@ import type { DashboardSummary, LeaderboardRow, Project } from '../types'
 import { Avatar } from '../components/Avatar'
 import { ProgressBar } from '../components/ProgressBar'
 import { Select } from '../components/Select'
+import { SearchInput, SegmentedTabs, TableCard, TableToolbar, toolbarControlClass } from '../components/TableToolbar'
 import { Reveal } from '../components/Reveal'
 import { GrowBar } from '../components/GrowBar'
 import { SortableHeader } from '../components/SortableHeader'
@@ -260,122 +262,116 @@ function ManagerLeaderboard() {
         <p className="text-sm text-gray-500">Filter, sort, and manage contributor progress.</p>
       </div>
 
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <div className="flex rounded-lg border border-gray-200 bg-white p-1">
-          {(['day', 'week', 'month'] as const).map((mode) => (
-            <button
-              key={mode}
-              onClick={() => setViewMode(mode)}
-              className={`rounded-md px-3 py-1 text-sm font-medium capitalize ${viewMode === mode ? 'bg-accent text-accent-foreground' : 'text-gray-600'}`}
-            >
-              {mode}
-            </button>
-          ))}
-        </div>
-
-        <button
-          onClick={() => shiftRange(-1)}
-          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
-        >
-          ← Prev
-        </button>
-        <div className="min-w-48 rounded-lg border border-gray-200 bg-white px-4 py-2 text-center text-sm font-medium text-gray-700">
-          {rangeLabel()}
-        </div>
-        <button
-          onClick={() => shiftRange(1)}
-          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
-        >
-          Next →
-        </button>
-        {!isCurrentRange && (
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <SegmentedTabs
+          aria-label="Period"
+          value={viewMode}
+          onChange={setViewMode}
+          options={[
+            { value: 'day', label: 'Day' },
+            { value: 'week', label: 'Week' },
+            { value: 'month', label: 'Month' },
+          ]}
+        />
+        <div className="flex h-9 items-center rounded-lg border border-gray-200 bg-white">
           <button
-            onClick={() => setAnchorDate(new Date())}
-            className="text-sm font-medium text-sky-700 hover:underline"
+            onClick={() => shiftRange(-1)}
+            aria-label="Previous period"
+            className="flex h-full items-center rounded-l-lg px-2.5 text-gray-500 hover:bg-gray-50 hover:text-gray-800"
           >
+            <ChevronLeft size={16} />
+          </button>
+          <span className="min-w-44 border-x border-gray-200 px-3 text-center text-sm font-medium text-gray-700">{rangeLabel()}</span>
+          <button
+            onClick={() => shiftRange(1)}
+            aria-label="Next period"
+            className="flex h-full items-center rounded-r-lg px-2.5 text-gray-500 hover:bg-gray-50 hover:text-gray-800"
+          >
+            <ChevronRight size={16} />
+          </button>
+        </div>
+        {!isCurrentRange && (
+          <button onClick={() => setAnchorDate(new Date())} className="px-1 text-sm font-medium text-sky-700 hover:underline">
             Back to {periodPhrase}
           </button>
         )}
         <input
           type="date"
+          aria-label="Jump to date"
           value={toISODate(anchorDate)}
           onChange={(e) => {
             if (e.target.value) setAnchorDate(new Date(`${e.target.value}T00:00:00`))
           }}
-          className="ml-auto rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
+          className={`ml-auto ${toolbarControlClass}`}
         />
       </div>
 
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <input
-          type="search"
-          placeholder="Search by name or email..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-64 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
-        />
-        <Select
-          value={projectId}
-          onChange={setProjectId}
-          options={[{ value: '', label: 'All Projects' }, ...(projects ?? []).map((p) => ({ value: String(p.id), label: p.name }))]}
-          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
-        />
-        <Select
-          value={activityFilter}
-          onChange={(value) => setActivityFilter(value as ActivityFilter)}
-          options={[
-            { value: 'all', label: 'All Activity' },
-            { value: 'submitted', label: `Submitted ${viewLabel === 'Day' ? 'Today' : `This ${viewLabel}`}` },
-            { value: 'no_submissions', label: 'No Submissions' },
-          ]}
-          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
-        />
-        <Select
-          value={statusFilter}
-          onChange={(value) => setStatusFilter(value as StatusFilter)}
-          options={[
-            { value: 'all', label: 'All Statuses' },
-            { value: 'active', label: 'Active' },
-            { value: 'disabled', label: 'Disabled' },
-          ]}
-          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
-        />
-        {(search || projectId || statusFilter !== 'all' || activityFilter !== 'all') && (
-          <button
-            onClick={() => {
-              setSearch('')
-              setProjectId('')
-              setStatusFilter('all')
-              setActivityFilter('all')
-            }}
-            className="text-sm font-medium text-sky-700 hover:underline"
-          >
-            Clear filters
-          </button>
-        )}
-        <button
-          onClick={() =>
-            downloadCsv(
-              `leaderboard-${rangeStart}-to-${rangeEnd}.csv`,
-              rows.map((r) => ({
-                name: r.name,
-                cb_email: r.cb_email,
-                tasks_submitted: r.tasks_submitted,
-                target: r.weekly_target,
-                progress_pct: Math.round(r.progress * 100),
-                current_streak_weeks: achievements?.get(r.user_id)?.current_streak ?? 0,
-                is_active: r.is_active,
-              })),
-            )
-          }
-          disabled={rows.length === 0}
-          className="ml-auto rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-        >
-          Export CSV
-        </button>
-      </div>
-
-      <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+      <TableCard
+        toolbar={
+          <TableToolbar>
+            <SearchInput placeholder="Search by name or email..." value={search} onChange={setSearch} />
+            <Select
+              value={projectId}
+              onChange={setProjectId}
+              options={[{ value: '', label: 'All Projects' }, ...(projects ?? []).map((p) => ({ value: String(p.id), label: p.name }))]}
+              className={toolbarControlClass}
+            />
+            <Select
+              value={activityFilter}
+              onChange={(value) => setActivityFilter(value as ActivityFilter)}
+              options={[
+                { value: 'all', label: 'All Activity' },
+                { value: 'submitted', label: `Submitted ${viewLabel === 'Day' ? 'Today' : `This ${viewLabel}`}` },
+                { value: 'no_submissions', label: 'No Submissions' },
+              ]}
+              className={toolbarControlClass}
+            />
+            <Select
+              value={statusFilter}
+              onChange={(value) => setStatusFilter(value as StatusFilter)}
+              options={[
+                { value: 'all', label: 'All Statuses' },
+                { value: 'active', label: 'Active' },
+                { value: 'disabled', label: 'Disabled' },
+              ]}
+              className={toolbarControlClass}
+            />
+            {(search || projectId || statusFilter !== 'all' || activityFilter !== 'all') && (
+              <button
+                onClick={() => {
+                  setSearch('')
+                  setProjectId('')
+                  setStatusFilter('all')
+                  setActivityFilter('all')
+                }}
+                className="px-1 text-sm font-medium text-sky-700 hover:underline"
+              >
+                Clear filters
+              </button>
+            )}
+            <button
+              onClick={() =>
+                downloadCsv(
+                  `leaderboard-${rangeStart}-to-${rangeEnd}.csv`,
+                  rows.map((r) => ({
+                    name: r.name,
+                    cb_email: r.cb_email,
+                    tasks_submitted: r.tasks_submitted,
+                    target: r.weekly_target,
+                    progress_pct: Math.round(r.progress * 100),
+                    current_streak_weeks: achievements?.get(r.user_id)?.current_streak ?? 0,
+                    is_active: r.is_active,
+                  })),
+                )
+              }
+              disabled={rows.length === 0}
+              className="ml-auto h-9 rounded-lg border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            >
+              Export CSV
+            </button>
+          </TableToolbar>
+        }
+      >
         <table className="w-full min-w-[36rem] text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
             <tr>
@@ -474,7 +470,7 @@ function ManagerLeaderboard() {
             })}
           </tbody>
         </table>
-      </div>
+      </TableCard>
     </div>
   )
 }

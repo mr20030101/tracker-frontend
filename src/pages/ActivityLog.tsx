@@ -6,6 +6,7 @@ import { AUDIT_CATEGORIES, auditCategory, fetchAuditLogs } from '../lib/auditLog
 import type { ActivityEvent, ActivityLog, AuditLog } from '../types'
 import { Avatar } from '../components/Avatar'
 import { Select } from '../components/Select'
+import { SearchInput, TableToolbar, toolbarControlClass } from '../components/TableToolbar'
 import { DataTable } from '../components/DataTable'
 import { Modal } from '../components/Modal'
 
@@ -126,21 +127,6 @@ function AuditTrail() {
             What leads and admins changed: accounts, teams, requests, levels, targets, projects and hiring. Kept permanently.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <input
-            type="search"
-            placeholder="Search..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-48 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
-          />
-          <Select
-            value={category}
-            onChange={setCategory}
-            options={[{ value: 'all', label: 'All actions' }, ...AUDIT_CATEGORIES.map((c) => ({ value: c.value, label: c.label }))]}
-            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
-          />
-        </div>
       </div>
 
       {isError ? (
@@ -149,6 +135,18 @@ function AuditTrail() {
         </div>
       ) : (
         <DataTable
+          toolbar={
+            <TableToolbar>
+              <SearchInput value={search} onChange={setSearch} aria-label="Search admin actions" />
+              <Select
+                value={category}
+                onChange={setCategory}
+                aria-label="Filter by action"
+                options={[{ value: 'all', label: 'All actions' }, ...AUDIT_CATEGORIES.map((c) => ({ value: c.value, label: c.label }))]}
+                className={toolbarControlClass}
+              />
+            </TableToolbar>
+          }
           columns={columns}
           data={rows}
           getRowId={(row) => String(row.id)}
@@ -232,17 +230,6 @@ function SignInLog() {
           <p className="text-sm text-gray-500">Sign-in and sign-out activity across all logins.</p>
         </div>
         <div className="flex items-center gap-2">
-          <Select
-            value={eventFilter}
-            onChange={(value) => setEventFilter(value as ActivityEvent | 'all')}
-            options={[
-              { value: 'all', label: 'All events' },
-              { value: 'login', label: 'Signed in' },
-              { value: 'login_failed', label: 'Sign-in failed' },
-              { value: 'logout', label: 'Signed out' },
-            ]}
-            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
-          />
           <button
             onClick={() => setClearConfirm(true)}
             disabled={!data || data.length === 0}
@@ -254,6 +241,22 @@ function SignInLog() {
       </div>
 
       <DataTable
+        toolbar={
+          <TableToolbar>
+            <Select
+              value={eventFilter}
+              onChange={(value) => setEventFilter(value as ActivityEvent | 'all')}
+              aria-label="Filter by event"
+              options={[
+                { value: 'all', label: 'All events' },
+                { value: 'login', label: 'Signed in' },
+                { value: 'login_failed', label: 'Sign-in failed' },
+                { value: 'logout', label: 'Signed out' },
+              ]}
+              className={toolbarControlClass}
+            />
+          </TableToolbar>
+        }
         columns={columns}
         data={rows}
         getRowId={(row) => String(row.id)}

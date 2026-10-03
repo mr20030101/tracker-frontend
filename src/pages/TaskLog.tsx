@@ -9,6 +9,7 @@ import { StatusPill } from '../components/StatusPill'
 import { Avatar } from '../components/Avatar'
 import { ActionsMenu } from '../components/ActionsMenu'
 import { Select } from '../components/Select'
+import { DateRangeInput, SearchInput, TableCard, TableToolbar, toolbarControlClass } from '../components/TableToolbar'
 import { SubmissionDetailsModal } from '../components/SubmissionDetailsModal'
 import { TaskSubmissionForm } from '../components/TaskSubmissionForm'
 import { SortableHeader } from '../components/SortableHeader'
@@ -181,15 +182,6 @@ function ManagerTaskLog() {
           </p>
         </div>
         <div className="flex gap-2">
-          {isManager && (
-            <button
-              onClick={handleExport}
-              disabled={exporting}
-              className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-            >
-              {exporting ? 'Exporting...' : 'Export CSV'}
-            </button>
-          )}
           <button
             onClick={() => setBulkImportOpen(true)}
             className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
@@ -205,66 +197,95 @@ function ManagerTaskLog() {
         </div>
       </div>
 
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        {isManager && (
-          <input
-            type="search"
-            placeholder="Search by CB email or Task ID..."
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value)
-              setPage(1)
-            }}
-            className="w-64 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
-          />
-        )}
-        <Select
-          value={stage}
-          onChange={(value) => {
-            setStage(value as Stage | '')
-            setPage(1)
-          }}
-          options={STAGES}
-          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
-        />
-        <div className="flex items-center gap-2">
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => {
-              setDateFrom(e.target.value)
-              setPage(1)
-            }}
-            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
-          />
-          <span className="text-sm text-gray-400">to</span>
-          <input
-            type="date"
-            value={dateTo}
-            onChange={(e) => {
-              setDateTo(e.target.value)
-              setPage(1)
-            }}
-            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
-          />
-        </div>
-        {(stage || search || dateFrom || dateTo) && (
-          <button
-            onClick={() => {
-              setStage('')
-              setSearch('')
-              setDateFrom('')
-              setDateTo('')
-              setPage(1)
-            }}
-            className="text-sm font-medium text-sky-700 hover:underline"
-          >
-            Clear filters
-          </button>
-        )}
-      </div>
-
-      <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+      <TableCard
+        toolbar={
+          <TableToolbar>
+            {isManager && (
+              <SearchInput
+                placeholder="Search by CB email or Task ID..."
+                value={search}
+                onChange={(value) => {
+                  setSearch(value)
+                  setPage(1)
+                }}
+              />
+            )}
+            <Select
+              value={stage}
+              onChange={(value) => {
+                setStage(value as Stage | '')
+                setPage(1)
+              }}
+              options={STAGES}
+              aria-label="Filter by stage"
+              className={toolbarControlClass}
+            />
+            <DateRangeInput
+              from={dateFrom}
+              to={dateTo}
+              onFromChange={(value) => {
+                setDateFrom(value)
+                setPage(1)
+              }}
+              onToChange={(value) => {
+                setDateTo(value)
+                setPage(1)
+              }}
+            />
+            {(stage || search || dateFrom || dateTo) && (
+              <button
+                onClick={() => {
+                  setStage('')
+                  setSearch('')
+                  setDateFrom('')
+                  setDateTo('')
+                  setPage(1)
+                }}
+                className="px-1 text-sm font-medium text-sky-700 hover:underline"
+              >
+                Clear filters
+              </button>
+            )}
+            {isManager && (
+              <button
+                onClick={handleExport}
+                disabled={exporting}
+                className="ml-auto h-9 rounded-lg border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                {exporting ? 'Exporting...' : 'Export CSV'}
+              </button>
+            )}
+          </TableToolbar>
+        }
+        footer={
+          data && (
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-gray-200 px-5 py-3 text-xs text-gray-500">
+              <span>
+                Showing {data.from ?? 0}–{data.to ?? 0} of {data.total}
+              </span>
+              <div className="flex items-center gap-3">
+                <button
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => p - 1)}
+                  className="rounded-lg border border-gray-200 px-3 py-1.5 font-medium text-gray-600 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Previous
+                </button>
+                <span>
+                  Page {page} of {Math.max(1, data.last_page)}
+                </span>
+                <button
+                  disabled={page >= data.last_page}
+                  onClick={() => setPage((p) => p + 1)}
+                  className="rounded-lg border border-gray-200 px-3 py-1.5 font-medium text-gray-600 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )
+        }
+      >
         <table className="w-full min-w-[36rem] text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
             <tr>
@@ -363,34 +384,7 @@ function ManagerTaskLog() {
             ))}
           </tbody>
         </table>
-
-        {data && (
-          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-gray-200 px-5 py-3 text-xs text-gray-500">
-            <span>
-              Showing {data.from ?? 0}–{data.to ?? 0} of {data.total}
-            </span>
-            <div className="flex items-center gap-3">
-              <button
-                disabled={page <= 1}
-                onClick={() => setPage((p) => p - 1)}
-                className="rounded-lg border border-gray-200 px-3 py-1.5 font-medium text-gray-600 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                Previous
-              </button>
-              <span>
-                Page {page} of {Math.max(1, data.last_page)}
-              </span>
-              <button
-                disabled={page >= data.last_page}
-                onClick={() => setPage((p) => p + 1)}
-                className="rounded-lg border border-gray-200 px-3 py-1.5 font-medium text-gray-600 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+      </TableCard>
 
       {viewing && (
         <SubmissionDetailsModal
