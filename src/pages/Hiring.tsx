@@ -40,6 +40,7 @@ import { DataTable } from '../components/DataTable'
 import { downloadCsv } from '../lib/csv'
 import { Modal } from '../components/Modal'
 import { Select } from '../components/Select'
+import { SearchInput, SegmentedTabs, TableToolbar, toolbarControlClass } from '../components/TableToolbar'
 import { contributorPath } from '../lib/urlRef'
 import { fetchOnboardingStatus, ONBOARDING_STEPS } from '../lib/onboarding'
 
@@ -772,6 +773,30 @@ export function Hiring() {
     ? `Hi ${credentials.name}, your Grey Owls Tracker login is ready.\nSign in at ${window.location.origin}/login\nEmail: ${credentials.email}\nTemporary password: ${credentials.password}\nYou'll be asked to choose your own password when you first sign in.`
     : ''
 
+  // Search and the lead filter apply to both the list and the board.
+  const sharedFilters = (
+    <>
+      <SearchInput
+        placeholder="Search by name, email or ID..."
+        aria-label="Search applicants"
+        value={search}
+        onChange={(value) => {
+          setSearch(value)
+          setRowSelection({})
+        }}
+      />
+      {isAdmin && (
+        <Select
+          value={leadFilter}
+          aria-label="Filter by lead"
+          onChange={(value) => setFilter('lead', value)}
+          options={[{ value: '', label: 'All Leads' }, ...leadOptions]}
+          className={toolbarControlClass}
+        />
+      )}
+    </>
+  )
+
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
@@ -785,15 +810,26 @@ export function Hiring() {
               : 'Share your application link, then accept or deny the people who apply.'}
           </p>
         </div>
-        {isAdmin && applications.length > 0 && (
-          <button
-            type="button"
-            onClick={openClearHiring}
-            className="rounded-lg border border-status-danger-text/30 px-3 py-2 text-sm font-semibold text-status-danger-text hover:bg-status-danger-bg"
-          >
-            Clear all hiring
-          </button>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <SegmentedTabs
+            aria-label="View"
+            value={isBoard ? 'board' : 'list'}
+            onChange={(view) => setFilter('view', view === 'board' ? 'board' : '')}
+            options={[
+              { value: 'list', label: 'List' },
+              { value: 'board', label: 'Board' },
+            ]}
+          />
+          {isAdmin && applications.length > 0 && (
+            <button
+              type="button"
+              onClick={openClearHiring}
+              className="h-9 rounded-lg border border-status-danger-text/30 px-3 text-sm font-semibold text-status-danger-text hover:bg-status-danger-bg"
+            >
+              Clear all hiring
+            </button>
+          )}
+        </div>
       </div>
 
       {notice && (
@@ -857,70 +893,6 @@ export function Hiring() {
         </p>
       </div>
 
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <div role="group" aria-label="View" className="inline-flex rounded-lg border border-gray-200 bg-white p-0.5">
-          {(['list', 'board'] as const).map((view) => (
-            <button
-              key={view}
-              type="button"
-              aria-pressed={isBoard === (view === 'board')}
-              onClick={() => setFilter('view', view === 'board' ? 'board' : '')}
-              className={`rounded-md px-3 py-1.5 text-sm font-medium capitalize ${
-                isBoard === (view === 'board') ? 'bg-accent-bg text-accent-foreground' : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              {view}
-            </button>
-          ))}
-        </div>
-        {!isBoard && (
-        <div role="tablist" aria-label="Filter by status" className="inline-flex rounded-lg border border-gray-200 bg-white p-0.5">
-          {STATUS_FILTERS.map((status) => (
-            <button
-              key={status}
-              role="tab"
-              aria-selected={statusFilter === status}
-              onClick={() => setFilter('status', status === 'pending' ? '' : status)}
-              className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-                statusFilter === status ? 'bg-accent-bg text-accent-foreground' : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              {STATUS_LABELS[status]}{' '}
-              <span className={statusFilter === status ? 'opacity-70' : 'text-gray-400'}>{countOf(status)}</span>
-            </button>
-          ))}
-        </div>
-        )}
-        <input
-          type="search"
-          placeholder="Search by name, email or ID..."
-          aria-label="Search applicants"
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value)
-            setRowSelection({})
-          }}
-          className={`w-64 ${selectClass}`}
-        />
-        {isAdmin && (
-          <Select
-            value={leadFilter}
-            aria-label="Filter by lead"
-            onChange={(value) => setFilter('lead', value)}
-            options={[{ value: '', label: 'All Leads' }, ...leadOptions]}
-            className={selectClass}
-          />
-        )}
-        <button
-          type="button"
-          onClick={() => exportApplications(rows, `hiring-${statusFilter}-${todayStamp()}.csv`)}
-          disabled={rows.length === 0}
-          className="ml-auto rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-        >
-          Export all
-        </button>
-      </div>
-
       {loadError && (
         <div role="alert" className="mb-4 rounded-lg border border-status-danger-text/30 bg-status-danger-bg px-4 py-2.5 text-sm text-status-danger-text">
           {(loadError as Error).message || 'Could not load applications.'}
@@ -928,12 +900,15 @@ export function Hiring() {
       )}
 
       {isBoard ? (
-        <HiringBoard
-          applications={boardRows}
-          duplicates={duplicates}
-          leadNameById={isAdmin ? leadNameById : null}
-          onOpen={setDetails}
-        />
+        <>
+          <TableToolbar standalone>{sharedFilters}</TableToolbar>
+          <HiringBoard
+            applications={boardRows}
+            duplicates={duplicates}
+            leadNameById={isAdmin ? leadNameById : null}
+            onOpen={setDetails}
+          />
+        </>
       ) : (
         <>
       {selected.length > 0 && (
@@ -1008,6 +983,25 @@ export function Hiring() {
       )}
 
       <DataTable
+        toolbar={
+          <TableToolbar>
+            <SegmentedTabs
+              aria-label="Filter by status"
+              value={statusFilter}
+              onChange={(status) => setFilter('status', status === 'pending' ? '' : status)}
+              options={STATUS_FILTERS.map((status) => ({ value: status, label: STATUS_LABELS[status], count: countOf(status) }))}
+            />
+            {sharedFilters}
+            <button
+              type="button"
+              onClick={() => exportApplications(rows, `hiring-${statusFilter}-${todayStamp()}.csv`)}
+              disabled={rows.length === 0}
+              className="ml-auto h-9 rounded-lg border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            >
+              Export all
+            </button>
+          </TableToolbar>
+        }
         columns={columns}
         data={rows}
         getRowId={(a) => String(a.id)}

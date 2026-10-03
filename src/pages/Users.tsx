@@ -12,6 +12,7 @@ import { Combobox } from '../components/Combobox'
 import { DataTable } from '../components/DataTable'
 import { ActionsMenu } from '../components/ActionsMenu'
 import { Select } from '../components/Select'
+import { SearchInput, SegmentedTabs, TableToolbar, toolbarControlClass } from '../components/TableToolbar'
 import { BulkImportUsersModal } from '../components/BulkImportUsersModal'
 import { contributorPath } from '../lib/urlRef'
 
@@ -460,7 +461,6 @@ export function Users() {
   )
 
   const bulkBusy = bulkMutation.isPending
-  const selectClass = 'rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent'
   const bulkSelectClass = 'rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm outline-none focus:border-accent'
 
   return (
@@ -499,63 +499,6 @@ export function Users() {
           </button>
         </div>
       )}
-
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <div role="tablist" aria-label="Filter by status" className="inline-flex rounded-lg border border-gray-200 bg-white p-0.5">
-          {statusTabs.map((tab) => (
-            <button
-              key={tab.value}
-              role="tab"
-              aria-selected={statusFilter === tab.value}
-              onClick={() => setFilter('status', tab.value)}
-              className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-                statusFilter === tab.value ? 'bg-accent-bg text-accent-foreground' : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              {tab.label} <span className={statusFilter === tab.value ? 'opacity-70' : 'text-gray-400'}>{tab.count}</span>
-            </button>
-          ))}
-        </div>
-        <input
-          type="search"
-          placeholder="Search by name or email..."
-          aria-label="Search logins"
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value)
-            setRowSelection({})
-          }}
-          className={`w-64 ${selectClass}`}
-        />
-        {isAdmin && (
-          <>
-            <Select
-              value={roleFilter}
-              aria-label="Filter by role"
-              onChange={(value) => setFilter('role', value)}
-              options={[{ value: '', label: 'All Roles' }, ...ROLE_OPTIONS]}
-              className={selectClass}
-            />
-            <Select
-              value={leadFilter}
-              aria-label="Filter by lead"
-              onChange={(value) => setFilter('lead', value)}
-              options={[{ value: '', label: 'All Leads' }, { value: 'none', label: 'No Lead Assigned' }, ...leadOptions]}
-              className={selectClass}
-            />
-          </>
-        )}
-        {hasActiveFilters && (
-          <button onClick={clearFilters} className="text-sm font-medium text-sky-700 hover:underline">
-            Clear filters
-          </button>
-        )}
-        {!isLoading && (
-          <span className="ml-auto text-xs text-gray-400">
-            {rows.length === people.length ? plural(people.length, 'login') : `${rows.length} of ${plural(people.length, 'login')}`}
-          </span>
-        )}
-      </div>
 
       {selectedIds.length > 0 && (
         <div className="sticky top-0 z-10 mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 shadow-sm">
@@ -614,6 +557,48 @@ export function Users() {
       )}
 
       <DataTable
+        toolbar={
+          <TableToolbar>
+            <SegmentedTabs aria-label="Filter by status" value={statusFilter} onChange={(value) => setFilter('status', value)} options={statusTabs} />
+            <SearchInput
+              placeholder="Search by name or email..."
+              aria-label="Search logins"
+              value={search}
+              onChange={(value) => {
+                setSearch(value)
+                setRowSelection({})
+              }}
+            />
+            {isAdmin && (
+              <>
+                <Select
+                  value={roleFilter}
+                  aria-label="Filter by role"
+                  onChange={(value) => setFilter('role', value)}
+                  options={[{ value: '', label: 'All Roles' }, ...ROLE_OPTIONS]}
+                  className={toolbarControlClass}
+                />
+                <Select
+                  value={leadFilter}
+                  aria-label="Filter by lead"
+                  onChange={(value) => setFilter('lead', value)}
+                  options={[{ value: '', label: 'All Leads' }, { value: 'none', label: 'No Lead Assigned' }, ...leadOptions]}
+                  className={toolbarControlClass}
+                />
+              </>
+            )}
+            {hasActiveFilters && (
+              <button onClick={clearFilters} className="px-1 text-sm font-medium text-sky-700 hover:underline">
+                Clear filters
+              </button>
+            )}
+            {!isLoading && (
+              <span className="ml-auto text-xs text-gray-400">
+                {rows.length === people.length ? plural(people.length, 'login') : `${rows.length} of ${plural(people.length, 'login')}`}
+              </span>
+            )}
+          </TableToolbar>
+        }
         columns={columns}
         data={rows}
         getRowId={(u) => u.id}

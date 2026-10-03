@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
   flexRender,
   getCoreRowModel,
@@ -38,6 +38,8 @@ interface DataTableProps<TData> {
   onRowClick?: (row: TData) => void
   /** Skip the outer rounded border/background, for embedding inside a card that already has one. */
   bare?: boolean
+  /** Filters shown in a strip across the top of the table card, usually a <TableToolbar>. */
+  toolbar?: ReactNode
 }
 
 export function DataTable<TData>({
@@ -53,6 +55,7 @@ export function DataTable<TData>({
   rowClassName,
   onRowClick,
   bare = false,
+  toolbar,
 }: DataTableProps<TData>) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize })
@@ -102,84 +105,87 @@ export function DataTable<TData>({
   const to = Math.min(total, from + pagination.pageSize - 1)
 
   return (
-    <div className={bare ? 'overflow-x-auto' : 'overflow-x-auto rounded-xl border border-gray-200 bg-white'}>
-      <table className="w-full min-w-[36rem] text-left text-sm">
-        <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
-          {table.getHeaderGroups().map((headerGroup) => (
-            <tr key={headerGroup.id}>
-              {headerGroup.headers.map((header) => {
-                const align = header.column.columnDef.meta?.align
-                const isSelectCol = header.column.id === 'select'
-                return (
-                  <th
-                    key={header.id}
-                    className={`${isSelectCol ? 'w-10 px-4' : 'px-5'} py-3 ${align === 'right' ? 'text-right' : 'text-left'}`}
-                  >
-                    {header.column.getCanSort() ? (
-                      <button
-                        onClick={header.column.getToggleSortingHandler()}
-                        className={`flex items-center gap-1 font-medium uppercase tracking-wider ${
-                          align === 'right' ? 'ml-auto' : ''
-                        } ${header.column.getIsSorted() ? 'text-gray-900' : 'text-gray-500'}`}
-                      >
-                        {flexRender(header.column.columnDef.header, header.getContext())}
-                        <span className="text-[10px]">
-                          {header.column.getIsSorted() === 'asc' ? '▲' : header.column.getIsSorted() === 'desc' ? '▼' : ''}
-                        </span>
-                      </button>
-                    ) : (
-                      flexRender(header.column.columnDef.header, header.getContext())
-                    )}
-                  </th>
-                )
-              })}
-            </tr>
-          ))}
-        </thead>
-        <tbody className="divide-y divide-gray-100">
-          {isLoading && (
-            <tr>
-              <td colSpan={columns.length} className="px-5 py-6 text-center text-gray-400">
-                Loading...
-              </td>
-            </tr>
-          )}
-          {!isLoading && rows.length === 0 && (
-            <tr>
-              <td colSpan={columns.length} className="px-5 py-6 text-center text-gray-400">
-                {emptyMessage}
-              </td>
-            </tr>
-          )}
-          {!isLoading &&
-            rows.map((row) => (
-              <tr
-                key={row.id}
-                onClick={
-                  onRowClick
-                    ? (e) => {
-                        if (!(e.target as HTMLElement).closest('a, button, input, select, textarea, label')) onRowClick(row.original)
-                      }
-                    : undefined
-                }
-                className={`hover:bg-gray-50 ${onRowClick ? 'cursor-pointer' : ''} ${rowClassName?.(row.original) ?? ''}`}
-              >
-                {row.getVisibleCells().map((cell) => {
-                  const align = cell.column.columnDef.meta?.align
-                  const isSelectCol = cell.column.id === 'select'
+    <div className={bare ? '' : 'rounded-xl border border-gray-200 bg-white'}>
+      {toolbar}
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[36rem] text-left text-sm">
+          <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
+            {table.getHeaderGroups().map((headerGroup) => (
+              <tr key={headerGroup.id}>
+                {headerGroup.headers.map((header) => {
+                  const align = header.column.columnDef.meta?.align
+                  const isSelectCol = header.column.id === 'select'
                   return (
-                    <td
-                      key={cell.id}
-                      className={`${isSelectCol ? 'w-10 px-4' : 'px-5'} py-3 ${align === 'right' ? 'text-right' : ''}`}
+                    <th
+                      key={header.id}
+                      className={`${isSelectCol ? 'w-10 px-4' : 'px-5'} py-3 ${align === 'right' ? 'text-right' : 'text-left'}`}
                     >
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </td>
+                      {header.column.getCanSort() ? (
+                        <button
+                          onClick={header.column.getToggleSortingHandler()}
+                          className={`flex items-center gap-1 font-medium uppercase tracking-wider ${
+                            align === 'right' ? 'ml-auto' : ''
+                          } ${header.column.getIsSorted() ? 'text-gray-900' : 'text-gray-500'}`}
+                        >
+                          {flexRender(header.column.columnDef.header, header.getContext())}
+                          <span className="text-[10px]">
+                            {header.column.getIsSorted() === 'asc' ? '▲' : header.column.getIsSorted() === 'desc' ? '▼' : ''}
+                          </span>
+                        </button>
+                      ) : (
+                        flexRender(header.column.columnDef.header, header.getContext())
+                      )}
+                    </th>
                   )
                 })}
               </tr>
             ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {isLoading && (
+              <tr>
+                <td colSpan={columns.length} className="px-5 py-6 text-center text-gray-400">
+                  Loading...
+                </td>
+              </tr>
+            )}
+            {!isLoading && rows.length === 0 && (
+              <tr>
+                <td colSpan={columns.length} className="px-5 py-6 text-center text-gray-400">
+                  {emptyMessage}
+                </td>
+              </tr>
+            )}
+            {!isLoading &&
+              rows.map((row) => (
+                <tr
+                  key={row.id}
+                  onClick={
+                    onRowClick
+                      ? (e) => {
+                          if (!(e.target as HTMLElement).closest('a, button, input, select, textarea, label')) onRowClick(row.original)
+                        }
+                      : undefined
+                  }
+                  className={`hover:bg-gray-50 ${onRowClick ? 'cursor-pointer' : ''} ${rowClassName?.(row.original) ?? ''}`}
+                >
+                  {row.getVisibleCells().map((cell) => {
+                    const align = cell.column.columnDef.meta?.align
+                    const isSelectCol = cell.column.id === 'select'
+                    return (
+                      <td
+                        key={cell.id}
+                        className={`${isSelectCol ? 'w-10 px-4' : 'px-5'} py-3 ${align === 'right' ? 'text-right' : ''}`}
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </td>
+                    )
+                  })}
+                </tr>
+              ))}
+          </tbody>
+        </table>
+      </div>
       {!isLoading && paginate && total > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-gray-200 px-5 py-3 text-xs text-gray-500">
           <span>
