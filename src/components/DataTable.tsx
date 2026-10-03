@@ -62,8 +62,14 @@ export function DataTable<TData>({
     columns,
     getRowId,
     state: { sorting, ...(paginate ? { pagination } : {}), ...(rowSelection ? { rowSelection } : {}) },
-    onSortingChange: setSorting,
+    onSortingChange: (updater) => {
+      setSorting(updater)
+      setPagination((p) => ({ ...p, pageIndex: 0 }))
+    },
     onPaginationChange: setPagination,
+    // Callers often rebuild `data` every render, so ticking a checkbox would otherwise jump back to page 1.
+    // We reset the page ourselves below, only when the rows actually change.
+    autoResetPageIndex: false,
     onRowSelectionChange,
     enableRowSelection: Boolean(onRowSelectionChange),
     getCoreRowModel: getCoreRowModel(),
@@ -75,6 +81,12 @@ export function DataTable<TData>({
     () => [...new Set([...PAGE_SIZE_OPTIONS, pageSize])].sort((a, b) => a - b).map((n) => ({ value: String(n), label: String(n) })),
     [pageSize],
   )
+
+  // Back to the first page when the set of rows changes (e.g. a filter), but not when the same rows re-render.
+  const rowKey = useMemo(() => data.map((row, i) => (getRowId ? getRowId(row) : i)).join('|'), [data, getRowId])
+  useEffect(() => {
+    setPagination((p) => (p.pageIndex === 0 ? p : { ...p, pageIndex: 0 }))
+  }, [rowKey])
 
   const pageCount = table.getPageCount()
   useEffect(() => {
