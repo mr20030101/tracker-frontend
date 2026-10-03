@@ -14,6 +14,12 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 2.8.1 — 2026-10-03
+
+### Fixed
+
+- Ticking rows in a table on page 2 or later (for example on Hiring or Users) no longer jumps the table back to page 1. Ticks you made on other pages are kept.
+
 ## 2.8.0 — 2026-10-02
 
 ### Changed
