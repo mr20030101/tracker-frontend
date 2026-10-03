@@ -27,6 +27,15 @@ interface MessagingContextValue {
 
 const MessagingContext = createContext<MessagingContextValue | null>(null)
 
+// When this tab opened, less some leeway for the server's clock being ahead of this one.
+const OPENED_AT = Date.now()
+const CLOCK_LEEWAY_MS = 2 * 60 * 1000
+
+/** Sent after this tab opened, so it can be news here (older messages were already waiting). */
+function isFresh(createdAt: string): boolean {
+  return Date.parse(createdAt) >= OPENED_AT - CLOCK_LEEWAY_MS
+}
+
 export function MessagingProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
   const myId = user?.id ?? null
@@ -104,21 +113,25 @@ export function MessagingProvider({ children }: { children: ReactNode }) {
   const totalUnread =
     conversations.reduce((sum, c) => sum + c.unreadCount, 0) + groups.reduce((sum, g) => sum + g.unread_count, 0)
 
-  // The same once-per-message sound for group chats, keyed on each group's newest message.
-  const previousGroupTailRef = useRef<Map<number, number> | null>(null)
+  // The same once-per-message sound for group chats, keyed on each group's newest message. The map
+  // only ever grows: a group missing from one refetch (or the whole list coming back empty) mustn't
+  // make its existing messages count as new when it reappears.
+  const groupTailRef = useRef<Map<number, number> | null>(null)
   useEffect(() => {
     if (!groupsLoaded || !myId) return
-    const previous = previousGroupTailRef.current
-    if (previous) {
-      for (const g of groups) {
-        const last = g.last_message
-        if (last && last.sender_id !== myId && g.unread_count > 0 && (previous.get(g.id) ?? 0) < last.id) {
-          playSound(MESSAGE_NOTIFICATION_SOUND)
-          break
-        }
-      }
+    const seeded = groupTailRef.current !== null
+    const tails = groupTailRef.current ?? new Map<number, number>()
+    let play = false
+    for (const g of groups) {
+      const last = g.last_message
+      if (!last) continue
+      const seen = tails.get(g.id) ?? 0
+      if (last.id <= seen) continue
+      tails.set(g.id, last.id)
+      if (seeded && last.sender_id !== myId && g.unread_count > 0 && isFresh(last.created_at)) play = true
     }
-    previousGroupTailRef.current = new Map(groups.map((g) => [g.id, g.last_message?.id ?? 0]))
+    groupTailRef.current = tails
+    if (play) playSound(MESSAGE_NOTIFICATION_SOUND)
   }, [groups, groupsLoaded, myId])
 
   // Plays the notification sound exactly once per message, the moment it actually becomes visible
@@ -129,18 +142,24 @@ export function MessagingProvider({ children }: { children: ReactNode }) {
   // one place a message can be judged "newly visible" now. `null` (vs. an empty Set) marks that the
   // baseline hasn't been seeded yet, so the very first load doesn't play a sound for every message
   // already in history.
-  const previousVisibleIdsRef = useRef<Set<number> | null>(null)
+  //
+  // The set of seen ids only ever grows. The inbox holds just each conversation's last few messages,
+  // so deleting one lets an older message slide back in, and a refetch can briefly come back empty;
+  // neither is a new message, and neither should ring. `isFresh` also skips anything sent before this
+  // tab opened, in case the very first load was empty.
+  const seenMessageIdsRef = useRef<Set<number> | null>(null)
   useEffect(() => {
     if (!messagesLoaded || !myId) return
-    const previousIds = previousVisibleIdsRef.current
-    if (previousIds) {
-      for (const m of visibleMessages) {
-        if (m.recipient_id === myId && m.sender_id !== myId && !previousIds.has(m.id)) {
-          playSound(MESSAGE_NOTIFICATION_SOUND)
-        }
-      }
+    const seeded = seenMessageIdsRef.current !== null
+    const seen = seenMessageIdsRef.current ?? new Set<number>()
+    let play = false
+    for (const m of visibleMessages) {
+      if (seen.has(m.id)) continue
+      seen.add(m.id)
+      if (seeded && m.recipient_id === myId && m.sender_id !== myId && isFresh(m.created_at)) play = true
     }
-    previousVisibleIdsRef.current = new Set(visibleMessages.map((m) => m.id))
+    seenMessageIdsRef.current = seen
+    if (play) playSound(MESSAGE_NOTIFICATION_SOUND)
   }, [visibleMessages, messagesLoaded, myId])
 
   // Only responsible for nudging a refetch as soon as a message lands — visibility, the reveal
