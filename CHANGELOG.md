@@ -14,6 +14,12 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 2.8.2 — 2026-10-03
+
+### Fixed
+
+- The new-message sound sometimes played when nothing new had arrived, often when coming back to the Tracker tab. It happened after a message was deleted, or when the inbox briefly failed to load. It now plays only for messages sent while the Tracker is open, once each.
+
 ## 2.8.1 — 2026-10-03
 
 ### Fixed
