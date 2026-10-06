@@ -12,10 +12,12 @@ import type { DashboardSummary } from '../types'
 import { LineChart } from '../components/LineChart'
 import { DashboardHero } from '../components/DashboardHero'
 import { OVERDUE_HOURS, fetchOverdueRequestCount } from '../lib/taskRequests'
+import { usePageTitle } from '../lib/usePageTitle'
 
 type ExportKind = 'daily' | 'contributors' | 'projects' | 'leads'
 
 export function Dashboard() {
+  usePageTitle('Dashboard')
   const { user } = useAuth()
   const isAdmin = user?.role === 'admin'
   const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('week')

@@ -7,6 +7,7 @@ import { Modal } from '../components/Modal'
 import { Combobox } from '../components/Combobox'
 import { ActionsMenu } from '../components/ActionsMenu'
 import { confirmDialog } from '../lib/dialog'
+import { usePageTitle } from '../lib/usePageTitle'
 
 interface ProjectLead {
   project_id: number
@@ -14,6 +15,7 @@ interface ProjectLead {
 }
 
 export function Projects() {
+  usePageTitle('Projects')
   const { user: currentUser } = useAuth()
   const isAdmin = currentUser?.role === 'admin'
   const queryClient = useQueryClient()

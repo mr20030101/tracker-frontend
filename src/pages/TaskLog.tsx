@@ -19,6 +19,7 @@ import { downloadCsv } from '../lib/csv'
 import { contributorPath } from '../lib/urlRef'
 import { confirmDialog, alertDialog } from '../lib/dialog'
 import { fetchAllPages } from '../lib/fetchAll'
+import { usePageTitle } from '../lib/usePageTitle'
 
 const MANAGER_ROLES = ['admin', 'lead']
 
@@ -40,6 +41,7 @@ const STATUS_OPTIONS: { value: SubmissionStatus; label: string }[] = [
 ]
 
 export function TaskLog() {
+  usePageTitle('Task Log')
   const { user } = useAuth()
   const isManager = Boolean(user && MANAGER_ROLES.includes(user.role))
   return isManager ? <ManagerTaskLog /> : <ContributorTaskLog />

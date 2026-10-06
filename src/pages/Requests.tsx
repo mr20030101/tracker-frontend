@@ -23,6 +23,7 @@ import { contributorPath } from '../lib/urlRef'
 import { useNow } from '../lib/useNow'
 import { confirmDialog } from '../lib/dialog'
 import { SegmentedTabs, TableCard, TableToolbar } from '../components/TableToolbar'
+import { usePageTitle } from '../lib/usePageTitle'
 
 const MANAGER_ROLES = ['admin', 'lead']
 
@@ -51,6 +52,7 @@ const humanize = (value: string) => value.replace(/_/g, ' ').replace(/^./, (c) =
 const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`
 
 export function Requests() {
+  usePageTitle('Requests')
   const { user } = useAuth()
   const isManager = Boolean(user && MANAGER_ROLES.includes(user.role))
   const queryClient = useQueryClient()

@@ -16,6 +16,7 @@ import { useReveal } from '../lib/motion'
 import { fetchVisitorCountry } from '../lib/geo'
 import { CardHeading, PerchedCard } from '../components/PerchedCard'
 import { ErrorNote, PlayfulInput, SubmitButton, YesNoPills } from '../components/PlayfulForm'
+import { usePageTitle } from '../lib/usePageTitle'
 
 // Same staggered entrance as the login card: everything above the form, then each field in turn.
 const REVEAL = { selector: ':scope > :not(form), :scope > form > *', step: 60 }
@@ -521,6 +522,7 @@ export function Apply() {
     queryFn: () => fetchApplicationLead(leadId),
     retry: false,
   })
+  usePageTitle(lead ? `Apply to ${lead.name}'s team` : 'Apply')
 
   // If the country can't be told (null), the form stays open rather than turning away
   // someone who may well be eligible; only a known non-Philippines address is blocked.

@@ -4,6 +4,7 @@ import { useAuth } from '../lib/auth'
 import { downloadCsv } from '../lib/csv'
 import { TEAM_METRICS, fetchTeamReports, type TeamMetric } from '../lib/teamReports'
 import { TeamTrendChart } from '../components/TeamTrendChart'
+import { usePageTitle } from '../lib/usePageTitle'
 
 // Team Reports: each lead's team compared week by week. An admin sees every team; a lead sees
 // their own, so they can compare it against its own earlier weeks.
@@ -15,6 +16,7 @@ function shortWeek(weekStart: string): string {
 }
 
 export function TeamReports() {
+  usePageTitle('Team Reports')
   const { user } = useAuth()
   const isAdmin = user?.role === 'admin'
   const [weekCount, setWeekCount] = useState(8)

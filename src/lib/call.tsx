@@ -7,6 +7,7 @@ import { callLogBody } from './callLog'
 import { sendMessage } from './messages'
 import { CALL_RINGBACK_SOUND, CALL_RINGTONE_SOUND, loopSound } from './sound'
 import { VOICE_PAUSED_MESSAGE, fetchIceServers } from './voice'
+import { pageTitle } from './usePageTitle'
 
 // One-to-one voice calls, started from a conversation in Messages. The call itself is a direct
 // WebRTC audio connection (relayed through Cloudflare TURN when needed, see lib/voice); a shared
@@ -415,15 +416,15 @@ export function CallProvider({ children }: { children: ReactNode }) {
   const incomingName = state.phase === 'incoming' ? state.peer?.name ?? null : null
   useEffect(() => {
     if (!incomingName) return
-    const original = document.title
+    // Read fresh each time, so moving to another page while it rings doesn't bring back the old title.
     let flash = false
     const id = setInterval(() => {
       flash = !flash
-      document.title = flash ? `📞 ${incomingName} is calling...` : original
+      document.title = flash ? `📞 ${incomingName} is calling...` : pageTitle()
     }, 1000)
     return () => {
       clearInterval(id)
-      document.title = original
+      document.title = pageTitle()
     }
   }, [incomingName])
 

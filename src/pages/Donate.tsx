@@ -3,6 +3,7 @@ import { Check, Copy, Download, ExternalLink, Heart } from 'lucide-react'
 import { useReveal } from '../lib/motion'
 import { Logo } from '../components/Logo'
 import { AppFooter } from '../components/AppFooter'
+import { usePageTitle } from '../lib/usePageTitle'
 
 // Payment details come from the environment so they can change without a code edit
 // (see .env.example). A method with nothing set shows as unavailable rather than broken.
@@ -160,6 +161,7 @@ function MethodTab({ active, onClick, children }: { active: boolean; onClick: ()
 // Public page: anyone with the link can give, signed in or not. Nothing is recorded here;
 // the money goes straight to the GCash or PayPal account configured above.
 export function Donate() {
+  usePageTitle('Support the developer')
   const ref = useReveal<HTMLDivElement>(REVEAL)
   const [method, setMethod] = useState<Method>('gcash')
   const [preset, setPreset] = useState<number | null>(CURRENCIES[method].defaultPreset)

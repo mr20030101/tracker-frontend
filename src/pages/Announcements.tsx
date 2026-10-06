@@ -21,6 +21,7 @@ import { Modal } from '../components/Modal'
 import { Reveal } from '../components/Reveal'
 import { Select } from '../components/Select'
 import { confirmDialog } from '../lib/dialog'
+import { usePageTitle } from '../lib/usePageTitle'
 
 const MANAGER_ROLES = ['admin', 'lead']
 
@@ -29,6 +30,7 @@ function formatWhen(iso: string) {
 }
 
 export function Announcements() {
+  usePageTitle('Announcements')
   const { user } = useAuth()
   const queryClient = useQueryClient()
   const { usersById } = useMessaging()

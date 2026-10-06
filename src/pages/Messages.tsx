@@ -26,6 +26,7 @@ import { useAuth } from '../lib/auth'
 import { groupPath } from '../lib/groupChats'
 import { GroupChatPane, GroupIcon, NewGroupModal } from '../components/GroupChat'
 import { confirmDialog } from '../lib/dialog'
+import { usePageTitle } from '../lib/usePageTitle'
 
 // Messenger's own send-bubble blue, matching MessageBubble.tsx — kept local rather than
 // repointing the app's global --color-accent, which drives buttons everywhere else.
@@ -52,6 +53,7 @@ export function Messages() {
 
   const selectedUserId = routeRef ? parseMessageRef(routeRef) : null
   const selectedUser = selectedUserId ? usersById.get(selectedUserId) : undefined
+  usePageTitle(selectedGroup?.name ?? selectedUser?.name ?? 'Messages')
   const { messages: thread, isLoading: threadLoading, hasOlder, loadingOlder, loadOlder, scrollRef } = useThread(myId, selectedUserId)
   const { visibleThread, isTyping } = useBotTyping(thread, myId, Boolean(selectedUser?.is_bot))
 

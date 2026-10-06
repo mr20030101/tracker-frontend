@@ -9,6 +9,7 @@ import { Select } from '../components/Select'
 import { SearchInput, TableToolbar, toolbarControlClass } from '../components/TableToolbar'
 import { DataTable } from '../components/DataTable'
 import { Modal } from '../components/Modal'
+import { usePageTitle } from '../lib/usePageTitle'
 
 const EVENT_LABELS: Record<ActivityEvent, string> = {
   login: 'Signed in',
@@ -32,6 +33,7 @@ function formatTimestamp(value: string) {
 type Tab = 'sign-ins' | 'actions'
 
 export function ActivityLog() {
+  usePageTitle('Activity Log')
   const [tab, setTab] = useState<Tab>('sign-ins')
 
   return (
