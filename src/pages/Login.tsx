@@ -18,7 +18,7 @@ const FORGOT_PASSWORD_ENABLED = true
 // Where the reset email's link sends people, whichever address they requested it from (a Vercel
 // preview, say). The site root is always accepted once it is the Supabase Site URL; the recovery
 // form is shown from any route, so it doesn't need to be /login.
-const SITE_URL = 'https://greyowlstracker.space'
+const SITE_URL = 'https://www.greyowlstracker.space'
 
 export function Login() {
   const { login, recovering, clearRecovery } = useAuth()
