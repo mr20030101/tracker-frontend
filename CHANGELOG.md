@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 2.12.1 — 2026-10-07
+
 ### Changed
 
 - In an applicant's details on the Hiring page, "No Remotasks account yet" now shows in red so it stands out.
