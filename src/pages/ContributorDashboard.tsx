@@ -21,6 +21,7 @@ import { contributorPath } from '../lib/urlRef'
 import { OnboardingChecklist } from '../components/OnboardingChecklist'
 import { AchievementsCard } from '../components/Achievements'
 import { DashboardHero } from '../components/DashboardHero'
+import { usePageTitle } from '../lib/usePageTitle'
 
 const TREND_DAYS = 30
 
@@ -47,6 +48,7 @@ function buildAttendanceFormUrl(email: string) {
 }
 
 export function ContributorDashboard() {
+  usePageTitle('Dashboard')
   const { user } = useAuth()
   const email = user?.email ?? ''
   const { usersById, openChatWith } = useMessaging()

@@ -14,6 +14,7 @@ import { LineChart } from '../components/LineChart'
 import { ProgressBar } from '../components/ProgressBar'
 import { Select } from '../components/Select'
 import { contributorPath, messagePath } from '../lib/urlRef'
+import { usePageTitle } from '../lib/usePageTitle'
 
 const percent = (n: number) => `${Math.round(n)}%`
 
@@ -39,6 +40,7 @@ export function LeadTeam() {
     queryFn: () => fetchLeadTeam(leadId, weekStart),
     refetchInterval: 60_000,
   })
+  usePageTitle(team?.lead.name ?? 'Lead')
 
   // Same key as the Users page, so switching between leads reuses its cache.
   const { data: users } = useQuery({

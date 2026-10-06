@@ -19,6 +19,7 @@ import { OnboardingProgress } from '../components/OnboardingChecklist'
 import { useOnboardingStatus } from '../lib/onboarding'
 import { recordProfileView, useProfileViewCount } from '../lib/profileViews'
 import { useFeaturedBadges } from '../lib/achievements'
+import { usePageTitle } from '../lib/usePageTitle'
 
 const LEVEL_OPTIONS: ProjectLevel[] = ['contributor', 'l0', 'l1', 'l10']
 
@@ -155,6 +156,7 @@ export function CbProfile() {
 
   // Empty for a peer opened by id: they aren't told the email, and the page just leaves it out.
   const decodedEmail = targetIsId ? (data?.cb_email ?? '') : target
+  usePageTitle(data?.user?.name ?? (decodedEmail || 'Profile'))
 
   const queryClient = useQueryClient()
 

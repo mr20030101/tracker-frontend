@@ -17,6 +17,7 @@ import { downloadCsv } from '../lib/csv'
 import { contributorPath } from '../lib/urlRef'
 import { FeaturedBadgeChip, StreakChip } from '../components/Achievements'
 import { useAchievements, useFeaturedBadges } from '../lib/achievements'
+import { usePageTitle } from '../lib/usePageTitle'
 
 type Period = 'week' | 'month' | 'all'
 type StatusFilter = 'all' | 'active' | 'disabled'
@@ -37,6 +38,7 @@ function rangeFor(period: Period): { start: string; end: string } {
 }
 
 export function Leaderboard() {
+  usePageTitle('Leaderboard')
   const { user } = useAuth()
   const isManager = Boolean(user && MANAGER_ROLES.includes(user.role))
   return isManager ? <ManagerLeaderboard /> : <ContributorLeaderboard />

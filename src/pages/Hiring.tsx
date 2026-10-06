@@ -43,6 +43,7 @@ import { Select } from '../components/Select'
 import { SearchInput, SegmentedTabs, TableToolbar, toolbarControlClass } from '../components/TableToolbar'
 import { contributorPath } from '../lib/urlRef'
 import { fetchOnboardingStatus, ONBOARDING_STEPS } from '../lib/onboarding'
+import { usePageTitle } from '../lib/usePageTitle'
 
 type StatusFilter = HiringStatus | 'all'
 type Notice = { tone: 'success' | 'error'; text: string }
@@ -530,6 +531,9 @@ export function Hiring() {
   const accepting = linkLead?.accepting_applications ?? true
 
   const inScope = applications.filter((a) => !leadFilter || a.lead_id === leadFilter)
+  // The tab shows how many still need a decision, so it's noticed from another tab.
+  const pendingTotal = applications.filter((a) => a.status === 'pending').length
+  usePageTitle(`${pendingTotal > 0 ? `(${pendingTotal}) ` : ''}Hiring · ${isBoard ? 'Board' : STATUS_LABELS[statusFilter]}`)
   const countOf = (status: StatusFilter) => (status === 'all' ? inScope.length : inScope.filter((a) => a.status === status).length)
   const rows = inScope
     .filter((a) => statusFilter === 'all' || a.status === statusFilter)

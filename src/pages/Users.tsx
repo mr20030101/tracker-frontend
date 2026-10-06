@@ -15,6 +15,7 @@ import { Select } from '../components/Select'
 import { SearchInput, SegmentedTabs, TableToolbar, toolbarControlClass } from '../components/TableToolbar'
 import { BulkImportUsersModal } from '../components/BulkImportUsersModal'
 import { contributorPath } from '../lib/urlRef'
+import { usePageTitle } from '../lib/usePageTitle'
 
 const ROLES: User['role'][] = ['contributor', 'lead', 'admin']
 const ROLE_OPTIONS = ROLES.map((r) => ({ value: r, label: r.charAt(0).toUpperCase() + r.slice(1) }))
@@ -48,6 +49,7 @@ function formatLastSeen(lastSeenAt: string | null) {
 const emptyForm = { name: '', email: '', password: DEFAULT_PASSWORD, role: 'contributor' as User['role'], shift: '' }
 
 export function Users() {
+  usePageTitle('Users')
   const { user: currentUser } = useAuth()
   const isAdmin = currentUser?.role === 'admin'
   const queryClient = useQueryClient()

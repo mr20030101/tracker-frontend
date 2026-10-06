@@ -10,6 +10,7 @@ import type { TaskSubmission } from '../types'
 import { contributorPath } from '../lib/urlRef'
 import { confirmDialog } from '../lib/dialog'
 import { fetchAllPages } from '../lib/fetchAll'
+import { usePageTitle } from '../lib/usePageTitle'
 
 const HIGH_VOLUME_THRESHOLD = 20
 
@@ -84,6 +85,7 @@ function Section({
 }
 
 export function DataQuality() {
+  usePageTitle('Data Quality')
   const queryClient = useQueryClient()
   const [editTarget, setEditTarget] = useState<TaskSubmission | null>(null)
 

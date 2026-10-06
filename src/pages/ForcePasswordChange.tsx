@@ -3,8 +3,10 @@ import { useAuth } from '../lib/auth'
 import { supabase } from '../lib/api'
 import { clearMustChangePassword } from '../lib/profile'
 import { Logo } from '../components/Logo'
+import { usePageTitle } from '../lib/usePageTitle'
 
 export function ForcePasswordChange() {
+  usePageTitle('Set a new password')
   const { refreshUser, logout } = useAuth()
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')

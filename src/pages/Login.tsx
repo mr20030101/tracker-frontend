@@ -7,6 +7,7 @@ import { ErrorNote, LinkButton, PlayfulInput, RevealToggle, SubmitButton, Succes
 import type { OwlMood } from '../components/LoginOwl'
 import { CardHeading, PerchedCard } from '../components/PerchedCard'
 import { useReveal } from '../lib/motion'
+import { usePageTitle } from '../lib/usePageTitle'
 
 // Shows the "Forgot password?" link. It relies on Supabase delivering the reset
 // email, which needs custom SMTP under Authentication > SMTP (the built-in sender
@@ -33,6 +34,7 @@ export function Login() {
   const [password, setPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [mode, setMode] = useState<'login' | 'forgot' | 'recovery'>(recovering ? 'recovery' : 'login')
+  usePageTitle(mode === 'recovery' ? 'Reset password' : mode === 'forgot' ? 'Forgot password' : 'Sign in')
   const [notice, setNotice] = useState<string | null>((location.state as { notice?: string } | null)?.notice ?? null)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)

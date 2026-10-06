@@ -8,6 +8,7 @@ import { Modal } from '../components/Modal'
 import { ActionsMenu } from '../components/ActionsMenu'
 import { Select } from '../components/Select'
 import { confirmDialog, alertDialog } from '../lib/dialog'
+import { usePageTitle } from '../lib/usePageTitle'
 
 const MANAGER_ROLES = ['admin', 'lead']
 
@@ -29,6 +30,7 @@ function canvaEmbedUrl(url: string): string | null {
 }
 
 export function Resources() {
+  usePageTitle('Resources')
   const { user } = useAuth()
   const isAdmin = user?.role === 'admin'
   const isManager = Boolean(user && MANAGER_ROLES.includes(user.role))
