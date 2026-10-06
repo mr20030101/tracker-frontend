@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 3.0.0 — 2026-10-07
+
 ### Changed
 
 - The Hiring page now has a tab for each step of the hiring process instead of Pending / Accepted / Denied / All: **Pending → To email → Needs account → Onboarding → Onboarded**, plus Denied and All. Each tab shows only that step's action: accept or deny, send the bootcamp email, create the account, then mark onboarded. People move to the next tab on their own as each step is done. The All tab shows which step everyone is on, and the Board view uses the same steps as its columns. Old links to the Accepted tab now open To email.
