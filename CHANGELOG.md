@@ -14,6 +14,12 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 2.9.1 — 2026-10-06
+
+### Fixed
+
+- The link in password reset emails now opens https://www.greyowlstracker.space instead of the old Vercel address.
+
 ## 2.9.0 — 2026-10-03
 
 ### Changed
