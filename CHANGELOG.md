@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 3.0.1 — 2026-10-07
+
 ### Changed
 
 - The Hiring step tabs now sit above the applicants table instead of inside it. The table's toolbar keeps the search, lead filter and Export all on one line.
