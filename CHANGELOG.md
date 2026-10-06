@@ -14,6 +14,12 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 2.10.0 — 2026-10-06
+
+### Changed
+
+- The CTS Form and Attendance Form now open inside the Tracker instead of in a new Google Forms tab. They're still filled in for you. If one doesn't load, a link under it opens it in a new tab. The Reclaim/Extend and Bad Video forms leads file still open in a new tab, because they need a Google sign-in, which can't be shown inside another site.
+
 ## 2.9.0 — 2026-10-03
 
 ### Changed
