@@ -942,6 +942,15 @@ export function Hiring() {
         </>
       ) : (
         <>
+      {/* The steps sit above the card, so the table's own toolbar is just search and filters. */}
+      <div className="mb-3 overflow-x-auto">
+        <SegmentedTabs
+          aria-label="Filter by step"
+          value={statusFilter}
+          onChange={(status) => setFilter('status', status === 'pending' ? '' : status)}
+          options={STATUS_FILTERS.map((status) => ({ value: status, label: STATUS_LABELS[status], count: countOf(status) }))}
+        />
+      </div>
       {selected.length > 0 && (
         <div className="sticky top-0 z-10 mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 shadow-sm">
           <span className="text-sm font-medium text-gray-700">{selected.length} selected</span>
@@ -1013,12 +1022,6 @@ export function Hiring() {
       <DataTable
         toolbar={
           <TableToolbar>
-            <SegmentedTabs
-              aria-label="Filter by status"
-              value={statusFilter}
-              onChange={(status) => setFilter('status', status === 'pending' ? '' : status)}
-              options={STATUS_FILTERS.map((status) => ({ value: status, label: STATUS_LABELS[status], count: countOf(status) }))}
-            />
             {sharedFilters}
             <button
               type="button"
