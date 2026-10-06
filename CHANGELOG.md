@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 2.12.0 — 2026-10-06
+
 ### Added
 
 - Each page now has its own browser tab title, like "Task Log | Tracker" or a contributor's name on their profile, so open tabs are easy to tell apart. The Hiring tab shows how many applicants are waiting for a decision and which tab you're on, for example "(3) Hiring · Pending | Tracker".
