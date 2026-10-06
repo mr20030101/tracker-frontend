@@ -13,6 +13,7 @@ import { CountUp } from '../components/CountUp'
 import { GrowBar } from '../components/GrowBar'
 import { Reveal } from '../components/Reveal'
 import { CtsFormModal } from '../components/CtsFormModal'
+import { EmbeddedFormModal } from '../components/EmbeddedFormModal'
 import { TaskSubmissionForm } from '../components/TaskSubmissionForm'
 import { LevelPill } from '../components/LevelPill'
 import { Modal } from '../components/Modal'
@@ -61,6 +62,7 @@ export function ContributorDashboard() {
     }
   })
   const [showAttendanceEnded, setShowAttendanceEnded] = useState(false)
+  const [showAttendanceForm, setShowAttendanceForm] = useState(false)
   const thisWeekIso = useMemo(() => toISODate(startOfWeek(new Date())), [])
   const today = useMemo(() => toISODate(new Date()), [])
 
@@ -174,7 +176,7 @@ export function ContributorDashboard() {
 
   function handleAttendanceClick() {
     if (attendanceOpen) {
-      window.open(buildAttendanceFormUrl(email), '_blank', 'noopener,noreferrer')
+      setShowAttendanceForm(true)
     } else {
       // Only reachable once it's opened for the day (the button is disabled before 6 AM), so this is the "already closed" case.
       setShowAttendanceEnded(true)
@@ -237,6 +239,10 @@ export function ContributorDashboard() {
           </>
         }
       />
+
+      {showAttendanceForm && (
+        <EmbeddedFormModal title="Attendance Form" url={buildAttendanceFormUrl(email)} onClose={() => setShowAttendanceForm(false)} />
+      )}
 
       {showAttendanceEnded && (
         <Modal title="Attendance has ended" onClose={() => setShowAttendanceEnded(false)}>

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/api'
 import { toISODate } from '../lib/week'
 import type { ContributorProjectLevel, Project, ProjectLevel, Stage, TaskSubmission } from '../types'
+import { EmbeddedFormModal } from './EmbeddedFormModal'
 import { Modal } from './Modal'
 import { StatusPill } from './StatusPill'
 
@@ -76,6 +77,8 @@ export function CtsFormModal({ email, submissions, onClose }: Props) {
   )
   // The project group whose CTS form was just opened and is waiting on "did you submit it?".
   const [confirmingKey, setConfirmingKey] = useState<string | null>(null)
+  // The prefilled CTS form open inside the Tracker; closing it leaves the confirmation above showing.
+  const [openFormUrl, setOpenFormUrl] = useState<string | null>(null)
   const groups = groupByProject(submissions)
 
   const userId = submissions.find((s) => s.user_id)?.user_id ?? null
@@ -146,7 +149,7 @@ export function CtsFormModal({ email, submissions, onClose }: Props) {
       taskIds: chosen.map((s) => s.task_id ?? ''),
       snipboardUrls: chosen.map((s) => s.snipboard_url ?? ''),
     })
-    window.open(url, '_blank', 'noopener,noreferrer')
+    setOpenFormUrl(url)
     markSubmittedMutation.reset()
     setConfirmingKey(group.key)
   }
@@ -293,6 +296,8 @@ export function CtsFormModal({ email, submissions, onClose }: Props) {
           Close
         </button>
       </div>
+
+      {openFormUrl && <EmbeddedFormModal title="CTS Form" url={openFormUrl} onClose={() => setOpenFormUrl(null)} />}
     </Modal>
   )
 }
