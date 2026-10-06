@@ -610,6 +610,7 @@ export function Hiring() {
               <div title={applicant.active_email} className="truncate text-xs text-gray-400">
                 {applicant.active_email}
               </div>
+              {!applicant.remotasks_email && <div className="text-xs text-status-danger-text">No Remotasks account yet</div>}
               {issues.length > 0 && (
                 <span
                   title={issues.join(', ')}
