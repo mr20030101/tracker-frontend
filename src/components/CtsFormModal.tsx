@@ -75,10 +75,11 @@ export function CtsFormModal({ email, submissions, onClose }: Props) {
   const [selected, setSelected] = useState<Set<number>>(
     new Set(submissions.filter((s) => s.date?.slice(0, 10) === todayIso).map((s) => s.id)),
   )
-  // The project group whose CTS form was just opened and is waiting on "did you submit it?".
-  const [confirmingKey, setConfirmingKey] = useState<string | null>(null)
-  // The prefilled CTS form open inside the Tracker; closing it leaves the confirmation above showing.
-  const [openFormUrl, setOpenFormUrl] = useState<string | null>(null)
+  // The prefilled CTS form open inside the Tracker, and the tasks it's for. They're marked as sent
+  // to CTS as soon as the form reports it was submitted (see EmbeddedFormModal).
+  const [openForm, setOpenForm] = useState<{ url: string; ids: number[] } | null>(null)
+  // Every task here has gone to CTS, so closing the form closes this too.
+  const [allSubmitted, setAllSubmitted] = useState(false)
   const groups = groupByProject(submissions)
 
   const userId = submissions.find((s) => s.user_id)?.user_id ?? null
@@ -113,9 +114,8 @@ export function CtsFormModal({ email, submissions, onClose }: Props) {
     onSuccess: (_, ids) => {
       queryClient.invalidateQueries({ queryKey: ['contributor'] })
       queryClient.invalidateQueries({ queryKey: ['task-submissions'] })
-      setConfirmingKey(null)
       // Close once every project's tasks have gone to CTS; otherwise stay for the next project.
-      if (submissions.every((s) => ids.includes(s.id))) onClose()
+      if (submissions.every((s) => ids.includes(s.id))) setAllSubmitted(true)
     },
   })
 
@@ -149,9 +149,8 @@ export function CtsFormModal({ email, submissions, onClose }: Props) {
       taskIds: chosen.map((s) => s.task_id ?? ''),
       snipboardUrls: chosen.map((s) => s.snipboard_url ?? ''),
     })
-    setOpenFormUrl(url)
+    setOpenForm({ url, ids: chosen.map((s) => s.id) })
     markSubmittedMutation.reset()
-    setConfirmingKey(group.key)
   }
 
   return (
@@ -170,7 +169,6 @@ export function CtsFormModal({ email, submissions, onClose }: Props) {
         <div className="flex max-h-[28rem] flex-col gap-4 overflow-auto">
           {groups.map((group) => {
             const chosen = group.rows.filter((row) => selected.has(row.id))
-            const confirming = confirmingKey === group.key
             return (
               <div key={group.key} className="rounded-lg border border-gray-200">
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 bg-gray-50 px-4 py-2">
@@ -194,34 +192,6 @@ export function CtsFormModal({ email, submissions, onClose }: Props) {
                     Open CTS Form ({chosen.length})
                   </button>
                 </div>
-
-                {confirming && (
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 bg-accent-bg px-4 py-2">
-                    <span className="text-sm text-gray-700">
-                      Did you finish submitting these {chosen.length} task{chosen.length === 1 ? '' : 's'} in the CTS Form?
-                    </span>
-                    <div className="flex items-center gap-2">
-                      {markSubmittedMutation.isError && (
-                        <span className="text-xs text-status-danger-text">Could not save. Try again.</span>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => setConfirmingKey(null)}
-                        className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-600"
-                      >
-                        Not yet
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => markSubmittedMutation.mutate(chosen.map((s) => s.id))}
-                        disabled={markSubmittedMutation.isPending || chosen.length === 0}
-                        className="rounded-lg bg-green-500 px-3 py-1.5 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-50"
-                      >
-                        {markSubmittedMutation.isPending ? 'Saving...' : 'Yes, mark as submitted'}
-                      </button>
-                    </div>
-                  </div>
-                )}
 
                 <table className="w-full text-left text-sm">
                   <thead className="border-b border-gray-200 text-xs uppercase tracking-wider text-gray-500">
@@ -297,7 +267,33 @@ export function CtsFormModal({ email, submissions, onClose }: Props) {
         </button>
       </div>
 
-      {openFormUrl && <EmbeddedFormModal title="CTS Form" url={openFormUrl} onClose={() => setOpenFormUrl(null)} />}
+      {openForm && (
+        <EmbeddedFormModal
+          title="CTS Form"
+          url={openForm.url}
+          onSubmitted={() => markSubmittedMutation.mutate(openForm.ids)}
+          onClose={() => {
+            setOpenForm(null)
+            if (allSubmitted) onClose()
+          }}
+          status={
+            markSubmittedMutation.isPending ? (
+              <span className="text-xs text-gray-500">Saving...</span>
+            ) : markSubmittedMutation.isSuccess ? (
+              <span className="text-xs text-status-success-text">
+                Marked {openForm.ids.length} task{openForm.ids.length === 1 ? '' : 's'} as sent to CTS
+              </span>
+            ) : markSubmittedMutation.isError ? (
+              <span className="flex items-center gap-2 text-xs text-status-danger-text">
+                Submitted, but the Tracker couldn't save it.
+                <button type="button" onClick={() => markSubmittedMutation.mutate(openForm.ids)} className="font-semibold underline">
+                  Retry
+                </button>
+              </span>
+            ) : null
+          }
+        />
+      )}
     </Modal>
   )
 }
