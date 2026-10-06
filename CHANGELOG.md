@@ -14,6 +14,10 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Changed
+
+- The Users and Requests pages now show their status (and request type) tabs above the table, like Hiring, instead of inside the table's toolbar.
+
 ## 3.0.1 — 2026-10-07
 
 ### Changed
