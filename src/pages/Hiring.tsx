@@ -1031,7 +1031,9 @@ export function Hiring() {
                 <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">Personal information</h3>
                 <dl className="grid grid-cols-[9rem_1fr] gap-x-4 gap-y-2 text-sm">
                   <Detail label="Active email">{details.active_email}</Detail>
-                  <Detail label="Remotasks email">{details.remotasks_email ?? 'No Remotasks account yet'}</Detail>
+                  <Detail label="Remotasks email">
+                    {details.remotasks_email ?? <span className="text-status-danger-text">No Remotasks account yet</span>}
+                  </Detail>
                   <Detail label="Remotasks ID">{details.remotasks_id ?? '—'}</Detail>
                   <Detail label="Facebook">
                     <ProfileLink url={details.facebook_url}>Open profile</ProfileLink>
