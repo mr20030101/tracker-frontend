@@ -14,6 +14,12 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 2.11.0 — 2026-10-06
+
+### Changed
+
+- No more "Did you finish submitting?" question after the CTS Form. Submitting the form inside the Tracker now marks those tasks as sent to CTS straight away. If you opened the form in a new tab instead, a button under it lets you mark them.
+
 ## 2.10.0 — 2026-10-06
 
 ### Changed
