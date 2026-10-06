@@ -14,6 +14,12 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 2.11.1 — 2026-10-06
+
+### Fixed
+
+- A task could show as Sent to CTS while still In Progress, if it was changed back to In Progress after being sent. Moving a task back to In Progress now sets its CTS status back to Pending. It shows up in the CTS Form again once it's finished. Tasks already stuck like this are fixed too.
+
 ## 2.11.0 — 2026-10-06
 
 ### Changed
