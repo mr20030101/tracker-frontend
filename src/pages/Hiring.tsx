@@ -25,6 +25,9 @@ import {
   setAcceptingApplications,
   setOnboarded,
   setOnboardedBulk,
+  PIPELINE_STAGES,
+  pipelineStage,
+  type PipelineStage,
   resendAccountEmail,
   saveApplicationNotes,
   duplicateRemotasksIds,
@@ -34,7 +37,7 @@ import {
 import { HiringBoard } from '../components/HiringBoard'
 import { EditApplicantModal } from '../components/EditApplicantModal'
 import { confirmDialog } from '../lib/dialog'
-import type { HiringApplication, HiringStatus, User } from '../types'
+import type { HiringApplication, User } from '../types'
 import { ActionsMenu } from '../components/ActionsMenu'
 import { DataTable } from '../components/DataTable'
 import { downloadCsv } from '../lib/csv'
@@ -45,19 +48,36 @@ import { contributorPath } from '../lib/urlRef'
 import { fetchOnboardingStatus, ONBOARDING_STEPS } from '../lib/onboarding'
 import { usePageTitle } from '../lib/usePageTitle'
 
-type StatusFilter = HiringStatus | 'all'
+// One tab per step of the hiring process, plus everyone at once.
+type StatusFilter = PipelineStage | 'all'
 type Notice = { tone: 'success' | 'error'; text: string }
 // One applicant (a row's own Accept/Deny) or several at once (bulk, from "select all").
 type Review = { applications: HiringApplication[]; decision: 'accept' | 'deny' }
 // `resent`: a new temporary password for an existing account (Resend account email), not a new account.
 type Credentials = { name: string; email: string; password: string; emailedTo?: string; emailError?: string; resent?: boolean }
 
-const STATUS_FILTERS: StatusFilter[] = ['pending', 'accepted', 'denied', 'all']
-const STATUS_LABELS: Record<StatusFilter, string> = { pending: 'Pending', accepted: 'Accepted', denied: 'Denied', all: 'All' }
-const STATUS_STYLES: Record<HiringStatus, string> = {
+const STATUS_FILTERS: StatusFilter[] = [...PIPELINE_STAGES.map((s) => s.stage), 'all']
+const STATUS_LABELS = {
+  ...Object.fromEntries(PIPELINE_STAGES.map((s) => [s.stage, s.label])),
+  all: 'All',
+} as Record<StatusFilter, string>
+const STAGE_STYLES: Record<PipelineStage, string> = {
   pending: 'bg-status-warning-bg text-status-warning-text',
-  accepted: 'bg-status-success-bg text-status-success-text',
+  to_email: 'bg-accent-bg text-accent-foreground',
+  needs_account: 'bg-accent-bg text-accent-foreground',
+  onboarding: 'bg-accent-bg text-accent-foreground',
+  onboarded: 'bg-status-success-bg text-status-success-text',
   denied: 'bg-status-danger-bg text-status-danger-text',
+}
+// What to do on each tab, shown above the table when nothing is ticked.
+const STAGE_TIPS: Record<StatusFilter, string> = {
+  pending: 'Tick one or more applicants to accept, deny, export or delete them together.',
+  to_email: 'Tick the people going to the next bootcamp and send them its details. They move to Needs account once emailed.',
+  needs_account: "Create each person's login from their row's actions. They move to Onboarding once it exists.",
+  onboarding: 'Mark people onboarded once they finish the bootcamp. The checklist shows how far they are in the app.',
+  onboarded: 'Everyone who finished the bootcamp. Tick to export, or to mark someone not onboarded.',
+  denied: 'Tick one or more applicants to export or delete them together.',
+  all: 'Tick one or more applicants to export or delete them together.',
 }
 
 const NOTICE_CLASSES: Record<Notice['tone'], string> = {
@@ -246,7 +266,8 @@ export function Hiring() {
 
   // List (the default) or the pipeline board, kept in the address so it survives a reload.
   const isBoard = searchParams.get('view') === 'board'
-  const statusParam = searchParams.get('status')
+  // `accepted` was a tab before the steps were split up; old links land on the first of them.
+  const statusParam = searchParams.get('status') === 'accepted' ? 'to_email' : searchParams.get('status')
   const statusFilter: StatusFilter = STATUS_FILTERS.find((s) => s === statusParam) ?? 'pending'
   const leadParam = searchParams.get('lead') ?? ''
   const leadFilter = isAdmin && leads.some((lead) => lead.id === leadParam) ? leadParam : ''
@@ -285,7 +306,7 @@ export function Hiring() {
           text:
             applications.length === 1
               ? decision === 'accept'
-                ? `${applications[0].full_name} was accepted. Create their account from the Accepted tab when you're ready.`
+                ? `${applications[0].full_name} was accepted. They're in To email, ready for the bootcamp details.`
                 : `${applications[0].full_name}'s application was denied.`
               : `${plural(result.updated.length, 'application')} ${verb}.`,
         })
@@ -366,7 +387,7 @@ export function Hiring() {
     onError: (mutationError: Error) => setNotice({ tone: 'error', text: mutationError.message || 'Could not update onboarding status.' }),
   })
 
-  // The bulk version, for "select all, then mark onboarded" on the Accepted tab.
+  // The bulk version, for "select all, then mark onboarded" on the Onboarding tab.
   const onboardBulkMutation = useMutation({
     mutationFn: ({ applications, onboarded }: { applications: HiringApplication[]; onboarded: boolean }) =>
       setOnboardedBulk(applications, onboarded),
@@ -510,6 +531,7 @@ export function Hiring() {
         gpu: a.gpu ?? '',
         gpu_memory_gb: a.gpu_memory_gb ?? '',
         status: a.status,
+        stage: STATUS_LABELS[pipelineStage(a)],
         ...(isAdmin ? { lead: leadNameById.get(a.lead_id) ?? '' } : {}),
         applied_at: a.created_at,
         reviewed_at: a.reviewed_at ?? '',
@@ -534,9 +556,9 @@ export function Hiring() {
   // The tab shows how many still need a decision, so it's noticed from another tab.
   const pendingTotal = applications.filter((a) => a.status === 'pending').length
   usePageTitle(`${pendingTotal > 0 ? `(${pendingTotal}) ` : ''}Hiring · ${isBoard ? 'Board' : STATUS_LABELS[statusFilter]}`)
-  const countOf = (status: StatusFilter) => (status === 'all' ? inScope.length : inScope.filter((a) => a.status === status).length)
+  const countOf = (stage: StatusFilter) => (stage === 'all' ? inScope.length : inScope.filter((a) => pipelineStage(a) === stage).length)
   const rows = inScope
-    .filter((a) => statusFilter === 'all' || a.status === statusFilter)
+    .filter((a) => statusFilter === 'all' || pipelineStage(a) === statusFilter)
     .filter(
       (a) =>
         !normalizedSearch ||
@@ -563,7 +585,7 @@ export function Hiring() {
   const { data: checklist } = useQuery({
     queryKey: ['onboarding', 'hiring', linkedUserIds],
     queryFn: async () => new Map((await fetchOnboardingStatus(linkedUserIds)).map((status) => [status.user_id, status])),
-    enabled: statusFilter === 'accepted' && linkedUserIds.length > 0,
+    enabled: statusFilter === 'onboarding' && linkedUserIds.length > 0,
   })
 
   const columns = useMemo<ColumnDef<HiringApplication, any>[]>(
@@ -643,9 +665,26 @@ export function Hiring() {
         header: 'Applied',
         cell: ({ row }) => <span className="whitespace-nowrap text-gray-500">{formatDate(row.original.created_at)}</span>,
       },
-      // Emailed, account and onboarded used to be three separate columns; one compact "Progress"
-      // column reads faster and leaves less to scroll sideways for. Onboarded stays clickable.
-      ...(statusFilter === 'accepted'
+      // Each step's tab already says what's done, so it only adds the date that step happened, or
+      // on Onboarding, how far through the in-app checklist they are and the Onboarded toggle.
+      ...(statusFilter === 'to_email' || statusFilter === 'needs_account' || statusFilter === 'onboarded'
+        ? [
+            {
+              id: 'step_date',
+              header: { to_email: 'Accepted', needs_account: 'Emailed', onboarded: 'Onboarded' }[statusFilter],
+              accessorFn: (a: HiringApplication) => {
+                const iso = { to_email: a.reviewed_at, needs_account: a.emailed_at, onboarded: a.onboarded_at }[statusFilter]
+                return iso ? new Date(iso).getTime() : 0
+              },
+              cell: ({ row }) => {
+                const a = row.original
+                const iso = { to_email: a.reviewed_at, needs_account: a.emailed_at, onboarded: a.onboarded_at }[statusFilter]
+                return <span className="whitespace-nowrap text-gray-500">{iso ? formatDate(iso) : '—'}</span>
+              },
+            } satisfies ColumnDef<HiringApplication, any>,
+          ]
+        : []),
+      ...(statusFilter === 'onboarding'
         ? [
             {
               id: 'progress',
@@ -653,45 +692,31 @@ export function Hiring() {
               enableSorting: false,
               cell: ({ row }) => {
                 const application = row.original
-                const badge = (label: string, on: boolean, title: string) => (
-                  <span
-                    title={title}
-                    className={`${pillClass} ${on ? 'bg-status-success-bg text-status-success-text' : 'border border-gray-200 text-gray-400'}`}
-                  >
-                    {label}
-                  </span>
-                )
+                const status = application.user_id ? checklist?.get(application.user_id) : undefined
+                const missing = status
+                  ? ONBOARDING_STEPS.filter((s) => s.step in status.steps && !status.steps[s.step]).map((s) => s.label)
+                  : []
                 return (
                   <div className="flex flex-wrap items-center gap-1.5">
-                    {badge('Emailed', Boolean(application.emailed_at), application.emailed_at ? `Emailed ${new Date(application.emailed_at).toLocaleString()}` : 'Not emailed yet')}
-                    {badge('Account', Boolean(application.user_id), application.user_id ? 'Account created' : 'Account not created yet')}
+                    {status && (
+                      <span
+                        title={status.done >= status.total ? 'Finished the in-app getting-started checklist' : `Still to do: ${missing.join(', ')}`}
+                        className={`${pillClass} ${
+                          status.done >= status.total ? 'bg-status-success-bg text-status-success-text' : 'border border-gray-200 text-gray-400'
+                        }`}
+                      >
+                        Checklist {status.done}/{status.total}
+                      </span>
+                    )}
                     <button
                       type="button"
-                      onClick={() => onboardMutation.mutate({ id: application.id, onboarded: !application.onboarded_at })}
+                      onClick={() => onboardMutation.mutate({ id: application.id, onboarded: true })}
                       disabled={onboardMutation.isPending}
-                      title={
-                        application.onboarded_at
-                          ? `Onboarded ${new Date(application.onboarded_at).toLocaleString()}. Click to unmark.`
-                          : 'Click to mark onboarded'
-                      }
-                      className={`${pillClass} disabled:opacity-50 ${
-                        application.onboarded_at
-                          ? 'bg-status-success-bg text-status-success-text hover:opacity-80'
-                          : 'border border-gray-200 text-gray-400 hover:bg-gray-50'
-                      }`}
+                      title="Mark onboarded once they've finished the bootcamp"
+                      className={`${pillClass} border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50`}
                     >
-                      Onboarded
+                      Mark onboarded
                     </button>
-                    {(() => {
-                      const status = application.user_id ? checklist?.get(application.user_id) : undefined
-                      if (!status) return null
-                      const missing = ONBOARDING_STEPS.filter((s) => s.step in status.steps && !status.steps[s.step]).map((s) => s.label)
-                      return badge(
-                        `Checklist ${status.done}/${status.total}`,
-                        status.done >= status.total,
-                        status.done >= status.total ? 'Finished the in-app getting-started checklist' : `Still to do: ${missing.join(', ')}`,
-                      )
-                    })()}
                   </div>
                 )
               },
@@ -716,16 +741,17 @@ export function Hiring() {
             } satisfies ColumnDef<HiringApplication, any>,
           ]
         : []),
-      // Every other tab is already filtered to one status, so the pill would repeat it on each row.
+      // Every other tab is already filtered to one step, so the pill would repeat it on each row.
       ...(statusFilter === 'all'
         ? [
             {
-              id: 'status',
-              accessorFn: (a: HiringApplication) => a.status,
-              header: 'Status',
-              cell: ({ row }) => (
-                <span className={`${pillClass} ${STATUS_STYLES[row.original.status]}`}>{STATUS_LABELS[row.original.status]}</span>
-              ),
+              id: 'stage',
+              accessorFn: (a: HiringApplication) => STATUS_FILTERS.indexOf(pipelineStage(a)),
+              header: 'Step',
+              cell: ({ row }) => {
+                const stage = pipelineStage(row.original)
+                return <span className={`${pillClass} whitespace-nowrap ${STAGE_STYLES[stage]}`}>{STATUS_LABELS[stage]}</span>
+              },
             } satisfies ColumnDef<HiringApplication, any>,
           ]
         : []),
@@ -893,7 +919,7 @@ export function Hiring() {
         )}
         <p className="mt-2 text-xs text-gray-400">
           {accepting
-            ? `Anyone with this link can apply to ${isAdmin ? "that lead's" : 'your'} team. Accepting an applicant doesn't create their account; you do that from the Accepted tab.`
+            ? `Anyone with this link can apply to ${isAdmin ? "that lead's" : 'your'} team. Accepted applicants then move through the tabs below: bootcamp email, account, onboarding.`
             : 'The form is switched off: anyone opening this link is told applications are closed. Applications you have already received stay below.'}
         </p>
       </div>
@@ -935,26 +961,35 @@ export function Hiring() {
               </button>
             </>
           )}
-          {statusFilter === 'accepted' && (
-            <>
-              <button onClick={openEmail} className="rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground">
-                Send email
-              </button>
-              <button
-                onClick={() => onboardBulkMutation.mutate({ applications: selected, onboarded: true })}
-                disabled={onboardBulkMutation.isPending}
-                className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-              >
-                Mark onboarded
-              </button>
-              <button
-                onClick={() => onboardBulkMutation.mutate({ applications: selected, onboarded: false })}
-                disabled={onboardBulkMutation.isPending}
-                className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-              >
-                Mark not onboarded
-              </button>
-            </>
+          {(statusFilter === 'to_email' || statusFilter === 'needs_account' || statusFilter === 'onboarding') && (
+            <button
+              onClick={openEmail}
+              className={
+                statusFilter === 'to_email'
+                  ? 'rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground'
+                  : 'rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50'
+              }
+            >
+              {statusFilter === 'to_email' ? 'Send bootcamp email' : 'Resend bootcamp email'}
+            </button>
+          )}
+          {statusFilter === 'onboarding' && (
+            <button
+              onClick={() => onboardBulkMutation.mutate({ applications: selected, onboarded: true })}
+              disabled={onboardBulkMutation.isPending}
+              className="rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+            >
+              Mark onboarded
+            </button>
+          )}
+          {statusFilter === 'onboarded' && (
+            <button
+              onClick={() => onboardBulkMutation.mutate({ applications: selected, onboarded: false })}
+              disabled={onboardBulkMutation.isPending}
+              className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            >
+              Mark not onboarded
+            </button>
           )}
           <button
             onClick={() => exportApplications(selected, `hiring-selected-${todayStamp()}.csv`)}
@@ -973,19 +1008,7 @@ export function Hiring() {
           </button>
         </div>
       )}
-      {statusFilter === 'pending' && selected.length === 0 && rows.length > 0 && (
-        <p className="mb-3 text-xs text-gray-400">
-          Tick one or more applicants to accept, deny, export or delete them together.
-        </p>
-      )}
-      {statusFilter === 'accepted' && selected.length === 0 && rows.length > 0 && (
-        <p className="mb-3 text-xs text-gray-400">
-          Tick one or more applicants to email, mark onboarded, export or delete them together.
-        </p>
-      )}
-      {(statusFilter === 'denied' || statusFilter === 'all') && selected.length === 0 && rows.length > 0 && (
-        <p className="mb-3 text-xs text-gray-400">Tick one or more applicants to export or delete them together.</p>
-      )}
+      {selected.length === 0 && rows.length > 0 && <p className="mb-3 text-xs text-gray-400">{STAGE_TIPS[statusFilter]}</p>}
 
       <DataTable
         toolbar={
@@ -1086,7 +1109,7 @@ export function Hiring() {
               }}
             />
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className={`${pillClass} ${STATUS_STYLES[details.status]}`}>{STATUS_LABELS[details.status]}</span>
+              <span className={`${pillClass} ${STAGE_STYLES[pipelineStage(details)]}`}>{STATUS_LABELS[pipelineStage(details)]}</span>
               <div className="flex gap-2">
                 <button
                   type="button"
@@ -1382,7 +1405,7 @@ export function Hiring() {
                   <p className="text-sm text-gray-600">
                     <span className="font-medium text-gray-900">{person.full_name}</span>'s application will be marked {verb}.{' '}
                     {review.decision === 'accept'
-                      ? "No account is created yet: you can do that afterwards, from the Accepted tab, when you're ready."
+                      ? "They move to To email. No account is created yet: that comes after the bootcamp email."
                       : 'No login is created. They can apply again through the link.'}
                   </p>
                 ) : (
@@ -1390,7 +1413,7 @@ export function Hiring() {
                     <p className="text-sm text-gray-600">
                       {plural(review.applications.length, 'application')} will be marked {verb}.{' '}
                       {review.decision === 'accept'
-                        ? "No accounts are created yet: you can do that afterwards, from the Accepted tab, when you're ready."
+                        ? "They move to To email. No accounts are created yet: that comes after the bootcamp email."
                         : 'No logins are created. They can apply again through the link.'}
                     </p>
                     <ul className="max-h-40 divide-y divide-gray-100 overflow-y-auto rounded-lg border border-gray-200 text-sm">

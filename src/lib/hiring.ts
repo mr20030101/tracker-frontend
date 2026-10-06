@@ -190,23 +190,27 @@ export async function saveApplicationNotes(id: number, notes: string): Promise<v
   if (error) throw error
 }
 
-// The Hiring board's columns, worked out from what already happened to each application rather
-// than a stage stored on it, so the board can never disagree with the list.
-export type PipelineStage = 'applied' | 'accepted' | 'account' | 'onboarded' | 'denied'
+// The Hiring page's steps, in order: the list's tabs and the board's columns. Worked out from what
+// already happened to each application rather than a stage stored on it, so the two can never
+// disagree. Someone who skipped a step (an account made before the bootcamp email) shows in the
+// first step they still need.
+export type PipelineStage = 'pending' | 'to_email' | 'needs_account' | 'onboarding' | 'onboarded' | 'denied'
 
 export const PIPELINE_STAGES: { stage: PipelineStage; label: string; hint: string }[] = [
-  { stage: 'applied', label: 'Applied', hint: 'Waiting for a decision' },
-  { stage: 'accepted', label: 'Accepted', hint: 'No account yet' },
-  { stage: 'account', label: 'Account created', hint: 'Not onboarded yet' },
+  { stage: 'pending', label: 'Pending', hint: 'Waiting for a decision' },
+  { stage: 'to_email', label: 'To email', hint: 'Accepted, bootcamp email not sent' },
+  { stage: 'needs_account', label: 'Needs account', hint: 'Emailed, no login yet' },
+  { stage: 'onboarding', label: 'Onboarding', hint: 'Has a login, not onboarded yet' },
   { stage: 'onboarded', label: 'Onboarded', hint: 'Finished the bootcamp' },
   { stage: 'denied', label: 'Denied', hint: '' },
 ]
 
 export function pipelineStage(application: HiringApplication): PipelineStage {
-  if (application.status === 'pending') return 'applied'
+  if (application.status === 'pending') return 'pending'
   if (application.status === 'denied') return 'denied'
   if (application.onboarded_at) return 'onboarded'
-  return application.user_id ? 'account' : 'accepted'
+  if (!application.emailed_at) return 'to_email'
+  return application.user_id ? 'onboarding' : 'needs_account'
 }
 
 /**
