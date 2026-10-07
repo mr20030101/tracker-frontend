@@ -22,7 +22,7 @@ import type { RequestStatus, RequestType } from '../types'
 import { contributorPath } from '../lib/urlRef'
 import { useNow } from '../lib/useNow'
 import { confirmDialog } from '../lib/dialog'
-import { SegmentedTabs, TableCard, TableToolbar } from '../components/TableToolbar'
+import { SegmentedTabs, TableCard } from '../components/TableToolbar'
 import { usePageTitle } from '../lib/usePageTitle'
 
 const MANAGER_ROLES = ['admin', 'lead']
@@ -322,6 +322,21 @@ export function Requests() {
         </div>
       )}
 
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <SegmentedTabs
+          aria-label="Filter by status"
+          value={statusFilter}
+          onChange={setStatus}
+          options={STATUS_FILTERS.map((status) => ({ value: status, label: STATUS_LABELS[status], count: countOf(status) }))}
+        />
+        <SegmentedTabs
+          aria-label="Filter by type"
+          value={typeFilter}
+          onChange={setType}
+          options={TYPE_FILTERS.map((type) => ({ value: type, label: TYPE_LABELS[type] }))}
+        />
+      </div>
+
       {selected.length > 0 && (
         <div className="sticky top-0 z-10 mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 shadow-sm">
           <span className="text-sm font-medium text-gray-700">{selected.length} selected</span>
@@ -366,24 +381,7 @@ export function Requests() {
         </div>
       )}
 
-      <TableCard
-        toolbar={
-          <TableToolbar>
-            <SegmentedTabs
-              aria-label="Filter by status"
-              value={statusFilter}
-              onChange={setStatus}
-              options={STATUS_FILTERS.map((status) => ({ value: status, label: STATUS_LABELS[status], count: countOf(status) }))}
-            />
-            <SegmentedTabs
-              aria-label="Filter by type"
-              value={typeFilter}
-              onChange={setType}
-              options={TYPE_FILTERS.map((type) => ({ value: type, label: TYPE_LABELS[type] }))}
-            />
-          </TableToolbar>
-        }
-      >
+      <TableCard>
         <table className="w-full min-w-[36rem] text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
             <tr>

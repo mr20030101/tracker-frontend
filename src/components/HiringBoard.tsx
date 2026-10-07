@@ -99,9 +99,9 @@ export function HiringBoard({
   onOpen: (application: HiringApplication) => void
 }) {
   return (
-    // Scrolls sideways on a narrow screen rather than squeezing five columns into it.
+    // Scrolls sideways on a narrow screen rather than squeezing six columns into it.
     <div className="-mx-1 overflow-x-auto px-1 pb-2">
-      <div className="grid min-w-[60rem] grid-cols-5 gap-3">
+      <div className="grid min-w-[72rem] grid-cols-6 gap-3">
         {PIPELINE_STAGES.map(({ stage, label, hint }) => {
           const cards = applications.filter((application) => pipelineStage(application) === stage)
 

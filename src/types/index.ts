@@ -276,7 +276,7 @@ export interface HiringApplication {
   status: HiringStatus
   reviewed_by: string | null
   reviewed_at: string | null
-  // When the applicant was last emailed from the Accepted tab; null if never.
+  // When the applicant was last sent the bootcamp email; null if never.
   emailed_at: string | null
   // When an accepted applicant was marked onboarded (after the bootcamp); null until someone flips it.
   onboarded_at: string | null
