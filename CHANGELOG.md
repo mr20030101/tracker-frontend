@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 3.4.0 — 2026-10-07
+
 ### Changed
 
 - The Halloween scene is more detailed:
