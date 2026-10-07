@@ -32,7 +32,8 @@ import { Logo } from './Logo'
 import { NotificationBell } from './NotificationBell'
 import { MessagesButton } from './MessagesButton'
 import { ThemeToggle } from './ThemeToggle'
-import { HalloweenToggle, Pumpkin } from './Halloween'
+import { HalloweenScene, HalloweenToggle } from './Halloween'
+import { useTheme } from '../lib/theme'
 import { useSeason } from '../lib/season'
 import { OnlineUsers } from './OnlineUsers'
 import { GlobalSearch } from './GlobalSearch'
@@ -143,6 +144,7 @@ function writeNavCollapsed(collapsed: boolean) {
 export function AppShell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth()
   const { halloween } = useSeason()
+  const { theme } = useTheme()
   const location = useLocation()
   const isManager = Boolean(user && MANAGER_ROLES.includes(user.role))
   const isAdmin = user?.role === 'admin'
@@ -255,7 +257,13 @@ export function AppShell({ children }: { children: ReactNode }) {
     <MessagingProvider>
       <CallProvider>
         <CallBar />
-        <div className="flex h-screen bg-gray-50">
+        <div className="relative isolate flex h-screen bg-gray-50">
+          {/* October: the Halloween scene in place of the plain page background, behind everything. */}
+          {halloween && (
+            <div className="absolute inset-0 -z-10">
+              <HalloweenScene night={theme === 'dark'} />
+            </div>
+          )}
           {user && !onMessages && <OnlineUsers />}
           {menuOpen && !docked && (
             <div className="fixed inset-0 z-40 bg-black/40" aria-hidden="true" onClick={() => setMenuOpen(false)} />
@@ -280,10 +288,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               </div>
             ) : (
               <div className="flex items-center justify-between px-5 py-5">
-                <div className="flex items-center gap-2">
-                  <Logo />
-                  {halloween && <Pumpkin className="h-7 w-7 shrink-0" />}
-                </div>
+                <Logo />
                 <button
                   type="button"
                   onClick={() => setNavOpen(false)}
