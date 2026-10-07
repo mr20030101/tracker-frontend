@@ -1,5 +1,5 @@
 import { supabase } from './api'
-import type { RequestStatus, TaskRequest } from '../types'
+import type { RequestStatus, Stage, TaskRequest } from '../types'
 
 // TaskRequest is a union (ExtensionTaskRequest | ReclaimTaskRequest | BadVideoTaskRequest) — an interface can't
 // `extends` a union (only object types/intersections), so this intersects instead. That still
@@ -12,6 +12,7 @@ export type TaskRequestWithContext = TaskRequest & {
     date: string | null
     status: string
     cb_email: string
+    stage: Stage
     project: { name: string } | null
   } | null
   requester: { id: string; name: string; email: string; remotasks_id: string | null } | null
@@ -31,7 +32,7 @@ export async function fetchTaskRequests(): Promise<TaskRequestWithContext[]> {
     .select(
       // The FK constraint keeps its pre-rename name (task_extension_requests_requested_by_fkey) —
       // renaming DB constraint names was deliberately left out of the table rename for minimal risk.
-      '*, task_submission:task_submissions(id, task_id, date, status, cb_email, project:projects(name)), requester:profiles!task_extension_requests_requested_by_fkey(id, name, email, remotasks_id), reviewer:profiles!task_extension_requests_reviewed_by_fkey(id, name)',
+      '*, task_submission:task_submissions(id, task_id, date, status, cb_email, stage, project:projects(name)), requester:profiles!task_extension_requests_requested_by_fkey(id, name, email, remotasks_id), reviewer:profiles!task_extension_requests_reviewed_by_fkey(id, name)',
     )
     .order('requested_at', { ascending: false })
   if (error) throw error
@@ -175,10 +176,23 @@ const EXTENSION_FORM_ENTRY = {
   taskId: 'entry.1386331886',
   cbEmail: 'entry.157628758',
   remotaskId: 'entry.1874333467',
+  taskLevel: 'entry.1887033664',
+  projectName: 'entry.856308260',
   requestType: 'entry.1650689703',
   reason: 'entry.654618638',
   supportName: 'entry.1875363957',
 }
+
+// The form's own spelling of each answer: a prefilled value that doesn't match an option exactly is ignored.
+const EXTENSION_FORM_TASK_LEVEL: Record<Stage, string> = { attempt: 'Attempt', l0: 'L0', l1: 'L1' }
+// Our project names are longer ("Aloha OTS Mobile Group"), so they're matched on the key word.
+const EXTENSION_FORM_PROJECTS: { match: RegExp; option: string }[] = [
+  { match: /aloha/i, option: 'Aloha' },
+  { match: /yam/i, option: 'Sweet Yam' },
+  { match: /ursa/i, option: 'Ursa Majoris' },
+]
+// Who files it: always written this way on the form, whoever in the app opens it.
+const EXTENSION_FORM_SUPPORT_NAME = 'Tan, Jay-Anne R.'
 
 /** A link to the Reclaim/Extend form with as much of it prefilled as we have on hand. */
 export function buildExtensionRequestFormUrl(params: {
@@ -186,16 +200,20 @@ export function buildExtensionRequestFormUrl(params: {
   taskId: string | null
   cbEmail: string | null
   remotaskId: string | null
+  stage: Stage | null
+  projectName: string | null
   reason: string | null
-  supportName: string
 }): string {
   const query = new URLSearchParams({ usp: 'pp_url' })
   if (params.taskId) query.set(EXTENSION_FORM_ENTRY.taskId, params.taskId)
+  if (params.stage) query.set(EXTENSION_FORM_ENTRY.taskLevel, EXTENSION_FORM_TASK_LEVEL[params.stage])
   if (params.cbEmail) query.set(EXTENSION_FORM_ENTRY.cbEmail, params.cbEmail)
   if (params.remotaskId) query.set(EXTENSION_FORM_ENTRY.remotaskId, params.remotaskId)
+  const project = params.projectName && EXTENSION_FORM_PROJECTS.find((p) => p.match.test(params.projectName!))
+  if (project) query.set(EXTENSION_FORM_ENTRY.projectName, project.option)
   query.set(EXTENSION_FORM_ENTRY.requestType, params.requestType)
   if (params.reason) query.set(EXTENSION_FORM_ENTRY.reason, params.reason)
-  if (params.supportName) query.set(EXTENSION_FORM_ENTRY.supportName, params.supportName)
+  query.set(EXTENSION_FORM_ENTRY.supportName, EXTENSION_FORM_SUPPORT_NAME)
   return `${EXTENSION_REQUEST_FORM_URL}?${query.toString()}`
 }
 
