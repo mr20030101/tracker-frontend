@@ -24,6 +24,10 @@ const PALETTES = {
     pumpkinDark: '#d36a24',
     pumpkinLight: '#fbb46e',
     stem: '#6f7c3c',
+    bone: '#f6eedd',
+    boneShade: '#bfae93',
+    dirt: '#9b83b8',
+    dirtDark: '#7c6499',
     face: '#7a4a7e',
     faceGlow: '#7a4a7e',
   },
@@ -43,6 +47,10 @@ const PALETTES = {
     pumpkinDark: '#9a3412',
     pumpkinLight: '#fb923c',
     stem: '#3f4a1f',
+    bone: '#ddd5c4',
+    boneShade: '#7d7465',
+    dirt: '#271d31',
+    dirtDark: '#3a2d47',
     face: '#fde68a',
     faceGlow: '#fbbf24',
   },
@@ -211,6 +219,72 @@ function StoneCross({ x, y, c, tilt = 0, size = 1 }: { x: number; y: number; c: 
   )
 }
 
+// The skeleton hand's bones, as joint-to-joint polylines: forearm, then each finger from the wrist out.
+const HAND_FOREARM = [
+  [[-3.2, 4], [-4.2, -18]],
+  [[3, 4], [2, -18.5]],
+]
+const HAND_FINGERS = [
+  // thumb, index, middle, ring, little: metacarpal, then the phalanges curling forward like a claw
+  [[-5, -21.5], [-11, -25.5], [-14.2, -29.5], [-15, -33.5]],
+  [[-2.2, -24.5], [-4.2, -34], [-5.2, -40], [-4.2, -44.2], [-1.2, -44.6]],
+  [[0, -25], [0, -35.2], [0.2, -42], [1.4, -46.5], [4.4, -46.2]],
+  [[2.2, -24.5], [3.6, -34], [5, -40], [6.6, -43.6], [9.4, -42.6]],
+  [[3.8, -23.5], [6.6, -31], [9, -35], [10.6, -38.2], [12.6, -37.6]],
+]
+const CARPALS = [[-4, -20.5], [-1.2, -21.2], [1.8, -20.6], [-2.8, -23.4], [0.6, -23.8], [3.2, -22.6]]
+
+/** A skeleton hand clawing up out of a fresh mound of dirt. Ground level at (x, y). */
+function SkeletonHand({ x, y, c, tilt = 0, size = 1 }: { x: number; y: number; c: Palette; tilt?: number; size?: number }) {
+  const segments = (points: number[][]) => points.slice(1).map((p, i) => [points[i], p])
+  // Bones taper from the knuckles out to the fingertips.
+  const fingerWidth = (i: number) => [2, 1.55, 1.35, 1.1][i] ?? 1
+  const bone = (from: number[], to: number[], width: number, key: string) => (
+    <g key={key}>
+      <path d={`M${from[0] + 0.4} ${from[1] + 0.3}L${to[0] + 0.4} ${to[1] + 0.3}`} stroke={c.boneShade} strokeWidth={width + 0.9} strokeLinecap="round" />
+      <path d={`M${from[0]} ${from[1]}L${to[0]} ${to[1]}`} stroke={c.bone} strokeWidth={width} strokeLinecap="round" />
+    </g>
+  )
+
+  return (
+    <g transform={`translate(${x} ${y}) rotate(${tilt}) scale(${size})`}>
+      {HAND_FOREARM.map(([from, to], i) => bone(from, to, 3.2, `arm${i}`))}
+      {CARPALS.map(([cx, cy], i) => (
+        <g key={`carpal${i}`}>
+          <circle cx={cx + 0.3} cy={cy + 0.3} r="2" fill={c.boneShade} />
+          <circle cx={cx} cy={cy} r="1.65" fill={c.bone} />
+        </g>
+      ))}
+      {HAND_FINGERS.map((finger, f) =>
+        segments(finger).map(([from, to], i) => bone(from, to, fingerWidth(i), `f${f}-${i}`)),
+      )}
+      {/* Knuckles: a slightly swollen joint between each pair of bones. */}
+      {HAND_FINGERS.flatMap((finger, f) =>
+        finger.slice(1, -1).map(([jx, jy], i) => (
+          <g key={`k${f}-${i}`}>
+            <circle cx={jx + 0.3} cy={jy + 0.3} r={fingerWidth(i) * 0.75} fill={c.boneShade} />
+            <circle cx={jx} cy={jy} r={fingerWidth(i) * 0.62} fill={c.bone} />
+          </g>
+        )),
+      )}
+
+      {/* The mound it broke through, with a few clods thrown up. */}
+      <path d="M-20 4C-14 -3 -7 -5.5 0 -4.5C7 -5.5 14 -3 21 4Z" fill={c.dirt} />
+      <path d="M-20 4C-12 0 -4 -1 0 -1C6 -1 13 0 21 4Z" fill={c.dirtDark} />
+      <g fill={c.dirtDark}>
+        <circle cx="-9" cy="-5" r="1.6" />
+        <circle cx="8" cy="-6" r="1.2" />
+        <circle cx="13" cy="-2.5" r="1.8" />
+        <circle cx="-15" cy="-1.5" r="1.3" />
+      </g>
+      <g fill={c.dirt}>
+        <circle cx="-5" cy="-6.5" r="1.1" />
+        <circle cx="4" cy="-5.8" r="1.4" />
+      </g>
+    </g>
+  )
+}
+
 /** A paned window: a glowing (or dark, boarded) opening with mullions and shutters. */
 function Window({ x, y, w, h, c, lit = true, arched = false, boarded = false }: {
   x: number; y: number; w: number; h: number; c: Palette; lit?: boolean; arched?: boolean; boarded?: boolean
@@ -350,6 +424,7 @@ export function HalloweenScene({ night, compact = false }: { night: boolean; com
         <BareTree x={720} y={258} branches={TREES.small} color={c.shapes} knot={c.trim} />
 
         <Gravestone x={318} y={277} c={c} tilt={-4} />
+        <SkeletonHand x={336} y={284} c={c} tilt={-6} size={1.1} />
         <StoneCross x={368} y={275} c={c} tilt={5} />
         <Gravestone x={414} y={272} c={c} tilt={7} size={0.78} />
         <StoneCross x={868} y={266} c={c} tilt={-8} size={0.9} />
