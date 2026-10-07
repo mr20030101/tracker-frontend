@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 3.1.0 — 2026-10-07
+
 ### Changed
 
 - The Reclaim / Extend form now opens with its new questions filled in: **Project Name** (Aloha, Sweet Yam or Ursa Majoris, from the task's project) and **Task Level** (Attempt, L0 or L1, from the task's stage). **Support Name** is always filled in as "Tan, Jay-Anne R.", whoever opens the form.
