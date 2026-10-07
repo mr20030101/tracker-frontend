@@ -6,6 +6,8 @@ import './index.css'
 import App from './App.tsx'
 import { AuthProvider } from './lib/auth.tsx'
 import { ThemeProvider } from './lib/theme.tsx'
+import { SeasonProvider } from './lib/season.tsx'
+import { HalloweenDecor } from './components/Halloween.tsx'
 import { SpeedInsightsTracker } from './components/SpeedInsightsTracker.tsx'
 import { DialogHost } from './lib/dialog.tsx'
 import { UpdateBanner } from './components/UpdateBanner.tsx'
@@ -17,6 +19,7 @@ const queryClient = new QueryClient()
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ThemeProvider>
+      <SeasonProvider>
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <AuthProvider>
@@ -26,7 +29,9 @@ createRoot(document.getElementById('root')!).render(
         </BrowserRouter>
         <DialogHost />
         <UpdateBanner />
+        <HalloweenDecor />
       </QueryClientProvider>
+      </SeasonProvider>
     </ThemeProvider>
   </StrictMode>,
 )

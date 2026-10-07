@@ -32,6 +32,8 @@ import { Logo } from './Logo'
 import { NotificationBell } from './NotificationBell'
 import { MessagesButton } from './MessagesButton'
 import { ThemeToggle } from './ThemeToggle'
+import { HalloweenToggle, Pumpkin } from './Halloween'
+import { useSeason } from '../lib/season'
 import { OnlineUsers } from './OnlineUsers'
 import { GlobalSearch } from './GlobalSearch'
 import { contributorPath } from '../lib/urlRef'
@@ -140,6 +142,7 @@ function writeNavCollapsed(collapsed: boolean) {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth()
+  const { halloween } = useSeason()
   const location = useLocation()
   const isManager = Boolean(user && MANAGER_ROLES.includes(user.role))
   const isAdmin = user?.role === 'admin'
@@ -277,7 +280,10 @@ export function AppShell({ children }: { children: ReactNode }) {
               </div>
             ) : (
               <div className="flex items-center justify-between px-5 py-5">
-                <Logo />
+                <div className="flex items-center gap-2">
+                  <Logo />
+                  {halloween && <Pumpkin className="h-7 w-7 shrink-0" />}
+                </div>
                 <button
                   type="button"
                   onClick={() => setNavOpen(false)}
@@ -413,6 +419,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               </div>
               <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
                 {user && <GlobalSearch pages={searchPages} />}
+                <HalloweenToggle />
                 <ThemeToggle />
                 {user && !onMessages && <MessagesButton />}
                 {user && <NotificationBell />}

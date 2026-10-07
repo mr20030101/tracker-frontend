@@ -376,3 +376,81 @@ body {
     transform: scaleY(0);
   }
 }
+
+/* Halloween (October, see lib/season.tsx): <html data-season="halloween">. A pumpkin accent on
+   the light theme, and a deep purple night on the dark one. Same two dark-mode selectors as above,
+   with the season added so they outrank the plain dark rules. */
+:root[data-season='halloween'] {
+  --color-accent: #ea580c;
+  --color-accent-foreground: #1c0a02;
+  --color-accent-bg: #ffe4cc;
+  --color-gray-50: #fbf8fd;
+}
+
+:root[data-theme='dark'][data-season='halloween'] {
+  --color-white: #1c1726;
+  --color-gray-50: #120e19;
+  --color-gray-100: #231d2f;
+  --color-gray-200: #30283f;
+  --color-gray-300: #433955;
+  --color-accent: #fb8a3c;
+  --color-accent-bg: #f07a2a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light'])[data-season='halloween'] {
+    --color-white: #1c1726;
+    --color-gray-50: #120e19;
+    --color-gray-100: #231d2f;
+    --color-gray-200: #30283f;
+    --color-gray-300: #433955;
+    --color-accent: #fb8a3c;
+    --color-accent-bg: #f07a2a;
+  }
+}
+
+/* A bat crosses the screen in a lazy wave, then waits off-screen until its next pass. */
+@keyframes halloween-bat-fly {
+  0% {
+    transform: translate(-10vw, 0);
+  }
+  12% {
+    transform: translate(15vw, -3vh);
+  }
+  25% {
+    transform: translate(45vw, 2vh);
+  }
+  38% {
+    transform: translate(80vw, -2vh);
+  }
+  45%,
+  100% {
+    transform: translate(110vw, 1vh);
+  }
+}
+
+@keyframes halloween-bat-flap {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(0.35);
+  }
+}
+
+.halloween-bat {
+  transform: translate(-10vw, 0);
+  animation: halloween-bat-fly 28s linear infinite;
+}
+
+.halloween-bat-wings {
+  transform-origin: 50% 40%;
+  animation: halloween-bat-flap 0.35s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .halloween-bat {
+    display: none;
+  }
+}
