@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 3.5.0 — 2026-10-07
+
 ### Added
 
 - The Halloween scene has a skeleton hand clawing its way out of a fresh mound of dirt in front of a headstone.
