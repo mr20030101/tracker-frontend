@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 3.3.0 — 2026-10-07
+
 ### Changed
 
 - The Halloween look now replaces the whole page background with a Halloween scene instead of flying bats: hills, a crooked tree, tombstones, a haunted house and jack-o'-lanterns under a big moon. It's a dusky lavender sky on the light theme and a starry purple night on the dark one. The same scene takes over the login page and the dashboard banner. The bats, the cobweb and the pumpkin by the logo are gone.
