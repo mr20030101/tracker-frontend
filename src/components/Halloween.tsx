@@ -15,9 +15,17 @@ const PALETTES = {
     farHill: '#d9c9ea',
     nearHill: '#b9a3d3',
     shapes: '#8f76b0',
+    trim: '#715a93',
+    stone: '#ab99c7',
+    stoneSide: '#8a72ab',
+    stoneLine: '#6c5590',
     window: '#fde3b0',
     pumpkin: '#f28c3a',
-    face: '#8f76b0',
+    pumpkinDark: '#d36a24',
+    pumpkinLight: '#fbb46e',
+    stem: '#6f7c3c',
+    face: '#7a4a7e',
+    faceGlow: '#7a4a7e',
   },
   night: {
     sky: 'linear-gradient(180deg, #0c0914 0%, #1b1229 50%, #35193a 85%, #4a2236 100%)',
@@ -26,9 +34,17 @@ const PALETTES = {
     farHill: '#1d1529',
     nearHill: '#110c19',
     shapes: '#0a070f',
+    trim: '#2b2338',
+    stone: '#3a3149',
+    stoneSide: '#221b2c',
+    stoneLine: '#110c17',
     window: '#fbbf24',
-    pumpkin: '#ea580c',
-    face: '#fcd34d',
+    pumpkin: '#e8620f',
+    pumpkinDark: '#9a3412',
+    pumpkinLight: '#fb923c',
+    stem: '#3f4a1f',
+    face: '#fde68a',
+    faceGlow: '#fbbf24',
   },
 }
 
@@ -40,26 +56,250 @@ const STARS = Array.from({ length: 40 }, (_, i) => ({
   delay: (i % 9) * 0.45,
 }))
 
-function Pumpkin({ x, y, r, fill, face }: { x: number; y: number; r: number; fill: string; face: string }) {
+type Palette = (typeof PALETTES)['day']
+
+/**
+ * A ribbed pumpkin: shaded lobes, a curved stem, a curly vine and a leaf. `carved` makes it a
+ * jack-o'-lantern whose face glows (strongly at night). Sits on the ground at (x, y).
+ */
+function Pumpkin({ x, y, r, c, carved = false, flip = false }: { x: number; y: number; r: number; c: Palette; carved?: boolean; flip?: boolean }) {
+  const h = r * 1.55
   return (
-    <g transform={`translate(${x} ${y})`}>
-      <rect x={-r * 0.12} y={-r * 1.25} width={r * 0.24} height={r * 0.45} rx={r * 0.1} fill="#4d5b2a" />
-      <ellipse cx={-r * 0.38} cy={0} rx={r * 0.72} ry={r * 0.9} fill={fill} />
-      <ellipse cx={r * 0.38} cy={0} rx={r * 0.72} ry={r * 0.9} fill={fill} />
-      <ellipse cx={0} cy={0} rx={r * 0.62} ry={r * 0.95} fill={fill} />
+    <g transform={`translate(${x} ${y - h / 2}) scale(${flip ? -1 : 1} 1)`}>
+      <ellipse cx="0" cy={h / 2 + 1} rx={r * 1.3} ry={r * 0.18} fill={c.stoneLine} opacity="0.3" />
+      {/* Lobes, back to front: darker at the sides, lighter in the middle. */}
+      <ellipse cx={-r * 0.62} cy="0" rx={r * 0.62} ry={h / 2} fill={c.pumpkinDark} />
+      <ellipse cx={r * 0.62} cy="0" rx={r * 0.62} ry={h / 2} fill={c.pumpkinDark} />
+      <ellipse cx={-r * 0.34} cy="0" rx={r * 0.58} ry={h / 2} fill={c.pumpkin} />
+      <ellipse cx={r * 0.34} cy="0" rx={r * 0.58} ry={h / 2} fill={c.pumpkin} />
+      <ellipse cx="0" cy="0" rx={r * 0.42} ry={h / 2} fill={c.pumpkinLight} />
       <path
-        d={`M${-r * 0.5} ${-r * 0.15} l${r * 0.2} ${-r * 0.28} l${r * 0.2} ${r * 0.28}Z M${r * 0.1} ${-r * 0.15} l${r * 0.2} ${-r * 0.28} l${r * 0.2} ${r * 0.28}Z M${-r * 0.55} ${r * 0.25} q${r * 0.55} ${r * 0.45} ${r * 1.1} 0 q${-r * 0.55} ${r * 0.18} ${-r * 1.1} 0Z`}
-        fill={face}
+        d={`M${-r * 0.42} ${-h * 0.44}Q${-r * 0.6} 0 ${-r * 0.42} ${h * 0.44}M${r * 0.42} ${-h * 0.44}Q${r * 0.6} 0 ${r * 0.42} ${h * 0.44}M${-r * 0.9} ${-h * 0.36}Q${-r * 1.08} 0 ${-r * 0.9} ${h * 0.36}M${r * 0.9} ${-h * 0.36}Q${r * 1.08} 0 ${r * 0.9} ${h * 0.36}`}
+        stroke={c.pumpkinDark}
+        strokeWidth={Math.max(0.8, r * 0.07)}
+        fill="none"
       />
+      <ellipse cx={-r * 0.12} cy={-h * 0.24} rx={r * 0.12} ry={h * 0.16} fill="#ffffff" opacity="0.18" />
+
+      {/* Stem, vine and leaf. */}
+      <path
+        d={`M${-r * 0.1} ${-h * 0.42}C${-r * 0.12} ${-h * 0.62} ${r * 0.02} ${-h * 0.74} ${r * 0.24} ${-h * 0.8}L${r * 0.3} ${-h * 0.7}C${r * 0.14} ${-h * 0.64} ${r * 0.1} ${-h * 0.54} ${r * 0.12} ${-h * 0.42}Z`}
+        fill={c.stem}
+      />
+      <path
+        d={`M${r * 0.08} ${-h * 0.46}c${r * 0.3} ${-h * 0.08} ${r * 0.5} ${h * 0.02} ${r * 0.46} ${-h * 0.14}c${-r * 0.04} ${-h * 0.12} ${-r * 0.24} ${-h * 0.06} ${-r * 0.14} ${h * 0.02}`}
+        stroke={c.stem}
+        strokeWidth={Math.max(0.7, r * 0.06)}
+        fill="none"
+        strokeLinecap="round"
+      />
+      <path
+        d={`M${-r * 0.12} ${-h * 0.46}C${-r * 0.5} ${-h * 0.62} ${-r * 0.9} ${-h * 0.56} ${-r * 0.98} ${-h * 0.4}C${-r * 0.7} ${-h * 0.36} ${-r * 0.36} ${-h * 0.38} ${-r * 0.12} ${-h * 0.46}Z`}
+        fill={c.stem}
+      />
+
+      {carved && (
+        <g>
+          <g fill={c.faceGlow} filter="url(#halloween-glow)" opacity={0.9}>
+            <path d={`M${-r * 0.62} ${-h * 0.06}L${-r * 0.36} ${-h * 0.28}L${-r * 0.12} ${-h * 0.06}ZM${r * 0.12} ${-h * 0.06}L${r * 0.36} ${-h * 0.28}L${r * 0.62} ${-h * 0.06}Z`} />
+          </g>
+          <g fill={c.face}>
+            <path d={`M${-r * 0.62} ${-h * 0.06}L${-r * 0.36} ${-h * 0.28}L${-r * 0.12} ${-h * 0.06}ZM${r * 0.12} ${-h * 0.06}L${r * 0.36} ${-h * 0.28}L${r * 0.62} ${-h * 0.06}Z`} />
+            <path d={`M-${r * 0.1} ${h * 0.02}L0 ${-h * 0.1}L${r * 0.1} ${h * 0.02}Z`} />
+            {/* A jagged grin, two teeth left in. */}
+            <path
+              d={`M${-r * 0.72} ${h * 0.1}Q0 ${h * 0.46} ${r * 0.72} ${h * 0.1}L${r * 0.5} ${h * 0.2}L${r * 0.4} ${h * 0.12}L${r * 0.28} ${h * 0.24}L${r * 0.04} ${h * 0.24}L${-r * 0.06} ${h * 0.14}L${-r * 0.18} ${h * 0.26}L${-r * 0.4} ${h * 0.2}L${-r * 0.5} ${h * 0.12}Z`}
+            />
+          </g>
+        </g>
+      )}
     </g>
   )
 }
 
-function Tombstone({ x, y, fill, cross = false }: { x: number; y: number; fill: string; cross?: boolean }) {
-  return cross ? (
-    <path d={`M${x + 8} ${y} v-34 h-11 v-9 h11 v-11 h9 v11 h11 v9 h-11 v34Z`} fill={fill} />
-  ) : (
-    <path d={`M${x} ${y} v-30 a15 15 0 0 1 30 0 v30Z`} fill={fill} />
+// Bare trees, grown branch by branch from a seed so they're gnarled but never reshuffle.
+type Branch = { d: string; w: number }
+
+function growTree(seed: number, trunkLength: number, trunkWidth: number, depth: number, lean = 0): Branch[] {
+  let state = seed
+  const random = () => {
+    state = (state * 16807) % 2147483647
+    return state / 2147483647
+  }
+  const branches: Branch[] = []
+  const grow = (x: number, y: number, angle: number, length: number, width: number, level: number) => {
+    const bend = (random() - 0.5) * 0.7
+    const x2 = x + Math.cos(angle) * length
+    const y2 = y + Math.sin(angle) * length
+    const cx = x + Math.cos(angle + bend) * length * 0.55
+    const cy = y + Math.sin(angle + bend) * length * 0.55
+    branches.push({ d: `M${x.toFixed(1)} ${y.toFixed(1)}Q${cx.toFixed(1)} ${cy.toFixed(1)} ${x2.toFixed(1)} ${y2.toFixed(1)}`, w: width })
+    if (level === 0) return
+    const count = level > depth - 2 ? 2 : 2 + Math.round(random() * 0.8)
+    for (let i = 0; i < count; i++) {
+      const spread = (i - (count - 1) / 2) * (0.5 + random() * 0.5)
+      grow(x2, y2, angle + spread + (random() - 0.5) * 0.35, length * (0.6 + random() * 0.22), width * 0.64, level - 1)
+    }
+  }
+  grow(0, 0, -Math.PI / 2 + lean, trunkLength, trunkWidth, depth)
+  return branches
+}
+
+const TREES = {
+  big: growTree(11, 62, 13, 6, -0.08),
+  small: growTree(29, 38, 7, 5, 0.12),
+  distant: growTree(47, 30, 5, 5, -0.05),
+}
+
+/** A bare, gnarled tree with a flared, rooted base and a knot hole. Base at (x, y). */
+function BareTree({ x, y, branches, color, knot, size = 1, opacity = 1 }: {
+  x: number; y: number; branches: Branch[]; color: string; knot?: string; size?: number; opacity?: number
+}) {
+  const w = branches[0].w
+  return (
+    <g transform={`translate(${x} ${y}) scale(${size})`} opacity={opacity}>
+      <path d={`M${-w * 1.9} 2Q${-w * 0.7} ${-w * 0.3} ${-w * 0.55} ${-w * 3}L${w * 0.55} ${-w * 3}Q${w * 0.7} ${-w * 0.3} ${w * 2.1} 2Z`} fill={color} />
+      <path d={`M${-w * 1.2} 0Q${-w * 2.4} 1 ${-w * 3} 4M${w * 1.3} 0Q${w * 2.6} 0 ${w * 3.2} 4`} stroke={color} strokeWidth={w * 0.35} strokeLinecap="round" fill="none" />
+      <g stroke={color} strokeLinecap="round" fill="none">
+        {branches.map((branch, i) => (
+          <path key={i} d={branch.d} strokeWidth={Math.max(0.8, branch.w)} />
+        ))}
+      </g>
+      {knot && <ellipse cx={w * 0.05} cy={-w * 2.6} rx={w * 0.18} ry={w * 0.32} fill={knot} />}
+    </g>
+  )
+}
+
+/** A weathered headstone: rounded top, side depth, carved panel, a crack, on a base slab. Base at (x, y). */
+function Gravestone({ x, y, c, tilt = 0, size = 1 }: { x: number; y: number; c: Palette; tilt?: number; size?: number }) {
+  return (
+    <g transform={`translate(${x} ${y}) rotate(${tilt}) scale(${size})`}>
+      <ellipse cx="2" cy="1" rx="26" ry="3.5" fill={c.stoneLine} opacity="0.35" />
+      <path d="M17 -2V-34C17 -46 9 -52 0 -52C11 -51.5 21 -45 21.5 -33V-3Z" fill={c.stoneSide} />
+      <path d="M-17 -2V-34C-17 -46 -9 -52 0 -52C9 -52 17 -46 17 -34V-2Z" fill={c.stone} />
+      <path d="M-11 -9V-32C-11 -40 -6 -44.5 0 -44.5C6 -44.5 11 -40 11 -32V-9" stroke={c.stoneLine} strokeWidth="1.3" fill="none" />
+      <text x="0" y="-26" textAnchor="middle" fontFamily="Georgia, serif" fontSize="9" fontWeight="700" fill={c.stoneLine}>
+        RIP
+      </text>
+      <path d="M-6 -19H6M-4.5 -14.5H4.5" stroke={c.stoneLine} strokeWidth="1.1" strokeLinecap="round" />
+      <path d="M7 -51L4 -45L8 -40L5 -33" stroke={c.stoneLine} strokeWidth="1" fill="none" strokeLinejoin="round" />
+      <path d="M-17 -12L-14 -11L-17 -8" fill={c.stoneSide} />
+      <rect x="-21" y="-4" width="44" height="6" rx="1" fill={c.stoneSide} />
+      <rect x="-21" y="-4" width="40" height="2" rx="1" fill={c.stone} opacity="0.7" />
+      <path d="M-24 2l2-6 1 6 2-8 1 8 3-5 0 5M16 2l2-7 1 7 2-5 1 5 2-8 0 8" stroke={c.nearHill} strokeWidth="1.4" fill="none" strokeLinecap="round" />
+    </g>
+  )
+}
+
+/** A Celtic stone cross with a ring, on a stepped plinth, leaning a little. Base at (x, y). */
+function StoneCross({ x, y, c, tilt = 0, size = 1 }: { x: number; y: number; c: Palette; tilt?: number; size?: number }) {
+  return (
+    <g transform={`translate(${x} ${y}) rotate(${tilt}) scale(${size})`}>
+      <ellipse cx="2" cy="1" rx="22" ry="3" fill={c.stoneLine} opacity="0.35" />
+      <circle cx="0" cy="-50" r="11" stroke={c.stoneSide} strokeWidth="4.5" fill="none" />
+      <circle cx="0" cy="-50" r="11" stroke={c.stone} strokeWidth="2.5" fill="none" />
+      <path d="M-4.5 -14V-42H-17.5L-19 -45L-17.5 -48H-4.5V-68L0 -71L4.5 -68V-48H17.5L19 -45L17.5 -42H4.5V-14Z" fill={c.stone} />
+      <path d="M4.5 -14V-42H17.5L19 -45L20.5 -43L18.5 -40H6.5V-14ZM4.5 -48V-68L6.5 -66V-48Z" fill={c.stoneSide} />
+      <circle cx="0" cy="-45" r="2.2" fill={c.stoneLine} />
+      <path d="M-2 -60L1 -55L-1 -51" stroke={c.stoneLine} strokeWidth="0.9" fill="none" />
+      <rect x="-10" y="-15" width="21" height="6" fill={c.stoneSide} />
+      <rect x="-10" y="-15" width="18" height="6" fill={c.stone} />
+      <rect x="-16" y="-9" width="33" height="10" rx="1" fill={c.stoneSide} />
+      <rect x="-16" y="-9" width="29" height="10" rx="1" fill={c.stone} />
+      <path d="M-19 2l2-6 1 6 2-7 1 7M13 2l2-6 1 6 2-8 1 8" stroke={c.nearHill} strokeWidth="1.4" fill="none" strokeLinecap="round" />
+    </g>
+  )
+}
+
+/** A paned window: a glowing (or dark, boarded) opening with mullions and shutters. */
+function Window({ x, y, w, h, c, lit = true, arched = false, boarded = false }: {
+  x: number; y: number; w: number; h: number; c: Palette; lit?: boolean; arched?: boolean; boarded?: boolean
+}) {
+  const shape = arched
+    ? `M${x} ${y + h}V${y + w / 2}A${w / 2} ${w / 2} 0 0 1 ${x + w} ${y + w / 2}V${y + h}Z`
+    : `M${x} ${y}H${x + w}V${y + h}H${x}Z`
+  return (
+    <g>
+      <path d={shape} fill={lit ? c.window : c.trim} />
+      {lit && <path d={shape} fill={c.window} filter="url(#halloween-glow)" opacity="0.8" />}
+      <path d={`M${x + w / 2} ${y + 1}V${y + h}M${x} ${y + h * 0.55}H${x + w}`} stroke={c.shapes} strokeWidth="1.6" />
+      <rect x={x - 3} y={y + h} width={w + 6} height="2.5" fill={c.trim} />
+      {boarded && <path d={`M${x - 2} ${y + 4}L${x + w + 2} ${y + h * 0.4}M${x - 2} ${y + h * 0.75}L${x + w + 2} ${y + h * 0.45}`} stroke={c.shapes} strokeWidth="3" />}
+    </g>
+  )
+}
+
+/** A crooked Victorian house: mansard roof, tower, chimney, porch and an iron fence. Base at (x, y). */
+function HauntedHouse({ x, y, c, size = 1 }: { x: number; y: number; c: Palette; size?: number }) {
+  return (
+    <g transform={`translate(${x} ${y}) scale(${size})`}>
+      {/* Chimney, a little crooked. */}
+      <g transform="rotate(4 94 -128)" fill={c.shapes}>
+        <rect x="88" y="-146" width="13" height="34" />
+        <rect x="85.5" y="-150" width="18" height="5" />
+      </g>
+
+      {/* Left wing. */}
+      <rect x="-50" y="-60" width="54" height="60" fill={c.shapes} />
+      <path d="M-58 -58L-23 -88L12 -58Z" fill={c.shapes} />
+      <path d="M-50 -66H4M-44 -72H-2M-37 -78H-9" stroke={c.trim} strokeWidth="1" />
+      <Window x={-36} y={-46} w={18} h={24} c={c} lit={false} boarded />
+
+      {/* Main block and its steep roof. */}
+      <rect x="0" y="-92" width="122" height="92" fill={c.shapes} />
+      <path d="M-9 -90L61 -144L131 -90Z" fill={c.shapes} />
+      <path d="M2 -100H120M17 -112H105M33 -124H89M48 -136H74" stroke={c.trim} strokeWidth="1" />
+      <path d="M-9 -90H131" stroke={c.trim} strokeWidth="2.5" />
+      <circle cx="61" cy="-112" r="7.5" fill={c.window} />
+      <path d="M61 -119.5V-104.5M53.5 -112H68.5" stroke={c.shapes} strokeWidth="1.4" />
+      <path d="M8 -46V-88M114 -46V-88" stroke={c.trim} strokeWidth="1" />
+      <Window x={17} y={-80} w={20} h={28} c={c} />
+      <rect x="10" y="-80" width="6" height="28" fill={c.trim} />
+      <Window x={85} y={-80} w={20} h={28} c={c} />
+      <rect x="106" y="-74" width="6" height="28" fill={c.trim} transform="rotate(18 106 -74)" />
+
+      {/* Tower with a pointed roof and a finial. */}
+      <rect x="122" y="-132" width="46" height="132" fill={c.shapes} />
+      <path d="M115 -130L145 -206L175 -130Z" fill={c.shapes} />
+      <path d="M121 -140H169M126 -152H164M131 -164H159M136 -176H154" stroke={c.trim} strokeWidth="1" />
+      <path d="M145 -206V-222" stroke={c.shapes} strokeWidth="2" />
+      <circle cx="145" cy="-224" r="2.5" fill={c.shapes} />
+      <path d="M115 -130H175" stroke={c.trim} strokeWidth="2.5" />
+      <Window x={135} y={-120} w={20} h={30} c={c} arched />
+      <Window x={135} y={-72} w={20} h={30} c={c} arched lit={false} />
+
+      {/* Porch: roof, posts, door and steps. */}
+      <path d="M2 -40H120L113 -50H9Z" fill={c.shapes} />
+      <path d="M2 -40H120" stroke={c.trim} strokeWidth="1.5" />
+      <g fill={c.shapes}>
+        {[12, 42, 78, 108].map((px) => (
+          <rect key={px} x={px} y="-40" width="4" height="36" />
+        ))}
+      </g>
+      <path d="M52 -4V-30A9 9 0 0 1 70 -30V-4Z" fill={c.window} opacity="0.75" />
+      <path d="M61 -36V-4" stroke={c.shapes} strokeWidth="1.2" />
+      <path d="M16 -22H50M72 -22H108" stroke={c.trim} strokeWidth="1.2" />
+      <rect x="0" y="-5" width="122" height="5" fill={c.shapes} />
+      <rect x="47" y="0" width="28" height="3" fill={c.shapes} />
+      <rect x="44" y="3" width="34" height="3" fill={c.shapes} />
+
+      {/* Iron fence, spiked, one post leaning. */}
+      <g stroke={c.shapes} strokeWidth="1.6">
+        <path d="M-70 -4H44M78 -4H200M-70 -12H44M78 -12H200" />
+        {Array.from({ length: 22 }, (_, i) => -68 + i * 12)
+          .filter((fx) => fx < 40 || fx > 80)
+          .map((fx, i) => (
+            <path key={fx} d={`M${fx} 4V-18`} transform={i === 15 ? `rotate(8 ${fx} 4)` : undefined} />
+          ))}
+      </g>
+      <g fill={c.shapes}>
+        {Array.from({ length: 22 }, (_, i) => -68 + i * 12)
+          .filter((fx) => fx < 40 || fx > 80)
+          .map((fx, i) => (
+            <path key={fx} d={`M${fx - 2.5} -17L${fx} -23L${fx + 2.5} -17Z`} transform={i === 15 ? `rotate(8 ${fx} 4)` : undefined} />
+          ))}
+      </g>
+    </g>
   )
 }
 
@@ -83,52 +323,42 @@ export function HalloweenScene({ night, compact = false }: { night: boolean; com
         style={{ background: c.moon, boxShadow: `0 0 90px 35px ${c.moonGlow}` }}
       />
 
-      {/* The skyline: far hills, then a crooked tree, tombstones, a haunted house and pumpkins. */}
+      {/* The skyline: far hills, bare trees, a haunted house, graves and pumpkins. Sized by its own aspect
+          ratio so the rooftops aren't cropped on a wide screen, capped so it doesn't climb too far up a
+          very wide one; a narrow screen crops the sides instead. */}
       <svg
         viewBox="0 0 1440 320"
         preserveAspectRatio="xMidYMax slice"
-        className={`absolute inset-x-0 bottom-0 w-full ${compact ? 'h-[55%]' : 'h-[38vh] min-h-48'}`}
+        className={`absolute inset-x-0 bottom-0 w-full ${compact ? 'h-[55%]' : 'aspect-[1440/320] max-h-[45vh] min-h-48'}`}
       >
         <path d="M0 215C200 175 360 235 560 205S900 165 1100 200 1340 185 1440 195V320H0Z" fill={c.farHill} />
 
-        {/* Haunted house on the far hill. */}
-        <g fill={c.shapes}>
-          <rect x="1150" y="128" width="130" height="80" />
-          <path d="M1138 132 1215 82 1292 132Z" />
-          <rect x="1252" y="70" width="34" height="80" />
-          <path d="M1246 74 1269 22 1292 74Z" />
-          <rect x="1176" y="96" width="10" height="26" />
-        </g>
-        <g fill={c.window}>
-          <rect x="1166" y="146" width="16" height="20" rx="2" />
-          <rect x="1204" y="146" width="16" height="20" rx="2" />
-          <rect x="1262" y="92" width="14" height="18" rx="7" />
-          <rect x="1236" y="168" width="20" height="40" rx="10" opacity="0.8" />
-        </g>
+        <defs>
+          <filter id="halloween-glow" x="-100%" y="-100%" width="300%" height="300%">
+            <feGaussianBlur stdDeviation={night ? 6 : 3} />
+          </filter>
+        </defs>
+
+        <BareTree x={40} y={214} branches={TREES.distant} color={c.nearHill} size={1.1} />
+        <BareTree x={960} y={194} branches={TREES.distant} color={c.nearHill} size={0.9} opacity={0.9} />
+
+        <HauntedHouse x={1090} y={208} c={c} size={0.82} />
 
         <path d="M0 262C240 232 420 282 700 257S1150 242 1440 267V320H0Z" fill={c.nearHill} />
 
-        {/* Crooked tree. */}
-        <g stroke={c.shapes} strokeLinecap="round" fill="none">
-          <path d="M150 268C156 222 146 186 160 140" strokeWidth="14" />
-          <path d="M160 140C140 118 116 116 92 98" strokeWidth="7" />
-          <path d="M160 140C172 110 196 100 214 74" strokeWidth="7" />
-          <path d="M156 186C182 176 206 178 230 160" strokeWidth="6" />
-          <path d="M92 98C84 86 86 74 78 64M214 74C224 66 236 66 244 56M230 160C240 150 254 150 262 140" strokeWidth="3.5" />
-          <path d="M158 140C158 112 150 94 154 66" strokeWidth="4.5" />
-        </g>
+        <BareTree x={152} y={270} branches={TREES.big} color={c.shapes} knot={c.trim} />
+        <BareTree x={720} y={258} branches={TREES.small} color={c.shapes} knot={c.trim} />
 
-        <g>
-          <Tombstone x={300} y={272} fill={c.shapes} />
-          <Tombstone x={348} y={270} fill={c.shapes} cross />
-          <Tombstone x={392} y={268} fill={c.shapes} />
-          <Tombstone x={850} y={262} fill={c.shapes} cross />
-        </g>
+        <Gravestone x={318} y={277} c={c} tilt={-4} />
+        <StoneCross x={368} y={275} c={c} tilt={5} />
+        <Gravestone x={414} y={272} c={c} tilt={7} size={0.78} />
+        <StoneCross x={868} y={266} c={c} tilt={-8} size={0.9} />
 
-        <Pumpkin x={510} y={268} r={16} fill={c.pumpkin} face={c.face} />
-        <Pumpkin x={548} y={272} r={11} fill={c.pumpkin} face={c.face} />
-        <Pumpkin x={990} y={262} r={14} fill={c.pumpkin} face={c.face} />
-        <Pumpkin x={1340} y={274} r={18} fill={c.pumpkin} face={c.face} />
+        <Pumpkin x={510} y={276} r={17} c={c} carved />
+        <Pumpkin x={550} y={278} r={11} c={c} flip />
+        <Pumpkin x={1000} y={268} r={14} c={c} carved flip />
+        <Pumpkin x={1330} y={282} r={19} c={c} carved />
+        <Pumpkin x={1370} y={284} r={10} c={c} />
       </svg>
     </div>
   )

@@ -14,6 +14,15 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Changed
+
+- The Halloween scene is more detailed:
+  - Weathered headstones with carved "RIP" panels and cracks, and leaning Celtic stone crosses on stepped bases.
+  - A Victorian haunted house with a spired tower, chimney, porch, shutters, paned and boarded-up windows, and an iron fence.
+  - Ribbed pumpkins and glowing jack-o'-lanterns with stems, vines and leaves.
+  - Gnarled bare trees, with smaller ones in the distance.
+  - The rooftops are no longer cut off on wide screens.
+
 ## 3.3.0 — 2026-10-07
 
 ### Changed
