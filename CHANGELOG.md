@@ -14,6 +14,18 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 2.12.2 — 2026-10-07
+
+### Changed
+
+- The Hiring table now shows a red "No Remotasks account yet" note under the email of applicants who applied without a Remotasks account.
+
+## 2.12.1 — 2026-10-07
+
+### Changed
+
+- In an applicant's details on the Hiring page, "No Remotasks account yet" now shows in red so it stands out.
+
 ## 2.12.0 — 2026-10-06
 
 ### Added
