@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 3.2.0 — 2026-10-07
+
 ### Added
 
 - A Halloween look for October: a pumpkin-orange accent (and a deep purple night on the dark theme), bats that fly across the screen now and then, a cobweb in the corner and a pumpkin beside the logo. The ghost button next to the light/dark toggle turns it off or back on, remembered on that device. It switches itself off after October 31, and the bats stay still for anyone who has reduced motion turned on.
