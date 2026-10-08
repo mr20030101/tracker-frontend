@@ -14,6 +14,10 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Changed
+
+- The Bad Video Validation/Removal form now opens with **Project Name** filled in (Aloha, Ursa Majoris or Sweet Yam, from the task's project).
+
 ## 3.1.0 — 2026-10-07
 
 ### Changed
