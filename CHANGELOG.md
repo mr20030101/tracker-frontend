@@ -14,6 +14,10 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Changed
+
+- The Bad Video Validation/Removal form now always opens with **Support Name** "Tan, Jay-anne R.", **Workforce** REMOTE and **Workforce Name** "Greyowls", whoever opens it. New bad video reports record their workforce name as "Greyowls" too.
+
 ## 3.1.1 — 2026-10-08
 
 ### Changed

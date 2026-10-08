@@ -22,7 +22,7 @@ interface Props {
 // Every report so far has been Remote / Grey Owls, so these aren't asked for — fixed rather than
 // left editable-but-hidden, since there's nowhere in this form for someone to change them anyway.
 const WORKFORCE: 'REMOTE' | 'ONSITE' = 'REMOTE'
-const WORKFORCE_NAME = 'Grey Owls'
+const WORKFORCE_NAME = 'Greyowls'
 
 /** Files a "Bad Video Validation/Removal" report (ALOHA | URSA | YAM) against a task's claimed
  * video — the counterpart to requesting an extension, but a QA flag rather than self-service.

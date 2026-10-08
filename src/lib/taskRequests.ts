@@ -238,6 +238,11 @@ const BAD_VIDEO_FORM_ENTRY = {
   workforceName: 'entry.701886437',
   workforce: 'entry.8749894',
 }
+// Like the Reclaim/Extend form's support name: always written this way, whoever opens the form and
+// whatever the report itself recorded. Workforce must match the form's option ("REMOTE") exactly.
+const BAD_VIDEO_FORM_SUPPORT_NAME = 'Tan, Jay-anne R.'
+const BAD_VIDEO_FORM_WORKFORCE = 'REMOTE'
+const BAD_VIDEO_FORM_WORKFORCE_NAME = 'Greyowls'
 
 /** A link to the Bad Video Validation/Removal form with this report's details prefilled. */
 export function buildBadVideoRequestFormUrl(params: {
@@ -246,9 +251,6 @@ export function buildBadVideoRequestFormUrl(params: {
   projectName: string | null
   category: string
   frame: string
-  workforce: 'REMOTE' | 'ONSITE'
-  workforceName: string
-  supportName: string
 }): string {
   const query = new URLSearchParams({ usp: 'pp_url' })
   if (params.cbEmail) query.set(BAD_VIDEO_FORM_ENTRY.cbEmail, params.cbEmail)
@@ -257,8 +259,8 @@ export function buildBadVideoRequestFormUrl(params: {
   if (project) query.set(BAD_VIDEO_FORM_ENTRY.projectName, project)
   query.set(BAD_VIDEO_FORM_ENTRY.category, params.category)
   query.set(BAD_VIDEO_FORM_ENTRY.frame, params.frame)
-  query.set(BAD_VIDEO_FORM_ENTRY.workforce, params.workforce)
-  query.set(BAD_VIDEO_FORM_ENTRY.workforceName, params.workforceName)
-  if (params.supportName) query.set(BAD_VIDEO_FORM_ENTRY.supportName, params.supportName)
+  query.set(BAD_VIDEO_FORM_ENTRY.supportName, BAD_VIDEO_FORM_SUPPORT_NAME)
+  query.set(BAD_VIDEO_FORM_ENTRY.workforce, BAD_VIDEO_FORM_WORKFORCE)
+  query.set(BAD_VIDEO_FORM_ENTRY.workforceName, BAD_VIDEO_FORM_WORKFORCE_NAME)
   return `${BAD_VIDEO_FORM_URL}?${query.toString()}`
 }
