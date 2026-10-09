@@ -260,7 +260,11 @@ export function AppShell({ children }: { children: ReactNode }) {
                           ? 'Hiring'
                           : location.pathname === '/announcements'
                             ? 'Announcements'
-                            : 'Dashboard'
+                            : location.pathname === '/requests'
+                              ? 'Requests'
+                              : location.pathname === '/feedback'
+                                ? 'Feedback'
+                                : 'Dashboard'
 
   return (
     <MessagingProvider>

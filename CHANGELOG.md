@@ -14,6 +14,10 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Fixed
+
+- The breadcrumb at the top of the Requests and Feedback pages now names the page instead of showing "Dashboard".
+
 ## 3.6.0 — 2026-10-09
 
 ### Added
