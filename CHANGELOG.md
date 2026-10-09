@@ -14,6 +14,10 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Added
+
+- A **Feedback** page (under Logs) replaces the FEEDBACK sheet. Contributors report the feedback they got on a task with **Report feedback**: the Task ID, a link to the screenshot of the feedback and their own remarks. Their lead opens each report, adds **Lead remarks** and marks it **Valid** or **Invalid**; contributors see the verdict and the lead's remarks on their own reports. Tabs split reports into Pending, Valid, Invalid and All, and leads get a badge on the Feedback link for reports waiting to be checked, plus an Export to CSV.
+
 ## 3.1.0 — 2026-10-07
 
 ### Changed
