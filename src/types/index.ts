@@ -120,6 +120,23 @@ export interface BadVideoTaskRequest extends BaseTaskRequest {
 
 export type TaskRequest = ExtensionTaskRequest | ReclaimTaskRequest | BadVideoTaskRequest
 
+// A contributor's report of the feedback they got on a task, which their lead checks and marks
+// valid (the feedback holds up) or invalid (it doesn't).
+export type FeedbackStatus = 'pending' | 'valid' | 'invalid'
+
+export interface TaskFeedback {
+  id: number
+  user_id: string
+  task_id: string
+  screenshot_url: string
+  cb_remarks: string | null
+  status: FeedbackStatus
+  lead_remarks: string | null
+  reviewed_by: string | null
+  reviewed_at: string | null
+  created_at: string
+}
+
 export interface Paginated<T> {
   data: T[]
   current_page: number

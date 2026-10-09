@@ -16,6 +16,7 @@ import {
   Trophy,
   UserPlus,
   Hourglass,
+  MessageSquareText,
   Megaphone,
   UserRound,
   Menu,
@@ -37,6 +38,7 @@ import { GlobalSearch } from './GlobalSearch'
 import { contributorPath } from '../lib/urlRef'
 import { OVERDUE_HOURS, fetchOverdueRequestCount, fetchPendingRequestCount } from '../lib/taskRequests'
 import { fetchUnreadAnnouncementCount } from '../lib/announcements'
+import { fetchPendingFeedbackCount } from '../lib/taskFeedback'
 import { AppFooter } from './AppFooter'
 import { OfflineQueueBanner } from './OfflineQueueBanner'
 
@@ -47,6 +49,7 @@ function navSections(
   isAdmin: boolean,
   pendingRequests: number,
   overdueRequests: number,
+  pendingFeedback: number,
   unreadAnnouncements: number,
 ): {
   label: string
@@ -77,6 +80,7 @@ function navSections(
                 ? `${overdueRequests} waiting over ${OVERDUE_HOURS} hours`
                 : `${pendingRequests} pending`,
           },
+          { to: '/feedback', label: 'Feedback', icon: MessageSquareText, badge: pendingFeedback, badgeTitle: `${pendingFeedback} to check` },
           { to: '/data-quality', label: 'Data Quality', icon: ShieldCheck },
           { to: '/team-reports', label: 'Team Reports', icon: LineChartIcon },
           ...(isAdmin ? [{ to: '/activity-log', label: 'Activity Log', icon: History }] : []),
@@ -84,6 +88,7 @@ function navSections(
         : [
           { to: '/task-log', label: 'Task Log', icon: ClipboardList },
           { to: '/requests', label: 'Requests', icon: Hourglass },
+          { to: '/feedback', label: 'Feedback', icon: MessageSquareText },
         ],
     },
     {
@@ -190,6 +195,15 @@ export function AppShell({ children }: { children: ReactNode }) {
     refetchInterval: 60_000,
   })
 
+  // Feedback reports waiting for a lead to check them. Refreshed after every check on the Feedback
+  // page (same ['task-feedback'] key prefix) and every half minute in between.
+  const { data: pendingFeedback = 0 } = useQuery({
+    queryKey: ['task-feedback', 'pending-count'],
+    queryFn: fetchPendingFeedbackCount,
+    enabled: isManager,
+    refetchInterval: 30_000,
+  })
+
   // New announcements addressed to you. Cleared when the Announcements page marks them seen (it
   // invalidates this key), otherwise checked every minute.
   const { data: unreadAnnouncements = 0 } = useQuery({
@@ -211,7 +225,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [location.pathname])
 
   const ownProfilePath = user ? contributorPath(user.email) : '/'
-  const sections = navSections(isManager, isAdmin, pendingRequests, overdueRequests, unreadAnnouncements)
+  const sections = navSections(isManager, isAdmin, pendingRequests, overdueRequests, pendingFeedback, unreadAnnouncements)
   const searchPages = [
     ...sections.flatMap((section) => section.items.map(({ to, label, icon }) => ({ to, label, icon }))),
     { to: ownProfilePath, label: 'My profile', icon: UserRound },

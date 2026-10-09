@@ -19,6 +19,7 @@ import { ActivityLog } from './pages/ActivityLog'
 import { Apply } from './pages/Apply'
 import { Hiring } from './pages/Hiring'
 import { Requests } from './pages/Requests'
+import { Feedback } from './pages/Feedback'
 import { Announcements } from './pages/Announcements'
 import { Donate } from './pages/Donate'
 
@@ -49,6 +50,7 @@ function ProtectedLayout() {
         <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/task-log" element={<TaskLog />} />
         <Route path="/requests" element={<Requests />} />
+        <Route path="/feedback" element={<Feedback />} />
         <Route path="/resources" element={<Resources />} />
         <Route path="/messages" element={<Messages />} />
         <Route path="/messages/group/:groupId" element={<Messages />} />
