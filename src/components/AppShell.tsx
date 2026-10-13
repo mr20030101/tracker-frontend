@@ -14,6 +14,7 @@ import {
   Users as UsersIcon,
   FolderKanban,
   Trophy,
+  Gift,
   UserPlus,
   Hourglass,
   MessageSquareText,
@@ -65,6 +66,7 @@ function navSections(
       items: [
         { to: '/', label: 'Dashboard', icon: LayoutDashboard },
         { to: '/leaderboard', label: 'Leaderboard', icon: Trophy },
+        { to: '/rewards', label: 'Rewards', icon: Gift },
       ],
     },
     {

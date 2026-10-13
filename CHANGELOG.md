@@ -14,6 +14,20 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 3.16.0 — 2026-10-13
+
+### Added
+
+- **Rewards.** Leads can offer their team a prize for a goal over any dates, e.g. "next week, ₱1,000 for whoever submits the most tasks". Admins can offer one to any team or to everyone. The rules:
+  - **Most tasks submitted**, with prizes for 1st, 2nd, 3rd and so on (up to the top 10), and an optional minimum to qualify. A tie goes to whoever got there first.
+  - **Everyone who reaches a number of tasks** (e.g. 60), each winning the prize.
+  - **On target every week**, for everyone who hits their weekly target in every week of the range.
+  - **Custom**: describe any rule, and pick the winners yourself when it ends.
+
+  Each can count every project or just one. Creating a reward can post it as an announcement. While it runs, everyone sees the live standings and how close they are ("3 more tasks to reach 1st place"). Once it ends, the lead awards it (the winners can be announced too), and marks each prize paid. A **Rewards** page lists what's running, coming up and past, and contributors see live rewards on their dashboard.
+
+Needs the `20261014_rewards` database migration.
+
 ## 3.15.0 — 2026-10-13
 
 ### Added

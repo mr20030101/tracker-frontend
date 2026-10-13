@@ -23,6 +23,7 @@ import { OnboardingChecklist } from '../components/OnboardingChecklist'
 import { AchievementsCard } from '../components/Achievements'
 import { StreakRiskCard, TeamPulseCard, WeeklyRecap, type RecapStats } from '../components/DashboardMotivation'
 import { SpotlightDialog } from '../components/SpotlightDialog'
+import { RewardsSpotlight } from '../components/RewardsSpotlight'
 import { useAchievements } from '../lib/achievements'
 import { useCelebrations } from '../lib/celebrations'
 import { rankWeek, standingFor, teamGoal, useTeamWeeks, weekStarts } from '../lib/teamWeeks'
@@ -400,6 +401,8 @@ export function ContributorDashboard() {
       </div>
 
       {ranked.length > 0 && <TeamPulseCard standing={standing} team={teamGoal(ranked)} />}
+
+      {contributorId && <RewardsSpotlight meId={contributorId} />}
 
       <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="flex items-center gap-5 rounded-xl border border-gray-200 bg-white p-5 lg:col-span-1">
