@@ -28,6 +28,7 @@ import { GroupChatPane, GroupIcon, NewGroupModal } from '../components/GroupChat
 import { confirmDialog } from '../lib/dialog'
 import { usePageTitle } from '../lib/usePageTitle'
 import { directSeenStatus } from '../lib/seen'
+import { directTypingKey, useTypingIndicator } from '../lib/useTypingIndicator'
 
 // Messenger's own send-bubble blue, matching MessageBubble.tsx — kept local rather than
 // repointing the app's global --color-accent, which drives buttons everywhere else.
@@ -56,7 +57,11 @@ export function Messages() {
   const selectedUser = selectedUserId ? usersById.get(selectedUserId) : undefined
   usePageTitle(selectedGroup?.name ?? selectedUser?.name ?? 'Messages')
   const { messages: thread, isLoading: threadLoading, hasOlder, loadingOlder, loadOlder, scrollRef } = useThread(myId, selectedUserId)
-  const { visibleThread, isTyping } = useBotTyping(thread, myId, Boolean(selectedUser?.is_bot))
+  const { visibleThread, isTyping: botTyping } = useBotTyping(thread, myId, Boolean(selectedUser?.is_bot))
+  // The other person typing to you, live; the bot's "typing" is its own reveal delay above.
+  const otherTyping =
+    useTypingIndicator(myId && selectedUserId && !selectedUser?.is_bot ? directTypingKey(myId, selectedUserId) : null, myId, draft).length > 0
+  const isTyping = botTyping || otherTyping
 
   useEffect(() => {
     setSelectMode(false)
@@ -367,7 +372,7 @@ export function Messages() {
                 <div className="ml-auto">
                   <GrammarCheckButton
                     onClick={() => sendMutation.mutate(GRAMMAR_CHECK_MESSAGE)}
-                    disabled={sendMutation.isPending || isTyping || selectMode}
+                    disabled={sendMutation.isPending || botTyping || selectMode}
                   />
                 </div>
               )}
@@ -431,7 +436,7 @@ export function Messages() {
               </div>
             )}
             {showQuickReplies && (
-              <BotQuickReplies onPick={(text) => sendMutation.mutate(text)} disabled={sendMutation.isPending || isTyping} />
+              <BotQuickReplies onPick={(text) => sendMutation.mutate(text)} disabled={sendMutation.isPending || botTyping} />
             )}
             {selectMode ? (
               <div className="flex items-center gap-2 border-t border-gray-100 p-3">

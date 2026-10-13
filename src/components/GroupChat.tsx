@@ -23,6 +23,8 @@ import { EmojiPickerButton } from './EmojiPickerButton'
 import { Modal } from './Modal'
 import { confirmDialog } from '../lib/dialog'
 import { groupSeenStatus } from '../lib/seen'
+import { groupTypingKey, useTypingIndicator } from '../lib/useTypingIndicator'
+import { TypingIndicator } from './TypingIndicator'
 
 // Messenger's send-bubble blue, as in MessageBubble.tsx.
 const BUBBLE_BLUE = '#0084ff'
@@ -76,6 +78,8 @@ export function GroupChatPane({ group, onBack, onGone }: { group: ChatGroupSumma
   const { messages, isLoading, hasOlder, loadingOlder, loadOlder, scrollRef } = useGroupThread(myId, group.id)
   const membersById = useMemo(() => new Map(group.members.map((m) => [m.id, m])), [group.members])
   const seenStatus = groupSeenStatus(messages, group.members, myId)
+  const typerIds = useTypingIndicator(groupTypingKey(group.id), myId, draft)
+  const typingLabel = typingNames(typerIds.map((id) => membersById.get(id)?.name.split(' ')[0] ?? 'Someone'))
 
   useEffect(() => {
     if (group.unread_count > 0) {
@@ -86,7 +90,7 @@ export function GroupChatPane({ group, onBack, onGone }: { group: ChatGroupSumma
   const newestId = messages[messages.length - 1]?.id
   useEffect(() => {
     threadEndRef.current?.scrollIntoView({ block: 'nearest' })
-  }, [group.id, newestId])
+  }, [group.id, newestId, typingLabel])
 
   const sendMutation = useMutation({
     mutationFn: (text: string) => sendGroupMessage(group.id, myId!, text),
@@ -183,6 +187,7 @@ export function GroupChatPane({ group, onBack, onGone }: { group: ChatGroupSumma
               </div>
             )
           })}
+          {typingLabel && <TypingIndicator label={typingLabel} />}
         </div>
         <div ref={threadEndRef} />
       </div>
@@ -214,6 +219,14 @@ export function GroupChatPane({ group, onBack, onGone }: { group: ChatGroupSumma
       {settingsOpen && <GroupSettingsModal group={group} onClose={() => setSettingsOpen(false)} onGone={onGone} />}
     </>
   )
+}
+
+/** "Ana is typing", "Ana and Ben are typing", "3 people are typing"; null when nobody is. */
+function typingNames(names: string[]): string | null {
+  if (names.length === 0) return null
+  if (names.length === 1) return `${names[0]} is typing`
+  if (names.length === 2) return `${names[0]} and ${names[1]} are typing`
+  return `${names.length} people are typing`
 }
 
 export function GroupIcon({ size = 36 }: { size?: number }) {

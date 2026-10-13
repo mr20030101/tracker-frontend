@@ -14,6 +14,12 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 3.10.0 — 2026-10-13
+
+### Added
+
+- **Typing** in Messages. While someone is writing to you, their chat shows the bouncing dots, in the Messages page and in the chat panel. Group chats also say who, e.g. **Ana is typing** or **Ana and Ben are typing**. The dots go away when they send, clear the box or stop for a few seconds.
+
 ## 3.9.0 — 2026-10-13
 
 ### Added

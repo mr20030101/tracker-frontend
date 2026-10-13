@@ -22,6 +22,7 @@ import { groupPath } from '../lib/groupChats'
 import { Users } from 'lucide-react'
 import { confirmDialog } from '../lib/dialog'
 import { directSeenStatus } from '../lib/seen'
+import { directTypingKey, useTypingIndicator } from '../lib/useTypingIndicator'
 
 // Messenger's own send-bubble blue, matching MessageBubble.tsx — kept local rather than
 // repointing the app's global --color-accent, which drives buttons everywhere else.
@@ -47,7 +48,11 @@ export function MessagesButton() {
   const activeUser = activeUserId ? usersById.get(activeUserId) : undefined
   const activeUserAvatarUrl = activeUser?.avatar_url ?? null
   const activeUserIsBot = Boolean(activeUser?.is_bot)
-  const { visibleThread, isTyping } = useBotTyping(thread, myId, activeUserIsBot)
+  const { visibleThread, isTyping: botTyping } = useBotTyping(thread, myId, activeUserIsBot)
+  // The other person typing to you, live; the bot's "typing" is its own reveal delay above.
+  const otherTyping =
+    useTypingIndicator(isOpen && myId && activeUserId && !activeUserIsBot ? directTypingKey(myId, activeUserId) : null, myId, draft).length > 0
+  const isTyping = botTyping || otherTyping
   // The bot never opens its messages, so a "Sent" there would never turn into "Seen".
   const seenStatus = activeUserIsBot ? null : directSeenStatus(visibleThread, myId)
 
@@ -198,7 +203,7 @@ export function MessagesButton() {
                       <GrammarCheckButton
                         compact
                         onClick={() => sendMutation.mutate(GRAMMAR_CHECK_MESSAGE)}
-                        disabled={sendMutation.isPending || isTyping || selectMode}
+                        disabled={sendMutation.isPending || botTyping || selectMode}
                       />
                     )}
                     <CallButton
@@ -267,7 +272,7 @@ export function MessagesButton() {
                 {showQuickReplies && (
                   <BotQuickReplies
                     onPick={(text) => sendMutation.mutate(text)}
-                    disabled={sendMutation.isPending || isTyping}
+                    disabled={sendMutation.isPending || botTyping}
                     className="max-h-36 overflow-y-auto"
                   />
                 )}
