@@ -70,7 +70,9 @@ type Palette = (typeof PALETTES)['day']
  * A ribbed pumpkin: shaded lobes, a curved stem, a curly vine and a leaf. `carved` makes it a
  * jack-o'-lantern whose face glows (strongly at night). Sits on the ground at (x, y).
  */
-function Pumpkin({ x, y, r, c, carved = false, flip = false }: { x: number; y: number; r: number; c: Palette; carved?: boolean; flip?: boolean }) {
+function Pumpkin({ x, y, r, c, carved = false, flip = false, glow = 'halloween-glow' }: {
+  x: number; y: number; r: number; c: Palette; carved?: boolean; flip?: boolean; glow?: string
+}) {
   const h = r * 1.55
   return (
     <g transform={`translate(${x} ${y - h / 2}) scale(${flip ? -1 : 1} 1)`}>
@@ -108,7 +110,7 @@ function Pumpkin({ x, y, r, c, carved = false, flip = false }: { x: number; y: n
 
       {carved && (
         <g>
-          <g fill={c.faceGlow} filter="url(#halloween-glow)" opacity={0.9}>
+          <g fill={c.faceGlow} filter={`url(#${glow})`} opacity={0.9}>
             <path d={`M${-r * 0.62} ${-h * 0.06}L${-r * 0.36} ${-h * 0.28}L${-r * 0.12} ${-h * 0.06}ZM${r * 0.12} ${-h * 0.06}L${r * 0.36} ${-h * 0.28}L${r * 0.62} ${-h * 0.06}Z`} />
           </g>
           <g fill={c.face}>
@@ -397,14 +399,50 @@ export function HalloweenScene({ night, compact = false }: { night: boolean; com
         style={{ background: c.moon, boxShadow: `0 0 90px 35px ${c.moonGlow}` }}
       />
 
-      {/* The skyline: far hills, bare trees, a haunted house, graves and pumpkins. Sized by its own aspect
-          ratio so the rooftops aren't cropped on a wide screen, capped so it doesn't climb too far up a
-          very wide one; a narrow screen crops the sides instead. */}
-      <svg
-        viewBox="0 0 1440 320"
-        preserveAspectRatio="xMidYMax slice"
-        className={`absolute inset-x-0 bottom-0 w-full ${compact ? 'h-[55%]' : 'aspect-[1440/320] max-h-[45vh] min-h-48'}`}
-      >
+      {compact ? <CompactSkyline c={c} night={night} /> : <Skyline c={c} night={night} />}
+    </div>
+  )
+}
+
+/**
+ * The banner's version: the full skyline squeezed into a banner put its graves and pumpkins behind the
+ * greeting and buttons, so here it's a low strip of hill along the bottom edge, with a few props
+ * grouped in the bottom-right (left of the owl), and only on screens wide enough to keep them clear.
+ */
+function CompactSkyline({ c, night }: { c: Palette; night: boolean }) {
+  return (
+    <>
+      <svg viewBox="0 0 1440 40" preserveAspectRatio="none" className="absolute inset-x-0 bottom-0 h-6 w-full">
+        <path d="M0 18C240 8 420 24 700 14S1150 6 1440 16V40H0Z" fill={c.farHill} />
+        <path d="M0 30C300 22 520 34 800 26S1200 22 1440 28V40H0Z" fill={c.nearHill} />
+      </svg>
+      <svg viewBox="0 0 230 70" className="absolute bottom-0 right-36 hidden h-[70px] w-[230px] xl:block">
+        <defs>
+          <filter id="halloween-glow-compact" x="-100%" y="-100%" width="300%" height="300%">
+            <feGaussianBlur stdDeviation={night ? 6 : 3} />
+          </filter>
+        </defs>
+        <path d="M0 66C40 58 120 56 230 60V70H0Z" fill={c.nearHill} />
+        <Gravestone x={30} y={66} c={c} tilt={-4} size={0.8} />
+        <SkeletonHand x={62} y={68} c={c} tilt={-6} size={0.85} />
+        <StoneCross x={98} y={65} c={c} tilt={5} size={0.75} />
+        <Pumpkin x={150} y={66} r={14} c={c} carved glow="halloween-glow-compact" />
+        <Pumpkin x={184} y={67} r={9} c={c} flip />
+      </svg>
+    </>
+  )
+}
+
+/** The full-page skyline: far hills, bare trees, a haunted house, graves and pumpkins. */
+function Skyline({ c, night }: { c: Palette; night: boolean }) {
+  return (
+    // Sized by its own aspect ratio so the rooftops aren't cropped on a wide screen, capped so it
+    // doesn't climb too far up a very wide one; a narrow screen crops the sides instead.
+    <svg
+      viewBox="0 0 1440 320"
+      preserveAspectRatio="xMidYMax slice"
+      className="absolute inset-x-0 bottom-0 aspect-[1440/320] max-h-[45vh] min-h-48 w-full"
+    >
         <path d="M0 215C200 175 360 235 560 205S900 165 1100 200 1340 185 1440 195V320H0Z" fill={c.farHill} />
 
         <defs>
@@ -434,8 +472,7 @@ export function HalloweenScene({ night, compact = false }: { night: boolean; com
         <Pumpkin x={1000} y={268} r={14} c={c} carved flip />
         <Pumpkin x={1330} y={282} r={19} c={c} carved />
         <Pumpkin x={1370} y={284} r={10} c={c} />
-      </svg>
-    </div>
+    </svg>
   )
 }
 
