@@ -357,7 +357,26 @@ body {
   animation: apply-error-in 250ms ease-out both;
 }
 
+/* Halloween's skeleton hand: claws up out of its mound, waves about, then sinks back under. */
+@keyframes halloween-hand-rise {
+  0%, 12% { transform: translateY(52px) rotate(0deg); }
+  26% { transform: translateY(-2px) rotate(-5deg); }
+  31% { transform: translateY(0) rotate(4deg); }
+  37% { transform: translateY(0) rotate(-3deg); }
+  43%, 70% { transform: translateY(0) rotate(0deg); }
+  84%, 100% { transform: translateY(52px) rotate(0deg); }
+}
+
+.halloween-hand-rise {
+  transform-origin: 0 0;
+  animation: halloween-hand-rise 9s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .halloween-hand-rise {
+    animation: none;
+  }
+
   .login-sky-blob,
   .login-sky-cloud,
   .login-sky-bob,
