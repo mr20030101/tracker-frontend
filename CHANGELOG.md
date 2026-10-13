@@ -14,6 +14,12 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 3.11.1 — 2026-10-13
+
+### Fixed
+
+- Typing now shows from the very first keystroke, even when you start typing right after opening a chat.
+
 ## 3.11.0 — 2026-10-13
 
 ### Added

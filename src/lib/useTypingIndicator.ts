@@ -11,6 +11,13 @@ type TypingPayload = { userId: string | null; typing: boolean }
 
 const EMPTY = new Map<string, number>()
 
+// Over the open connection once the channel has joined; before that (the first keystroke can beat
+// the join), over plain HTTP, so it isn't lost.
+function broadcast(channel: RealtimeChannel, payload: TypingPayload) {
+  if (channel.state === 'joined') void channel.send({ type: 'broadcast', event: 'typing', payload })
+  else void channel.httpSend('typing', payload)
+}
+
 /**
  * Someone's typing inbox: everyone writing to them in a direct chat sends here, and they listen to
  * it once for the whole app (messagingContext), so the conversation list can show it too, not
@@ -60,9 +67,7 @@ export function useTypingIndicator(
     channelRef.current = channel
     return () => {
       // Leaving the chat mid-message stops your typing there.
-      if (lastSentRef.current !== 0) {
-        void channel.send({ type: 'broadcast', event: 'typing', payload: { userId: myId, typing: false } satisfies TypingPayload })
-      }
+      if (lastSentRef.current !== 0) broadcast(channel, { userId: myId, typing: false })
       lastSentRef.current = 0
       channelRef.current = null
       void supabase.removeChannel(channel)
@@ -84,8 +89,9 @@ export function useTypingIndicator(
   // the box empties or the chat closes.
   const isTyping = draft.trim() !== ''
   useEffect(() => {
-    const send = (typing: boolean) =>
-      void channelRef.current?.send({ type: 'broadcast', event: 'typing', payload: { userId: myId, typing } satisfies TypingPayload })
+    const send = (typing: boolean) => {
+      if (channelRef.current) broadcast(channelRef.current, { userId: myId, typing })
+    }
     if (!isTyping) {
       if (lastSentRef.current !== 0) send(false)
       lastSentRef.current = 0
