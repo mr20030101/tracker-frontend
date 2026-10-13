@@ -14,6 +14,12 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 3.7.2 — 2026-10-13
+
+### Changed
+
+- The **Request extension** and **Request reclaim** forms no longer show a Remotask ID field. The request uses the Remotask ID from your profile, which you can change in Edit Profile.
+
 ## 3.7.1 — 2026-10-13
 
 ### Fixed
