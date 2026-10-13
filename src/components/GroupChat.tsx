@@ -187,10 +187,15 @@ export function GroupChatPane({ group, onBack, onGone }: { group: ChatGroupSumma
               </div>
             )
           })}
-          {typingLabel && <TypingIndicator label={typingLabel} />}
         </div>
         <div ref={threadEndRef} />
       </div>
+      {/* Pinned above the message box rather than after the last message, so it's always in the same spot. */}
+      {typingLabel && (
+        <div className="px-3 pb-2 pt-1 sm:px-5">
+          <TypingIndicator label={typingLabel} />
+        </div>
+      )}
 
       {sendError && (
         <div role="alert" className="px-4 pb-1 pt-2 text-xs text-status-danger-text">

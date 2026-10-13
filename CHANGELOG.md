@@ -14,6 +14,16 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 3.11.0 — 2026-10-13
+
+### Added
+
+- When someone is writing you a direct message, their name in the chat header and their row in the conversation list say **Typing…** (in place of "Active now" and the last message), on the Messages page and in the chat panel.
+
+### Changed
+
+- The typing dots now sit at the bottom of the chat, just above the message box, instead of right after the last message.
+
 ## 3.10.0 — 2026-10-13
 
 ### Added

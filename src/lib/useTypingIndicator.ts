@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from './api'
 
@@ -11,9 +11,13 @@ type TypingPayload = { userId: string | null; typing: boolean }
 
 const EMPTY = new Map<string, number>()
 
-/** The realtime channel a direct chat's typing goes over: the same name from both ends. */
-export function directTypingKey(a: string, b: string): string {
-  return `typing:dm:${[a, b].sort().join(':')}`
+/**
+ * Someone's typing inbox: everyone writing to them in a direct chat sends here, and they listen to
+ * it once for the whole app (messagingContext), so the conversation list can show it too, not
+ * just the open chat.
+ */
+export function directTypingKey(userId: string): string {
+  return `typing:to:${userId}`
 }
 
 export function groupTypingKey(groupId: number): string {
@@ -24,8 +28,15 @@ export function groupTypingKey(groupId: number): string {
  * Shares whether you're typing in a chat and returns who else is, over a realtime broadcast (no
  * database rows). You count as typing while `draft` has text; emptying it (sending, or clearing
  * the box) stops it straight away. Pass a null key to turn it off, e.g. in a chat with the bot.
+ * `listen: false` only sends (into someone else's typing inbox; see directTypingKey). One hook per
+ * key: supabase hands back the same channel for the same name, so two would unsubscribe each other.
  */
-export function useTypingIndicator(key: string | null, myId: string | null, draft: string): string[] {
+export function useTypingIndicator(
+  key: string | null,
+  myId: string | null,
+  draft: string,
+  { listen = true }: { listen?: boolean } = {},
+): string[] {
   const channelRef = useRef<RealtimeChannel | null>(null)
   const lastSentRef = useRef(0)
   // Who's typing (and until when), tagged with the chat it's for, so switching chats starts empty.
@@ -35,7 +46,7 @@ export function useTypingIndicator(key: string | null, myId: string | null, draf
   useEffect(() => {
     if (!key || !myId) return
     const channel = supabase.channel(key, { config: { broadcast: { self: false } } })
-    channel.on('broadcast', { event: 'typing' }, ({ payload }) => {
+    if (listen) channel.on('broadcast', { event: 'typing' }, ({ payload }) => {
       const { userId, typing } = payload as TypingPayload
       if (!userId || userId === myId) return
       setState((prev) => {
@@ -56,7 +67,7 @@ export function useTypingIndicator(key: string | null, myId: string | null, draf
       channelRef.current = null
       void supabase.removeChannel(channel)
     }
-  }, [key, myId])
+  }, [key, myId, listen])
 
   // Drops anyone whose last signal has run out.
   useEffect(() => {
@@ -85,5 +96,5 @@ export function useTypingIndicator(key: string | null, myId: string | null, draf
       lastSentRef.current = Date.now()
     }
   }, [draft, isTyping, myId])
-  return [...typers.keys()]
+  return useMemo(() => [...typers.keys()], [typers])
 }

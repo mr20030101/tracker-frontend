@@ -35,7 +35,7 @@ function formatTime(iso: string) {
 export function MessagesButton() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
-  const { isOpen, activeUserId, activeUserName, openInbox, openChatWith, close, myId, usersById, conversations, groups, totalUnread } =
+  const { isOpen, activeUserId, activeUserName, openInbox, openChatWith, close, myId, usersById, conversations, groups, totalUnread, typingUserIds } =
     useMessaging()
   const [draft, setDraft] = useState('')
   const [selectMode, setSelectMode] = useState(false)
@@ -49,9 +49,10 @@ export function MessagesButton() {
   const activeUserAvatarUrl = activeUser?.avatar_url ?? null
   const activeUserIsBot = Boolean(activeUser?.is_bot)
   const { visibleThread, isTyping: botTyping } = useBotTyping(thread, myId, activeUserIsBot)
-  // The other person typing to you, live; the bot's "typing" is its own reveal delay above.
-  const otherTyping =
-    useTypingIndicator(isOpen && myId && activeUserId && !activeUserIsBot ? directTypingKey(myId, activeUserId) : null, myId, draft).length > 0
+  // Your typing goes to their typing inbox; theirs to you arrives through useMessaging. The bot's
+  // "typing" is its own reveal delay above.
+  useTypingIndicator(isOpen && activeUserId && !activeUserIsBot ? directTypingKey(activeUserId) : null, myId, draft, { listen: false })
+  const otherTyping = Boolean(activeUserId && typingUserIds.has(activeUserId))
   const isTyping = botTyping || otherTyping
   // The bot never opens its messages, so a "Sent" there would never turn into "Seen".
   const seenStatus = activeUserIsBot ? null : directSeenStatus(visibleThread, myId)
@@ -194,8 +195,13 @@ export function MessagesButton() {
                         </span>
                       )}
                     </div>
-                    {!activeUserIsBot && activeUser?.last_seen_at && (
-                      <span className="text-[11px] text-gray-400">{formatActiveStatus(activeUser?.last_seen_at ?? null)}</span>
+                    {otherTyping ? (
+                      <span className="text-[11px] font-medium text-status-success-text">Typing…</span>
+                    ) : (
+                      !activeUserIsBot &&
+                      activeUser?.last_seen_at && (
+                        <span className="text-[11px] text-gray-400">{formatActiveStatus(activeUser?.last_seen_at ?? null)}</span>
+                      )
                     )}
                   </div>
                   <div className="ml-auto flex items-center gap-1">
@@ -260,10 +266,15 @@ export function MessagesButton() {
                         status={seenStatus?.messageId === m.id ? seenStatus.label : undefined}
                       />
                     ))}
-                    {isTyping && <TypingIndicator />}
                   </div>
                   <div ref={threadEndRef} />
                 </div>
+                {/* Pinned above the message box rather than after the last message, so it's always in the same spot. */}
+                {isTyping && (
+                  <div className="px-3 pb-2 pt-1">
+                    <TypingIndicator />
+                  </div>
+                )}
                 {sendError && (
                   <div role="alert" className="px-3 pb-1 pt-2 text-xs text-status-danger-text">
                     {sendError}
@@ -381,7 +392,11 @@ export function MessagesButton() {
                             <span className="shrink-0 text-[10px] text-gray-400">{formatTime(c.lastMessage.created_at)}</span>
                           </div>
                           <div className="truncate text-xs text-gray-500">
-                            {messagePreview(c.lastMessage.body, c.lastMessage.sender_id === myId)}
+                            {typingUserIds.has(c.otherUserId) ? (
+                              <span className="font-medium text-status-success-text">Typing…</span>
+                            ) : (
+                              messagePreview(c.lastMessage.body, c.lastMessage.sender_id === myId)
+                            )}
                           </div>
                         </div>
                         {c.unreadCount > 0 && (

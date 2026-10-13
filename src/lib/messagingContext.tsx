@@ -6,6 +6,7 @@ import { buildConversations, fetchConversationSummaries, fetchDirectory } from '
 import { fetchGroupSummaries } from './groupChats'
 import { MESSAGE_NOTIFICATION_SOUND, playSound } from './sound'
 import { botMessageRevealAt } from './useBotTyping'
+import { directTypingKey, useTypingIndicator } from './useTypingIndicator'
 import type { ChatGroupSummary, Conversation, DirectoryUser } from '../types'
 
 interface MessagingContextValue {
@@ -23,6 +24,8 @@ interface MessagingContextValue {
   groupsLoaded: boolean
   // Direct and group messages together.
   totalUnread: number
+  // Who is typing a direct message to you right now, for the open chat, its header and the conversation list.
+  typingUserIds: Set<string>
 }
 
 const MessagingContext = createContext<MessagingContextValue | null>(null)
@@ -64,6 +67,10 @@ export function MessagingProvider({ children }: { children: ReactNode }) {
   })
 
   const usersById = useMemo(() => new Map(directory.map((d) => [d.id, d])), [directory])
+
+  // Your typing inbox, listened to for as long as you're signed in (see directTypingKey).
+  const typingUserIdList = useTypingIndicator(myId ? directTypingKey(myId) : null, myId, '')
+  const typingUserIds = useMemo(() => new Set(typingUserIdList), [typingUserIdList])
 
   // A bot reply's bubble is held back behind a "typing…" indicator until its reveal time (see
   // useBotTyping) — without this same filter here, the conversation list preview and unread badge
@@ -217,6 +224,7 @@ export function MessagingProvider({ children }: { children: ReactNode }) {
         groups,
         groupsLoaded,
         totalUnread,
+        typingUserIds,
       }}
     >
       {children}
