@@ -14,6 +14,12 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 3.7.1 — 2026-10-13
+
+### Fixed
+
+- When saving a Remotask ID fails, the Remotask ID modal now shows the actual reason instead of a general "Could not save your Remotask ID."
+
 ## 3.7.0 — 2026-10-13
 
 ### Added

@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { errorMessage } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { setOwnRemotasksId } from '../lib/profile'
 import { normalizeRemotasksId, remotasksIdError } from '../lib/remotasks'
@@ -31,7 +32,7 @@ export function RemotasksIdGate() {
       queryClient.invalidateQueries({ queryKey: ['contributor'] })
       queryClient.invalidateQueries({ queryKey: ['users'] })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save your Remotask ID.')
+      setError(errorMessage(err, 'Could not save your Remotask ID.'))
     } finally {
       setSubmitting(false)
     }
