@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Award, Crown, Flame, Medal, Rocket, Sparkles, Target, Zap, type LucideIcon } from 'lucide-react'
+import { Award, Crown, Flame, Ghost, Medal, Rocket, Sparkles, Target, TrendingUp, Zap, type LucideIcon } from 'lucide-react'
 import { supabase } from './api'
 import type { Achievements } from '../types'
 
@@ -11,6 +11,11 @@ export async function fetchAchievements(userIds: string[]): Promise<Achievements
     ...row,
     total_submitted: Number(row.total_submitted),
     best_week: Number(row.best_week),
+    // Absent until the 20261013_motivation migration is applied: no new badges rather than NaN.
+    personal_bests: Number(row.personal_bests ?? 0),
+    spooky_seasons: Number(row.spooky_seasons ?? 0),
+    october_weeks_hit: Number(row.october_weeks_hit ?? 0),
+    october_weeks: Number(row.october_weeks ?? 0),
   }))
 }
 
@@ -33,6 +38,10 @@ export interface Badge {
   // Tailwind classes for an earned badge's chip.
   tone: string
   earned: (a: Achievements) => boolean
+  /** How far along a not-yet-earned badge is, as [so far, needed]. Omitted when there's nothing to count. */
+  progress?: (a: Achievements) => [number, number]
+  /** A limited-time badge: listed only in this month (0 = January), or once earned. */
+  month?: number
 }
 
 // Worked out from the rollups above, so a new badge needs no database change.
@@ -44,6 +53,7 @@ export const BADGES: Badge[] = [
     icon: Sparkles,
     tone: 'bg-sky-50 text-sky-700 border-sky-200',
     earned: (a) => a.total_submitted >= 1,
+    progress: (a) => [a.total_submitted, 1],
   },
   {
     id: 'target-hit',
@@ -60,6 +70,7 @@ export const BADGES: Badge[] = [
     icon: Flame,
     tone: 'bg-orange-50 text-orange-700 border-orange-200',
     earned: (a) => a.best_streak >= 3,
+    progress: (a) => [a.current_streak, 3],
   },
   {
     id: 'streak-10',
@@ -68,6 +79,7 @@ export const BADGES: Badge[] = [
     icon: Zap,
     tone: 'bg-amber-50 text-amber-700 border-amber-200',
     earned: (a) => a.best_streak >= 10,
+    progress: (a) => [a.current_streak, 10],
   },
   {
     id: 'club-100',
@@ -76,6 +88,7 @@ export const BADGES: Badge[] = [
     icon: Medal,
     tone: 'bg-violet-50 text-violet-700 border-violet-200',
     earned: (a) => a.total_submitted >= 100,
+    progress: (a) => [a.total_submitted, 100],
   },
   {
     id: 'club-500',
@@ -84,6 +97,7 @@ export const BADGES: Badge[] = [
     icon: Award,
     tone: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200',
     earned: (a) => a.total_submitted >= 500,
+    progress: (a) => [a.total_submitted, 500],
   },
   {
     id: 'club-1000',
@@ -92,6 +106,7 @@ export const BADGES: Badge[] = [
     icon: Crown,
     tone: 'bg-yellow-50 text-yellow-800 border-yellow-300',
     earned: (a) => a.total_submitted >= 1000,
+    progress: (a) => [a.total_submitted, 1000],
   },
   {
     id: 'big-week',
@@ -100,8 +115,44 @@ export const BADGES: Badge[] = [
     icon: Rocket,
     tone: 'bg-rose-50 text-rose-700 border-rose-200',
     earned: (a) => a.best_week >= 100,
+    progress: (a) => [a.best_week, 100],
+  },
+  {
+    id: 'personal-best',
+    label: 'Personal Best',
+    description: 'Beat your own best week (after your first 4 weeks).',
+    icon: TrendingUp,
+    tone: 'bg-teal-50 text-teal-700 border-teal-200',
+    earned: (a) => a.personal_bests >= 1,
+  },
+  {
+    id: 'spooky-season',
+    label: 'Spooky Season',
+    description: 'Hit the weekly target every week of October. October only!',
+    icon: Ghost,
+    tone: 'bg-orange-50 text-orange-700 border-orange-300',
+    earned: (a) => a.spooky_seasons >= 1,
+    progress: (a) => [a.october_weeks_hit, a.october_weeks],
+    month: 9,
   },
 ]
+
+/** The badges to list right now: everything, except a limited-time one outside its month that isn't earned. */
+export function visibleBadges(a: Achievements, now = new Date()): Badge[] {
+  return BADGES.filter((badge) => badge.month === undefined || badge.month === now.getMonth() || badge.earned(a))
+}
+
+/** The not-yet-earned badge closest to done, for "Next up". Undefined when nothing has progress to show. */
+export function nextBadge(a: Achievements, now = new Date()): { badge: Badge; current: number; goal: number } | undefined {
+  let best: { badge: Badge; current: number; goal: number } | undefined
+  for (const badge of visibleBadges(a, now)) {
+    if (badge.earned(a) || !badge.progress) continue
+    const [current, goal] = badge.progress(a)
+    if (goal <= 0) continue
+    if (!best || current / goal > best.current / best.goal) best = { badge, current: Math.min(current, goal), goal }
+  }
+  return best
+}
 
 export function badgeById(id: string | null | undefined): Badge | undefined {
   return id ? BADGES.find((badge) => badge.id === id) : undefined
