@@ -14,6 +14,24 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 3.7.3 — 2026-10-13
+
+### Changed
+
+- A **reason** is now required on extension and reclaim requests: **Send request** stays disabled until one is written.
+
+## 3.7.2 — 2026-10-13
+
+### Changed
+
+- The **Request extension** and **Request reclaim** forms no longer show a Remotask ID field. The request uses the Remotask ID from your profile, which you can change in Edit Profile.
+
+## 3.7.1 — 2026-10-13
+
+### Fixed
+
+- When saving a Remotask ID fails, the Remotask ID modal now shows the actual reason instead of a general "Could not save your Remotask ID."
+
 ## 3.7.0 — 2026-10-13
 
 ### Added
