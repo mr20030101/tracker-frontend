@@ -299,6 +299,53 @@ function SkeletonHand({ x, y, c, tilt = 0, size = 1 }: { x: number; y: number; c
   )
 }
 
+// Distant skeletons' poses, as joint-to-joint polylines from the feet (0, 0) up: hip, knee, foot for
+// each leg and shoulder, elbow, hand for each arm. The spine, ribs, pelvis and skull are shared.
+type SkeletonPose = { legs: number[][][]; arms: number[][][] }
+
+const SKELETON_POSES = {
+  // Shambling forward, arms out in front.
+  shamble: {
+    legs: [[[-1.5, -22], [-4, -11], [-7, 0]], [[1.5, -22], [3.5, -11], [6, 0]]],
+    arms: [[[-3.5, -35], [3, -34], [10, -35.5]], [[3.5, -35], [10, -32.5], [16, -34]]],
+  },
+  // Standing, waving one arm over its head.
+  wave: {
+    legs: [[[-1.5, -22], [-3, -11], [-4.5, 0]], [[1.5, -22], [3, -11], [4.5, 0]]],
+    arms: [[[-3.5, -35], [-6, -28], [-6.5, -20.5]], [[3.5, -35], [9, -40], [10.5, -48]]],
+  },
+} satisfies Record<string, SkeletonPose>
+
+/** A skeleton in silhouette, for the far hill: bony limbs, a ribcage you can see the sky through. Feet at (x, y). */
+function SkeletonSilhouette({ x, y, pose, color, flip = false, size = 1 }: {
+  x: number; y: number; pose: SkeletonPose; color: string; flip?: boolean; size?: number
+}) {
+  const line = (points: number[][]) => `M${points.map(([px, py]) => `${px} ${py}`).join('L')}`
+  return (
+    <g transform={`translate(${x} ${y}) scale(${flip ? -size : size} ${size})`}>
+      <g stroke={color} strokeLinecap="round" strokeLinejoin="round" fill="none">
+        {[...pose.legs, ...pose.arms].map((limb, i) => (
+          <path key={i} d={line(limb)} strokeWidth="1.7" />
+        ))}
+        {pose.legs.map(([, , [fx, fy]], i) => (
+          <path key={`foot${i}`} d={`M${fx - 1} ${fy}H${fx + 2.5}`} strokeWidth="1.7" />
+        ))}
+        <path d="M0 -21V-37M-3.5 -35H3.5" strokeWidth="1.5" />
+        {/* Ribs, shorter towards the bottom. */}
+        <path d="M-4.5 -32.5Q0 -34.5 4.5 -32.5M-4.2 -29.8Q0 -31.8 4.2 -29.8M-3.6 -27.1Q0 -29 3.6 -27.1" strokeWidth="1.2" />
+        <path d="M-3.5 -20.5Q0 -24.5 3.5 -20.5" strokeWidth="2" />
+      </g>
+      <g fill={color}>
+        {pose.arms.map(([, , [hx, hy]], i) => (
+          <circle key={i} cx={hx} cy={hy} r="1.4" />
+        ))}
+        <rect x="-2.6" y="-39.5" width="5.2" height="3.5" rx="1.2" />
+        <circle cx="0" cy="-42" r="4.6" mask="url(#halloween-skull)" />
+      </g>
+    </g>
+  )
+}
+
 /** A paned window: a glowing (or dark, boarded) opening with mullions and shutters. */
 function Window({ x, y, w, h, c, lit = true, arched = false, boarded = false }: {
   x: number; y: number; w: number; h: number; c: Palette; lit?: boolean; arched?: boolean; boarded?: boolean
@@ -445,7 +492,7 @@ function CompactSkyline({ c, night }: { c: Palette; night: boolean }) {
   )
 }
 
-/** The full-page skyline: far hills, bare trees, a haunted house, graves and pumpkins. */
+/** The full-page skyline: far hills, bare trees, skeletons, a haunted house, graves and pumpkins. */
 function Skyline({ c, night }: { c: Palette; night: boolean }) {
   return (
     // Sized by its own aspect ratio so the rooftops aren't cropped on a wide screen, capped so it
@@ -458,6 +505,13 @@ function Skyline({ c, night }: { c: Palette; night: boolean }) {
         <path d="M0 215C200 175 360 235 560 205S900 165 1100 200 1340 185 1440 195V320H0Z" fill={c.farHill} />
 
         <defs>
+          {/* Knocks the eye sockets and nose out of a silhouette skull (in the skeleton's own coordinates). */}
+          <mask id="halloween-skull" maskUnits="userSpaceOnUse" x="-10" y="-50" width="20" height="16">
+            <rect x="-10" y="-50" width="20" height="16" fill="#ffffff" />
+            <circle cx="-1.7" cy="-42.5" r="1.3" fill="#000000" />
+            <circle cx="1.7" cy="-42.5" r="1.3" fill="#000000" />
+            <path d="M0 -40.6L-0.7 -39.3H0.7Z" fill="#000000" />
+          </mask>
           <filter id="halloween-glow" x="-100%" y="-100%" width="300%" height="300%">
             <feGaussianBlur stdDeviation={night ? 6 : 3} />
           </filter>
@@ -465,6 +519,10 @@ function Skyline({ c, night }: { c: Palette; night: boolean }) {
 
         <BareTree x={40} y={214} branches={TREES.distant} color={c.nearHill} size={1.1} />
         <BareTree x={960} y={194} branches={TREES.distant} color={c.nearHill} size={0.9} opacity={0.9} />
+
+        <SkeletonSilhouette x={250} y={209} pose={SKELETON_POSES.shamble} color={c.nearHill} />
+        <SkeletonSilhouette x={540} y={207} pose={SKELETON_POSES.wave} color={c.nearHill} size={0.9} />
+        <SkeletonSilhouette x={1295} y={211} pose={SKELETON_POSES.shamble} color={c.nearHill} flip size={0.85} />
 
         <HauntedHouse x={1090} y={208} c={c} size={0.82} />
 
