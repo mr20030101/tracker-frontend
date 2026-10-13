@@ -15,6 +15,7 @@ import { Reveal } from '../components/Reveal'
 import { CtsFormModal } from '../components/CtsFormModal'
 import { EmbeddedFormModal } from '../components/EmbeddedFormModal'
 import { TaskSubmissionForm } from '../components/TaskSubmissionForm'
+import { NoSubmissionNudge } from '../components/NoSubmissionNudge'
 import { LevelPill } from '../components/LevelPill'
 import { Modal } from '../components/Modal'
 import { contributorPath } from '../lib/urlRef'
@@ -40,6 +41,8 @@ const ATTENDANCE_CLOSES_MIN = 13 * 60 + 30
 
 // Cleared when the browser tab/session ends, so the warning comes back the next time they sign in fresh.
 const WARNING_DISMISSED_KEY = 'dashboard-week-warning-dismissed'
+// How long the no-submissions nudge stays up before closing on its own.
+const WARNING_DURATION_MS = 15000
 
 function buildAttendanceFormUrl(email: string) {
   const params = new URLSearchParams()
@@ -80,7 +83,7 @@ export function ContributorDashboard() {
   // Fades on its own after a while, same as a dismiss.
   useEffect(() => {
     if (!showWarning) return
-    const timer = setTimeout(dismissWarning, 10000)
+    const timer = setTimeout(dismissWarning, WARNING_DURATION_MS)
     return () => clearTimeout(timer)
   }, [showWarning])
 
@@ -266,17 +269,14 @@ export function ContributorDashboard() {
       )}
 
       {showWarning && data.submitted_this_week === 0 && (
-        <div className="fixed right-6 top-20 z-40 flex max-w-sm items-start gap-3 rounded-xl border-2 border-status-danger-text bg-status-danger-text px-5 py-4 text-sm font-semibold text-white shadow-lg">
-          <span className="animate-heartbeat text-lg leading-none">⚠</span>
-          <span className="flex-1">WARNING: No submissions logged yet this week.</span>
-          <button
-            onClick={dismissWarning}
-            className="text-lg leading-none text-white/80 hover:text-white"
-            aria-label="Dismiss"
-          >
-            ×
-          </button>
-        </div>
+        <NoSubmissionNudge
+          duration={WARNING_DURATION_MS}
+          onSubmit={() => {
+            dismissWarning()
+            setSubmitting(true)
+          }}
+          onDismiss={dismissWarning}
+        />
       )}
 
       {submitting && <TaskSubmissionForm onClose={() => setSubmitting(false)} />}

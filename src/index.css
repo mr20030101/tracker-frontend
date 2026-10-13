@@ -372,7 +372,51 @@ body {
   animation: halloween-hand-rise 9s ease-in-out infinite;
 }
 
+/* The dashboard's no-submissions nudge (NoSubmissionNudge): drops in, its ring spins, the rocket
+   bobs, and the bar along the bottom runs down until it closes. */
+@keyframes nudge-in {
+  from { opacity: 0; transform: translateY(-16px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.nudge-in {
+  animation: nudge-in 350ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes nudge-spin {
+  to { transform: rotate(360deg); }
+}
+
+.nudge-spin {
+  transform-origin: 36px 36px;
+  animation: nudge-spin 6s linear infinite;
+}
+
+@keyframes nudge-bob {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  50% { transform: translate(2px, -3px) rotate(-6deg); }
+}
+
+.nudge-bob {
+  animation: nudge-bob 1.8s ease-in-out infinite;
+}
+
+@keyframes nudge-countdown {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+
+.nudge-countdown {
+  animation: nudge-countdown linear both;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .nudge-in,
+  .nudge-spin,
+  .nudge-bob {
+    animation: none;
+  }
+
   .halloween-hand-rise {
     animation: none;
   }

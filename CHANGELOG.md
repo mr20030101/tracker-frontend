@@ -14,6 +14,12 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 3.14.0 — 2026-10-13
+
+### Changed
+
+- The red "No submissions logged yet this week" warning on your dashboard is now a friendlier card: a rocket in a spinning ring, "You have no submissions yet." with a word of encouragement, and a **Submit a Task** button right there. It stays up a little longer (15 seconds), with a bar showing when it'll close.
+
 ## 3.13.0 — 2026-10-13
 
 ### Added
