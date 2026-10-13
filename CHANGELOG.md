@@ -14,6 +14,12 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 3.9.0 — 2026-10-13
+
+### Added
+
+- **Seen** in Messages. Under your latest message, a direct chat shows **Sent** until the other person opens it, then **Seen** with the time. It changes the moment they read it. A group chat shows who has read it, e.g. **Seen by Ana, Ben and 2 others**, or **Seen by everyone**. Chats with Meera don't show it.
+
 ## 3.8.0 — 2026-10-13
 
 ### Added

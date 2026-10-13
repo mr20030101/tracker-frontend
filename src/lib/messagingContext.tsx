@@ -172,6 +172,10 @@ export function MessagingProvider({ children }: { children: ReactNode }) {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => {
         queryClient.invalidateQueries({ queryKey: ['messages', myId] })
       })
+      // The recipient opening a message sets its read_at, so "Sent" turns into "Seen" right away.
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['messages', myId] })
+      })
       // RLS limits this to groups the viewer is in.
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'group_messages' }, () => {
         queryClient.invalidateQueries({ queryKey: ['group-chats', myId] })
