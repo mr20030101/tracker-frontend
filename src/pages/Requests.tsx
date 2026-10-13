@@ -129,7 +129,8 @@ export function Requests() {
         requestType: request.type === 'reclaim' ? 'Reclaim' : 'Extend',
         taskId: request.task_submission?.task_id ?? null,
         cbEmail: request.task_submission?.cb_email ?? null,
-        remotaskId: request.requester?.remotasks_id ?? null,
+        // The ID given on the request, else (older requests) the one on their profile.
+        remotaskId: (request.type !== 'bad_video' ? request.remotasks_id : null) ?? request.requester?.remotasks_id ?? null,
         stage: request.task_submission?.stage ?? null,
         projectName: request.task_submission?.project?.name ?? null,
         reason: request.reason,
@@ -514,6 +515,11 @@ export function Requests() {
                 '—'
               )}
             </Detail>
+            {viewing.type !== 'bad_video' && (
+              <Detail label="Remotask ID">
+                <span className="font-mono text-xs break-all">{viewing.remotasks_id ?? viewing.requester?.remotasks_id ?? '—'}</span>
+              </Detail>
+            )}
             <Detail label="Task ID">
               <span className="font-mono text-xs break-all">{viewing.task_submission?.task_id ?? '—'}</span>
             </Detail>

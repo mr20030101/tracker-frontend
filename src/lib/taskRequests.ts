@@ -81,18 +81,23 @@ export async function fetchOverdueRequestCount(): Promise<number> {
   return count ?? 0
 }
 
-/** An extension or reclaim request — both are self-service, with just an optional reason. */
+/**
+ * An extension or reclaim request — both are self-service, with an optional reason. The requester's
+ * Remotask ID is recorded on the request as given, since it's what the lead files with Scale.
+ */
 export async function requestExtension(
   submissionId: number,
   requestedBy: string,
   reason: string,
-  type: 'extension' | 'reclaim' = 'extension',
+  type: 'extension' | 'reclaim',
+  remotasksId: string,
 ): Promise<void> {
   const { error } = await supabase.from('task_requests').insert({
     type,
     task_submission_id: submissionId,
     requested_by: requestedBy,
     reason: reason.trim() || null,
+    remotasks_id: remotasksId,
   })
   if (error) throw error
 }

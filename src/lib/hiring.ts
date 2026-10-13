@@ -83,16 +83,8 @@ export function normalizeProfileUrl(input: string): string | null {
   }
 }
 
-const REMOTASKS_ID_PATTERN = /^[0-9a-f]{24}$/i
-
-/**
- * A Remotasks worker ID is 24 characters of 0-9 and a-f; returns it trimmed and lower-cased,
- * or null when it isn't one (so "N/A", a name, or a typo'd length is rejected).
- */
-export function normalizeRemotasksId(input: string): string | null {
-  const trimmed = input.trim()
-  return REMOTASKS_ID_PATTERN.test(trimmed) ? trimmed.toLowerCase() : null
-}
+// Lives with the other Remotasks helpers; re-exported for the hiring forms that import it from here.
+export { normalizeRemotasksId } from './remotasks'
 
 /** The link as an href only when it is safe to navigate to; stored URLs are applicant input. */
 export function safeExternalHref(url: string): string | null {

@@ -35,3 +35,9 @@ export async function clearMustChangePassword(): Promise<void> {
   const { error } = await supabase.rpc('clear_must_change_password')
   if (error) throw error
 }
+
+/** Sets just the caller's own Remotasks ID; the database rejects anything that isn't a valid one. */
+export async function setOwnRemotasksId(remotasksId: string): Promise<void> {
+  const { error } = await supabase.rpc('set_own_remotasks_id', { new_remotasks_id: remotasksId })
+  if (error) throw error
+}

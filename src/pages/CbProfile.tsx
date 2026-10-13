@@ -20,6 +20,8 @@ import { useOnboardingStatus } from '../lib/onboarding'
 import { recordProfileView, useProfileViewCount } from '../lib/profileViews'
 import { useFeaturedBadges } from '../lib/achievements'
 import { usePageTitle } from '../lib/usePageTitle'
+import { normalizeRemotasksId, remotasksIdError } from '../lib/remotasks'
+import { RemotasksIdField } from '../components/RemotasksIdField'
 
 const LEVEL_OPTIONS: ProjectLevel[] = ['contributor', 'l0', 'l1', 'l10']
 
@@ -121,6 +123,7 @@ export function CbProfile() {
   const [editingProfile, setEditingProfile] = useState(false)
   const [profileName, setProfileName] = useState(() => currentUser?.name ?? '')
   const [profileRemotasksId, setProfileRemotasksId] = useState(() => currentUser?.remotasks_id ?? '')
+  const [profileSaveAttempted, setProfileSaveAttempted] = useState(false)
   const [profileShift, setProfileShift] = useState(() => currentUser?.shift ?? '')
   const [profileBio, setProfileBio] = useState(() => currentUser?.bio ?? '')
   const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null)
@@ -239,7 +242,7 @@ export function CbProfile() {
       if (!currentUser) throw new Error('Unauthenticated')
       let avatarUrl = currentUser.avatar_url
       if (profilePhotoFile) avatarUrl = await uploadAvatar(currentUser.id, profilePhotoFile)
-      await updateOwnProfile(profileName.trim(), avatarUrl, profileRemotasksId.trim(), profileShift.trim(), profileBio.trim())
+      await updateOwnProfile(profileName.trim(), avatarUrl, normalizeRemotasksId(profileRemotasksId)!, profileShift.trim(), profileBio.trim())
       if (profilePassword) {
         const { error } = await supabase.auth.updateUser({ password: profilePassword })
         if (error) throw error
@@ -271,6 +274,7 @@ export function CbProfile() {
     setProfilePassword('')
     setProfilePasswordConfirm('')
     setProfileError(null)
+    setProfileSaveAttempted(false)
     setEditingProfile(true)
   }
 
@@ -287,6 +291,8 @@ export function CbProfile() {
 
   function handleSaveProfile(e: FormEvent) {
     e.preventDefault()
+    setProfileSaveAttempted(true)
+    if (remotasksIdError(profileRemotasksId)) return
     if (profilePassword && profilePassword.length < 8) {
       setProfileError('New password must be at least 8 characters.')
       return
@@ -436,16 +442,12 @@ export function CbProfile() {
                   className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
                 />
               </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Remotask ID</label>
-                <input
-                  value={profileRemotasksId}
-                  onChange={(e) => setProfileRemotasksId(e.target.value)}
-                  placeholder="Your Remotasks worker ID"
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
-                />
-                <p className="mt-1 text-xs text-gray-400">Prefills the Reclaim / Extend form when your lead approves an extension.</p>
-              </div>
+              <RemotasksIdField
+                value={profileRemotasksId}
+                onChange={setProfileRemotasksId}
+                showError={profileSaveAttempted}
+                hint="Prefills the Reclaim / Extend form when your lead approves an extension."
+              />
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
