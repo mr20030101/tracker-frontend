@@ -191,11 +191,18 @@ const EXTENSION_FORM_ENTRY = {
 // The form's own spelling of each answer: a prefilled value that doesn't match an option exactly is ignored.
 const EXTENSION_FORM_TASK_LEVEL: Record<Stage, string> = { attempt: 'Attempt', l0: 'L0', l1: 'L1' }
 // Our project names are longer ("Aloha OTS Mobile Group"), so they're matched on the key word.
-const EXTENSION_FORM_PROJECTS: { match: RegExp; option: string }[] = [
+// The Bad Video form below spells its options the same way, so it shares these.
+const FORM_PROJECTS: { match: RegExp; option: string }[] = [
   { match: /aloha/i, option: 'Aloha' },
   { match: /yam/i, option: 'Sweet Yam' },
   { match: /ursa/i, option: 'Ursa Majoris' },
 ]
+/** The form's option for one of our projects, or null when it isn't one the forms list. */
+function formProjectOption(projectName: string | null): string | null {
+  if (!projectName) return null
+  return FORM_PROJECTS.find((p) => p.match.test(projectName))?.option ?? null
+}
+
 // Who files it: always written this way on the form, whoever in the app opens it.
 const EXTENSION_FORM_SUPPORT_NAME = 'Tan, Jay-Anne R.'
 
@@ -214,8 +221,8 @@ export function buildExtensionRequestFormUrl(params: {
   if (params.stage) query.set(EXTENSION_FORM_ENTRY.taskLevel, EXTENSION_FORM_TASK_LEVEL[params.stage])
   if (params.cbEmail) query.set(EXTENSION_FORM_ENTRY.cbEmail, params.cbEmail)
   if (params.remotaskId) query.set(EXTENSION_FORM_ENTRY.remotaskId, params.remotaskId)
-  const project = params.projectName && EXTENSION_FORM_PROJECTS.find((p) => p.match.test(params.projectName!))
-  if (project) query.set(EXTENSION_FORM_ENTRY.projectName, project.option)
+  const project = formProjectOption(params.projectName)
+  if (project) query.set(EXTENSION_FORM_ENTRY.projectName, project)
   query.set(EXTENSION_FORM_ENTRY.requestType, params.requestType)
   if (params.reason) query.set(EXTENSION_FORM_ENTRY.reason, params.reason)
   query.set(EXTENSION_FORM_ENTRY.supportName, EXTENSION_FORM_SUPPORT_NAME)
@@ -229,30 +236,36 @@ const BAD_VIDEO_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSf6hU9Vif1-
 const BAD_VIDEO_FORM_ENTRY = {
   cbEmail: 'entry.1465994475',
   taskId: 'entry.717075657',
+  projectName: 'entry.921456890',
   category: 'entry.1032488088',
   frame: 'entry.1882040546',
   supportName: 'entry.221862037',
   workforceName: 'entry.701886437',
   workforce: 'entry.8749894',
 }
+// Like the Reclaim/Extend form's support name: always written this way, whoever opens the form and
+// whatever the report itself recorded. Workforce must match the form's option ("REMOTE") exactly.
+const BAD_VIDEO_FORM_SUPPORT_NAME = 'Tan, Jay-anne R.'
+const BAD_VIDEO_FORM_WORKFORCE = 'REMOTE'
+const BAD_VIDEO_FORM_WORKFORCE_NAME = 'Greyowls'
 
 /** A link to the Bad Video Validation/Removal form with this report's details prefilled. */
 export function buildBadVideoRequestFormUrl(params: {
   cbEmail: string | null
   taskId: string | null
+  projectName: string | null
   category: string
   frame: string
-  workforce: 'REMOTE' | 'ONSITE'
-  workforceName: string
-  supportName: string
 }): string {
   const query = new URLSearchParams({ usp: 'pp_url' })
   if (params.cbEmail) query.set(BAD_VIDEO_FORM_ENTRY.cbEmail, params.cbEmail)
   if (params.taskId) query.set(BAD_VIDEO_FORM_ENTRY.taskId, params.taskId)
+  const project = formProjectOption(params.projectName)
+  if (project) query.set(BAD_VIDEO_FORM_ENTRY.projectName, project)
   query.set(BAD_VIDEO_FORM_ENTRY.category, params.category)
   query.set(BAD_VIDEO_FORM_ENTRY.frame, params.frame)
-  query.set(BAD_VIDEO_FORM_ENTRY.workforce, params.workforce)
-  query.set(BAD_VIDEO_FORM_ENTRY.workforceName, params.workforceName)
-  if (params.supportName) query.set(BAD_VIDEO_FORM_ENTRY.supportName, params.supportName)
+  query.set(BAD_VIDEO_FORM_ENTRY.supportName, BAD_VIDEO_FORM_SUPPORT_NAME)
+  query.set(BAD_VIDEO_FORM_ENTRY.workforce, BAD_VIDEO_FORM_WORKFORCE)
+  query.set(BAD_VIDEO_FORM_ENTRY.workforceName, BAD_VIDEO_FORM_WORKFORCE_NAME)
   return `${BAD_VIDEO_FORM_URL}?${query.toString()}`
 }

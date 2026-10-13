@@ -148,11 +148,9 @@ export function Requests() {
       buildBadVideoRequestFormUrl({
         cbEmail: request.task_submission?.cb_email ?? null,
         taskId: request.task_submission?.task_id ?? null,
+        projectName: request.task_submission?.project?.name ?? null,
         category: request.bad_video_category,
         frame: request.bad_video_frame,
-        workforce: request.bad_video_workforce,
-        workforceName: request.bad_video_workforce_name,
-        supportName: user?.name ?? '',
       }),
       '_blank',
       'noopener,noreferrer',

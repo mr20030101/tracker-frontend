@@ -196,11 +196,9 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
       buildBadVideoRequestFormUrl({
         cbEmail: submission?.cb_email ?? null,
         taskId: submission?.task_id ?? null,
+        projectName: submission?.project?.name ?? null,
         category: request.bad_video_category,
         frame: request.bad_video_frame,
-        workforce: request.bad_video_workforce,
-        workforceName: request.bad_video_workforce_name,
-        supportName: currentUser?.name ?? '',
       }),
       '_blank',
       'noopener,noreferrer',

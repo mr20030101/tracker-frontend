@@ -80,6 +80,18 @@ each stretch of work by the date it shipped.
 
 - A Halloween look for October: a pumpkin-orange accent (and a deep purple night on the dark theme), bats that fly across the screen now and then, a cobweb in the corner and a pumpkin beside the logo. The ghost button next to the light/dark toggle turns it off or back on, remembered on that device. It switches itself off after October 31, and the bats stay still for anyone who has reduced motion turned on.
 
+## 3.1.2 — 2026-10-08
+
+### Changed
+
+- The Bad Video Validation/Removal form now always opens with **Support Name** "Tan, Jay-anne R.", **Workforce** REMOTE and **Workforce Name** "Greyowls", whoever opens it. New bad video reports record their workforce name as "Greyowls" too.
+
+## 3.1.1 — 2026-10-08
+
+### Changed
+
+- The Bad Video Validation/Removal form now opens with **Project Name** filled in (Aloha, Ursa Majoris or Sweet Yam, from the task's project).
+
 ## 3.1.0 — 2026-10-07
 
 ### Changed
