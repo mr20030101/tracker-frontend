@@ -852,9 +852,10 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
               )}
             </p>
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Reason (optional)</label>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Reason</label>
               <textarea
                 rows={3}
+                required
                 maxLength={500}
                 value={extensionReason}
                 onChange={(e) => setExtensionReason(e.target.value)}
@@ -877,7 +878,8 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
               </button>
               <button
                 type="button"
-                disabled={requestExtensionMutation.isPending}
+                // The lead files this reason with Scale, so a request can't go without one.
+                disabled={requestExtensionMutation.isPending || extensionReason.trim() === ''}
                 onClick={() =>
                   requestExtensionMutation.mutate({
                     submissionId: requestingExtensionFor.submission.id,

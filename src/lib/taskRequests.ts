@@ -82,7 +82,7 @@ export async function fetchOverdueRequestCount(): Promise<number> {
 }
 
 /**
- * An extension or reclaim request — both are self-service, with an optional reason. The requester's
+ * An extension or reclaim request — both are self-service, with a required reason. The requester's
  * Remotask ID (from their profile) is recorded on the request, since it's what the lead files with Scale.
  */
 export async function requestExtension(
@@ -96,7 +96,7 @@ export async function requestExtension(
     type,
     task_submission_id: submissionId,
     requested_by: requestedBy,
-    reason: reason.trim() || null,
+    reason: reason.trim(),
     remotasks_id: remotasksId,
   })
   if (error) throw error

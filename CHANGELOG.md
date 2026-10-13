@@ -14,6 +14,12 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 3.7.3 — 2026-10-13
+
+### Changed
+
+- A **reason** is now required on extension and reclaim requests: **Send request** stays disabled until one is written.
+
 ## 3.7.2 — 2026-10-13
 
 ### Changed
