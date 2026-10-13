@@ -14,6 +14,12 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 3.13.0 — 2026-10-13
+
+### Added
+
+- On the Halloween theme, skeleton silhouettes now roam the far hills behind the page: two shambling along with their arms out, and one waving.
+
 ## 3.12.0 — 2026-10-13
 
 ### Added
