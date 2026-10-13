@@ -14,6 +14,12 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 3.12.0 — 2026-10-13
+
+### Added
+
+- On the Halloween theme, the skeleton hand now claws its way up out of its grave, waves about, and sinks back under the dirt, over and over. It stays still if your device is set to reduce motion.
+
 ## 3.11.2 — 2026-10-13
 
 ### Fixed

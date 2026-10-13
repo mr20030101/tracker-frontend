@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import { Ghost } from 'lucide-react'
 import { useSeason } from '../lib/season'
 
@@ -236,8 +237,12 @@ const HAND_FINGERS = [
 ]
 const CARPALS = [[-4, -20.5], [-1.2, -21.2], [1.8, -20.6], [-2.8, -23.4], [0.6, -23.8], [3.2, -22.6]]
 
-/** A skeleton hand clawing up out of a fresh mound of dirt. Ground level at (x, y). */
+/**
+ * A skeleton hand clawing up out of a fresh mound of dirt, then sinking back (see .halloween-hand-rise).
+ * Clipped at ground level, so it's hidden below the mound rather than hanging under it. Ground at (x, y).
+ */
 function SkeletonHand({ x, y, c, tilt = 0, size = 1 }: { x: number; y: number; c: Palette; tilt?: number; size?: number }) {
+  const clipId = `halloween-hand-${useId().replace(/[^a-zA-Z0-9]/g, '')}`
   const segments = (points: number[][]) => points.slice(1).map((p, i) => [points[i], p])
   // Bones taper from the knuckles out to the fingertips.
   const fingerWidth = (i: number) => [2, 1.55, 1.35, 1.1][i] ?? 1
@@ -250,25 +255,32 @@ function SkeletonHand({ x, y, c, tilt = 0, size = 1 }: { x: number; y: number; c
 
   return (
     <g transform={`translate(${x} ${y}) rotate(${tilt}) scale(${size})`}>
-      {HAND_FOREARM.map(([from, to], i) => bone(from, to, 3.2, `arm${i}`))}
-      {CARPALS.map(([cx, cy], i) => (
-        <g key={`carpal${i}`}>
-          <circle cx={cx + 0.3} cy={cy + 0.3} r="2" fill={c.boneShade} />
-          <circle cx={cx} cy={cy} r="1.65" fill={c.bone} />
+      <clipPath id={clipId}>
+        <rect x="-30" y="-60" width="60" height="60" />
+      </clipPath>
+      <g clipPath={`url(#${clipId})`}>
+        <g className="halloween-hand-rise">
+          {HAND_FOREARM.map(([from, to], i) => bone(from, to, 3.2, `arm${i}`))}
+          {CARPALS.map(([cx, cy], i) => (
+            <g key={`carpal${i}`}>
+              <circle cx={cx + 0.3} cy={cy + 0.3} r="2" fill={c.boneShade} />
+              <circle cx={cx} cy={cy} r="1.65" fill={c.bone} />
+            </g>
+          ))}
+          {HAND_FINGERS.map((finger, f) =>
+            segments(finger).map(([from, to], i) => bone(from, to, fingerWidth(i), `f${f}-${i}`)),
+          )}
+          {/* Knuckles: a slightly swollen joint between each pair of bones. */}
+          {HAND_FINGERS.flatMap((finger, f) =>
+            finger.slice(1, -1).map(([jx, jy], i) => (
+              <g key={`k${f}-${i}`}>
+                <circle cx={jx + 0.3} cy={jy + 0.3} r={fingerWidth(i) * 0.75} fill={c.boneShade} />
+                <circle cx={jx} cy={jy} r={fingerWidth(i) * 0.62} fill={c.bone} />
+              </g>
+            )),
+          )}
         </g>
-      ))}
-      {HAND_FINGERS.map((finger, f) =>
-        segments(finger).map(([from, to], i) => bone(from, to, fingerWidth(i), `f${f}-${i}`)),
-      )}
-      {/* Knuckles: a slightly swollen joint between each pair of bones. */}
-      {HAND_FINGERS.flatMap((finger, f) =>
-        finger.slice(1, -1).map(([jx, jy], i) => (
-          <g key={`k${f}-${i}`}>
-            <circle cx={jx + 0.3} cy={jy + 0.3} r={fingerWidth(i) * 0.75} fill={c.boneShade} />
-            <circle cx={jx} cy={jy} r={fingerWidth(i) * 0.62} fill={c.bone} />
-          </g>
-        )),
-      )}
+      </g>
 
       {/* The mound it broke through, with a few clods thrown up. */}
       <path d="M-20 4C-14 -3 -7 -5.5 0 -4.5C7 -5.5 14 -3 21 4Z" fill={c.dirt} />
