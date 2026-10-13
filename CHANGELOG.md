@@ -14,6 +14,12 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 3.14.1 — 2026-10-13
+
+### Changed
+
+- The no-submissions card now pops up in the middle of the screen and stays until you close it (×, Escape or clicking outside it) or hit **Submit a Task**. It no longer closes on its own.
+
 ## 3.14.0 — 2026-10-13
 
 ### Changed

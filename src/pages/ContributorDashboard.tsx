@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { BookOpen, ClipboardList, Coffee, MessageCircle, Trophy, User, type LucideIcon } from 'lucide-react'
@@ -41,8 +41,6 @@ const ATTENDANCE_CLOSES_MIN = 13 * 60 + 30
 
 // Cleared when the browser tab/session ends, so the warning comes back the next time they sign in fresh.
 const WARNING_DISMISSED_KEY = 'dashboard-week-warning-dismissed'
-// How long the no-submissions nudge stays up before closing on its own.
-const WARNING_DURATION_MS = 15000
 
 function buildAttendanceFormUrl(email: string) {
   const params = new URLSearchParams()
@@ -58,7 +56,7 @@ export function ContributorDashboard() {
   const bot = useMemo(() => [...usersById.values()].find((u) => u.is_bot), [usersById])
   const [showCtsModal, setShowCtsModal] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  // Shown at most once per browser session: once dismissed (or faded on its own), a reload won't bring it back.
+  // Shown at most once per browser session: once dismissed, a reload won't bring it back.
   const [showWarning, setShowWarning] = useState(() => {
     try {
       return sessionStorage.getItem(WARNING_DISMISSED_KEY) !== 'true'
@@ -79,13 +77,6 @@ export function ContributorDashboard() {
       // Not remembering is fine — it'll just show again next reload.
     }
   }
-
-  // Fades on its own after a while, same as a dismiss.
-  useEffect(() => {
-    if (!showWarning) return
-    const timer = setTimeout(dismissWarning, WARNING_DURATION_MS)
-    return () => clearTimeout(timer)
-  }, [showWarning])
 
   const { data, isLoading } = useQuery({
     queryKey: ['contributor', email, thisWeekIso],
@@ -270,7 +261,6 @@ export function ContributorDashboard() {
 
       {showWarning && data.submitted_this_week === 0 && (
         <NoSubmissionNudge
-          duration={WARNING_DURATION_MS}
           onSubmit={() => {
             dismissWarning()
             setSubmitting(true)

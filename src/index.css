@@ -372,8 +372,7 @@ body {
   animation: halloween-hand-rise 9s ease-in-out infinite;
 }
 
-/* The dashboard's no-submissions nudge (NoSubmissionNudge): drops in, its ring spins, the rocket
-   bobs, and the bar along the bottom runs down until it closes. */
+/* The dashboard's no-submissions nudge (NoSubmissionNudge): pops in, its ring spins, the rocket bobs. */
 @keyframes nudge-in {
   from { opacity: 0; transform: translateY(-16px) scale(0.96); }
   to { opacity: 1; transform: translateY(0) scale(1); }
@@ -399,15 +398,6 @@ body {
 
 .nudge-bob {
   animation: nudge-bob 1.8s ease-in-out infinite;
-}
-
-@keyframes nudge-countdown {
-  from { transform: scaleX(1); }
-  to { transform: scaleX(0); }
-}
-
-.nudge-countdown {
-  animation: nudge-countdown linear both;
 }
 
 @media (prefers-reduced-motion: reduce) {
