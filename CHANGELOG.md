@@ -14,6 +14,12 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 3.8.0 — 2026-10-13
+
+### Added
+
+- The **Halloween theme** (3.2.0–3.5.0) and the **Bad Video form** fixes (3.1.1–3.1.2) were built on their own and are now part of the app, together with everything since 3.6.0.
+
 ## 3.7.3 — 2026-10-13
 
 ### Changed
