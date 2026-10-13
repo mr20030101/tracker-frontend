@@ -14,6 +14,28 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 3.11.1 — 2026-10-13
+
+### Fixed
+
+- Typing now shows from the very first keystroke, even when you start typing right after opening a chat.
+
+## 3.11.0 — 2026-10-13
+
+### Added
+
+- When someone is writing you a direct message, their name in the chat header and their row in the conversation list say **Typing…** (in place of "Active now" and the last message), on the Messages page and in the chat panel.
+
+### Changed
+
+- The typing dots now sit at the bottom of the chat, just above the message box, instead of right after the last message.
+
+## 3.10.0 — 2026-10-13
+
+### Added
+
+- **Typing** in Messages. While someone is writing to you, their chat shows the bouncing dots, in the Messages page and in the chat panel. Group chats also say who, e.g. **Ana is typing** or **Ana and Ben are typing**. The dots go away when they send, clear the box or stop for a few seconds.
+
 ## 3.9.0 — 2026-10-13
 
 ### Added

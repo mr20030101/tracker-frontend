@@ -28,6 +28,7 @@ import { GroupChatPane, GroupIcon, NewGroupModal } from '../components/GroupChat
 import { confirmDialog } from '../lib/dialog'
 import { usePageTitle } from '../lib/usePageTitle'
 import { directSeenStatus } from '../lib/seen'
+import { directTypingKey, useTypingIndicator } from '../lib/useTypingIndicator'
 
 // Messenger's own send-bubble blue, matching MessageBubble.tsx — kept local rather than
 // repointing the app's global --color-accent, which drives buttons everywhere else.
@@ -38,7 +39,7 @@ export function Messages() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { user } = useAuth()
-  const { myId, usersById, conversations, groups, groupsLoaded } = useMessaging()
+  const { myId, usersById, conversations, groups, groupsLoaded, typingUserIds } = useMessaging()
   const canCreateGroups = user?.role === 'admin' || user?.role === 'lead'
   const [creatingGroup, setCreatingGroup] = useState(false)
   const selectedGroupId = groupRef ? Number(groupRef) : null
@@ -56,7 +57,12 @@ export function Messages() {
   const selectedUser = selectedUserId ? usersById.get(selectedUserId) : undefined
   usePageTitle(selectedGroup?.name ?? selectedUser?.name ?? 'Messages')
   const { messages: thread, isLoading: threadLoading, hasOlder, loadingOlder, loadOlder, scrollRef } = useThread(myId, selectedUserId)
-  const { visibleThread, isTyping } = useBotTyping(thread, myId, Boolean(selectedUser?.is_bot))
+  const { visibleThread, isTyping: botTyping } = useBotTyping(thread, myId, Boolean(selectedUser?.is_bot))
+  // Your typing goes to their typing inbox; theirs to you arrives through useMessaging. The bot's
+  // "typing" is its own reveal delay above.
+  useTypingIndicator(selectedUserId && !selectedUser?.is_bot ? directTypingKey(selectedUserId) : null, myId, draft, { listen: false })
+  const otherTyping = Boolean(selectedUserId && typingUserIds.has(selectedUserId))
+  const isTyping = botTyping || otherTyping
 
   useEffect(() => {
     setSelectMode(false)
@@ -286,7 +292,11 @@ export function Messages() {
                           <span className={`shrink-0 text-[10px] ${isSelected ? 'text-accent-foreground/70' : 'text-gray-400'}`}>{formatTime(c.lastMessage.created_at)}</span>
                         </div>
                         <div className={`truncate text-xs ${isSelected ? 'text-accent-foreground/80' : 'text-gray-500'}`}>
-                          {messagePreview(c.lastMessage.body, c.lastMessage.sender_id === myId)}
+{typingUserIds.has(c.otherUserId) ? (
+                            <span className="font-medium text-status-success-text">Typing…</span>
+                          ) : (
+                            messagePreview(c.lastMessage.body, c.lastMessage.sender_id === myId)
+                          )}
                         </div>
                       </div>
                       {c.unreadCount > 0 && (
@@ -354,8 +364,13 @@ export function Messages() {
                     </span>
                   )}
                 </div>
-                {!selectedUser?.is_bot && selectedUser?.last_seen_at && (
-                  <span className="text-xs text-gray-400">{formatActiveStatus(selectedUser?.last_seen_at ?? null)}</span>
+                {otherTyping ? (
+                  <span className="text-xs font-medium text-status-success-text">Typing…</span>
+                ) : (
+                  !selectedUser?.is_bot &&
+                  selectedUser?.last_seen_at && (
+                    <span className="text-xs text-gray-400">{formatActiveStatus(selectedUser?.last_seen_at ?? null)}</span>
+                  )
                 )}
               </div>
               <CallButton
@@ -367,7 +382,7 @@ export function Messages() {
                 <div className="ml-auto">
                   <GrammarCheckButton
                     onClick={() => sendMutation.mutate(GRAMMAR_CHECK_MESSAGE)}
-                    disabled={sendMutation.isPending || isTyping || selectMode}
+                    disabled={sendMutation.isPending || botTyping || selectMode}
                   />
                 </div>
               )}
@@ -421,17 +436,22 @@ export function Messages() {
                     status={seenStatus?.messageId === m.id ? seenStatus.label : undefined}
                   />
                 ))}
-                {isTyping && <TypingIndicator />}
               </div>
               <div ref={threadEndRef} />
             </div>
+            {/* Pinned above the message box rather than after the last message, so it's always in the same spot. */}
+            {isTyping && (
+              <div className="px-4 pb-2 pt-1">
+                <TypingIndicator />
+              </div>
+            )}
             {sendError && (
               <div role="alert" className="px-4 pb-1 pt-2 text-xs text-status-danger-text">
                 {sendError}
               </div>
             )}
             {showQuickReplies && (
-              <BotQuickReplies onPick={(text) => sendMutation.mutate(text)} disabled={sendMutation.isPending || isTyping} />
+              <BotQuickReplies onPick={(text) => sendMutation.mutate(text)} disabled={sendMutation.isPending || botTyping} />
             )}
             {selectMode ? (
               <div className="flex items-center gap-2 border-t border-gray-100 p-3">
