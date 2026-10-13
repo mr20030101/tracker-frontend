@@ -14,6 +14,13 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 3.7.0 — 2026-10-13
+
+### Added
+
+- Everyone without a **Remotask ID** on file now gets a modal they can't skip until they add one. It also comes up when the ID on file isn't a valid one. A Remotask ID has to be 24 characters of 0-9 and a-f (like `60e818c8f76af4001e9901d6`), and that format is checked everywhere it can be entered.
+- The **Request extension** and **Request reclaim** forms now ask for your Remotask ID, filled in from your profile. The ID is saved with the request, prefilled on the Scale Reclaim / Extend form your lead files, and shown in the request's details. Changing it on the form also updates your profile.
+
 ## 3.6.1 — 2026-10-09
 
 ### Fixed

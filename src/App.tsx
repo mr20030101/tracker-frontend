@@ -1,6 +1,8 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from './lib/auth'
 import { AppShell } from './components/AppShell'
+import { RemotasksIdGate } from './components/RemotasksIdGate'
+import { isValidRemotasksId } from './lib/remotasks'
 import { Login } from './pages/Login'
 import { ForcePasswordChange } from './pages/ForcePasswordChange'
 import { Dashboard } from './pages/Dashboard'
@@ -66,6 +68,8 @@ function ProtectedLayout() {
         {isAdmin && <Route path="/leads/:leadId" element={<LeadTeam />} />}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      {/* Everyone needs a valid Remotask ID on file; this blocks the app until they've saved one. */}
+      {!isValidRemotasksId(user.remotasks_id) && <RemotasksIdGate />}
     </AppShell>
   )
 }

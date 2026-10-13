@@ -99,12 +99,16 @@ interface BaseTaskRequest {
 // A contributor asking their lead for more time before a submission is marked expired.
 export interface ExtensionTaskRequest extends BaseTaskRequest {
   type: 'extension'
+  // The requester's Remotask ID as they gave it on the request. Null on requests from before it was asked for.
+  remotasks_id: string | null
 }
 
 // A contributor asking their lead to reclaim a task back for them — same self-service flow and
 // Scale form as an extension request, filed with "Reclaim" as the request type instead.
 export interface ReclaimTaskRequest extends BaseTaskRequest {
   type: 'reclaim'
+  // See ExtensionTaskRequest.remotasks_id.
+  remotasks_id: string | null
 }
 
 // A lead/admin flagging a claimed task's video as bad, needing validation/removal

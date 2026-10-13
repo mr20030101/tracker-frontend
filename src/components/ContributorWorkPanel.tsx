@@ -4,7 +4,8 @@ import { Flame, Image } from 'lucide-react'
 import { api, errorMessage, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, yearMonth, toISODate, formatRange, formatTime } from '../lib/week'
-import { remotasksDiffViewerUrl } from '../lib/remotasks'
+import { normalizeRemotasksId, remotasksDiffViewerUrl, remotasksIdError } from '../lib/remotasks'
+import { setOwnRemotasksId } from '../lib/profile'
 import {
   buildBadVideoRequestFormUrl,
   buildExtensionRequestFormUrl,
@@ -25,6 +26,7 @@ import { TaskSubmissionForm } from './TaskSubmissionForm'
 import { BulkImportModal } from './BulkImportModal'
 import { BadVideoReportModal } from './BadVideoReportModal'
 import { Modal } from './Modal'
+import { RemotasksIdField } from './RemotasksIdField'
 import { confirmDialog } from '../lib/dialog'
 
 const TREND_DAYS = 30
@@ -74,7 +76,7 @@ interface Props {
  */
 export function ContributorWorkPanel({ email, contributorName, canEdit, showGraphsToggle = true }: Props) {
   const queryClient = useQueryClient()
-  const { user: currentUser } = useAuth()
+  const { user: currentUser, refreshUser } = useAuth()
   const isManager = Boolean(currentUser && MANAGER_ROLES.includes(currentUser.role))
   const isOwnProfile = currentUser?.email.toLowerCase() === email.toLowerCase()
   // Collapsed by default when a toggle is offered; always visible otherwise (see showGraphsToggle).
@@ -89,6 +91,8 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
   const [bulkImporting, setBulkImporting] = useState(false)
   const [requestingExtensionFor, setRequestingExtensionFor] = useState<{ submission: TaskSubmission; type: TimeRequestType } | null>(null)
   const [extensionReason, setExtensionReason] = useState('')
+  const [extensionRemotasksId, setExtensionRemotasksId] = useState('')
+  const [extensionAttempted, setExtensionAttempted] = useState(false)
   const [reportingBadVideoFor, setReportingBadVideoFor] = useState<TaskSubmission | null>(null)
   const pageSize = 10
 
@@ -142,9 +146,24 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
   })
 
   const requestExtensionMutation = useMutation({
-    mutationFn: async ({ submissionId, reason, type }: { submissionId: number; reason: string; type: TimeRequestType }) => {
+    mutationFn: async ({
+      submissionId,
+      reason,
+      type,
+      remotasksId,
+    }: {
+      submissionId: number
+      reason: string
+      type: TimeRequestType
+      remotasksId: string
+    }) => {
       if (!currentUser) throw new Error('Unauthenticated')
-      await requestExtension(submissionId, currentUser.id, reason, type)
+      // A corrected ID goes on the profile too, so the next request (and the lead's view) has it.
+      if (remotasksId !== currentUser.remotasks_id) {
+        await setOwnRemotasksId(remotasksId)
+        await refreshUser()
+      }
+      await requestExtension(submissionId, currentUser.id, reason, type, remotasksId)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['task-requests'] })
@@ -175,7 +194,8 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
         requestType: request.type === 'reclaim' ? 'Reclaim' : 'Extend',
         taskId: submission?.task_id ?? null,
         cbEmail: submission?.cb_email ?? null,
-        remotaskId: data?.user?.remotasks_id ?? null,
+        // The ID given on the request, else (older requests) the one on their profile.
+        remotaskId: (request.type !== 'bad_video' ? request.remotasks_id : null) ?? data?.user?.remotasks_id ?? null,
         stage: submission?.stage ?? null,
         projectName: submission?.project?.name ?? null,
         reason: request.reason,
@@ -665,6 +685,8 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                                 {
                                   label: `Request ${noun}`,
                                   onClick: () => {
+                                    setExtensionRemotasksId(currentUser?.remotasks_id ?? '')
+                                    setExtensionAttempted(false)
                                     setRequestingExtensionFor({ submission: row, type })
                                     setExtensionReason('')
                                   },
@@ -848,6 +870,12 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                 <span className="font-mono text-gray-900">{requestingExtensionFor.submission.task_id ?? 'this task'}</span>,
               )}
             </p>
+            <RemotasksIdField
+              value={extensionRemotasksId}
+              onChange={setExtensionRemotasksId}
+              showError={extensionAttempted}
+              hint="Your lead files the request with Scale under this ID. Changing it here updates your profile too."
+            />
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">Reason (optional)</label>
               <textarea
@@ -875,13 +903,16 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
               <button
                 type="button"
                 disabled={requestExtensionMutation.isPending}
-                onClick={() =>
+                onClick={() => {
+                  setExtensionAttempted(true)
+                  if (remotasksIdError(extensionRemotasksId)) return
                   requestExtensionMutation.mutate({
                     submissionId: requestingExtensionFor.submission.id,
                     reason: extensionReason,
                     type: requestingExtensionFor.type,
+                    remotasksId: normalizeRemotasksId(extensionRemotasksId)!,
                   })
-                }
+                }}
                 className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
               >
                 {requestExtensionMutation.isPending ? 'Sending...' : 'Send request'}

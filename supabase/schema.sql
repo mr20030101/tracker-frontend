@@ -131,6 +131,10 @@ alter table public.task_requests add column if not exists bad_video_frame text;
 alter table public.task_requests add column if not exists bad_video_workforce text
   check (bad_video_workforce in ('REMOTE', 'ONSITE'));
 alter table public.task_requests add column if not exists bad_video_workforce_name text;
+-- The Remotasks ID given on an extension or reclaim request, which the lead files with Scale.
+-- Null on requests from before it was asked for (the app falls back to the requester's profile).
+alter table public.task_requests add column if not exists remotasks_id text
+  check (remotasks_id ~ '^[0-9a-f]{24}$');
 
 -- 'reclaim': a contributor asking their lead to reclaim a task back for them — same self-service
 -- flow, fields and review rules as 'extension' (and the same Scale form, filed as "Reclaim").
@@ -492,16 +496,22 @@ returns public.profiles
 language plpgsql security definer set search_path = public
 as $$
 declare
+  v_remotasks_id text := lower(trim(coalesce(new_remotasks_id, '')));
   updated public.profiles;
 begin
   if new_name is null or trim(new_name) = '' then
     raise exception 'Name is required.';
   end if;
 
+  -- A Remotasks ID is a 24-character hex id (e.g. 60e818c8f76af4001e9901d6).
+  if v_remotasks_id <> '' and v_remotasks_id !~ '^[0-9a-f]{24}$' then
+    raise exception 'A Remotask ID is 24 characters: the digits 0-9 and the letters a-f.';
+  end if;
+
   update public.profiles
   set name = trim(new_name),
       avatar_url = new_avatar_url,
-      remotasks_id = nullif(trim(coalesce(new_remotasks_id, '')), ''),
+      remotasks_id = nullif(v_remotasks_id, ''),
       shift = nullif(trim(coalesce(new_shift, '')), ''),
       bio = nullif(trim(coalesce(new_bio, '')), ''),
       updated_at = now()
@@ -513,6 +523,33 @@ end;
 $$;
 
 grant execute on function public.update_own_profile(text, text, text, text, text) to authenticated;
+
+-- Sets just the caller's own Remotasks ID: the app blocks with a modal until every user has a
+-- valid one, and the extension/reclaim request form can correct it. Existing profiles.remotasks_id
+-- values aren't constrained, so a mistyped one on file doesn't break unrelated profile updates;
+-- the app treats it as missing and asks again.
+create or replace function public.set_own_remotasks_id(new_remotasks_id text)
+returns public.profiles
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_id text := lower(trim(coalesce(new_remotasks_id, '')));
+  updated public.profiles;
+begin
+  if v_id !~ '^[0-9a-f]{24}$' then
+    raise exception 'A Remotask ID is 24 characters: the digits 0-9 and the letters a-f.';
+  end if;
+
+  update public.profiles
+  set remotasks_id = v_id, updated_at = now()
+  where id = auth.uid()
+  returning * into updated;
+
+  return updated;
+end;
+$$;
+
+grant execute on function public.set_own_remotasks_id(text) to authenticated;
 
 -- Called by a signed-in user right after they set their own new password,
 -- so the forced-change gate (must_change_password) lifts for their own row
