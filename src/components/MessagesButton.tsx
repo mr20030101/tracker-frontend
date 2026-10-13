@@ -21,6 +21,7 @@ import { errorMessage } from '../lib/api'
 import { groupPath } from '../lib/groupChats'
 import { Users } from 'lucide-react'
 import { confirmDialog } from '../lib/dialog'
+import { directSeenStatus } from '../lib/seen'
 
 // Messenger's own send-bubble blue, matching MessageBubble.tsx — kept local rather than
 // repointing the app's global --color-accent, which drives buttons everywhere else.
@@ -47,6 +48,8 @@ export function MessagesButton() {
   const activeUserAvatarUrl = activeUser?.avatar_url ?? null
   const activeUserIsBot = Boolean(activeUser?.is_bot)
   const { visibleThread, isTyping } = useBotTyping(thread, myId, activeUserIsBot)
+  // The bot never opens its messages, so a "Sent" there would never turn into "Seen".
+  const seenStatus = activeUserIsBot ? null : directSeenStatus(visibleThread, myId)
 
   useEffect(() => {
     setSelectMode(false)
@@ -249,6 +252,7 @@ export function MessagesButton() {
                             ? () => startCall({ id: activeUserId, name: activeUserName, avatar_url: activeUserAvatarUrl })
                             : undefined
                         }
+                        status={seenStatus?.messageId === m.id ? seenStatus.label : undefined}
                       />
                     ))}
                     {isTyping && <TypingIndicator />}

@@ -22,6 +22,7 @@ import { Avatar } from './Avatar'
 import { EmojiPickerButton } from './EmojiPickerButton'
 import { Modal } from './Modal'
 import { confirmDialog } from '../lib/dialog'
+import { groupSeenStatus } from '../lib/seen'
 
 // Messenger's send-bubble blue, as in MessageBubble.tsx.
 const BUBBLE_BLUE = '#0084ff'
@@ -74,6 +75,7 @@ export function GroupChatPane({ group, onBack, onGone }: { group: ChatGroupSumma
   const threadEndRef = useRef<HTMLDivElement>(null)
   const { messages, isLoading, hasOlder, loadingOlder, loadOlder, scrollRef } = useGroupThread(myId, group.id)
   const membersById = useMemo(() => new Map(group.members.map((m) => [m.id, m])), [group.members])
+  const seenStatus = groupSeenStatus(messages, group.members, myId)
 
   useEffect(() => {
     if (group.unread_count > 0) {
@@ -173,6 +175,9 @@ export function GroupChatPane({ group, onBack, onGone }: { group: ChatGroupSumma
                     >
                       <div className="whitespace-pre-wrap wrap-break-word">{convertEmoticons(m.body)}</div>
                     </div>
+                    {seenStatus?.messageId === m.id && (
+                      <span className="mt-0.5 px-1 text-[11px] text-gray-400">{seenStatus.label}</span>
+                    )}
                   </div>
                 </div>
               </div>

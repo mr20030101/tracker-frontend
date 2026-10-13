@@ -27,6 +27,7 @@ export function MessageBubble({
   onToggleSelect,
   onDelete,
   onCallBack,
+  status,
 }: {
   message: Message
   mine: boolean
@@ -39,6 +40,8 @@ export function MessageBubble({
   onDelete: () => void
   // Shown on call entries: rings the other person back.
   onCallBack?: () => void
+  // "Sent" / "Seen …" under your latest message (see lib/seen.ts); always shown, unlike the time.
+  status?: string
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const callLog = isBot ? null : parseCallLog(message.body)
@@ -95,6 +98,7 @@ export function MessageBubble({
         >
           {formatTime(message.created_at)}
         </span>
+        {status && <span className="px-1 text-[11px] text-gray-400">{status}</span>}
       </div>
     </div>
   )

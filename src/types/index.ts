@@ -356,6 +356,8 @@ export interface ChatGroupMember {
   name: string
   avatar_url: string | null
   role: 'owner' | 'member'
+  // When they last opened the group: what the "Seen by" line under your latest message reads.
+  last_read_at: string | null
 }
 
 export interface GroupMessage {

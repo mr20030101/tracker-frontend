@@ -27,6 +27,7 @@ import { groupPath } from '../lib/groupChats'
 import { GroupChatPane, GroupIcon, NewGroupModal } from '../components/GroupChat'
 import { confirmDialog } from '../lib/dialog'
 import { usePageTitle } from '../lib/usePageTitle'
+import { directSeenStatus } from '../lib/seen'
 
 // Messenger's own send-bubble blue, matching MessageBubble.tsx — kept local rather than
 // repointing the app's global --color-accent, which drives buttons everywhere else.
@@ -123,6 +124,8 @@ export function Messages() {
   }
 
   const showQuickReplies = Boolean(selectedUser?.is_bot) && !selectMode
+  // The bot never opens its messages, so a "Sent" there would never turn into "Seen".
+  const seenStatus = selectedUser?.is_bot ? null : directSeenStatus(visibleThread, myId)
 
   const deleteMutation = useMutation({
     mutationFn: (message: Message) => deleteMessageForMe(myId!, message),
@@ -415,6 +418,7 @@ export function Messages() {
                         ? () => startCall({ id: selectedUser.id, name: selectedUser.name, avatar_url: selectedUser.avatar_url })
                         : undefined
                     }
+                    status={seenStatus?.messageId === m.id ? seenStatus.label : undefined}
                   />
                 ))}
                 {isTyping && <TypingIndicator />}
