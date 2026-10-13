@@ -1,7 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Flame, Pin } from 'lucide-react'
-import { BADGES, badgeById, setFeaturedBadge, useAchievements, useFeaturedBadges } from '../lib/achievements'
+import { badgeById, nextBadge, setFeaturedBadge, useAchievements, useFeaturedBadges, visibleBadges } from '../lib/achievements'
 import type { Achievements } from '../types'
+import { GrowBar } from './GrowBar'
 
 // A contributor's pinned badge, as a small chip beside their name. Nothing when none is pinned.
 export function FeaturedBadgeChip({ badgeId }: { badgeId: string | null | undefined }) {
@@ -54,7 +55,9 @@ export function AchievementsCard({
 
   const a: Achievements | undefined = data?.get(userId)
   if (!a) return null
-  const earned = BADGES.filter((b) => b.earned(a)).length
+  const badges = visibleBadges(a)
+  const earned = badges.filter((b) => b.earned(a)).length
+  const next = nextBadge(a)
 
   return (
     <div className="mb-6 rounded-xl border border-gray-200 bg-white p-5">
@@ -78,12 +81,33 @@ export function AchievementsCard({
           <div className="text-xs text-gray-400">weeks on target</div>
         </div>
         <div className="ml-auto text-xs text-gray-400">
-          {earned} of {BADGES.length} badges
+          {earned} of {badges.length} badges
         </div>
       </div>
+      {next && (
+        <div className="mb-4 flex items-center gap-3 rounded-lg border border-dashed border-gray-200 px-3 py-2.5">
+          <next.badge.icon className="h-5 w-5 shrink-0 text-accent" />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-baseline justify-between gap-2 text-sm">
+              <span className="truncate">
+                <span className="text-gray-500">Next up: </span>
+                <span className="font-semibold text-gray-900">{next.badge.label}</span>
+              </span>
+              <span className="shrink-0 text-xs font-medium text-gray-500">
+                {next.current.toLocaleString()} / {next.goal.toLocaleString()}
+              </span>
+            </div>
+            <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-gray-100">
+              <GrowBar className="h-full rounded-full bg-accent" pct={(next.current / next.goal) * 100} />
+            </div>
+            <div className="mt-1 text-xs text-gray-400">{next.badge.description}</div>
+          </div>
+        </div>
+      )}
       <ul className="flex flex-wrap gap-2">
-        {BADGES.map((badge) => {
+        {badges.map((badge) => {
           const has = badge.earned(a)
+          const progress = !has && badge.progress ? badge.progress(a) : undefined
           const isFeatured = badge.id === featuredId
           const chip = `inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${
             has ? badge.tone : 'border-gray-200 bg-gray-50 text-gray-300'
@@ -92,6 +116,11 @@ export function AchievementsCard({
             <>
               <badge.icon className="h-3.5 w-3.5" />
               {badge.label}
+              {progress && progress[1] > 0 && (
+                <span className="font-medium text-gray-400">
+                  {Math.min(progress[0], progress[1]).toLocaleString()}/{progress[1].toLocaleString()}
+                </span>
+              )}
               {isFeatured && <Pin className="h-3 w-3" aria-hidden="true" />}
               <span className="sr-only">
                 {has ? '(earned)' : '(not yet earned)'}

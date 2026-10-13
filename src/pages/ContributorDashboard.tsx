@@ -21,6 +21,11 @@ import { Modal } from '../components/Modal'
 import { contributorPath } from '../lib/urlRef'
 import { OnboardingChecklist } from '../components/OnboardingChecklist'
 import { AchievementsCard } from '../components/Achievements'
+import { StreakRiskCard, TeamPulseCard, WeeklyRecap, type RecapStats } from '../components/DashboardMotivation'
+import { SpotlightDialog } from '../components/SpotlightDialog'
+import { useAchievements } from '../lib/achievements'
+import { useCelebrations } from '../lib/celebrations'
+import { rankWeek, standingFor, teamGoal, useTeamWeeks, weekStarts } from '../lib/teamWeeks'
 import { DashboardHero } from '../components/DashboardHero'
 import { usePageTitle } from '../lib/usePageTitle'
 
@@ -41,6 +46,17 @@ const ATTENDANCE_CLOSES_MIN = 13 * 60 + 30
 
 // Cleared when the browser tab/session ends, so the warning comes back the next time they sign in fresh.
 const WARNING_DISMISSED_KEY = 'dashboard-week-warning-dismissed'
+
+// The week whose recap someone last saw, so it shows once at the start of each week.
+const recapSeenKey = (userId: string) => `weekly-recap-seen:${userId}`
+
+function readRecapSeen(userId: string): string | null {
+  try {
+    return localStorage.getItem(recapSeenKey(userId))
+  } catch {
+    return null
+  }
+}
 
 function buildAttendanceFormUrl(email: string) {
   const params = new URLSearchParams()
@@ -91,6 +107,34 @@ export function ContributorDashboard() {
 
   const contributorId = data?.user?.id ?? null
   const contributorLeadId = data?.user?.lead_id ?? null
+
+  const { data: achievementsById } = useAchievements(contributorId ? [contributorId] : [])
+  const achievements = contributorId ? achievementsById?.get(contributorId) : undefined
+  const { data: teamRows = [] } = useTeamWeeks()
+
+  const [recapSeen, setRecapSeen] = useState<string | null>(() => (user ? readRecapSeen(user.id) : null))
+  function closeRecap() {
+    setRecapSeen(thisWeekIso)
+    try {
+      if (user) localStorage.setItem(recapSeenKey(user.id), thisWeekIso)
+    } catch {
+      // Not remembering only means it shows again next visit.
+    }
+  }
+
+  const submittedToday = (data?.all_submissions ?? []).filter((r) => r.date?.slice(0, 10) === today && r.status === 'submitted').length
+  const dayTarget = Math.round((data?.weekly_target ?? 0) / 5)
+  const celebration = useCelebrations({
+    userId: user?.id ?? '',
+    loaded: Boolean(data),
+    achievements,
+    today,
+    weekStart: thisWeekIso,
+    submittedToday,
+    dayTarget,
+    submittedThisWeek: data?.submitted_this_week ?? 0,
+    weeklyTarget: data?.weekly_target ?? 0,
+  })
 
   const { data: allProjects = [] } = useQuery({
     queryKey: ['projects'],
@@ -144,9 +188,28 @@ export function ContributorDashboard() {
 
   const lead = contributorLeadId ? usersById.get(contributorLeadId) : undefined
 
-  const submittedToday = data.all_submissions.filter((r) => r.date?.slice(0, 10) === today && r.status === 'submitted').length
   const loggedToday = data.all_submissions.filter((r) => r.date?.slice(0, 10) === today).length
-  const dayTarget = Math.round(data.weekly_target / 5)
+
+  // Where they stand on the team's board, this week and last (for the recap).
+  const [historyWeek, lastWeek] = weekStarts(teamRows)
+  const ranked = historyWeek === thisWeekIso ? rankWeek(teamRows, thisWeekIso) : []
+  const standing = contributorId ? standingFor(ranked, contributorId) : undefined
+  const lastRanked = lastWeek ? rankWeek(teamRows, lastWeek) : []
+  const lastIndex = lastRanked.findIndex((r) => r.user_id === contributorId)
+  const recapStats: RecapStats | undefined =
+    lastIndex >= 0 && achievements
+      ? {
+          submitted: lastRanked[lastIndex].submitted,
+          target: lastRanked[lastIndex].target,
+          rank: lastIndex + 1,
+          of: lastRanked.length,
+          streak: achievements.current_streak,
+          nextTarget: data.weekly_target,
+        }
+      : undefined
+  const showRecap = Boolean(recapStats) && recapSeen !== thisWeekIso
+  // Days left in the business week, today included (Tuesday is 7, Monday is 1).
+  const daysLeft = 7 - Math.round((Date.parse(today) - Date.parse(thisWeekIso)) / 86_400_000)
   const dayProgress = dayTarget > 0 ? submittedToday / dayTarget : 0
 
   const stages = Object.entries(data.stage_breakdown) as [string, number][]
@@ -259,15 +322,43 @@ export function ContributorDashboard() {
         </Modal>
       )}
 
-      {showWarning && data.submitted_this_week === 0 && (
-        <NoSubmissionNudge
-          onSubmit={() => {
-            dismissWarning()
-            setSubmitting(true)
-          }}
-          onDismiss={dismissWarning}
-        />
-      )}
+      {/* One pop-up at a time, none over the submission form: the week's recap, then anything to
+          celebrate, then the no-submissions nudge (which the recap already covers when it shows). */}
+      {!submitting &&
+        (showRecap && recapStats ? (
+          <WeeklyRecap
+            stats={recapStats}
+            onSubmit={() => {
+              closeRecap()
+              dismissWarning()
+              setSubmitting(true)
+            }}
+            onClose={() => {
+              closeRecap()
+              dismissWarning()
+            }}
+          />
+        ) : celebration.current ? (
+          <SpotlightDialog
+            icon={celebration.current.icon}
+            title={celebration.current.title}
+            primary={{ label: 'Keep it going!', onClick: celebration.dismiss }}
+            onClose={celebration.dismiss}
+          >
+            {celebration.current.body}
+          </SpotlightDialog>
+        ) : (
+          showWarning &&
+          data.submitted_this_week === 0 && (
+            <NoSubmissionNudge
+              onSubmit={() => {
+                dismissWarning()
+                setSubmitting(true)
+              }}
+              onDismiss={dismissWarning}
+            />
+          )
+        ))}
 
       {submitting && <TaskSubmissionForm onClose={() => setSubmitting(false)} />}
 
@@ -280,6 +371,16 @@ export function ContributorDashboard() {
             first_task: { label: 'Submit a task', onClick: () => setSubmitting(true) },
             ...(lead ? { message_lead: { label: `Message ${lead.name}`, onClick: () => openChatWith(lead.id, lead.name) } } : {}),
           }}
+        />
+      )}
+
+      {achievements && (
+        <StreakRiskCard
+          streak={achievements.current_streak}
+          submitted={data.submitted_this_week}
+          target={data.weekly_target}
+          daysLeft={daysLeft}
+          onSubmit={() => setSubmitting(true)}
         />
       )}
 
@@ -297,6 +398,8 @@ export function ContributorDashboard() {
           </Link>
         ))}
       </div>
+
+      {ranked.length > 0 && <TeamPulseCard standing={standing} team={teamGoal(ranked)} />}
 
       <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="flex items-center gap-5 rounded-xl border border-gray-200 bg-white p-5 lg:col-span-1">

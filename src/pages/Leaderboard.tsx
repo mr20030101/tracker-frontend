@@ -18,6 +18,7 @@ import { contributorPath } from '../lib/urlRef'
 import { FeaturedBadgeChip, StreakChip } from '../components/Achievements'
 import { useAchievements, useFeaturedBadges } from '../lib/achievements'
 import { usePageTitle } from '../lib/usePageTitle'
+import { mostImproved, rankWeek, teamGoal, useTeamWeeks, type TeamWeekRow } from '../lib/teamWeeks'
 
 type Period = 'week' | 'month' | 'all'
 type StatusFilter = 'all' | 'active' | 'disabled'
@@ -46,20 +47,23 @@ export function Leaderboard() {
 
 function ContributorLeaderboard() {
   const { user } = useAuth()
-  const [period, setPeriod] = useState<Period>('week')
+  const [period, setPeriod] = useState<Period | 'improved'>('week')
 
-  const { start, end } = useMemo(() => rangeFor(period), [period])
+  const { start, end } = useMemo(() => rangeFor(period === 'improved' ? 'week' : period), [period])
 
   const { data, isLoading } = useQuery({
     queryKey: ['leaderboard', start, end],
     queryFn: async () => (await api.get<LeaderboardRow[]>('/leaderboard', { params: { range_start: start, range_end: end } })).data,
   })
+  const { data: teamRows = [] } = useTeamWeeks()
+  const team = teamGoal(rankWeek(teamRows, start))
 
   const rows = data ?? []
   const topScore = rows[0]?.tasks_submitted ?? 0
   const { data: achievements } = useAchievements(rows.map((r) => r.user_id))
   const { data: featuredBadges } = useFeaturedBadges(rows.map((r) => r.user_id))
   const periodLabel = period === 'week' ? 'this week' : period === 'month' ? 'this month' : 'all time'
+  const teamPct = team.target > 0 ? Math.min(100, (team.submitted / team.target) * 100) : 0
 
   return (
     <div>
@@ -67,67 +71,132 @@ function ContributorLeaderboard() {
         <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
           Leaderboard
         </h1>
-        <p className="text-sm text-gray-500">See who on your team has submitted the most tasks {periodLabel}.</p>
+        <p className="text-sm text-gray-500">
+          {period === 'improved'
+            ? 'Who stepped up most: last week compared with each person’s average over the four weeks before.'
+            : `See who on your team has submitted the most tasks ${periodLabel}.`}
+        </p>
       </div>
 
-      <div className="mb-4 flex rounded-lg border border-gray-200 bg-white p-1 w-fit">
-        {(['week', 'month', 'all'] as const).map((p) => (
+      {period === 'week' && team.target > 0 && (
+        <div className="mb-4 rounded-xl border border-gray-200 bg-white px-5 py-4">
+          <div className="flex items-baseline justify-between gap-2 text-sm">
+            <span className="font-semibold text-gray-700">Team goal this week</span>
+            <span className="font-semibold text-gray-900">
+              {team.submitted.toLocaleString()} <span className="font-normal text-gray-400">/ {team.target.toLocaleString()}</span>
+            </span>
+          </div>
+          <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-gray-100">
+            <GrowBar className={`h-full rounded-full ${teamPct >= 100 ? 'bg-emerald-500' : 'bg-sky-500'}`} pct={teamPct} delay={200} />
+          </div>
+          <div className="mt-1.5 text-xs text-gray-500">
+            {teamPct >= 100 ? 'Reached! Amazing work, everyone.' : 'Everyone’s targets added up. Every task anyone submits fills it.'}
+          </div>
+        </div>
+      )}
+
+      <div className="mb-4 flex w-fit max-w-full flex-wrap rounded-lg border border-gray-200 bg-white p-1">
+        {(['week', 'month', 'all', 'improved'] as const).map((p) => (
           <button
             key={p}
             onClick={() => setPeriod(p)}
             className={`rounded-md px-4 py-1.5 text-sm font-medium ${period === p ? 'bg-accent text-accent-foreground' : 'text-gray-600'}`}
           >
-            {p === 'week' ? 'This Week' : p === 'month' ? 'This Month' : 'All Time'}
+            {p === 'week' ? 'This Week' : p === 'month' ? 'This Month' : p === 'all' ? 'All Time' : 'Most Improved'}
           </button>
         ))}
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-        {isLoading && <div className="px-5 py-6 text-center text-gray-400">Loading...</div>}
-        {!isLoading && rows.length === 0 && (
-          <div className="px-5 py-6 text-center text-gray-400">No submissions {periodLabel} yet.</div>
-        )}
-        {!isLoading && rows.length > 0 && (
-          <Reveal as="ul" className="divide-y divide-gray-100" step={45}>
-            {rows.map((row, index) => {
-              const isMe = row.user_id === user?.id
-              const barPct = topScore ? Math.round((row.tasks_submitted / topScore) * 100) : 0
+      {period === 'improved' ? (
+        <MostImprovedList rows={teamRows} meId={user?.id} />
+      ) : (
+        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+          {isLoading && <div className="px-5 py-6 text-center text-gray-400">Loading...</div>}
+          {!isLoading && rows.length === 0 && (
+            <div className="px-5 py-6 text-center text-gray-400">No submissions {periodLabel} yet.</div>
+          )}
+          {!isLoading && rows.length > 0 && (
+            <Reveal as="ul" className="divide-y divide-gray-100" step={45}>
+              {rows.map((row, index) => {
+                const isMe = row.user_id === user?.id
+                const barPct = topScore ? Math.round((row.tasks_submitted / topScore) * 100) : 0
 
-              return (
-                <li key={row.user_id}>
-                  <Link
-                    to={contributorPath(row.cb_email)}
-                    className={`flex items-center gap-3 px-5 py-3 hover:bg-gray-50 ${isMe ? 'bg-accent-bg/40' : ''}`}
-                  >
-                    <span className="w-8 shrink-0 text-center text-lg font-semibold text-gray-400">
-                      {MEDALS[index] ?? index + 1}
-                    </span>
-                    <Avatar name={row.name} photoUrl={row.avatar_url} size={36} />
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-medium text-gray-900">
-                        {row.name}
-                        <span className="ml-2">
-                          <StreakChip streak={achievements?.get(row.user_id)?.current_streak} />
-                        </span>
-                        <span className="ml-1.5">
-                          <FeaturedBadgeChip badgeId={featuredBadges?.get(row.user_id)} />
-                        </span>
-                        {isMe && <span className="ml-2 text-xs font-semibold text-accent">You</span>}
+                return (
+                  <li key={row.user_id}>
+                    <Link
+                      to={contributorPath(row.cb_email)}
+                      className={`flex items-center gap-3 px-5 py-3 hover:bg-gray-50 ${isMe ? 'bg-accent-bg/40' : ''}`}
+                    >
+                      <span className="w-8 shrink-0 text-center text-lg font-semibold text-gray-400">
+                        {MEDALS[index] ?? index + 1}
+                      </span>
+                      <Avatar name={row.name} photoUrl={row.avatar_url} size={36} />
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-medium text-gray-900">
+                          {row.name}
+                          <span className="ml-2">
+                            <StreakChip streak={achievements?.get(row.user_id)?.current_streak} />
+                          </span>
+                          <span className="ml-1.5">
+                            <FeaturedBadgeChip badgeId={featuredBadges?.get(row.user_id)} />
+                          </span>
+                          {isMe && <span className="ml-2 text-xs font-semibold text-accent">You</span>}
+                        </div>
+                        <div className="mt-1 h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-gray-100">
+                          <GrowBar className="h-full rounded-full bg-accent" pct={barPct} delay={300 + index * 45} />
+                        </div>
                       </div>
-                      <div className="mt-1 h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-gray-100">
-                        <GrowBar className="h-full rounded-full bg-accent" pct={barPct} delay={300 + index * 45} />
-                      </div>
-                    </div>
-                    <span className="shrink-0 text-sm font-semibold text-gray-900">
-                      {row.tasks_submitted} <span className="font-normal text-gray-400">tasks</span>
-                    </span>
-                  </Link>
-                </li>
-              )
-            })}
-          </Reveal>
-        )}
-      </div>
+                      <span className="shrink-0 text-sm font-semibold text-gray-900">
+                        {row.tasks_submitted} <span className="font-normal text-gray-400">tasks</span>
+                      </span>
+                    </Link>
+                  </li>
+                )
+              })}
+            </Reveal>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function MostImprovedList({ rows, meId }: { rows: TeamWeekRow[]; meId: string | undefined }) {
+  const list = mostImproved(rows)
+  if (list.length === 0) {
+    return <div className="rounded-xl border border-gray-200 bg-white px-5 py-6 text-center text-gray-400">Not enough weeks yet to compare.</div>
+  }
+  return (
+    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+      <Reveal as="ul" className="divide-y divide-gray-100" step={45}>
+        {list.map(({ row, average, change }, index) => {
+          const isMe = row.user_id === meId
+          const up = Math.round(change)
+          return (
+            <li key={row.user_id}>
+              <Link
+                to={contributorPath(row.cb_email)}
+                className={`flex items-center gap-3 px-5 py-3 hover:bg-gray-50 ${isMe ? 'bg-accent-bg/40' : ''}`}
+              >
+                <span className="w-8 shrink-0 text-center text-lg font-semibold text-gray-400">{up > 0 ? (MEDALS[index] ?? index + 1) : index + 1}</span>
+                <Avatar name={row.name} photoUrl={row.avatar_url} size={36} />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-medium text-gray-900">
+                    {row.name}
+                    {isMe && <span className="ml-2 text-xs font-semibold text-accent">You</span>}
+                  </div>
+                  <div className="text-xs text-gray-400">
+                    {row.submitted.toLocaleString()} last week · usually {Math.round(average).toLocaleString()}
+                  </div>
+                </div>
+                <span className={`shrink-0 text-sm font-bold ${up > 0 ? 'text-emerald-600' : 'text-gray-400'}`}>
+                  {up > 0 ? `+${up.toLocaleString()}` : up.toLocaleString()}
+                </span>
+              </Link>
+            </li>
+          )
+        })}
+      </Reveal>
     </div>
   )
 }

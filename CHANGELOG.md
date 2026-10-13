@@ -14,6 +14,25 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 3.15.0 — 2026-10-13
+
+### Added
+
+- **Your rank on the dashboard.** A card shows where you stand on your team's board this week, and exactly how many tasks it takes to pass the person above you (or how far ahead you are).
+- **Team goal.** Everyone's weekly targets added up into one shared bar, on the dashboard and the Leaderboard's This Week tab.
+- **Celebrations.** Confetti and a pop-up when you reach your day goal, hit your weekly target, set a new personal best, or unlock a badge.
+- **Next badge progress.** Your badges card shows the badge you're closest to ("Next up: 100 Club, 82 / 100"), and locked badges show how far along you are.
+- **Streak at risk.** From Friday, if you haven't hit this week's target yet, the dashboard tells you how many more tasks keep your streak alive, and about how many a day.
+- **Most Improved.** A new Leaderboard tab ranks who stepped up most: last week against their own average of the four weeks before.
+- **Weekly recap.** On your first visit of a new week: last week's tasks, your rank and streak, and this week's target.
+- **New badges.** *Personal Best*, for beating your own best week, and the limited-time *Spooky Season*, for hitting your target every week of October (only listed in October unless you've earned it).
+
+### Changed
+
+- The no-submissions pop-up is skipped when the weekly recap shows, since the recap covers it.
+
+Needs the `20261013_motivation` database migration. Until it's applied, the rank, team goal, recap and Most Improved stay hidden, and the two new badges can't be earned.
+
 ## 3.14.1 — 2026-10-13
 
 ### Changed

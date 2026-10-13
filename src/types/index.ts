@@ -349,6 +349,13 @@ export interface Achievements {
   weeks_hit: number
   total_submitted: number
   best_week: number
+  /** Weeks that beat every earlier week (once there were 4 earlier weeks). */
+  personal_bests: number
+  /** Octobers with every week on target. */
+  spooky_seasons: number
+  /** This year's October so far: weeks on target, of how many October weeks there are. */
+  october_weeks_hit: number
+  october_weeks: number
 }
 
 export interface ChatGroupMember {

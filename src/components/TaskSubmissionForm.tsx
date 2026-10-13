@@ -168,6 +168,9 @@ export function TaskSubmissionForm({ submission, onClose }: Props) {
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] })
       queryClient.invalidateQueries({ queryKey: ['projects'] })
       queryClient.invalidateQueries({ queryKey: ['contributor'] })
+      // Streaks, badges and the team's board move with every submission (and can set off a celebration).
+      queryClient.invalidateQueries({ queryKey: ['achievements'] })
+      queryClient.invalidateQueries({ queryKey: ['team-weeks'] })
       onClose()
     },
     onError: (err) => setError(extractErrorMessage(err)),
