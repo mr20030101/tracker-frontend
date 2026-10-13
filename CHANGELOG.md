@@ -14,6 +14,12 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 3.11.2 — 2026-10-13
+
+### Fixed
+
+- The Halloween dashboard banner no longer puts gravestones, the skeleton hand and pumpkins behind the greeting and buttons: the hill runs low along the bottom, and the props sit in the bottom-right corner beside the owl (on wide screens only).
+
 ## 3.11.1 — 2026-10-13
 
 ### Fixed
