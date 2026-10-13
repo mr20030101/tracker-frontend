@@ -8,6 +8,7 @@ import { ForcePasswordChange } from './pages/ForcePasswordChange'
 import { Dashboard } from './pages/Dashboard'
 import { ContributorDashboard } from './pages/ContributorDashboard'
 import { Leaderboard } from './pages/Leaderboard'
+import { Rewards } from './pages/Rewards'
 import { TaskLog } from './pages/TaskLog'
 import { Resources } from './pages/Resources'
 import { Messages } from './pages/Messages'
@@ -50,6 +51,7 @@ function ProtectedLayout() {
       <Routes>
         <Route path="/" element={isManager ? <Dashboard /> : <ContributorDashboard />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
+        <Route path="/rewards" element={<Rewards />} />
         <Route path="/task-log" element={<TaskLog />} />
         <Route path="/requests" element={<Requests />} />
         <Route path="/feedback" element={<Feedback />} />

@@ -171,6 +171,7 @@ export function TaskSubmissionForm({ submission, onClose }: Props) {
       // Streaks, badges and the team's board move with every submission (and can set off a celebration).
       queryClient.invalidateQueries({ queryKey: ['achievements'] })
       queryClient.invalidateQueries({ queryKey: ['team-weeks'] })
+      queryClient.invalidateQueries({ queryKey: ['reward-standings'] })
       onClose()
     },
     onError: (err) => setError(extractErrorMessage(err)),
