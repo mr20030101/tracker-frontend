@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { BookOpen, ClipboardList, Coffee, MessageCircle, Trophy, User, type LucideIcon } from 'lucide-react'
@@ -15,6 +15,7 @@ import { Reveal } from '../components/Reveal'
 import { CtsFormModal } from '../components/CtsFormModal'
 import { EmbeddedFormModal } from '../components/EmbeddedFormModal'
 import { TaskSubmissionForm } from '../components/TaskSubmissionForm'
+import { NoSubmissionNudge } from '../components/NoSubmissionNudge'
 import { LevelPill } from '../components/LevelPill'
 import { Modal } from '../components/Modal'
 import { contributorPath } from '../lib/urlRef'
@@ -55,7 +56,7 @@ export function ContributorDashboard() {
   const bot = useMemo(() => [...usersById.values()].find((u) => u.is_bot), [usersById])
   const [showCtsModal, setShowCtsModal] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  // Shown at most once per browser session: once dismissed (or faded on its own), a reload won't bring it back.
+  // Shown at most once per browser session: once dismissed, a reload won't bring it back.
   const [showWarning, setShowWarning] = useState(() => {
     try {
       return sessionStorage.getItem(WARNING_DISMISSED_KEY) !== 'true'
@@ -76,13 +77,6 @@ export function ContributorDashboard() {
       // Not remembering is fine — it'll just show again next reload.
     }
   }
-
-  // Fades on its own after a while, same as a dismiss.
-  useEffect(() => {
-    if (!showWarning) return
-    const timer = setTimeout(dismissWarning, 10000)
-    return () => clearTimeout(timer)
-  }, [showWarning])
 
   const { data, isLoading } = useQuery({
     queryKey: ['contributor', email, thisWeekIso],
@@ -266,17 +260,13 @@ export function ContributorDashboard() {
       )}
 
       {showWarning && data.submitted_this_week === 0 && (
-        <div className="fixed right-6 top-20 z-40 flex max-w-sm items-start gap-3 rounded-xl border-2 border-status-danger-text bg-status-danger-text px-5 py-4 text-sm font-semibold text-white shadow-lg">
-          <span className="animate-heartbeat text-lg leading-none">⚠</span>
-          <span className="flex-1">WARNING: No submissions logged yet this week.</span>
-          <button
-            onClick={dismissWarning}
-            className="text-lg leading-none text-white/80 hover:text-white"
-            aria-label="Dismiss"
-          >
-            ×
-          </button>
-        </div>
+        <NoSubmissionNudge
+          onSubmit={() => {
+            dismissWarning()
+            setSubmitting(true)
+          }}
+          onDismiss={dismissWarning}
+        />
       )}
 
       {submitting && <TaskSubmissionForm onClose={() => setSubmitting(false)} />}
