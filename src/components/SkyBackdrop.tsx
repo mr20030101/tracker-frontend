@@ -1,5 +1,7 @@
 import type { CSSProperties } from 'react'
 import { useNightSky } from '../lib/theme'
+import { useSeason } from '../lib/season'
+import { HalloweenScene } from './Halloween'
 
 // Playful backdrop for the login page and the dashboard banner: a daytime or night sky, by the
 // clock unless the person picked a theme (useNightSky). All motion is CSS (.login-sky-* keyframes),
@@ -126,7 +128,9 @@ function NightSky({ scale }: { scale: number }) {
 
 export function SkyBackdrop({ compact = false }: { compact?: boolean }) {
   const night = useNightSky()
+  const { halloween } = useSeason()
   const scale = compact ? 0.55 : 1
+  if (halloween) return <HalloweenScene night={night} compact={compact} />
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
       {night ? <NightSky scale={scale} /> : <DaySky scale={scale} />}

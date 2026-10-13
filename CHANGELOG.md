@@ -51,6 +51,35 @@ each stretch of work by the date it shipped.
 
 - A **Feedback** page (under Logs) replaces the FEEDBACK sheet. Contributors report the feedback they got on a task with **Report feedback**: the Task ID, a link to the screenshot of the feedback and their own remarks. Their lead opens each report, adds **Lead remarks** and marks it **Valid** or **Invalid**; contributors see the verdict and the lead's remarks on their own reports. Tabs split reports into Pending, Valid, Invalid and All, and leads get a badge on the Feedback link for reports waiting to be checked, plus an Export to CSV.
 
+## 3.5.0 — 2026-10-07
+
+### Added
+
+- The Halloween scene has a skeleton hand clawing its way out of a fresh mound of dirt in front of a headstone.
+
+## 3.4.0 — 2026-10-07
+
+### Changed
+
+- The Halloween scene is more detailed:
+  - Weathered headstones with carved "RIP" panels and cracks, and leaning Celtic stone crosses on stepped bases.
+  - A Victorian haunted house with a spired tower, chimney, porch, shutters, paned and boarded-up windows, and an iron fence.
+  - Ribbed pumpkins and glowing jack-o'-lanterns with stems, vines and leaves.
+  - Gnarled bare trees, with smaller ones in the distance.
+  - The rooftops are no longer cut off on wide screens.
+
+## 3.3.0 — 2026-10-07
+
+### Changed
+
+- The Halloween look now replaces the whole page background with a Halloween scene instead of flying bats: hills, a crooked tree, tombstones, a haunted house and jack-o'-lanterns under a big moon. It's a dusky lavender sky on the light theme and a starry purple night on the dark one. The same scene takes over the login page and the dashboard banner. The bats, the cobweb and the pumpkin by the logo are gone.
+
+## 3.2.0 — 2026-10-07
+
+### Added
+
+- A Halloween look for October: a pumpkin-orange accent (and a deep purple night on the dark theme), bats that fly across the screen now and then, a cobweb in the corner and a pumpkin beside the logo. The ghost button next to the light/dark toggle turns it off or back on, remembered on that device. It switches itself off after October 31, and the bats stay still for anyone who has reduced motion turned on.
+
 ## 3.1.0 — 2026-10-07
 
 ### Changed
