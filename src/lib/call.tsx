@@ -8,6 +8,7 @@ import { sendMessage } from './messages'
 import { CALL_RINGBACK_SOUND, CALL_RINGTONE_SOUND, loopSound } from './sound'
 import { VOICE_PAUSED_MESSAGE, fetchIceServers } from './voice'
 import { pageTitle } from './usePageTitle'
+import { callerShouldActOnResponse } from './callSignal'
 
 // One-to-one voice calls, started from a conversation in Messages. The call itself is a direct
 // WebRTC audio connection (relayed through Cloudflare TURN when needed, see lib/voice); a shared
@@ -70,6 +71,8 @@ interface LiveCall {
   outgoing: boolean
   // The ring actually went out (not stopped first by a blocked mic or the monthly cap).
   rang: boolean
+  // Set to true after the first accept so subsequent accept/busy/decline signals are ignored.
+  acceptedOnce: boolean
   connectedAt: number | null
   pc: RTCPeerConnection | null
   stream: MediaStream | null
@@ -244,6 +247,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
           phase: 'incoming',
           outgoing: false,
           rang: false,
+          acceptedOnce: false,
           connectedAt: null,
           pc: null,
           stream: null,
@@ -262,7 +266,8 @@ export function CallProvider({ children }: { children: ReactNode }) {
       const name = c.peer.name.split(/\s+/)[0]
       switch (signal.kind) {
         case 'accept': {
-          if (c.phase !== 'outgoing') return
+          if (!callerShouldActOnResponse(c.phase, c.acceptedOnce, 'accept')) return
+          c.acceptedOnce = true
           stopRinging()
           const pc = openConnection()
           if (!pc) return
@@ -288,16 +293,19 @@ export function CallProvider({ children }: { children: ReactNode }) {
           return
         }
         case 'answer':
-          if (c.pc) void applyRemote(c.pc, signal.sdp).catch(() => end("Couldn't connect the call.", 'hangup'))
+          // Guard against a second answer arriving when both callee tabs raced to accept.
+          if (c.pc && !c.pc.remoteDescription) void applyRemote(c.pc, signal.sdp).catch(() => end("Couldn't connect the call.", 'hangup'))
           return
         case 'ice':
           if (c.pc?.remoteDescription) void c.pc.addIceCandidate(signal.candidate).catch(() => {})
           else c.pendingIce.push(signal.candidate)
           return
         case 'decline':
+          if (!callerShouldActOnResponse(c.phase, c.acceptedOnce, 'decline')) return
           end(`${name} declined the call.`, undefined, true)
           return
         case 'busy':
+          if (!callerShouldActOnResponse(c.phase, c.acceptedOnce, 'busy')) return
           end(`${name} is on another call.`)
           return
         case 'cancel':
@@ -336,6 +344,25 @@ export function CallProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     endRef.current = end
   })
+
+  // Cross-tab "answered-elsewhere": when this tab answers, other same-user tabs stop ringing.
+  const bcRef = useRef<BroadcastChannel | null>(null)
+  useEffect(() => {
+    if (!myId || typeof BroadcastChannel === 'undefined') return
+    const bc = new BroadcastChannel('calls')
+    bc.onmessage = (e: MessageEvent<{ kind: string; callId: string }>) => {
+      const c = call.current
+      if (!c || c.phase !== 'incoming') return
+      if (e.data?.kind === 'answered-elsewhere' && e.data.callId === c.id) {
+        endRef.current('Answered on another device.')
+      }
+    }
+    bcRef.current = bc
+    return () => {
+      bc.close()
+      bcRef.current = null
+    }
+  }, [myId])
   useEffect(() => {
     const onLeave = () => {
       const c = call.current
@@ -358,6 +385,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
         phase: 'outgoing',
         outgoing: true,
         rang: false,
+        acceptedOnce: false,
         connectedAt: null,
         pc: null,
         stream: null,
@@ -395,6 +423,8 @@ export function CallProvider({ children }: { children: ReactNode }) {
       // The connection is ready before they're told, so their offer always has somewhere to land.
       if (!openConnection()) return
       send(c.id, c.peer.id, { kind: 'accept' })
+      // Tell other tabs of the same user (same-origin BroadcastChannel) to stop ringing.
+      bcRef.current?.postMessage({ kind: 'answered-elsewhere', callId: c.id })
     })
   }, [prepareAudio, openConnection, send, setPhase])
 

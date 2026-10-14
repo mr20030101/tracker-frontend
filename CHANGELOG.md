@@ -16,6 +16,7 @@ each stretch of work by the date it shipped.
 
 ### Fixed
 
+- Voice calls now work correctly when the callee has multiple tabs or devices open: answering in one tab silently dismisses the ringing on all other tabs, the caller no longer drops the call if a busy signal arrives from a tab already on a different call, and duplicate answer signals (from two tabs that both raced to accept) no longer cause a failed WebRTC connection.
 - Contributor Dashboard, Work Panel, and CB Profile no longer show yesterday's task counts or last week's progress ring after a tab is left open past Singapore midnight — "today" and "this week" now update automatically every minute.
 - Hiring applications are now paged so applicants past the first 1,000 rows no longer vanish from the list, board, or duplicate Remotasks ID check.
 - Bulk import no longer silently drops duplicates or leaves `user_id` null when more than 1000 rows or 1000 users are involved: the duplicate check and profile lookup are now issued in chunks of 200, and only emails present in the import are looked up instead of all profiles.
