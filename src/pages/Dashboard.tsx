@@ -6,7 +6,7 @@ import { api, functionErrorMessage, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { downloadCsv } from '../lib/csv'
 import { Select } from '../components/Select'
-import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, yearMonth, toISODate, formatRange } from '../lib/week'
+import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, yearMonth, toISODate, fromISODate, formatRange } from '../lib/week'
 import { useMessaging } from '../lib/messagingContext'
 import type { DashboardSummary } from '../types'
 import { LineChart } from '../components/LineChart'
@@ -281,7 +281,7 @@ export function Dashboard() {
           type="date"
           value={toISODate(anchorDate)}
           onChange={(e) => {
-            if (e.target.value) setAnchorDate(new Date(`${e.target.value}T00:00:00`))
+            if (e.target.value) setAnchorDate(fromISODate(e.target.value))
           }}
           className="ml-auto rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
         />

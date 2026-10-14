@@ -846,6 +846,11 @@ drop policy if exists "profiles managers update" on public.profiles;
 create policy "profiles managers update" on public.profiles for update
   using (public.is_admin() or (public.is_manager() and public.is_own_or_attached(id)))
   with check (public.is_admin() or (public.is_manager() and public.is_own_or_attached(id)));
+-- That policy covers whole rows, so limit which columns a client may write at all: everything
+-- else (is_bot, featured_badge, email, must_change_password, remotasks_id, ...) goes through the
+-- security-definer RPCs or manage-user (service role), which these grants don't affect.
+revoke update on public.profiles from anon, authenticated;
+grant update (name, shift, meet_link, role, lead_id, is_active, accepting_applications) on public.profiles to authenticated;
 
 create policy "managers read activity logs" on public.activity_logs for select using (public.is_manager());
 create policy "users log own auth events" on public.activity_logs for insert to authenticated
@@ -944,10 +949,10 @@ create policy "leads delete attached contributor project levels" on public.contr
 -- lead(s), an admin, and any contributor whose own lead leads that project — not to every active
 -- user the way it used to be.
 drop policy if exists "active users read resources" on public.resources;
-create policy "users read permitted resources" on public.resources for select
+create policy "users read permitted resources" on public.resources for select to authenticated
   using (
     public.is_admin()
-    or project_id is null
+    or (project_id is null and public.is_active_user())
     or public.is_project_lead(project_id)
     or exists (
       select 1 from public.profiles p
@@ -1282,6 +1287,8 @@ grant execute on function public.hiring_lead_info(uuid) to anon, authenticated;
 
 -- The signature gained the computer answers; CREATE OR REPLACE would leave the
 -- old 7-argument version callable, letting an applicant skip step 2.
+create index if not exists hiring_applications_lead_created_idx on public.hiring_applications (lead_id, created_at);
+
 drop function if exists public.submit_hiring_application(uuid, text, text, text, text, text, boolean);
 create or replace function public.submit_hiring_application(
   p_lead_id uuid,
@@ -1312,7 +1319,9 @@ declare
   v_identity text;
 begin
   select accepting_applications into v_accepting
-  from public.profiles where id = p_lead_id and role = 'lead' and is_active;
+  from public.profiles where id = p_lead_id and role = 'lead' and is_active
+  -- Serialises concurrent submissions to one lead so the hourly cap below can't be raced past.
+  for update;
 
   if v_accepting is null then
     raise exception 'This application link is not valid.';
@@ -1320,6 +1329,14 @@ begin
 
   if not v_accepting then
     raise exception 'This lead is not accepting applications right now.';
+  end if;
+
+  -- The RPC is open to anon, so cap each lead's queue (real traffic peaks around 6 an hour).
+  if (
+    select count(*) from public.hiring_applications
+    where lead_id = p_lead_id and created_at > now() - interval '1 hour'
+  ) >= 30 then
+    raise exception 'This lead has received a lot of applications in the last hour. Please try again later.';
   end if;
 
   -- The Remotasks email and ID are optional; everything else is required.

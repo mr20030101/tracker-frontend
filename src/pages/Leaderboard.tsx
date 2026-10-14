@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
-import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, yearMonth, toISODate, formatRange } from '../lib/week'
+import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, yearMonth, toISODate, fromISODate, formatRange } from '../lib/week'
 import type { DashboardSummary, LeaderboardRow, Project } from '../types'
 import { Avatar } from '../components/Avatar'
 import { ProgressBar } from '../components/ProgressBar'
@@ -288,7 +288,7 @@ function ManagerLeaderboard() {
   // whatever range is currently being viewed (matching the lookup api.ts's dashboard()
   // already does server-side).
   const targetWeekStartIso = useMemo(
-    () => toISODate(startOfWeek(new Date(`${rangeStart}T00:00:00`))),
+    () => toISODate(startOfWeek(fromISODate(rangeStart))),
     [rangeStart],
   )
 
@@ -371,7 +371,7 @@ function ManagerLeaderboard() {
           aria-label="Jump to date"
           value={toISODate(anchorDate)}
           onChange={(e) => {
-            if (e.target.value) setAnchorDate(new Date(`${e.target.value}T00:00:00`))
+            if (e.target.value) setAnchorDate(fromISODate(e.target.value))
           }}
           className={`ml-auto ${toolbarControlClass}`}
         />

@@ -258,10 +258,13 @@ async function contributor(params: Record<string, unknown>): Promise<Contributor
     }
   }
 
+  // Case-insensitive, like the dashboard, leaderboard and rewards: a row logged as "Jane.Doe@…" for
+  // jane.doe@… counts there, so it has to count here too. ilike needs LIKE's _ and % escaped.
+  const emailPattern = email.replace(/[\\%_]/g, (char) => `\\${char}`)
   const [{ data: rows }, { data: target }] = await Promise.all([
     // Paged: one contributor's whole history can pass 1,000 rows.
     fetchAllPages<TaskSubmission>((from, to) =>
-      supabase.from('task_submissions').select('*').eq('cb_email', email).order('date', { ascending: false }).order('id').range(from, to),
+      supabase.from('task_submissions').select('*').ilike('cb_email', emailPattern).order('date', { ascending: false }).order('id').range(from, to),
     ).then((data) => ({ data })),
     supabase.from('weekly_targets').select('target').eq('user_id', user?.id ?? '').eq('week_start', weekStart).maybeSingle(),
   ])

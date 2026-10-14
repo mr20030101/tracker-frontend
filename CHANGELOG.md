@@ -14,6 +14,17 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Fixed
+
+- Editing a weekly target from a device east of Singapore time (e.g. Australia, Japan) saved it to the previous week, and the date pickers on the dashboard and leaderboard jumped to the day before.
+- A contributor's own dashboard, task log and profile now count tasks logged under their email in different capitals (e.g. `Jane.Doe@…`), as the leaderboard and rewards already did.
+
+### Security
+
+- Leads can no longer change hidden profile fields (bot flag, badge, email, password flags) directly; those only change through the app's own actions.
+- General resources can only be listed by signed-in, active users.
+- Each lead's application link accepts at most 30 applications an hour, so the form can't be flooded.
+
 ## 4.0.0 — 2026-10-14
 
 ### Removed
