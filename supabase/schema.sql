@@ -1446,7 +1446,10 @@ exception
 end;
 $$;
 
-grant execute on function public.submit_hiring_application(uuid, text, text, text, text, text, boolean, boolean, boolean, text, text, numeric) to anon, authenticated;
+-- Only api/apply.ts calls this (service role), after checking the visitor's country and a Turnstile
+-- token; open to anon, a script could skip both.
+revoke execute on function public.submit_hiring_application(uuid, text, text, text, text, text, boolean, boolean, boolean, text, text, numeric) from public, anon, authenticated;
+grant execute on function public.submit_hiring_application(uuid, text, text, text, text, text, boolean, boolean, boolean, text, text, numeric) to service_role;
 
 -- ============================================================================================
 -- Audit log: which manager did what, to whom. activity_logs only covers sign-ins; this covers

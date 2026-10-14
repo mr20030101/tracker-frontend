@@ -15,6 +15,7 @@ import {
 import { useReveal } from '../lib/motion'
 import { fetchVisitorCountry } from '../lib/geo'
 import { CardHeading, PerchedCard } from '../components/PerchedCard'
+import { TurnstileWidget } from '../components/TurnstileWidget'
 import { ErrorNote, PlayfulInput, SubmitButton, YesNoPills } from '../components/PlayfulForm'
 import { usePageTitle } from '../lib/usePageTitle'
 
@@ -298,6 +299,8 @@ function ComputerStep({
   pending,
   onBack,
   onSubmit,
+  onTurnstileToken,
+  turnstileResetKey,
 }: {
   form: FormState
   set: SetField
@@ -306,6 +309,8 @@ function ComputerStep({
   pending: boolean
   onBack: () => void
   onSubmit: (e: FormEvent) => void
+  onTurnstileToken: (token: string | null) => void
+  turnstileResetKey: number
 }) {
   const ref = useReveal<HTMLDivElement>(REVEAL)
   const hasComputer = form.personal_computer === 'yes'
@@ -338,6 +343,9 @@ function ComputerStep({
             able to accept your application.
           </div>
         )}
+        <div className={FULL_ROW}>
+          <TurnstileWidget onToken={onTurnstileToken} resetKey={turnstileResetKey} />
+        </div>
         <FormErrors errors={errors} nudge={nudge} />
         <div className={`mt-1 flex gap-3 ${FULL_ROW}`}>
           <button
@@ -377,10 +385,16 @@ function ApplicationForm({ leadId }: { leadId: string }) {
   const [form, setForm] = useState(emptyForm)
   const [errors, setErrors] = useState<string[]>([])
   const [nudge, setNudge] = useState(0)
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
+  const [turnstileResetKey, setTurnstileResetKey] = useState(0)
 
   const submitMutation = useMutation({
-    mutationFn: (input: ApplicationInput) => submitApplication(leadId, input),
-    onError: (mutationError: Error) => fail([mutationError.message || 'Could not submit your application.']),
+    mutationFn: (input: ApplicationInput) => submitApplication(leadId, input, turnstileToken ?? ''),
+    onError: (mutationError: Error) => {
+      fail([mutationError.message || 'Could not submit your application.'])
+      // A Turnstile token works once, so a retry needs a fresh one.
+      setTurnstileResetKey((key) => key + 1)
+    },
   })
 
   // Each step is taller than the viewport on a phone; start it from the top.
@@ -418,6 +432,10 @@ function ApplicationForm({ leadId }: { leadId: string }) {
     const computerErrors = computerStepErrors(form)
     if (computerErrors.length > 0) {
       fail(computerErrors)
+      return
+    }
+    if (!turnstileToken) {
+      fail(['Please complete the human check above the Submit button.'])
       return
     }
     const facebookUrl = normalizeProfileUrl(form.facebook_url)!
@@ -467,6 +485,8 @@ function ApplicationForm({ leadId }: { leadId: string }) {
         setStep(1)
       }}
       onSubmit={handleSubmit}
+      onTurnstileToken={setTurnstileToken}
+      turnstileResetKey={turnstileResetKey}
     />
   )
 }
