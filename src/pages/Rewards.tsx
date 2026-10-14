@@ -17,6 +17,7 @@ import {
   formatMoney,
   myStandingLine,
   ordinal,
+  countFullWeeks,
   presetRange,
   rewardPhase,
   setRewardPaid,
@@ -34,7 +35,7 @@ import { Avatar } from '../components/Avatar'
 import { Modal } from '../components/Modal'
 import { Select } from '../components/Select'
 import { Reveal } from '../components/Reveal'
-import { contributorPath } from '../lib/urlRef'
+import { contributorPathById } from '../lib/urlRef'
 
 // Rewards: prizes a lead offers their team (or an admin offers anyone) for a rule over a date
 // range. Everyone sees what's running and how they're doing; managers create, award and mark paid.
@@ -301,7 +302,7 @@ function StandingsList({ reward, standings, meId }: { reward: Reward; standings:
               </span>
               <Avatar name={s.name} photoUrl={s.avatar_url} size={28} />
               <div className="min-w-0 flex-1">
-                <Link to={contributorPath(s.cb_email)} className="block truncate text-sm font-medium text-gray-900 hover:underline">
+                <Link to={contributorPathById(s.user_id)} className="block truncate text-sm font-medium text-gray-900 hover:underline">
                   {s.name}
                   {isMe && <span className="ml-2 text-xs font-semibold text-accent">You</span>}
                 </Link>
@@ -575,6 +576,8 @@ function NewRewardModal({ projects, onClose }: { projects: Project[]; onClose: (
     if (amounts.some((a) => !Number.isFinite(a) || a < 0) || amounts.length === 0) return setFormError('Enter a prize amount for each place.')
     if (rule === 'min_tasks' && !(Number(threshold) >= 1)) return setFormError('How many tasks does it take?')
     if (range[1] < range[0]) return setFormError('The end date is before the start date.')
+    if (rule === 'every_week_on_target' && countFullWeeks(range[0], range[1]) === 0)
+      return setFormError('This date range contains no full Tuesday–Monday week, so "On target every week" can never be won. Extend the range to include at least one complete week.')
     setFormError(null)
     create.mutate({
       title: title.trim(),

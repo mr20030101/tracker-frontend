@@ -95,6 +95,23 @@ export function toISODate(date: Date): string {
   return `${year}-${month}-${day}`
 }
 
+/** Midnight Asia/Singapore of a "YYYY-MM-DD" date — the inverse of toISODate. Parsing it with
+ *  `new Date(\`${iso}T00:00:00\`)` would use the device's zone instead, which lands on the
+ *  previous Singapore day for anyone east of UTC+8. */
+export function fromISODate(iso: string): Date {
+  return fromSG(new Date(`${iso}T00:00:00Z`))
+}
+
+/** Singapore calendar date for a timestamp — safe to derive from `useNow(60_000)`. */
+export function todayIso(nowMs: number): string {
+  return toISODate(new Date(nowMs))
+}
+
+/** Singapore week-start date for a timestamp — safe to derive from `useNow(60_000)`. */
+export function weekStartIso(nowMs: number): string {
+  return toISODate(startOfWeek(new Date(nowMs)))
+}
+
 export function formatRange(start: string, end: string): string {
   const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' }
   const s = new Date(`${start}T00:00:00`)

@@ -1,12 +1,17 @@
 {
   "name": "frontend",
   "private": true,
-  "version": "4.0.0",
+  "version": "4.0.2",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
+    "test": "vitest run",
+    "check": "tsc -b && oxlint --quiet && vitest run",
+    "loop:start": "node .claude/hooks/loop-gate.mjs start",
+    "loop:stop": "node .claude/hooks/loop-gate.mjs stop",
+    "loop:status": "node .claude/hooks/loop-gate.mjs status",
     "preview": "vite preview",
     "release": "node scripts/release.mjs"
   },
@@ -34,6 +39,7 @@
     "playwright": "^1.63.0",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",
-    "vite": "^8.3.0"
+    "vite": "^8.3.0",
+    "vitest": "^5.0.4"
   }
 }

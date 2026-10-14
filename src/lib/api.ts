@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import { WEEK_LENGTH_DAYS } from './week'
 import type { ActivityEvent, ActivityLog, ContributorProfile, DashboardSummary, DailyReportRow, LeaderboardRow, Paginated, Project, ProjectBreakdown, ProjectLevel, ProjectReportRow, Resource, Stage, TaskSubmission, User } from '../types'
 import { fetchAllPages } from './fetchAll'
+import { sanitiseOrTerm } from './sanitiseOrTerm'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim() || 'https://ieovepkcseytccagzedg.supabase.co'
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() ||
@@ -48,8 +49,8 @@ async function result<T>(query: PromiseLike<{ data: T[] | null; error: { message
 }
 
 async function currentProfile(): Promise<User> {
-  const { data: authData } = await supabase.auth.getUser()
-  if (!authData.user) throw new Error('Unauthenticated')
+  const { data: authData, error: authError } = await supabase.auth.getUser()
+  if (!authData.user) throw authError ?? new Error('Unauthenticated')
   const { data, error } = await supabase.from('profiles').select('*').eq('id', authData.user.id).maybeSingle()
   if (error) throw error
   // Every login gets a profile from the handle_new_user() trigger, filled in by manage-user; one
@@ -73,11 +74,11 @@ async function submissions(params: Record<string, unknown> = {}): Promise<Pagina
   const profile = await currentProfile()
   const sortColumn = typeof params.sort === 'string' && SORTABLE_COLUMNS.has(params.sort) ? params.sort : 'date'
   const sortAscending = params.sort_dir === 'asc'
-  let query = supabase.from('task_submissions').select('*', { count: 'exact' }).order(sortColumn, { ascending: sortAscending })
+  let query = supabase.from('task_submissions').select('*', { count: 'exact' }).order(sortColumn, { ascending: sortAscending }).order('id', { ascending: sortAscending })
   if (profile.role === 'contributor') query = query.eq('user_id', profile.id)
   if (params.stage) query = query.eq('stage', params.stage)
   if (params.search) {
-    const term = String(params.search).replace(/[%,]/g, '')
+    const term = sanitiseOrTerm(String(params.search))
     query = query.or(`cb_email.ilike.%${term}%,task_id.ilike.%${term}%`)
   }
   if (params.date_from) query = query.gte('date', params.date_from)
@@ -258,10 +259,13 @@ async function contributor(params: Record<string, unknown>): Promise<Contributor
     }
   }
 
+  // Case-insensitive, like the dashboard, leaderboard and rewards: a row logged as "Jane.Doe@…" for
+  // jane.doe@… counts there, so it has to count here too. ilike needs LIKE's _ and % escaped.
+  const emailPattern = email.replace(/[\\%_]/g, (char) => `\\${char}`)
   const [{ data: rows }, { data: target }] = await Promise.all([
     // Paged: one contributor's whole history can pass 1,000 rows.
     fetchAllPages<TaskSubmission>((from, to) =>
-      supabase.from('task_submissions').select('*').eq('cb_email', email).order('date', { ascending: false }).order('id').range(from, to),
+      supabase.from('task_submissions').select('*').ilike('cb_email', emailPattern).order('date', { ascending: false }).order('id').range(from, to),
     ).then((data) => ({ data })),
     supabase.from('weekly_targets').select('target').eq('user_id', user?.id ?? '').eq('week_start', weekStart).maybeSingle(),
   ])

@@ -14,6 +14,38 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 4.0.2 — 2026-10-14
+
+### Security
+
+- The Apply form has a Cloudflare Turnstile human check, and applications are now saved through the server, which also enforces the Philippines-only rule. Before, a script could skip both by calling the database directly.
+
+## 4.0.1 — 2026-10-14
+
+### Fixed
+
+- Editing a weekly target from a device east of Singapore time (e.g. Australia, Japan) saved it to the previous week, and the date pickers on the dashboard and leaderboard jumped to the day before.
+- A contributor's own dashboard, task log and profile now count tasks logged under their email in different capitals (e.g. `Jane.Doe@…`), as the leaderboard and rewards already did.
+- Searching for something with `(` or `)` in the Task Log, global search or the bad video report no longer leaves the page stuck on "Loading…".
+- On a flaky connection, submitting a task saves it on the device to send later, instead of failing with "Unauthenticated".
+- Task Log pages no longer repeat or skip rows when sorted by date, status or stage.
+- A contributor's dashboard, work panel and profile move on to the new day and week at midnight Singapore time, instead of staying on yesterday when the tab is left open.
+- The hiring list and board no longer drop applications past the first 1,000.
+- Bulk import works for large pastes: the duplicate check no longer fails or misses existing tasks, and contributors past the first 1,000 profiles are matched.
+- An "On target every week" reward can't be created for dates that contain no full Tuesday–Monday week, since nobody could ever win it.
+- Calls with several tabs open in the same browser: answering in one tab stops the others ringing, and a "busy" or "decline" from another tab no longer drops a call that was already answered.
+
+### Security
+
+- Leads can no longer change hidden profile fields (bot flag, badge, email, password flags) directly; those only change through the app's own actions.
+- General resources can only be listed by signed-in, active users.
+- Each lead's application link accepts at most 30 applications an hour, so the form can't be flooded.
+- Leads can only log tasks under their own email or their own team's.
+- The forced password change can't be skipped: it only lifts once a new password has actually been chosen.
+- Contributors no longer see other contributors' emails on the leaderboard, team history or reward standings.
+- Profile photos must be images under 5 MB, uploaded through Edit Profile.
+- CSV exports can't run spreadsheet formulas when opened in Excel.
+
 ## 4.0.0 — 2026-10-14
 
 ### Removed

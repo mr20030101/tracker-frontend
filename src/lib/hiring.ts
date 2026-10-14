@@ -1,4 +1,5 @@
 import { api, functionErrorMessage, supabase } from './api'
+import { fetchAllPages } from './fetchAll'
 import { toISODate } from './week'
 import type { HiringApplication } from '../types'
 
@@ -109,33 +110,37 @@ export async function setAcceptingApplications(leadId: string, accepting: boolea
   await api.patch(`/users/${leadId}`, { accepting_applications: accepting })
 }
 
-export async function submitApplication(leadId: string, input: ApplicationInput): Promise<void> {
-  const { error } = await supabase.rpc('submit_hiring_application', {
-    p_lead_id: leadId,
-    // Required by the form; null only on older applications sent without a Remotasks account.
-    p_remotasks_email: input.remotasks_email || null,
-    p_remotasks_id: input.remotasks_id || null,
-    p_full_name: input.full_name,
-    p_active_email: input.active_email,
-    p_facebook_url: input.facebook_url,
-    p_has_robotics_background: input.has_robotics_background,
-    p_has_personal_computer: input.has_personal_computer,
-    p_has_stable_internet: input.has_stable_internet,
-    p_cpu: input.cpu,
-    p_gpu: input.gpu,
-    p_gpu_memory_gb: input.gpu_memory_gb,
+// Goes through api/apply.ts (not the RPC directly): it checks the visitor is in the Philippines and
+// passed Turnstile before saving, and the RPC itself is closed to the public anon key.
+export async function submitApplication(leadId: string, input: ApplicationInput, turnstileToken: string): Promise<void> {
+  const response = await fetch('/api/apply', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      lead_id: leadId,
+      turnstile_token: turnstileToken,
+      ...input,
+      // Required by the form; null only on older applications sent without a Remotasks account.
+      remotasks_email: input.remotasks_email || null,
+      remotasks_id: input.remotasks_id || null,
+    }),
   })
-  if (error) throw error
+  if (!response.ok) {
+    const detail = (await response.json().catch(() => null)) as { message?: string } | null
+    throw new Error(detail?.message || 'Could not submit your application.')
+  }
 }
 
 /** Row-level security scopes this: a lead gets their own applicants, an admin gets everyone's. */
 export async function fetchApplications(): Promise<HiringApplication[]> {
-  const { data, error } = await supabase
-    .from('hiring_applications')
-    .select('*')
-    .order('created_at', { ascending: false })
-  if (error) throw error
-  return (data ?? []) as HiringApplication[]
+  return fetchAllPages((from, to) =>
+    supabase
+      .from('hiring_applications')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .range(from, to)
+  ) as Promise<HiringApplication[]>
 }
 
 /** The applicant's own answers, as a lead or admin corrects them (a mistyped email, ID or link). */

@@ -34,3 +34,7 @@ supabase/import/*.xlsx
 *.njsproj
 *.sln
 *.sw?
+
+# Claude Code loop state (see .claude/hooks/loop-gate.mjs)
+.claude/loop/
+.claude/settings.local.json

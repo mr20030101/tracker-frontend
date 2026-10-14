@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { supabase, taskIdConflictError } from '../lib/api'
+import { chunkArray } from '../lib/chunkQuery'
+import { fetchAllPages } from '../lib/fetchAll'
 import type { Project, Stage, SubmissionStatus } from '../types'
 import { Select } from './Select'
 
@@ -157,17 +159,24 @@ export function BulkImportModal({ projects, onClose, contributorEmail, contribut
 
       let existingIds = new Set<string>()
       if (candidateTaskIds.length > 0) {
-        const { data: existing, error: existingErr } = await supabase
-          .from('task_submissions')
-          .select('task_id')
-          .in('task_id', candidateTaskIds)
-        if (existingErr) throw existingErr
-        existingIds = new Set((existing ?? []).map((r) => r.task_id as string))
+        const chunks = chunkArray(candidateTaskIds, 200)
+        const results = await Promise.all(
+          chunks.map((chunk) =>
+            supabase.from('task_submissions').select('task_id').in('task_id', chunk),
+          ),
+        )
+        for (const { data, error: existingErr } of results) {
+          if (existingErr) throw existingErr
+          for (const r of data ?? []) existingIds.add(r.task_id as string)
+        }
       }
 
-      const { data: profiles, error: profilesErr } = await supabase.from('profiles').select('id, email')
-      if (profilesErr) throw profilesErr
-      const userIdByEmail = new Map((profiles ?? []).map((p) => [p.email.toLowerCase(), p.id as string]))
+      // Paged rather than looked up with .in('email', ...): stored emails can differ in case from
+      // the pasted ones, and an exact-match lookup would miss them.
+      const profiles = await fetchAllPages<{ id: string; email: string }>((from, to) =>
+        supabase.from('profiles').select('id, email').order('id').range(from, to),
+      )
+      const userIdByEmail = new Map(profiles.map((p) => [p.email.toLowerCase(), p.id]))
 
       let duplicates = 0
       const seenTaskIds = new Set<string>()

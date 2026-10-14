@@ -98,6 +98,13 @@ Deno.serve(async (request) => {
         if (error) console.warn('Could not record audit log:', error.message)
     }
 
+    // Remembers the temporary password just set, so clear_must_change_password() refuses to lift
+    // the forced change until the user has actually chosen a different one.
+    async function recordTemporaryPassword(userId: string) {
+        const { error } = await admin.rpc('record_temporary_password', { p_user_id: userId })
+        if (error) console.warn('Could not record temporary password:', error.message)
+    }
+
     const body = await request.json()
     if (body.action === 'review-application') {
         if (!body.id || !['accept', 'deny'].includes(body.decision)) {
@@ -181,6 +188,7 @@ Deno.serve(async (request) => {
                     must_change_password: true,
                     updated_at: new Date().toISOString(),
                 })
+                if (!error) await recordTemporaryPassword(id)
                 return error?.message ?? null
             },
             linkApplication: async (applicationId, userId) => {
@@ -243,6 +251,7 @@ Deno.serve(async (request) => {
         const password = generateTemporaryPassword()
         const { error: passwordError } = await admin.auth.admin.updateUserById(account.id, { password })
         if (passwordError) return errorResponse(`Could not set a new temporary password: ${passwordError.message}`, 400)
+        await recordTemporaryPassword(account.id)
 
         const { data: leadProfile } = await admin.from('profiles').select('name, email').eq('id', application.lead_id).maybeSingle()
         // To the active email as it is now (it may just have been corrected); the login itself is
@@ -396,6 +405,7 @@ Deno.serve(async (request) => {
         // An admin/lead setting this password on someone else's behalf, not the user
         // choosing it themselves — force them to pick their own on next sign-in.
         await admin.from('profiles').update({ must_change_password: true }).eq('id', data.user.id)
+        await recordTemporaryPassword(data.user.id)
 
         // Email them the new password. Someone hired through the tracker gave a contact address on
         // their application, which is the one they read; anyone else is emailed at their login address.
@@ -467,6 +477,7 @@ Deno.serve(async (request) => {
         updated_at: new Date().toISOString(),
     })
     if (profileError) return errorResponse(`Profile update failed: ${profileError.message}`, 400)
+    if (userId) await recordTemporaryPassword(userId)
     await audit(
         existingUser ? 'account_updated' : 'account_created',
         userId ?? null,

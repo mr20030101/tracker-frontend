@@ -374,7 +374,7 @@ as $$
     p.id as user_id,
     p.name,
     p.avatar_url,
-    p.email as cb_email,
+    case when public.is_manager() then p.email end as cb_email,
     (
       select count(*) from public.task_submissions s
       where s.status = 'submitted'
@@ -525,6 +525,14 @@ begin
     raise exception 'A Remotask ID is 24 characters: the digits 0-9 and the letters a-f.';
   end if;
 
+  -- A new avatar must be an upload in the caller's own folder of the avatars bucket; any other URL
+  -- (e.g. a tracking pixel) would load in every viewer's browser. An unchanged one is kept as is.
+  if new_avatar_url is not null
+    and new_avatar_url is distinct from (select avatar_url from public.profiles where id = auth.uid())
+    and new_avatar_url !~ ('^https://[a-z0-9]+\.supabase\.co/storage/v1/object/public/avatars/' || auth.uid()::text || '/[^/?#]+(\?v=[0-9]+)?$') then
+    raise exception 'Upload your photo from Edit Profile.';
+  end if;
+
   update public.profiles
   set name = trim(new_name),
       avatar_url = new_avatar_url,
@@ -572,6 +580,33 @@ grant execute on function public.set_own_remotasks_id(text) to authenticated;
 -- so the forced-change gate (must_change_password) lifts for their own row
 -- only. Never settable to true from the client — only manage-user (service
 -- role) sets it, on account creation or an admin password reset.
+-- manage-user records each temporary password's hash here (record_temporary_password), so the
+-- forced change can't be lifted while the login still has it. RLS on with no policies: no client reads it.
+create table if not exists public.temporary_passwords (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  encrypted_password text not null,
+  set_at timestamptz not null default now()
+);
+alter table public.temporary_passwords enable row level security;
+revoke all on public.temporary_passwords from anon, authenticated;
+
+create or replace function public.record_temporary_password(p_user_id uuid)
+returns void language sql security definer set search_path = public
+as $$
+  insert into public.temporary_passwords (user_id, encrypted_password)
+  select id, encrypted_password from auth.users where id = p_user_id
+  on conflict (user_id) do update set encrypted_password = excluded.encrypted_password, set_at = now()
+$$;
+revoke execute on function public.record_temporary_password(uuid) from public, anon, authenticated;
+grant execute on function public.record_temporary_password(uuid) to service_role;
+
+-- Everyone already waiting to change a temporary password is still on it.
+insert into public.temporary_passwords (user_id, encrypted_password)
+select u.id, u.encrypted_password
+from auth.users u join public.profiles p on p.id = u.id
+where p.must_change_password and u.encrypted_password is not null
+on conflict (user_id) do nothing;
+
 create or replace function public.clear_must_change_password()
 returns public.profiles
 language plpgsql security definer set search_path = public
@@ -579,6 +614,15 @@ as $$
 declare
   updated public.profiles;
 begin
+  if exists (
+    select 1 from public.temporary_passwords t join auth.users u on u.id = t.user_id
+    where t.user_id = auth.uid() and u.encrypted_password = t.encrypted_password
+  ) then
+    raise exception 'Choose a new password first.';
+  end if;
+
+  delete from public.temporary_passwords where user_id = auth.uid();
+
   update public.profiles
   set must_change_password = false,
       updated_at = now()
@@ -846,6 +890,11 @@ drop policy if exists "profiles managers update" on public.profiles;
 create policy "profiles managers update" on public.profiles for update
   using (public.is_admin() or (public.is_manager() and public.is_own_or_attached(id)))
   with check (public.is_admin() or (public.is_manager() and public.is_own_or_attached(id)));
+-- That policy covers whole rows, so limit which columns a client may write at all: everything
+-- else (is_bot, featured_badge, email, must_change_password, remotasks_id, ...) goes through the
+-- security-definer RPCs or manage-user (service role), which these grants don't affect.
+revoke update on public.profiles from anon, authenticated;
+grant update (name, shift, meet_link, role, lead_id, is_active, accepting_applications) on public.profiles to authenticated;
 
 create policy "managers read activity logs" on public.activity_logs for select using (public.is_manager());
 create policy "users log own auth events" on public.activity_logs for insert to authenticated
@@ -944,10 +993,10 @@ create policy "leads delete attached contributor project levels" on public.contr
 -- lead(s), an admin, and any contributor whose own lead leads that project — not to every active
 -- user the way it used to be.
 drop policy if exists "active users read resources" on public.resources;
-create policy "users read permitted resources" on public.resources for select
+create policy "users read permitted resources" on public.resources for select to authenticated
   using (
     public.is_admin()
-    or project_id is null
+    or (project_id is null and public.is_active_user())
     or public.is_project_lead(project_id)
     or exists (
       select 1 from public.profiles p
@@ -974,6 +1023,18 @@ create policy "admins manage bot faqs" on public.bot_faqs for all using (public.
 drop policy if exists "users read permitted submissions" on public.task_submissions;
 create policy "users read permitted submissions" on public.task_submissions for select
   using (public.is_admin() or public.is_own_or_attached(user_id));
+-- A lead logs work only for themselves or their own team; admins for anyone.
+create or replace function public.can_log_for_email(p_email text)
+returns boolean language sql stable security definer set search_path = public
+as $$
+  select public.is_admin()
+    or lower(p_email) = lower(public.own_email())
+    or (
+      public.is_manager()
+      and exists (select 1 from public.profiles p where lower(p.email) = lower(p_email) and p.lead_id = auth.uid())
+    )
+$$;
+
 drop policy if exists "users create own submissions" on public.task_submissions;
 -- The leaderboard, public stats, dashboard and daily digest all credit a submission to whoever its
 -- cb_email names (not only its user_id), so a contributor may only log rows under their own email —
@@ -982,14 +1043,14 @@ drop policy if exists "users create own submissions" on public.task_submissions;
 create policy "users create own submissions" on public.task_submissions for insert
   with check (
     (public.is_admin() or public.is_own_or_attached(user_id))
-    and (public.is_manager() or lower(cb_email) = lower(public.own_email()))
+    and public.can_log_for_email(cb_email)
   );
 drop policy if exists "users update permitted submissions" on public.task_submissions;
 create policy "users update permitted submissions" on public.task_submissions for update
   using (public.is_admin() or public.is_own_or_attached(user_id))
   with check (
     (public.is_admin() or public.is_own_or_attached(user_id))
-    and (public.is_manager() or lower(cb_email) = lower(public.own_email()))
+    and public.can_log_for_email(cb_email)
   );
 drop policy if exists "users delete permitted submissions" on public.task_submissions;
 create policy "users delete permitted submissions" on public.task_submissions for delete
@@ -1142,16 +1203,21 @@ create policy "project leads delete resource files" on storage.objects for delet
 insert into storage.buckets (id, name, public)
 values ('avatars', 'avatars', true)
 on conflict (id) do nothing;
+-- Images only, 5 MB: the bucket is public, so anything else would be free file hosting.
+update storage.buckets
+set file_size_limit = 5 * 1024 * 1024,
+    allowed_mime_types = array['image/png', 'image/jpeg', 'image/webp', 'image/gif']
+where id = 'avatars';
 
 -- Objects live at "<user id>/<filename>"; (storage.foldername(name))[1] is
 -- that first path segment, so each user may only write inside their own folder.
 create policy "active users read avatar files" on storage.objects for select
   using (bucket_id = 'avatars' and public.is_active_user());
 create policy "users upload own avatar" on storage.objects for insert
-  with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+  with check (bucket_id = 'avatars' and public.is_active_user() and (storage.foldername(name))[1] = auth.uid()::text);
 create policy "users update own avatar" on storage.objects for update
-  using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text)
-  with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+  using (bucket_id = 'avatars' and public.is_active_user() and (storage.foldername(name))[1] = auth.uid()::text)
+  with check (bucket_id = 'avatars' and public.is_active_user() and (storage.foldername(name))[1] = auth.uid()::text);
 create policy "users delete own avatar" on storage.objects for delete
   using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
 
@@ -1282,6 +1348,8 @@ grant execute on function public.hiring_lead_info(uuid) to anon, authenticated;
 
 -- The signature gained the computer answers; CREATE OR REPLACE would leave the
 -- old 7-argument version callable, letting an applicant skip step 2.
+create index if not exists hiring_applications_lead_created_idx on public.hiring_applications (lead_id, created_at);
+
 drop function if exists public.submit_hiring_application(uuid, text, text, text, text, text, boolean);
 create or replace function public.submit_hiring_application(
   p_lead_id uuid,
@@ -1312,7 +1380,9 @@ declare
   v_identity text;
 begin
   select accepting_applications into v_accepting
-  from public.profiles where id = p_lead_id and role = 'lead' and is_active;
+  from public.profiles where id = p_lead_id and role = 'lead' and is_active
+  -- Serialises concurrent submissions to one lead so the hourly cap below can't be raced past.
+  for update;
 
   if v_accepting is null then
     raise exception 'This application link is not valid.';
@@ -1320,6 +1390,14 @@ begin
 
   if not v_accepting then
     raise exception 'This lead is not accepting applications right now.';
+  end if;
+
+  -- The RPC is open to anon, so cap each lead's queue (real traffic peaks around 6 an hour).
+  if (
+    select count(*) from public.hiring_applications
+    where lead_id = p_lead_id and created_at > now() - interval '1 hour'
+  ) >= 30 then
+    raise exception 'This lead has received a lot of applications in the last hour. Please try again later.';
   end if;
 
   -- The Remotasks email and ID are optional; everything else is required.
@@ -1368,7 +1446,10 @@ exception
 end;
 $$;
 
-grant execute on function public.submit_hiring_application(uuid, text, text, text, text, text, boolean, boolean, boolean, text, text, numeric) to anon, authenticated;
+-- Only api/apply.ts calls this (service role), after checking the visitor's country and a Turnstile
+-- token; open to anon, a script could skip both.
+revoke execute on function public.submit_hiring_application(uuid, text, text, text, text, text, boolean, boolean, boolean, text, text, numeric) from public, anon, authenticated;
+grant execute on function public.submit_hiring_application(uuid, text, text, text, text, text, boolean, boolean, boolean, text, text, numeric) to service_role;
 
 -- ============================================================================================
 -- Audit log: which manager did what, to whom. activity_logs only covers sign-ins; this covers
@@ -1961,7 +2042,7 @@ as $$
     where p.role = 'contributor' and p.is_active and public.is_active_user()
       and p.lead_id is not distinct from (select lead_id from public.profiles where id = auth.uid())
   )
-  select t.id, t.name, t.avatar_url, t.email, w.week_start,
+  select t.id, t.name, t.avatar_url, case when public.is_manager() then t.email end, w.week_start,
     (
       select count(*) from public.task_submissions s
       where s.status = 'submitted' and s.date >= w.week_start and s.date < w.week_start + 7
@@ -2726,7 +2807,7 @@ begin
     left join totals t on t.uid = pe.id
     left join hits h on h.uid = pe.id
   )
-  select k.id, k.name, k.avatar_url, k.email, k.n, k.hit, k.total, k.reached,
+  select k.id, k.name, k.avatar_url, case when public.is_manager() then k.email end, k.n, k.hit, k.total, k.reached,
     case when r.rule = 'top_submitters' then k.rn end,
     case r.rule
       when 'top_submitters' then k.n >= greatest(coalesce(r.threshold, 1), 1) and k.rn <= r.places

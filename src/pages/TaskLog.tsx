@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, supabase } from '../lib/api'
+import { sanitiseOrTerm } from '../lib/sanitiseOrTerm'
 import { useAuth } from '../lib/auth'
 import { formatTime, toISODate } from '../lib/week'
 import type { Paginated, Project, Stage, SubmissionStatus, TaskSubmission } from '../types'
@@ -125,7 +126,7 @@ function ManagerTaskLog() {
           .order('id')
         if (stage) query = query.eq('stage', stage)
         if (search) {
-          const term = search.replace(/[%,]/g, '')
+          const term = sanitiseOrTerm(search)
           query = query.or(`cb_email.ilike.%${term}%,task_id.ilike.%${term}%`)
         }
         if (dateFrom) query = query.gte('date', dateFrom)
