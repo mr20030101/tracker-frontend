@@ -14,6 +14,12 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 4.0.2 — 2026-10-14
+
+### Security
+
+- The Apply form has a Cloudflare Turnstile human check, and applications are now saved through the server, which also enforces the Philippines-only rule. Before, a script could skip both by calling the database directly.
+
 ## 4.0.1 — 2026-10-14
 
 ### Fixed
@@ -39,7 +45,6 @@ each stretch of work by the date it shipped.
 - Contributors no longer see other contributors' emails on the leaderboard, team history or reward standings.
 - Profile photos must be images under 5 MB, uploaded through Edit Profile.
 - CSV exports can't run spreadsheet formulas when opened in Excel.
-- The Apply form has a Cloudflare Turnstile human check, and applications are now saved through the server, which also enforces the Philippines-only rule. Before, a script could skip both by calling the database directly.
 
 ## 4.0.0 — 2026-10-14
 
