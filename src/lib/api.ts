@@ -49,8 +49,8 @@ async function result<T>(query: PromiseLike<{ data: T[] | null; error: { message
 }
 
 async function currentProfile(): Promise<User> {
-  const { data: authData } = await supabase.auth.getUser()
-  if (!authData.user) throw new Error('Unauthenticated')
+  const { data: authData, error: authError } = await supabase.auth.getUser()
+  if (!authData.user) throw authError ?? new Error('Unauthenticated')
   const { data, error } = await supabase.from('profiles').select('*').eq('id', authData.user.id).maybeSingle()
   if (error) throw error
   // Every login gets a profile from the handle_new_user() trigger, filled in by manage-user; one

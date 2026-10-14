@@ -16,6 +16,7 @@ each stretch of work by the date it shipped.
 
 ### Fixed
 
+- On a flaky network, submitting a task now queues it offline instead of showing "Unauthenticated": `currentProfile` now rethrows the Supabase `AuthRetryableFetchError` so `isNetworkError` recognises it correctly.
 - CSV exports now guard against spreadsheet formula injection: cell values that begin with `=`, `+`, `-`, `@`, a tab, or a carriage return are prefixed with a single quote, and values containing a bare `\r` are properly quoted.
 - Searching for a term containing `(` or `)` in the Task Log, Global Search, or Bad Video Report modal no longer breaks the PostgREST filter and leaves the page stuck on Loading.
 
