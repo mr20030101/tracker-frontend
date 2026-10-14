@@ -3,7 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Flame, Image } from 'lucide-react'
 import { api, errorMessage, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
-import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, yearMonth, toISODate, formatRange, formatTime } from '../lib/week'
+import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, yearMonth, toISODate, weekStartIso, formatRange, formatTime } from '../lib/week'
+import { useNow } from '../lib/useNow'
 import { remotasksDiffViewerUrl } from '../lib/remotasks'
 import {
   buildBadVideoRequestFormUrl,
@@ -92,7 +93,8 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
   const [reportingBadVideoFor, setReportingBadVideoFor] = useState<TaskSubmission | null>(null)
   const pageSize = 10
 
-  const thisWeekIso = useMemo(() => toISODate(startOfWeek(new Date())), [])
+  const now = useNow(60_000)
+  const thisWeekIso = weekStartIso(now)
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['contributor', email, thisWeekIso],

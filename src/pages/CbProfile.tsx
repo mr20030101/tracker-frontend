@@ -1,11 +1,12 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { Navigate, useParams, Link } from 'react-router-dom'
 import { Camera, ChevronDown, Eye, Lock, MessageCircle, Trophy } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, functionErrorMessage, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
-import { startOfWeek, toISODate } from '../lib/week'
+import { weekStartIso } from '../lib/week'
+import { useNow } from '../lib/useNow'
 import { clearMustChangePassword, updateOwnProfile, uploadAvatar } from '../lib/profile'
 import { isUserId, messagePath, parseContributorRef } from '../lib/urlRef'
 import type { ContributorProfile, ContributorProjectLevel, Project, ProjectLevel } from '../types'
@@ -144,7 +145,8 @@ export function CbProfile() {
       if (profilePhotoPreview) URL.revokeObjectURL(profilePhotoPreview)
     }
   }, [profilePhotoPreview])
-  const thisWeekIso = useMemo(() => toISODate(startOfWeek(new Date())), [])
+  const now = useNow(60_000)
+  const thisWeekIso = weekStartIso(now)
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['contributor', target, thisWeekIso],

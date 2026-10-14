@@ -5,7 +5,8 @@ import { BookOpen, ClipboardList, MessageCircle, Trophy, User, type LucideIcon }
 import { api, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useMessaging } from '../lib/messagingContext'
-import { startOfWeek, toISODate, sgMinutesSinceMidnight } from '../lib/week'
+import { toISODate, todayIso, weekStartIso, sgMinutesSinceMidnight } from '../lib/week'
+import { useNow } from '../lib/useNow'
 import type { ContributorProfile, ContributorProjectLevel, Project, ProjectLevel } from '../types'
 import { ProgressRing } from '../components/ProgressRing'
 import { LineChart } from '../components/LineChart'
@@ -83,8 +84,9 @@ export function ContributorDashboard() {
   })
   const [showAttendanceEnded, setShowAttendanceEnded] = useState(false)
   const [showAttendanceForm, setShowAttendanceForm] = useState(false)
-  const thisWeekIso = useMemo(() => toISODate(startOfWeek(new Date())), [])
-  const today = useMemo(() => toISODate(new Date()), [])
+  const now = useNow(60_000)
+  const thisWeekIso = weekStartIso(now)
+  const today = todayIso(now)
 
   function dismissWarning() {
     setShowWarning(false)
