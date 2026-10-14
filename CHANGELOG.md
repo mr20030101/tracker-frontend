@@ -16,6 +16,7 @@ each stretch of work by the date it shipped.
 
 ### Fixed
 
+- Hiring applications are now paged so applicants past the first 1,000 rows no longer vanish from the list, board, or duplicate Remotasks ID check.
 - Bulk import no longer silently drops duplicates or leaves `user_id` null when more than 1000 rows or 1000 users are involved: the duplicate check and profile lookup are now issued in chunks of 200, and only emails present in the import are looked up instead of all profiles.
 - The "On target every week" reward form now rejects date ranges that contain no full Tuesday–Monday week, preventing rewards that can never be won.
 - On a flaky network, submitting a task now queues it offline instead of showing "Unauthenticated": `currentProfile` now rethrows the Supabase `AuthRetryableFetchError` so `isNetworkError` recognises it correctly.

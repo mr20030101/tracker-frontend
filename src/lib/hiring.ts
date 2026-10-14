@@ -1,4 +1,5 @@
 import { api, functionErrorMessage, supabase } from './api'
+import { fetchAllPages } from './fetchAll'
 import { toISODate } from './week'
 import type { HiringApplication } from '../types'
 
@@ -130,12 +131,14 @@ export async function submitApplication(leadId: string, input: ApplicationInput)
 
 /** Row-level security scopes this: a lead gets their own applicants, an admin gets everyone's. */
 export async function fetchApplications(): Promise<HiringApplication[]> {
-  const { data, error } = await supabase
-    .from('hiring_applications')
-    .select('*')
-    .order('created_at', { ascending: false })
-  if (error) throw error
-  return (data ?? []) as HiringApplication[]
+  return fetchAllPages((from, to) =>
+    supabase
+      .from('hiring_applications')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .range(from, to)
+  ) as Promise<HiringApplication[]>
 }
 
 /** The applicant's own answers, as a lead or admin corrects them (a mistyped email, ID or link). */
