@@ -14,6 +14,12 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 4.0.0 — 2026-10-14
+
+### Removed
+
+- The **Donate** page and the "Buy me a cup of coffee" button on the dashboard.
+
 ## 3.16.0 — 2026-10-13
 
 ### Added

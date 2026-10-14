@@ -24,7 +24,6 @@ import { Hiring } from './pages/Hiring'
 import { Requests } from './pages/Requests'
 import { Feedback } from './pages/Feedback'
 import { Announcements } from './pages/Announcements'
-import { Donate } from './pages/Donate'
 
 const MANAGER_ROLES = ['admin', 'lead']
 
@@ -89,7 +88,6 @@ export default function App() {
       {/* Public: applicants aren't signed in. */}
       <Route path="/apply/:leadId" element={<Apply />} />
       {/* Public: donors don't need an account. */}
-      <Route path="/donate" element={<Donate />} />
       <Route path="/*" element={<ProtectedLayout />} />
     </Routes>
   )

@@ -7,7 +7,7 @@ import { Modal } from './Modal'
 // The footer under every page's content — signed in or not — stating the build's version.
 // Inside the app (`releaseNotes`) the version opens "What's new": CHANGELOG.md, bundled at build
 // time, so the notes always match the version that opened them. On public pages (sign-in, the
-// application form, donations) it's plain text: the release notes describe the app's internals
+// application form) it's plain text: the release notes describe the app's internals
 // and aren't for people outside the team. Off unless asked for, so a new public page is safe.
 
 // Loaded only when "What's new" is opened, as its own file, so public pages (which never show
