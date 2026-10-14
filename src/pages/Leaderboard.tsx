@@ -14,7 +14,7 @@ import { Reveal } from '../components/Reveal'
 import { GrowBar } from '../components/GrowBar'
 import { SortableHeader } from '../components/SortableHeader'
 import { downloadCsv } from '../lib/csv'
-import { contributorPath } from '../lib/urlRef'
+import { contributorPath, contributorPathById } from '../lib/urlRef'
 import { FeaturedBadgeChip, StreakChip } from '../components/Achievements'
 import { useAchievements, useFeaturedBadges } from '../lib/achievements'
 import { usePageTitle } from '../lib/usePageTitle'
@@ -124,7 +124,7 @@ function ContributorLeaderboard() {
                 return (
                   <li key={row.user_id}>
                     <Link
-                      to={contributorPath(row.cb_email)}
+                      to={contributorPathById(row.user_id)}
                       className={`flex items-center gap-3 px-5 py-3 hover:bg-gray-50 ${isMe ? 'bg-accent-bg/40' : ''}`}
                     >
                       <span className="w-8 shrink-0 text-center text-lg font-semibold text-gray-400">
@@ -175,7 +175,7 @@ function MostImprovedList({ rows, meId }: { rows: TeamWeekRow[]; meId: string | 
           return (
             <li key={row.user_id}>
               <Link
-                to={contributorPath(row.cb_email)}
+                to={contributorPathById(row.user_id)}
                 className={`flex items-center gap-3 px-5 py-3 hover:bg-gray-50 ${isMe ? 'bg-accent-bg/40' : ''}`}
               >
                 <span className="w-8 shrink-0 text-center text-lg font-semibold text-gray-400">{up > 0 ? (MEDALS[index] ?? index + 1) : index + 1}</span>

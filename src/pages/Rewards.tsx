@@ -35,7 +35,7 @@ import { Avatar } from '../components/Avatar'
 import { Modal } from '../components/Modal'
 import { Select } from '../components/Select'
 import { Reveal } from '../components/Reveal'
-import { contributorPath } from '../lib/urlRef'
+import { contributorPathById } from '../lib/urlRef'
 
 // Rewards: prizes a lead offers their team (or an admin offers anyone) for a rule over a date
 // range. Everyone sees what's running and how they're doing; managers create, award and mark paid.
@@ -302,7 +302,7 @@ function StandingsList({ reward, standings, meId }: { reward: Reward; standings:
               </span>
               <Avatar name={s.name} photoUrl={s.avatar_url} size={28} />
               <div className="min-w-0 flex-1">
-                <Link to={contributorPath(s.cb_email)} className="block truncate text-sm font-medium text-gray-900 hover:underline">
+                <Link to={contributorPathById(s.user_id)} className="block truncate text-sm font-medium text-gray-900 hover:underline">
                   {s.name}
                   {isMe && <span className="ml-2 text-xs font-semibold text-accent">You</span>}
                 </Link>

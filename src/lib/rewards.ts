@@ -32,7 +32,8 @@ export interface RewardStanding {
   user_id: string
   name: string
   avatar_url: string | null
-  cb_email: string
+  /** Only returned to leads and admins; contributors get null. */
+  cb_email: string | null
   submitted: number
   weeks_hit: number
   weeks_total: number

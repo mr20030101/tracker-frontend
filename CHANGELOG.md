@@ -16,24 +16,27 @@ each stretch of work by the date it shipped.
 
 ### Fixed
 
-- Voice calls now work correctly when the callee has multiple tabs or devices open: answering in one tab silently dismisses the ringing on all other tabs, the caller no longer drops the call if a busy signal arrives from a tab already on a different call, and duplicate answer signals (from two tabs that both raced to accept) no longer cause a failed WebRTC connection.
-- Contributor Dashboard, Work Panel, and CB Profile no longer show yesterday's task counts or last week's progress ring after a tab is left open past Singapore midnight — "today" and "this week" now update automatically every minute.
-- Hiring applications are now paged so applicants past the first 1,000 rows no longer vanish from the list, board, or duplicate Remotasks ID check.
-- Bulk import no longer silently drops duplicates or leaves `user_id` null when more than 1000 rows or 1000 users are involved: the duplicate check and profile lookup are now issued in chunks of 200, and only emails present in the import are looked up instead of all profiles.
-- The "On target every week" reward form now rejects date ranges that contain no full Tuesday–Monday week, preventing rewards that can never be won.
-- On a flaky network, submitting a task now queues it offline instead of showing "Unauthenticated": `currentProfile` now rethrows the Supabase `AuthRetryableFetchError` so `isNetworkError` recognises it correctly.
-- CSV exports now guard against spreadsheet formula injection: cell values that begin with `=`, `+`, `-`, `@`, a tab, or a carriage return are prefixed with a single quote, and values containing a bare `\r` are properly quoted.
-- Task Log pagination no longer repeats or skips rows when the sort column (date, status, stage) has ties: a stable `id` tie-breaker is now appended to every query in the same sort direction.
-- Searching for a term containing `(` or `)` in the Task Log, Global Search, or Bad Video Report modal no longer breaks the PostgREST filter and leaves the page stuck on Loading.
-
 - Editing a weekly target from a device east of Singapore time (e.g. Australia, Japan) saved it to the previous week, and the date pickers on the dashboard and leaderboard jumped to the day before.
 - A contributor's own dashboard, task log and profile now count tasks logged under their email in different capitals (e.g. `Jane.Doe@…`), as the leaderboard and rewards already did.
+- Searching for something with `(` or `)` in the Task Log, global search or the bad video report no longer leaves the page stuck on "Loading…".
+- On a flaky connection, submitting a task saves it on the device to send later, instead of failing with "Unauthenticated".
+- Task Log pages no longer repeat or skip rows when sorted by date, status or stage.
+- A contributor's dashboard, work panel and profile move on to the new day and week at midnight Singapore time, instead of staying on yesterday when the tab is left open.
+- The hiring list and board no longer drop applications past the first 1,000.
+- Bulk import works for large pastes: the duplicate check no longer fails or misses existing tasks, and contributors past the first 1,000 profiles are matched.
+- An "On target every week" reward can't be created for dates that contain no full Tuesday–Monday week, since nobody could ever win it.
+- Calls with several tabs open in the same browser: answering in one tab stops the others ringing, and a "busy" or "decline" from another tab no longer drops a call that was already answered.
 
 ### Security
 
 - Leads can no longer change hidden profile fields (bot flag, badge, email, password flags) directly; those only change through the app's own actions.
 - General resources can only be listed by signed-in, active users.
 - Each lead's application link accepts at most 30 applications an hour, so the form can't be flooded.
+- Leads can only log tasks under their own email or their own team's.
+- The forced password change can't be skipped: it only lifts once a new password has actually been chosen.
+- Contributors no longer see other contributors' emails on the leaderboard, team history or reward standings.
+- Profile photos must be images under 5 MB, uploaded through Edit Profile.
+- CSV exports can't run spreadsheet formulas when opened in Excel.
 
 ## 4.0.0 — 2026-10-14
 
