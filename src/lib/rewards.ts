@@ -227,6 +227,26 @@ export function myStandingLine(reward: Reward, standings: RewardStanding[], meId
   }
 }
 
+/**
+ * Counts full Tuesday-to-Monday weeks whose start (Tue) and end (Mon) both fall within
+ * the closed interval [startsOn, endsOn] (ISO "YYYY-MM-DD" strings).
+ */
+export function countFullWeeks(startsOn: string, endsOn: string): number {
+  const endMs = new Date(`${endsOn}T00:00:00Z`).getTime()
+  const startDate = new Date(`${startsOn}T00:00:00Z`)
+  const dayOfWeek = startDate.getUTCDay() // 0=Sun,1=Mon,2=Tue,...,6=Sat
+  const daysUntilTuesday = (2 - dayOfWeek + 7) % 7
+  let tuesdayMs = startDate.getTime() + daysUntilTuesday * 86_400_000
+  let count = 0
+  while (true) {
+    const mondayMs = tuesdayMs + 6 * 86_400_000
+    if (mondayMs > endMs) break
+    count++
+    tuesdayMs += 7 * 86_400_000
+  }
+  return count
+}
+
 /** Quick date ranges for the form, as [start, end] ISO dates. */
 export function presetRange(preset: 'this_week' | 'next_week' | 'this_month' | 'next_month'): [string, string] {
   const now = new Date()

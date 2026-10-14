@@ -17,6 +17,7 @@ import {
   formatMoney,
   myStandingLine,
   ordinal,
+  countFullWeeks,
   presetRange,
   rewardPhase,
   setRewardPaid,
@@ -575,6 +576,8 @@ function NewRewardModal({ projects, onClose }: { projects: Project[]; onClose: (
     if (amounts.some((a) => !Number.isFinite(a) || a < 0) || amounts.length === 0) return setFormError('Enter a prize amount for each place.')
     if (rule === 'min_tasks' && !(Number(threshold) >= 1)) return setFormError('How many tasks does it take?')
     if (range[1] < range[0]) return setFormError('The end date is before the start date.')
+    if (rule === 'every_week_on_target' && countFullWeeks(range[0], range[1]) === 0)
+      return setFormError('This date range contains no full Tuesday–Monday week, so "On target every week" can never be won. Extend the range to include at least one complete week.')
     setFormError(null)
     create.mutate({
       title: title.trim(),
