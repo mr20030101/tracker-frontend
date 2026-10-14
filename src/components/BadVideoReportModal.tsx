@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { errorMessage, supabase } from '../lib/api'
+import { sanitiseOrTerm } from '../lib/sanitiseOrTerm'
 import { useAuth } from '../lib/auth'
 import { toISODate } from '../lib/week'
 import { reportBadVideo } from '../lib/taskRequests'
@@ -43,7 +44,7 @@ export function BadVideoReportModal({ submission: initialSubmission, onClose }: 
   const { data: matches = [], isFetching } = useQuery({
     queryKey: ['task-lookup', search, today],
     queryFn: async (): Promise<TaskLookupRow[]> => {
-      const term = search.trim().replace(/[%,]/g, '')
+      const term = sanitiseOrTerm(search)
       const { data, error } = await supabase
         .from('task_submissions')
         .select('id, task_id, cb_email, date')

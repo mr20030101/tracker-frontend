@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { BookOpen, ClipboardList, CornerDownLeft, Megaphone, Search, type LucideIcon } from 'lucide-react'
 import { api, errorMessage, supabase } from '../lib/api'
+import { sanitiseOrTerm } from '../lib/sanitiseOrTerm'
 import { useAuth } from '../lib/auth'
 import { fetchAnnouncements } from '../lib/announcements'
 import { groupPath } from '../lib/groupChats'
@@ -98,7 +99,7 @@ function Palette({ pages, onClose }: { pages: SearchPage[]; onClose: () => void 
   const [viewingTask, setViewingTask] = useState<TaskSubmission | null>(null)
   const listRef = useRef<HTMLUListElement>(null)
   const term = query.trim().toLowerCase()
-  const taskTerm = useDebounced(term.replace(/[%,()]/g, ''), 200)
+  const taskTerm = useDebounced(sanitiseOrTerm(term), 200)
 
   const { data: projects = [] } = useQuery({
     queryKey: ['projects'],

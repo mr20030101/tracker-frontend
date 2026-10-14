@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import { WEEK_LENGTH_DAYS } from './week'
 import type { ActivityEvent, ActivityLog, ContributorProfile, DashboardSummary, DailyReportRow, LeaderboardRow, Paginated, Project, ProjectBreakdown, ProjectLevel, ProjectReportRow, Resource, Stage, TaskSubmission, User } from '../types'
 import { fetchAllPages } from './fetchAll'
+import { sanitiseOrTerm } from './sanitiseOrTerm'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim() || 'https://ieovepkcseytccagzedg.supabase.co'
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() ||
@@ -77,7 +78,7 @@ async function submissions(params: Record<string, unknown> = {}): Promise<Pagina
   if (profile.role === 'contributor') query = query.eq('user_id', profile.id)
   if (params.stage) query = query.eq('stage', params.stage)
   if (params.search) {
-    const term = String(params.search).replace(/[%,]/g, '')
+    const term = sanitiseOrTerm(String(params.search))
     query = query.or(`cb_email.ilike.%${term}%,task_id.ilike.%${term}%`)
   }
   if (params.date_from) query = query.gte('date', params.date_from)
