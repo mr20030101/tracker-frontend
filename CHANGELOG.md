@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 4.0.1 — 2026-10-14
+
 ### Fixed
 
 - Editing a weekly target from a device east of Singapore time (e.g. Australia, Japan) saved it to the previous week, and the date pickers on the dashboard and leaderboard jumped to the day before.
