@@ -74,7 +74,7 @@ async function submissions(params: Record<string, unknown> = {}): Promise<Pagina
   const profile = await currentProfile()
   const sortColumn = typeof params.sort === 'string' && SORTABLE_COLUMNS.has(params.sort) ? params.sort : 'date'
   const sortAscending = params.sort_dir === 'asc'
-  let query = supabase.from('task_submissions').select('*', { count: 'exact' }).order(sortColumn, { ascending: sortAscending })
+  let query = supabase.from('task_submissions').select('*', { count: 'exact' }).order(sortColumn, { ascending: sortAscending }).order('id', { ascending: sortAscending })
   if (profile.role === 'contributor') query = query.eq('user_id', profile.id)
   if (params.stage) query = query.eq('stage', params.stage)
   if (params.search) {

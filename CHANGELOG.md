@@ -18,6 +18,7 @@ each stretch of work by the date it shipped.
 
 - On a flaky network, submitting a task now queues it offline instead of showing "Unauthenticated": `currentProfile` now rethrows the Supabase `AuthRetryableFetchError` so `isNetworkError` recognises it correctly.
 - CSV exports now guard against spreadsheet formula injection: cell values that begin with `=`, `+`, `-`, `@`, a tab, or a carriage return are prefixed with a single quote, and values containing a bare `\r` are properly quoted.
+- Task Log pagination no longer repeats or skips rows when the sort column (date, status, stage) has ties: a stable `id` tie-breaker is now appended to every query in the same sort direction.
 - Searching for a term containing `(` or `)` in the Task Log, Global Search, or Bad Video Report modal no longer breaks the PostgREST filter and leaves the page stuck on Loading.
 
 - Editing a weekly target from a device east of Singapore time (e.g. Australia, Japan) saved it to the previous week, and the date pickers on the dashboard and leaderboard jumped to the day before.
