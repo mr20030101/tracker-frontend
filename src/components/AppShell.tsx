@@ -277,7 +277,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <MessagingProvider>
       <CallProvider>
         <CallBar />
-        <div className="relative isolate flex h-screen bg-gray-50">
+        <div className="relative isolate flex h-screen overflow-hidden bg-gray-50">
           {/* October: the Halloween scene in place of the plain page background, behind everything. */}
           {halloween && (
             <div className="absolute inset-0 -z-10">
@@ -458,7 +458,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
             <main
               ref={mainRef}
-              className={`flex-1 overflow-y-auto px-3 py-4 sm:px-6 sm:py-6 ${user && !onMessages ? 'lg:pr-20' : ''}`}
+              className={`relative flex-1 overflow-y-auto px-3 py-4 sm:px-6 sm:py-6 ${user && !onMessages ? 'lg:pr-20' : ''}`}
             >
               {/* Tasks saved on this device while offline, until they're sent. */}
               <OfflineQueueBanner />
