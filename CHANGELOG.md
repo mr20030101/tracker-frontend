@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 4.0.3 — 2026-10-15
+
 ### Fixed
 
 - Scrolling to the very bottom of a page no longer drags the whole window past the end, sliding the sidebar up and leaving an empty band underneath.
