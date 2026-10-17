@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 4.0.4 — 2026-10-17
+
 ### Changed
 
 - The Attendance Form now stays open until 2:30 PM Singapore time (was 1:30 PM).
