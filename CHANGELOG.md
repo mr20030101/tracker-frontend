@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 5.6.1 — 2026-10-17
+
 ### Fixed
 
 - Retaking your attendance photo now always saves the new photo. Before, saving while the camera was still open kept the old photo without saying so. Now you take the new photo first, or choose "Keep current photo".
