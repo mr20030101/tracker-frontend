@@ -9,13 +9,13 @@ describe('attendanceWindow', () => {
     expect(attendanceWindow(sg('05:59'))).toBe('not-open')
   })
 
-  it('opens at 6:00 AM and stays open through 2:29 PM', () => {
+  it('opens at 6:00 AM and stays open through 1:29 PM', () => {
     expect(attendanceWindow(sg('06:00'))).toBe('open')
-    expect(attendanceWindow(sg('14:29'))).toBe('open')
+    expect(attendanceWindow(sg('13:29'))).toBe('open')
   })
 
-  it('closes at 2:30 PM', () => {
-    expect(attendanceWindow(sg('14:30'))).toBe('closed')
+  it('closes at 1:30 PM', () => {
+    expect(attendanceWindow(sg('13:30'))).toBe('closed')
     expect(attendanceWindow(sg('23:59'))).toBe('closed')
   })
 

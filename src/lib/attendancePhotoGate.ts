@@ -8,7 +8,7 @@
 // Kept free of Vercel and browser APIs so it can be tested with a fake fetch (hence the .js imports).
 
 import { serverSupabaseConfig as config, signedInCaller, type ServerSupabaseEnv } from './serverAuth.js'
-import { attendanceWindow } from './attendanceWindow.js'
+import { ATTENDANCE_CLOSES_LABEL, attendanceWindow } from './attendanceWindow.js'
 import { toISODate, fromISODate } from './week.js'
 import { downloadFromDrive, driveConfigured, uploadToDrive, type DriveEnv } from './googleDrive.js'
 
@@ -44,7 +44,7 @@ export async function handleUploadAttendancePhoto(
 
   const caller = await signedInCaller(request, env, fetchImpl)
   if (!caller) return refuse(401, 'Sign in again to file attendance.')
-  if (attendanceWindow(now) !== 'open') return refuse(403, 'Attendance is only taken from 6:00 AM to 2:30 PM.')
+  if (attendanceWindow(now) !== 'open') return refuse(403, `Attendance is only taken from 6:00 AM to ${ATTENDANCE_CLOSES_LABEL}.`)
 
   const bytes = new Uint8Array(await request.arrayBuffer())
   if (bytes.length > MAX_PHOTO_BYTES) return refuse(413, 'That photo is too large. Please take it again.')

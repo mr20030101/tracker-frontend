@@ -44,13 +44,11 @@ export function AttendanceFormModal({
   const [screenshotUrl, setScreenshotUrl] = useState(existing?.screenshot_url ?? '')
   const [formError, setFormError] = useState<string | null>(null)
   const [photo, setPhoto] = useState<Blob | null>(null)
-  // A contributor's own entry needs a photo from the camera; editing one that has a photo can keep it.
-  const needsPhoto = !support && !existing?.photo_ref
+  // A contributor filing their own sees the camera until there's a photo; one that has a photo keeps
+  // it unless they retake it. The photo isn't required: they can submit without one.
+  const hasPhoto = Boolean(existing?.photo_ref)
   const [retaking, setRetaking] = useState(false)
-  const showCamera = !support && (needsPhoto || retaking)
-  // Retaking (or filing for the first time) means a new photo is needed before saving, so a save
-  // can't quietly keep the old one.
-  const waitingForPhoto = showCamera && !photo
+  const showCamera = !support && (!hasPhoto || retaking)
 
   const hoursOptions = support ? [...CONTRIBUTOR_HOURS, ...SUPPORT_HOURS] : CONTRIBUTOR_HOURS
   const statusOptions = TASKING_STATUSES.map((s) => ({ value: s, label: s }))
@@ -105,7 +103,6 @@ export function AttendanceFormModal({
           e.preventDefault()
           if (!hours) return setFormError('Pick how many hours you can commit today.')
           if (!status) return setFormError('Pick a tasking status.')
-          if (waitingForPhoto) return setFormError(retaking ? 'Take your new photo, or keep the current one.' : 'Take a photo with your camera first.')
           setFormError(null)
           saveMutation.mutate()
         }}
@@ -128,7 +125,7 @@ export function AttendanceFormModal({
           <div className="flex flex-col gap-1 text-sm">
             <div className="flex items-center justify-between">
               <span className="font-medium text-gray-700">Your photo</span>
-              {!needsPhoto && !retaking && (
+              {hasPhoto && !retaking && (
                 <button type="button" onClick={() => setRetaking(true)} className="text-xs font-semibold text-sky-700 hover:underline">
                   Retake photo
                 </button>
@@ -244,8 +241,7 @@ export function AttendanceFormModal({
           </button>
           <button
             type="submit"
-            disabled={busy || waitingForPhoto}
-            title={waitingForPhoto ? 'Take your photo first' : undefined}
+            disabled={busy}
             className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
           >
             {saveMutation.isPending ? (photo ? 'Saving photo...' : 'Saving...') : existing ? 'Save changes' : 'Submit attendance'}
