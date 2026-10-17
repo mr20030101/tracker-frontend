@@ -30,10 +30,12 @@ import type { Attendance as AttendanceEntry, AttendanceHours } from '../types'
 
 const MANAGER_ROLES = ['admin', 'lead']
 
-const pillClass = 'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium'
+const pillClass = 'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium'
 
 function hoursPill(hours: AttendanceHours) {
-  const style = SUPPORT_HOURS.includes(hours) ? 'bg-status-danger-bg text-status-danger-text' : 'bg-status-success-bg text-status-success-text'
+  const style = SUPPORT_HOURS.includes(hours)
+    ? 'border-red-500/30 bg-red-500/10 text-red-300'
+    : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
   return <span className={`${pillClass} ${style}`}>{HOURS_LABELS[hours]}</span>
 }
 
@@ -197,8 +199,8 @@ function TeamAttendance() {
               {/* The whole card opens the form for a mouse; the footer button is the keyboard way in. */}
               <div
                 onClick={() => setEditing({ person, entry })}
-                className={`flex h-full cursor-pointer flex-col gap-3 rounded-xl border bg-white p-4 text-sm hover:shadow-sm ${
-                  entry ? 'border-gray-200 hover:border-gray-300' : 'border-dashed border-status-warning-text/40 hover:border-status-warning-text/70'
+                className={`flex h-full cursor-pointer flex-col gap-3 rounded-xl border bg-[#0b1624] p-4 text-sm shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)] transition-colors hover:shadow-lg ${
+                  entry ? 'border-slate-700/80 hover:border-slate-600' : 'border-dashed border-[#f7c667]/90 hover:border-[#ffd36a]'
                 }`}
               >
                 <div className="flex items-start gap-3">
@@ -207,20 +209,20 @@ function TeamAttendance() {
                     <Link
                       to={contributorPath(person.email)}
                       onClick={(e) => e.stopPropagation()}
-                      className="block truncate font-semibold text-gray-900 hover:text-sky-700 hover:underline"
+                      className="block truncate font-semibold text-slate-100 hover:text-sky-400 hover:underline"
                     >
                       {person.name}
                     </Link>
-                    <div className="truncate text-xs text-gray-400">{person.email}</div>
-                    {isAdmin && person.lead_id && <div className="truncate text-xs text-gray-400">Lead: {leadNames.get(person.lead_id) ?? '—'}</div>}
+                    <div className="truncate text-xs text-slate-400">{person.email}</div>
+                    {isAdmin && person.lead_id && <div className="truncate text-xs text-slate-500">Lead: {leadNames.get(person.lead_id) ?? '—'}</div>}
                   </div>
-                  {entry ? hoursPill(entry.hours) : <span className={`${pillClass} shrink-0 bg-status-warning-bg text-status-warning-text`}>Not filed</span>}
+                  {entry ? hoursPill(entry.hours) : <span className={`${pillClass} shrink-0 border-amber-500/30 bg-amber-500/10 text-amber-300`}>Not filed</span>}
                 </div>
 
                 {entry ? (
                   <>
                     <EntryDetails entry={entry} />
-                    <div className="mt-auto flex items-center justify-between border-t border-gray-100 pt-2 text-xs text-gray-400">
+                    <div className="mt-auto flex items-center justify-between border-t border-slate-800 pt-2 text-xs text-slate-400">
                       <span>
                         Filed {formatTime(entry.updated_at)}
                         {entry.filed_by !== entry.user_id && <> by {entry.filer?.name ?? 'support'}</>}
@@ -232,7 +234,7 @@ function TeamAttendance() {
                     </div>
                   </>
                 ) : (
-                  <div className="mt-auto flex items-center justify-between border-t border-gray-100 pt-2 text-xs text-gray-400">
+                  <div className="mt-auto flex items-center justify-between border-t border-slate-800 pt-2 text-xs text-slate-400">
                     <span>No attendance yet</span>
                     <CardAction>File for them</CardAction>
                   </div>
@@ -263,12 +265,12 @@ function EntryDetails({ entry }: { entry: AttendanceWithFiler }) {
   const link = entry.screenshot_url && /^https?:\/\//i.test(entry.screenshot_url) ? entry.screenshot_url : null
   return (
     <div className="flex flex-col gap-1.5">
-      <div className="text-gray-700">{entry.tasking_status}</div>
+      <div className="text-slate-200">{entry.tasking_status}</div>
       {entry.task_id && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-          <span className="font-mono break-all text-gray-500">{entry.task_id}</span>
+          <span className="font-mono break-all text-slate-400">{entry.task_id}</span>
           {link && (
-            <a href={link} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="font-medium text-sky-700 hover:underline">
+            <a href={link} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="font-medium text-sky-400 hover:underline">
               Screenshot
             </a>
           )}
@@ -318,7 +320,7 @@ function GoogleFormStatus({ entry }: { entry: AttendanceWithFiler }) {
 // Bubbles up to the card's own click, which opens the form.
 function CardAction({ children }: { children: ReactNode }) {
   return (
-    <button type="button" className="rounded-md px-2 py-1 font-semibold text-gray-600 hover:bg-gray-100">
+    <button type="button" className="rounded-md border border-[#f7c667]/80 bg-[#0b1624] px-2.5 py-1 text-[11px] font-semibold text-[#f7c667] transition-colors hover:bg-[#f7c667]/10">
       {children}
     </button>
   )
@@ -332,7 +334,7 @@ function PhotoButton({ onClick }: { onClick: () => void }) {
         e.stopPropagation()
         onClick()
       }}
-      className="flex items-center gap-1 rounded-md px-2 py-1 font-semibold text-gray-600 hover:bg-gray-100"
+      className="flex items-center gap-1 rounded-md border border-[#f7c667]/80 bg-[#0b1624] px-2.5 py-1 text-[11px] font-semibold text-[#f7c667] transition-colors hover:bg-[#f7c667]/10"
     >
       <Camera className="h-3.5 w-3.5" />
       Photo
