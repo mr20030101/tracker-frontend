@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 5.6.3 — 2026-10-17
+
 ### Changed
 
 - You can submit your attendance without taking a photo. The camera still opens in the form, and a photo you take is saved as before.
