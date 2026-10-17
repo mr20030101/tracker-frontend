@@ -5,7 +5,7 @@ import { BookOpen, ClipboardList, MessageCircle, Trophy, User, type LucideIcon }
 import { api, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useMessaging } from '../lib/messagingContext'
-import { toISODate, todayIso, weekStartIso, sgMinutesSinceMidnight } from '../lib/week'
+import { toISODate, todayIso, weekStartIso } from '../lib/week'
 import { useNow } from '../lib/useNow'
 import type { ContributorProfile, ContributorProjectLevel, Project, ProjectLevel } from '../types'
 import { ProgressRing } from '../components/ProgressRing'
@@ -14,7 +14,8 @@ import { CountUp } from '../components/CountUp'
 import { GrowBar } from '../components/GrowBar'
 import { Reveal } from '../components/Reveal'
 import { CtsFormModal } from '../components/CtsFormModal'
-import { EmbeddedFormModal } from '../components/EmbeddedFormModal'
+import { AttendanceFormModal } from '../components/AttendanceFormModal'
+import { ATTENDANCE_CLOSES_LABEL, attendanceWindow, fetchOwnAttendance } from '../lib/attendance'
 import { TaskSubmissionForm } from '../components/TaskSubmissionForm'
 import { NoSubmissionNudge } from '../components/NoSubmissionNudge'
 import { LevelPill } from '../components/LevelPill'
@@ -39,13 +40,6 @@ interface QuickLink {
   icon: LucideIcon
 }
 
-const ATTENDANCE_FORM_URL =
-  'https://docs.google.com/forms/d/e/1FAIpQLSdItgT4AYcL14m0A3t5Rx7nGaySxDe64J1VZtInYD0ukepAfg/viewform'
-
-// Attendance is only taken 6:00 AM – 2:30 PM, Singapore time.
-const ATTENDANCE_OPENS_MIN = 6 * 60
-const ATTENDANCE_CLOSES_MIN = 14 * 60 + 30
-
 // Cleared when the browser tab/session ends, so the warning comes back the next time they sign in fresh.
 const WARNING_DISMISSED_KEY = 'dashboard-week-warning-dismissed'
 
@@ -58,12 +52,6 @@ function readRecapSeen(userId: string): string | null {
   } catch {
     return null
   }
-}
-
-function buildAttendanceFormUrl(email: string) {
-  const params = new URLSearchParams()
-  if (email) params.set('entry.787543998', email)
-  return `${ATTENDANCE_FORM_URL}?${params.toString()}`
 }
 
 export function ContributorDashboard() {
@@ -109,6 +97,12 @@ export function ContributorDashboard() {
   })
 
   const contributorId = data?.user?.id ?? null
+
+  const { data: todaysAttendance } = useQuery({
+    queryKey: ['attendance', 'own', user?.id, today],
+    queryFn: () => fetchOwnAttendance(user!.id, today),
+    enabled: Boolean(user),
+  })
   const contributorLeadId = data?.user?.lead_id ?? null
 
   const { data: achievementsById } = useAchievements(contributorId ? [contributorId] : [])
@@ -232,9 +226,9 @@ export function ContributorDashboard() {
     (row) => row.date?.slice(0, 10) === today && row.status !== 'in_progress' && !row.cts_submitted_at,
   )
 
-  const nowMinutesSGT = sgMinutesSinceMidnight(new Date())
-  const attendanceNotYetOpen = nowMinutesSGT < ATTENDANCE_OPENS_MIN
-  const attendanceOpen = nowMinutesSGT >= ATTENDANCE_OPENS_MIN && nowMinutesSGT < ATTENDANCE_CLOSES_MIN
+  const attendanceState = attendanceWindow(new Date(now))
+  const attendanceNotYetOpen = attendanceState === 'not-open'
+  const attendanceOpen = attendanceState === 'open'
 
   function handleAttendanceClick() {
     if (attendanceOpen) {
@@ -276,7 +270,7 @@ export function ContributorDashboard() {
                     : 'bg-white text-gray-700 hover:bg-gray-50'
                 }`}
               >
-                Attendance Form
+                {todaysAttendance ? 'Attendance filed ✓' : 'Attendance Form'}
               </button>
               {bot && (
                 <button
@@ -292,15 +286,20 @@ export function ContributorDashboard() {
         }
       />
 
-      {showAttendanceForm && (
-        <EmbeddedFormModal title="Attendance Form" url={buildAttendanceFormUrl(email)} onClose={() => setShowAttendanceForm(false)} />
+      {showAttendanceForm && user && (
+        <AttendanceFormModal
+          person={{ id: user.id, name: user.name, email }}
+          date={today}
+          existing={todaysAttendance ?? null}
+          onClose={() => setShowAttendanceForm(false)}
+        />
       )}
 
       {showAttendanceEnded && (
         <Modal title="Attendance has ended" onClose={() => setShowAttendanceEnded(false)}>
           <div className="flex flex-col gap-4">
             <p className="text-sm text-gray-600">
-              Today's attendance window closes at 2:30 PM, and it's already past that.
+              Today's attendance window closes at {ATTENDANCE_CLOSES_LABEL}, and it's already past that. If you couldn't file, ask your lead to file it for you.
             </p>
             <div className="flex justify-end">
               <button

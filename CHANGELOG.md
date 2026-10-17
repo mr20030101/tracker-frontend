@@ -14,6 +14,14 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Changed
+
+- Attendance is now filed inside the Tracker instead of on the Google Form. The Dashboard's Attendance Form button opens the same questions as before (hours you can commit today, tasking status, and the Task ID and screenshot link when you're tasking), and shows "Attendance filed ✓" once you've filed. You can change today's entry until 2:30 PM. Attendance no longer goes to the Google Form or its sheet.
+
+### Added
+
+- An Attendance page. Contributors see every day they've filed. Leads and admins see who on their team has and hasn't filed on any day, with a count for each hours option, a team filter for admins, and a CSV export. They can file or correct anyone's attendance on their team, including Absent, Discontinued and Disabled, which only a lead or admin can pick.
+
 ## 4.0.4 — 2026-10-17
 
 ### Changed

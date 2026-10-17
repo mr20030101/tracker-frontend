@@ -18,6 +18,7 @@ import {
   UserPlus,
   Hourglass,
   MessageSquareText,
+  CalendarCheck,
   Megaphone,
   UserRound,
   Menu,
@@ -86,6 +87,7 @@ function navSections(
                 : `${pendingRequests} pending`,
           },
           { to: '/feedback', label: 'Feedback', icon: MessageSquareText, badge: pendingFeedback, badgeTitle: `${pendingFeedback} to check` },
+          { to: '/attendance', label: 'Attendance', icon: CalendarCheck },
           { to: '/data-quality', label: 'Data Quality', icon: ShieldCheck },
           { to: '/team-reports', label: 'Team Reports', icon: LineChartIcon },
           ...(isAdmin ? [{ to: '/activity-log', label: 'Activity Log', icon: History }] : []),
@@ -94,6 +96,7 @@ function navSections(
           { to: '/task-log', label: 'Task Log', icon: ClipboardList },
           { to: '/requests', label: 'Requests', icon: Hourglass },
           { to: '/feedback', label: 'Feedback', icon: MessageSquareText },
+          { to: '/attendance', label: 'Attendance', icon: CalendarCheck },
         ],
     },
     {
@@ -271,7 +274,9 @@ export function AppShell({ children }: { children: ReactNode }) {
                               ? 'Requests'
                               : location.pathname === '/feedback'
                                 ? 'Feedback'
-                                : 'Dashboard'
+                                : location.pathname === '/attendance'
+                                  ? 'Attendance'
+                                  : 'Dashboard'
 
   return (
     <MessagingProvider>
