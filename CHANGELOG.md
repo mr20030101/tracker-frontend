@@ -14,6 +14,29 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 5.4.0 — 2026-10-17
+
+### Changed
+
+- Every attendance you save in the Tracker is also sent to the team's "Centralize | Attendance" Google Form in the background, so the form's sheet keeps getting everyone's attendance. That includes the ones a lead files for someone, and changes to an entry, which arrive as a new response. Each attendance card shows whether it reached the form, with a Retry if it didn't.
+
+## 5.3.0 — 2026-10-17
+
+### Changed
+
+- Filing your own attendance now needs a photo taken with your camera. The form opens the camera, you take the photo (and can retake it), then submit. When you edit today's entry, your photo stays unless you retake it. Attendance a lead files for you doesn't need one.
+- Today only (October 17), attendance stays open all day so the new photo step can be tried out.
+
+### Added
+
+- Leads and admins can open anyone's attendance photo from their card on the Attendance page, and contributors can see their own. Photos are kept in the team's Google Drive, not in the Tracker.
+
+## 5.2.0 — 2026-10-17
+
+### Changed
+
+- The Attendance page shows each person as a card instead of a table row: their photo, hours, tasking status, Task ID and screenshot, and when they filed. People who haven't filed have a dashed outline, and the cards stack on a phone. Your own attendance history is shown as cards too.
+
 ## 5.1.0 — 2026-10-17
 
 ### Added

@@ -1,21 +1,8 @@
 import { supabase } from './api'
 import { fetchAllPages } from './fetchAll'
-import { sgMinutesSinceMidnight } from './week'
 import type { Attendance, AttendanceHours, User } from '../types'
 
-// Attendance is only taken 6:00 AM – 2:30 PM, Singapore time. file_attendance() checks the same
-// window (supabase/migrations/20261017_attendance.sql), so change both together.
-export const ATTENDANCE_OPENS_MIN = 6 * 60
-export const ATTENDANCE_CLOSES_MIN = 14 * 60 + 30
-export const ATTENDANCE_CLOSES_LABEL = '2:30 PM'
-
-export type AttendanceWindow = 'not-open' | 'open' | 'closed'
-
-export function attendanceWindow(date: Date): AttendanceWindow {
-  const minutes = sgMinutesSinceMidnight(date)
-  if (minutes < ATTENDANCE_OPENS_MIN) return 'not-open'
-  return minutes < ATTENDANCE_CLOSES_MIN ? 'open' : 'closed'
-}
+export { ATTENDANCE_CLOSES_LABEL, ATTENDANCE_CLOSES_MIN, ATTENDANCE_OPENS_MIN, attendanceWindow, type AttendanceWindow } from './attendanceWindow'
 
 export const HOURS_LABELS: Record<AttendanceHours, string> = {
   '1-2': '1–2 hours',
@@ -63,13 +50,13 @@ export const TASKING_STATUSES = [
 ]
 
 export type AttendanceWithFiler = Attendance & {
-  person: { id: string; name: string; email: string; lead_id: string | null } | null
+  person: { id: string; name: string; email: string; lead_id: string | null; avatar_url: string | null } | null
   // Null when the viewer isn't allowed to read the filer's profile.
   filer: { id: string; name: string } | null
 }
 
 const ATTENDANCE_SELECT =
-  '*, person:profiles!attendance_user_id_fkey(id, name, email, lead_id), filer:profiles!attendance_filed_by_fkey(id, name)'
+  '*, person:profiles!attendance_user_id_fkey(id, name, email, lead_id, avatar_url), filer:profiles!attendance_filed_by_fkey(id, name)'
 
 /** Everyone's attendance for one day that the caller can see (RLS scopes it to their team). */
 export async function fetchAttendanceForDate(date: string): Promise<AttendanceWithFiler[]> {
@@ -119,6 +106,8 @@ export interface AttendanceInput {
   taskingStatus: string
   taskId: string
   screenshotUrl: string
+  // A just-taken photo's reference from uploadAttendancePhoto(); null keeps the day's existing photo.
+  photoRef?: string | null
 }
 
 /** Files (or replaces) someone's attendance for a day. */
@@ -130,6 +119,7 @@ export async function fileAttendance(input: AttendanceInput): Promise<void> {
     p_tasking_status: input.taskingStatus,
     p_task_id: input.taskId,
     p_screenshot_url: input.screenshotUrl,
+    p_photo_ref: input.photoRef ?? null,
   })
   if (error) throw error
 }
@@ -137,4 +127,9 @@ export async function fileAttendance(input: AttendanceInput): Promise<void> {
 export async function deleteAttendance(id: number): Promise<void> {
   const { error } = await supabase.from('attendance').delete().eq('id', id)
   if (error) throw error
+}
+
+/** True once the entry's latest save has reached the Google Form. */
+export function sentToGoogleForm(entry: Attendance): boolean {
+  return Boolean(entry.google_form_sent_at && Date.parse(entry.google_form_sent_at) >= Date.parse(entry.updated_at))
 }

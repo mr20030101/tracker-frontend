@@ -400,6 +400,13 @@ export interface Attendance {
   // Only set when tasking_status is 'Tasking'.
   task_id: string | null
   screenshot_url: string | null
+  // The Google Drive file id of the photo the contributor took when filing (see lib/attendancePhoto.ts).
+  // Null on support entries filed for someone, and on entries from before photos were required.
+  photo_ref: string | null
+  // When this entry last reached the team's Google Form; older than updated_at (or null) means the
+  // latest save hasn't. google_form_error says why the last try failed.
+  google_form_sent_at: string | null
+  google_form_error: string | null
   // The contributor themselves, or the lead/admin who filed it for them.
   filed_by: string | null
   created_at: string
