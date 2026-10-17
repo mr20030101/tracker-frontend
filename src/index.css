@@ -461,3 +461,37 @@ body {
     --color-accent-bg: #f07a2a;
   }
 }
+
+/* Formatted text: announcement bodies (lib/richText.ts) and the editor that writes them
+   (components/RichTextEditor.tsx). Tailwind's reset strips list markers and heading sizes. */
+.rich-text > * + * {
+  @apply mt-2;
+}
+.rich-text h2 {
+  @apply text-base font-semibold text-gray-900;
+}
+.rich-text h3 {
+  @apply text-sm font-semibold text-gray-900;
+}
+.rich-text ul {
+  @apply list-disc pl-5;
+}
+.rich-text ol {
+  @apply list-decimal pl-5;
+}
+.rich-text li + li {
+  @apply mt-0.5;
+}
+.rich-text blockquote {
+  @apply border-l-2 border-gray-300 pl-3 text-gray-500;
+}
+.rich-text a {
+  @apply text-sky-700 underline break-all;
+}
+.rich-text hr {
+  @apply border-gray-200;
+}
+.rich-text p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  @apply pointer-events-none float-left h-0 text-gray-400;
+}

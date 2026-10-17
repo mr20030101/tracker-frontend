@@ -7,6 +7,7 @@ import { api, errorMessage, supabase } from '../lib/api'
 import { sanitiseOrTerm } from '../lib/sanitiseOrTerm'
 import { useAuth } from '../lib/auth'
 import { fetchAnnouncements } from '../lib/announcements'
+import { richTextToPlain } from '../lib/richText'
 import { groupPath } from '../lib/groupChats'
 import { useMessaging } from '../lib/messagingContext'
 import { openResourceFile, resourceFilePath } from '../lib/resourceFiles'
@@ -207,7 +208,7 @@ function Palette({ pages, onClose }: { pages: SearchPage[]; onClose: () => void 
       })
     }
 
-    for (const a of announcements.filter((a) => matches(term, a.title, a.body)).slice(0, PER_GROUP)) {
+    for (const a of announcements.filter((a) => matches(term, a.title, richTextToPlain(a.body))).slice(0, PER_GROUP)) {
       out.push({
         key: `announcement-${a.id}`,
         group: 'Announcements',

@@ -14,6 +14,10 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Added
+
+- Announcements can now be formatted as you write them: bold, italic, underline, strikethrough, headings, bulleted and numbered lists, quotes and links, in a choice of fonts (Serif, Elegant, Modern, Condensed, Handwritten, Monospace) and sizes. The 4,000-character limit counts only the text, not the formatting. Older announcements look the same as before.
+
 ## 5.0.0 — 2026-10-17
 
 ### Changed

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Eye, Megaphone, Pin } from 'lucide-react'
 import { api, errorMessage, supabase } from '../lib/api'
@@ -20,6 +20,7 @@ import { Avatar } from '../components/Avatar'
 import { Modal } from '../components/Modal'
 import { Reveal } from '../components/Reveal'
 import { Select } from '../components/Select'
+import { loadRichTextFonts, renderRichText } from '../lib/richText'
 import { confirmDialog } from '../lib/dialog'
 import { usePageTitle } from '../lib/usePageTitle'
 
@@ -34,6 +35,8 @@ export function Announcements() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
   const { usersById } = useMessaging()
+  // For any fonts picked in the editor.
+  useEffect(loadRichTextFonts, [])
   const isManager = Boolean(user && MANAGER_ROLES.includes(user.role))
   const isAdmin = user?.role === 'admin'
   const [composing, setComposing] = useState(false)
@@ -167,7 +170,7 @@ export function Announcements() {
                     />
                   )}
                 </div>
-                <p className="whitespace-pre-wrap wrap-break-word text-sm text-gray-700">{a.body}</p>
+                <div className="rich-text wrap-break-word text-sm text-gray-700" dangerouslySetInnerHTML={{ __html: renderRichText(a.body) }} />
               </li>
             )
           })}
@@ -211,6 +214,9 @@ function ComposeAnnouncement({
   const [projectId, setProjectId] = useState('')
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
+  // Characters of text, not markup: the formatting doesn't eat into the 4,000.
+  const [textLength, setTextLength] = useState(0)
+  const tooLong = textLength > 4000
   const [pinned, setPinned] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
 
@@ -258,7 +264,10 @@ function ComposeAnnouncement({
     })
   }
 
-  const fieldClass = 'w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent'
+  // The editor is a large library only people writing an announcement need, so it loads on first use.
+const RichTextEditor = lazy(() => import('../components/RichTextEditor').then((m) => ({ default: m.RichTextEditor })))
+
+const fieldClass = 'w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent'
 
   return (
     <Modal title="New announcement" onClose={onClose} maxWidthClassName="max-w-xl">
@@ -307,17 +316,19 @@ function ComposeAnnouncement({
         </div>
         <div>
           <div className="mb-1 flex items-center justify-between">
-            <label className="block text-sm font-medium text-gray-700">Message</label>
-            <span className="text-xs text-gray-400">{body.length}/4000</span>
+            <span className="block text-sm font-medium text-gray-700">Message</span>
+            <span className={`text-xs ${tooLong ? 'font-semibold text-status-danger-text' : 'text-gray-400'}`}>{textLength}/4000</span>
           </div>
-          <textarea
-            required
-            rows={6}
-            maxLength={4000}
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            className={`${fieldClass} resize-y`}
-          />
+          <Suspense fallback={<div className="h-52 rounded-lg border border-gray-200" />}>
+            <RichTextEditor
+              value={body}
+              onChange={(html, length) => {
+                setBody(html)
+                setTextLength(length)
+              }}
+              aria-label="Message"
+            />
+          </Suspense>
         </div>
         <label className="flex items-center gap-2 text-sm text-gray-700">
           <input type="checkbox" checked={pinned} onChange={(e) => setPinned(e.target.checked)} />
@@ -330,7 +341,7 @@ function ComposeAnnouncement({
           </button>
           <button
             type="submit"
-            disabled={postMutation.isPending || !title.trim() || !body.trim()}
+            disabled={postMutation.isPending || !title.trim() || !body.trim() || tooLong}
             className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
           >
             {postMutation.isPending ? 'Posting...' : 'Post'}
