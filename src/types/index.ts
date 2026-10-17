@@ -385,3 +385,23 @@ export interface ChatGroupSummary {
   last_message: GroupMessage | null
   members: ChatGroupMember[]
 }
+
+// How many hours someone expects to put in today, from their daily attendance. The last three are
+// support entries, which only a lead or admin files.
+export type AttendanceHours = '1-2' | '2-4' | '4-6' | '7+' | 'absent' | 'discontinued' | 'disabled'
+
+// One person's attendance for one Singapore calendar day.
+export interface Attendance {
+  id: number
+  user_id: string
+  date: string
+  hours: AttendanceHours
+  tasking_status: string
+  // Only set when tasking_status is 'Tasking'.
+  task_id: string | null
+  screenshot_url: string | null
+  // The contributor themselves, or the lead/admin who filed it for them.
+  filed_by: string | null
+  created_at: string
+  updated_at: string
+}

@@ -23,6 +23,7 @@ import { Apply } from './pages/Apply'
 import { Hiring } from './pages/Hiring'
 import { Requests } from './pages/Requests'
 import { Feedback } from './pages/Feedback'
+import { Attendance } from './pages/Attendance'
 import { Announcements } from './pages/Announcements'
 
 const MANAGER_ROLES = ['admin', 'lead']
@@ -54,6 +55,7 @@ function ProtectedLayout() {
         <Route path="/task-log" element={<TaskLog />} />
         <Route path="/requests" element={<Requests />} />
         <Route path="/feedback" element={<Feedback />} />
+        <Route path="/attendance" element={<Attendance />} />
         <Route path="/resources" element={<Resources />} />
         <Route path="/messages" element={<Messages />} />
         <Route path="/messages/group/:groupId" element={<Messages />} />
