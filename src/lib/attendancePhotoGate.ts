@@ -24,6 +24,10 @@ const json = (status: number, body: Record<string, unknown>) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } })
 const refuse = (status: number, message: string) => json(status, { message })
 
+// Singapore wall-clock time as HH.MM.SS, so each photo (a retake included) gets its own file name in Drive.
+const sgTime = (date: Date) =>
+  date.toLocaleTimeString('en-GB', { timeZone: 'Asia/Singapore', hour12: false }).replace(/:/g, '.')
+
 const isJpeg = (bytes: Uint8Array) => bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff
 
 export async function handleUploadAttendancePhoto(
@@ -59,7 +63,7 @@ export async function handleUploadAttendancePhoto(
   try {
     fileId = await uploadToDrive(
       env,
-      { name: `${today} ${caller.email || caller.id}.jpg`, mimeType: 'image/jpeg', data: bytes, description: `Attendance photo, ${caller.email} (${caller.id}), ${today}` },
+      { name: `${today} ${sgTime(now)} ${caller.email || caller.id}.jpg`, mimeType: 'image/jpeg', data: bytes, description: `Attendance photo, ${caller.email} (${caller.id}), ${today}` },
       fetchImpl,
     )
   } catch (error) {

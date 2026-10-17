@@ -14,6 +14,11 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Fixed
+
+- Retaking your attendance photo now always saves the new photo. Before, saving while the camera was still open kept the old photo without saying so. Now you take the new photo first, or choose "Keep current photo".
+- Each attendance photo in Google Drive has its own name with the time it was taken, so a retake doesn't look like the same file.
+
 ## 5.6.0 — 2026-10-17
 
 ### Changed
