@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 5.0.0 — 2026-10-17
+
 ### Changed
 
 - Attendance is now filed inside the Tracker instead of on the Google Form. The Dashboard's Attendance Form button opens the same questions as before (hours you can commit today, tasking status, and the Task ID and screenshot link when you're tasking), and shows "Attendance filed ✓" once you've filed. You can change today's entry until 2:30 PM. Attendance no longer goes to the Google Form or its sheet.
