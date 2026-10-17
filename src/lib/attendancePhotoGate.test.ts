@@ -58,6 +58,9 @@ describe('handleUploadAttendancePhoto', () => {
     expect(await response.json()).toEqual({ ref: 'drive-file-123' })
     const record = fetchImpl.mock.calls.find(([url, init]) => String(url).endsWith('/attendance_photo_uploads') && init?.method === 'POST')
     expect(JSON.parse(String(record?.[1]?.body))).toEqual({ user_id: 'user-1', drive_file_id: 'drive-file-123' })
+    // Named with the day and Singapore time, so a retake is its own file.
+    const driveUpload = fetchImpl.mock.calls.find(([url]) => String(url).includes('/upload/drive/v3/files'))
+    expect(await new Response(driveUpload?.[1]?.body as Blob).text()).toContain('"name":"2026-10-16 10.00.00 cb@example.com.jpg"')
   })
 
   it('refuses without a valid session, or for an inactive account', async () => {
