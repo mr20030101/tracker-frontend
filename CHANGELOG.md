@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 5.6.2 — 2026-10-17
+
 ### Changed
 
 - Attendance now closes at 1:30 PM Singapore time (was 2:30 PM).
