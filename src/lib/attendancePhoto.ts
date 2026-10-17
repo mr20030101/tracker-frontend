@@ -46,3 +46,10 @@ export async function sendAttendanceToGoogleForm(userId: string, date: string): 
   })
   if (!response.ok) throw await failure(response, "This couldn't be sent to the Google Form.")
 }
+
+/** Whether attendance is being sent to the Google Form at all (ATTENDANCE_GOOGLE_FORM in Vercel). */
+export async function fetchGoogleFormEnabled(): Promise<boolean> {
+  const response = await fetch('/api/attendance-google-form')
+  if (!response.ok) return false
+  return Boolean(((await response.json()) as { enabled?: boolean }).enabled)
+}

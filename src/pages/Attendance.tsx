@@ -19,7 +19,7 @@ import { Avatar } from '../components/Avatar'
 import { Modal } from '../components/Modal'
 import { Camera, Check } from 'lucide-react'
 import { errorMessage } from '../lib/api'
-import { fetchAttendancePhoto, sendAttendanceToGoogleForm } from '../lib/attendancePhoto'
+import { fetchAttendancePhoto, fetchGoogleFormEnabled, sendAttendanceToGoogleForm } from '../lib/attendancePhoto'
 import { Select } from '../components/Select'
 import { downloadCsv } from '../lib/csv'
 import { contributorPath } from '../lib/urlRef'
@@ -282,11 +282,14 @@ function EntryDetails({ entry }: { entry: AttendanceWithFiler }) {
 /** Whether the entry's latest save reached the team's Google Form, with a Retry when it didn't. */
 function GoogleFormStatus({ entry }: { entry: AttendanceWithFiler }) {
   const queryClient = useQueryClient()
+  // Shared by every card, and rarely changes (it's a Vercel setting).
+  const { data: enabled = false } = useQuery({ queryKey: ['google-form-enabled'], queryFn: fetchGoogleFormEnabled, staleTime: 5 * 60_000 })
   const retry = useMutation({
     mutationFn: () => sendAttendanceToGoogleForm(entry.user_id, entry.date),
     onSettled: () => queryClient.invalidateQueries({ queryKey: ['attendance'] }),
   })
 
+  if (!enabled) return null
   if (sentToGoogleForm(entry)) {
     return (
       <div className="flex items-center gap-1 text-xs text-gray-400">
