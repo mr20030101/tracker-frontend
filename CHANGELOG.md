@@ -14,6 +14,12 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 5.7.0 — 2026-10-17
+
+### Changed
+
+- Only your first attendance submission of the day goes to the Google Form. Editing it later, or retaking your photo, changes it in the Tracker but doesn't send it to the form again, so the form gets one response per person per day.
+
 ## 5.6.3 — 2026-10-17
 
 ### Changed
