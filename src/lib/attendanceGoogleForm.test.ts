@@ -83,8 +83,9 @@ describe('handleSendAttendanceToGoogleForm', () => {
     expect(patchBody(fetchImpl).google_form_sent_at).toBeTruthy()
   })
 
-  it("doesn't send the same save twice", async () => {
-    const fetchImpl = fakeFetch({ sentAt: '2026-10-17T07:00:05+00:00' })
+  it('sends only the first submission: never again once it has reached the form, even after an edit', async () => {
+    // Sent before the entry's last change (updated_at 07:00), i.e. the entry was edited afterwards.
+    const fetchImpl = fakeFetch({ sentAt: '2026-10-17T06:00:00+00:00' })
     expect((await handleSendAttendanceToGoogleForm(request(), ENV, fetchImpl)).status).toBe(200)
     expect(fetchImpl.mock.calls.some(([url]) => String(url) === GOOGLE_FORM_RESPONSE_URL)).toBe(false)
   })

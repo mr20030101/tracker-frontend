@@ -129,7 +129,7 @@ export async function deleteAttendance(id: number): Promise<void> {
   if (error) throw error
 }
 
-/** True once the entry's latest save has reached the Google Form. */
+/** True once the entry has reached the Google Form (only its first submission is ever sent). */
 export function sentToGoogleForm(entry: Attendance): boolean {
-  return Boolean(entry.google_form_sent_at && Date.parse(entry.google_form_sent_at) >= Date.parse(entry.updated_at))
+  return Boolean(entry.google_form_sent_at)
 }

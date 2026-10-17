@@ -40,7 +40,6 @@ interface EntryRow {
   tasking_status: string
   task_id: string | null
   screenshot_url: string | null
-  updated_at: string
   google_form_sent_at: string | null
   person: { email: string } | null
 }
@@ -97,14 +96,15 @@ export async function handleSendAttendanceToGoogleForm(request: Request, env: Go
   if (!userId || !date) return refuse(400, 'Which attendance entry?')
 
   const entryResponse = await fetchImpl(
-    `${url}/rest/v1/attendance?user_id=eq.${userId}&date=eq.${date}&select=id,hours,tasking_status,task_id,screenshot_url,updated_at,google_form_sent_at,person:profiles!attendance_user_id_fkey(email)&limit=1`,
+    `${url}/rest/v1/attendance?user_id=eq.${userId}&date=eq.${date}&select=id,hours,tasking_status,task_id,screenshot_url,google_form_sent_at,person:profiles!attendance_user_id_fkey(email)&limit=1`,
     { headers: { apikey: anonKey, Authorization: `Bearer ${caller.token}` } },
   )
   const [entry] = entryResponse.ok ? ((await entryResponse.json()) as EntryRow[]) : []
   if (!entry?.person?.email) return refuse(404, 'Attendance entry not found.')
 
-  // Each save is sent once, so this can't be used to fill the form's sheet with copies.
-  if (entry.google_form_sent_at && Date.parse(entry.google_form_sent_at) >= Date.parse(entry.updated_at)) return json(200, { sent: true, already: true })
+  // Only the day's first submission goes to the form: once it's there, later edits and retakes aren't
+  // sent, so the sheet gets one row per person per day (and this can't be used to add copies).
+  if (entry.google_form_sent_at) return json(200, { sent: true, already: true })
 
   let error: string | null = null
   try {

@@ -403,8 +403,8 @@ export interface Attendance {
   // The Google Drive file id of the photo the contributor took when filing (see lib/attendancePhoto.ts).
   // Null on support entries filed for someone, and on entries from before photos were required.
   photo_ref: string | null
-  // When this entry last reached the team's Google Form; older than updated_at (or null) means the
-  // latest save hasn't. google_form_error says why the last try failed.
+  // When this entry reached the team's Google Form. Only the day's first submission is sent: later
+  // edits and retakes aren't. Null means it hasn't yet; google_form_error says why the last try failed.
   google_form_sent_at: string | null
   google_form_error: string | null
   // The contributor themselves, or the lead/admin who filed it for them.
