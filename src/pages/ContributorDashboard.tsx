@@ -42,9 +42,9 @@ interface QuickLink {
 const ATTENDANCE_FORM_URL =
   'https://docs.google.com/forms/d/e/1FAIpQLSdItgT4AYcL14m0A3t5Rx7nGaySxDe64J1VZtInYD0ukepAfg/viewform'
 
-// Attendance is only taken 6:00 AM – 1:30 PM, Singapore time.
+// Attendance is only taken 6:00 AM – 2:30 PM, Singapore time.
 const ATTENDANCE_OPENS_MIN = 6 * 60
-const ATTENDANCE_CLOSES_MIN = 13 * 60 + 30
+const ATTENDANCE_CLOSES_MIN = 14 * 60 + 30
 
 // Cleared when the browser tab/session ends, so the warning comes back the next time they sign in fresh.
 const WARNING_DISMISSED_KEY = 'dashboard-week-warning-dismissed'
@@ -300,7 +300,7 @@ export function ContributorDashboard() {
         <Modal title="Attendance has ended" onClose={() => setShowAttendanceEnded(false)}>
           <div className="flex flex-col gap-4">
             <p className="text-sm text-gray-600">
-              Today's attendance window closes at 1:30 PM, and it's already past that.
+              Today's attendance window closes at 2:30 PM, and it's already past that.
             </p>
             <div className="flex justify-end">
               <button
