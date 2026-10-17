@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../lib/auth'
@@ -13,7 +13,8 @@ import {
   type AttendanceWithFiler,
 } from '../lib/attendance'
 import { AttendanceFormModal } from '../components/AttendanceFormModal'
-import { SearchInput, SegmentedTabs, TableCard, TableToolbar, toolbarControlClass } from '../components/TableToolbar'
+import { SearchInput, SegmentedTabs, TableToolbar, toolbarControlClass } from '../components/TableToolbar'
+import { Avatar } from '../components/Avatar'
 import { Select } from '../components/Select'
 import { downloadCsv } from '../lib/csv'
 import { contributorPath } from '../lib/urlRef'
@@ -47,6 +48,7 @@ interface Person {
   name: string
   email: string
   lead_id: string | null
+  avatar_url: string | null
 }
 
 type FilterTab = 'all' | 'filed' | 'missing'
@@ -82,7 +84,7 @@ function TeamAttendance() {
   // Everyone on the roster, plus anyone who filed that day but has since left it (deactivated).
   const rows = useMemo(() => {
     const byUser = new Map(entries.map((e) => [e.user_id, e]))
-    const people: Person[] = (roster?.contributors ?? []).map((c) => ({ id: c.id, name: c.name, email: c.email, lead_id: c.lead_id }))
+    const people: Person[] = (roster?.contributors ?? []).map((c) => ({ id: c.id, name: c.name, email: c.email, lead_id: c.lead_id, avatar_url: c.avatar_url }))
     const onRoster = new Set(people.map((p) => p.id))
     for (const e of entries) {
       if (!onRoster.has(e.user_id) && e.person) people.push(e.person)
@@ -158,92 +160,79 @@ function TeamAttendance() {
         )}
       </div>
 
-      <TableCard
-        toolbar={
-          <TableToolbar>
-            <input
-              type="date"
-              value={date}
-              max={today}
-              onChange={(e) => setDate(e.target.value || today)}
-              aria-label="Day"
-              className={toolbarControlClass}
-            />
-            {isAdmin && <Select value={team} onChange={setTeam} options={teamOptions} aria-label="Filter by team" className={toolbarControlClass} />}
-            <SearchInput value={search} onChange={setSearch} placeholder="Search contributor..." />
-            <button
-              onClick={exportRows}
-              disabled={visible.length === 0}
-              className="ml-auto h-9 rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-            >
-              Export
-            </button>
-          </TableToolbar>
-        }
-      >
-        <table className="w-full min-w-[52rem] text-left text-sm">
-          <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
-            <tr>
-              <th className="px-5 py-3">Contributor</th>
-              <th className="px-5 py-3">Hours</th>
-              <th className="px-5 py-3">Tasking status</th>
-              <th className="px-5 py-3">Task</th>
-              <th className="px-5 py-3">Filed</th>
-              <th className="px-5 py-3 text-right" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {isLoading && (
-              <tr>
-                <td colSpan={6} className="px-5 py-6 text-center text-gray-400">
-                  Loading...
-                </td>
-              </tr>
-            )}
-            {!isLoading && visible.length === 0 && (
-              <tr>
-                <td colSpan={6} className="px-5 py-6 text-center text-gray-400">
-                  {tab === 'missing' ? 'Everyone has filed.' : tab === 'filed' ? 'Nobody has filed yet.' : 'No contributors.'}
-                </td>
-              </tr>
-            )}
-            {!isLoading &&
-              visible.map(({ person, entry }) => (
-                <tr key={person.id} onClick={() => setEditing({ person, entry })} className="cursor-pointer align-top hover:bg-gray-50">
-                  <td className="px-5 py-3">
-                    <Link to={contributorPath(person.email)} onClick={(e) => e.stopPropagation()} className="font-medium text-sky-700 hover:underline">
+      <TableToolbar standalone>
+        <input
+          type="date"
+          value={date}
+          max={today}
+          onChange={(e) => setDate(e.target.value || today)}
+          aria-label="Day"
+          className={toolbarControlClass}
+        />
+        {isAdmin && <Select value={team} onChange={setTeam} options={teamOptions} aria-label="Filter by team" className={toolbarControlClass} />}
+        <SearchInput value={search} onChange={setSearch} placeholder="Search contributor..." />
+        <button
+          onClick={exportRows}
+          disabled={visible.length === 0}
+          className="ml-auto h-9 rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+        >
+          Export
+        </button>
+      </TableToolbar>
+
+      {isLoading ? (
+        <EmptyCard>Loading...</EmptyCard>
+      ) : visible.length === 0 ? (
+        <EmptyCard>{tab === 'missing' ? 'Everyone has filed.' : tab === 'filed' ? 'Nobody has filed yet.' : 'No contributors.'}</EmptyCard>
+      ) : (
+        <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {visible.map(({ person, entry }) => (
+            <li key={person.id}>
+              {/* The whole card opens the form for a mouse; the footer button is the keyboard way in. */}
+              <div
+                onClick={() => setEditing({ person, entry })}
+                className={`flex h-full cursor-pointer flex-col gap-3 rounded-xl border bg-white p-4 text-sm hover:shadow-sm ${
+                  entry ? 'border-gray-200 hover:border-gray-300' : 'border-dashed border-status-warning-text/40 hover:border-status-warning-text/70'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <Avatar name={person.name} photoUrl={person.avatar_url} size={40} />
+                  <div className="min-w-0 flex-1">
+                    <Link
+                      to={contributorPath(person.email)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="block truncate font-semibold text-gray-900 hover:text-sky-700 hover:underline"
+                    >
                       {person.name}
                     </Link>
-                    <div className="text-xs text-gray-400">{person.email}</div>
-                    {isAdmin && person.lead_id && <div className="text-xs text-gray-400">Lead: {leadNames.get(person.lead_id) ?? '—'}</div>}
-                  </td>
-                  <td className="px-5 py-3">
-                    {entry ? hoursPill(entry.hours) : <span className={`${pillClass} bg-status-warning-bg text-status-warning-text`}>Not filed</span>}
-                  </td>
-                  <td className="max-w-xs px-5 py-3 text-gray-600">{entry?.tasking_status ?? <span className="text-gray-400">—</span>}</td>
-                  <td className="px-5 py-3">
-                    {entry?.task_id ? <TaskCell entry={entry} /> : <span className="text-gray-400">—</span>}
-                  </td>
-                  <td className="px-5 py-3 text-xs text-gray-500">
-                    {entry ? (
-                      <>
-                        {formatTime(entry.updated_at)}
-                        {entry.filed_by !== entry.user_id && <div className="text-gray-400">by {entry.filer?.name ?? 'support'}</div>}
-                      </>
-                    ) : (
-                      <span className="text-gray-400">—</span>
-                    )}
-                  </td>
-                  <td className="px-5 py-3 text-right">
-                    <button className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50">
-                      {entry ? 'Edit' : 'File'}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-          </tbody>
-        </table>
-      </TableCard>
+                    <div className="truncate text-xs text-gray-400">{person.email}</div>
+                    {isAdmin && person.lead_id && <div className="truncate text-xs text-gray-400">Lead: {leadNames.get(person.lead_id) ?? '—'}</div>}
+                  </div>
+                  {entry ? hoursPill(entry.hours) : <span className={`${pillClass} shrink-0 bg-status-warning-bg text-status-warning-text`}>Not filed</span>}
+                </div>
+
+                {entry ? (
+                  <>
+                    <EntryDetails entry={entry} />
+                    <div className="mt-auto flex items-center justify-between border-t border-gray-100 pt-2 text-xs text-gray-400">
+                      <span>
+                        Filed {formatTime(entry.updated_at)}
+                        {entry.filed_by !== entry.user_id && <> by {entry.filer?.name ?? 'support'}</>}
+                      </span>
+                      <CardAction>Edit</CardAction>
+                    </div>
+                  </>
+                ) : (
+                  <div className="mt-auto flex items-center justify-between border-t border-gray-100 pt-2 text-xs text-gray-400">
+                    <span>No attendance yet</span>
+                    <CardAction>File for them</CardAction>
+                  </div>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
 
       {editing && (
         <AttendanceFormModal
@@ -259,20 +248,37 @@ function TeamAttendance() {
   )
 }
 
-function TaskCell({ entry }: { entry: AttendanceWithFiler }) {
+/** The tasking status, and the Task ID and screenshot when tasking. */
+function EntryDetails({ entry }: { entry: AttendanceWithFiler }) {
   const link = entry.screenshot_url && /^https?:\/\//i.test(entry.screenshot_url) ? entry.screenshot_url : null
   return (
-    <div onClick={(e) => e.stopPropagation()}>
-      <span className="font-mono text-xs break-all">{entry.task_id}</span>
-      {link && (
-        <div>
-          <a href={link} target="_blank" rel="noopener noreferrer" className="text-xs text-sky-700 hover:underline">
-            Screenshot
-          </a>
+    <div className="flex flex-col gap-1.5">
+      <div className="text-gray-700">{entry.tasking_status}</div>
+      {entry.task_id && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+          <span className="font-mono break-all text-gray-500">{entry.task_id}</span>
+          {link && (
+            <a href={link} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="font-medium text-sky-700 hover:underline">
+              Screenshot
+            </a>
+          )}
         </div>
       )}
     </div>
   )
+}
+
+// Bubbles up to the card's own click, which opens the form.
+function CardAction({ children }: { children: ReactNode }) {
+  return (
+    <button type="button" className="rounded-md px-2 py-1 font-semibold text-gray-600 hover:bg-gray-100">
+      {children}
+    </button>
+  )
+}
+
+function EmptyCard({ children }: { children: ReactNode }) {
+  return <div className="rounded-xl border border-gray-200 bg-white px-5 py-10 text-center text-sm text-gray-400">{children}</div>
 }
 
 /** Contributors: today's filing and their own history. */
@@ -309,47 +315,27 @@ function MyAttendance() {
         </button>
       </div>
 
-      <TableCard>
-        <table className="w-full min-w-[40rem] text-left text-sm">
-          <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
-            <tr>
-              <th className="px-5 py-3">Day</th>
-              <th className="px-5 py-3">Hours</th>
-              <th className="px-5 py-3">Tasking status</th>
-              <th className="px-5 py-3">Task</th>
-              <th className="px-5 py-3">Filed</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {isLoading && (
-              <tr>
-                <td colSpan={5} className="px-5 py-6 text-center text-gray-400">
-                  Loading...
-                </td>
-              </tr>
-            )}
-            {!isLoading && history.length === 0 && (
-              <tr>
-                <td colSpan={5} className="px-5 py-6 text-center text-gray-400">
-                  No attendance filed yet.
-                </td>
-              </tr>
-            )}
-            {history.map((entry) => (
-              <tr key={entry.id} className="align-top">
-                <td className="px-5 py-3 font-medium text-gray-900">{formatDay(entry.date)}</td>
-                <td className="px-5 py-3">{hoursPill(entry.hours)}</td>
-                <td className="max-w-xs px-5 py-3 text-gray-600">{entry.tasking_status}</td>
-                <td className="px-5 py-3">{entry.task_id ? <TaskCell entry={entry} /> : <span className="text-gray-400">—</span>}</td>
-                <td className="px-5 py-3 text-xs text-gray-500">
-                  {formatTime(entry.updated_at)}
-                  {entry.filed_by !== entry.user_id && <div className="text-gray-400">by {entry.filer?.name ?? 'your lead'}</div>}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </TableCard>
+      {isLoading ? (
+        <EmptyCard>Loading...</EmptyCard>
+      ) : history.length === 0 ? (
+        <EmptyCard>No attendance filed yet.</EmptyCard>
+      ) : (
+        <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {history.map((entry) => (
+            <li key={entry.id} className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 text-sm">
+              <div className="flex items-start justify-between gap-3">
+                <div className="font-semibold text-gray-900">{formatDay(entry.date)}</div>
+                {hoursPill(entry.hours)}
+              </div>
+              <EntryDetails entry={entry} />
+              <div className="mt-auto border-t border-gray-100 pt-2 text-xs text-gray-400">
+                Filed {formatTime(entry.updated_at)}
+                {entry.filed_by !== entry.user_id && <> by {entry.filer?.name ?? 'your lead'}</>}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
 
       {filing && user && (
         <AttendanceFormModal person={{ id: user.id, name: user.name, email: user.email }} date={today} existing={todays} onClose={() => setFiling(false)} />

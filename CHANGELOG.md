@@ -14,6 +14,10 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Changed
+
+- The Attendance page shows each person as a card instead of a table row: their photo, hours, tasking status, Task ID and screenshot, and when they filed. People who haven't filed have a dashed outline, and the cards stack on a phone. Your own attendance history is shown as cards too.
+
 ## 5.0.0 — 2026-10-17
 
 ### Changed

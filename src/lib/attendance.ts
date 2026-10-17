@@ -63,13 +63,13 @@ export const TASKING_STATUSES = [
 ]
 
 export type AttendanceWithFiler = Attendance & {
-  person: { id: string; name: string; email: string; lead_id: string | null } | null
+  person: { id: string; name: string; email: string; lead_id: string | null; avatar_url: string | null } | null
   // Null when the viewer isn't allowed to read the filer's profile.
   filer: { id: string; name: string } | null
 }
 
 const ATTENDANCE_SELECT =
-  '*, person:profiles!attendance_user_id_fkey(id, name, email, lead_id), filer:profiles!attendance_filed_by_fkey(id, name)'
+  '*, person:profiles!attendance_user_id_fkey(id, name, email, lead_id, avatar_url), filer:profiles!attendance_filed_by_fkey(id, name)'
 
 /** Everyone's attendance for one day that the caller can see (RLS scopes it to their team). */
 export async function fetchAttendanceForDate(date: string): Promise<AttendanceWithFiler[]> {
