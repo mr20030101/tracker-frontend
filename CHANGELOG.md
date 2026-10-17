@@ -14,6 +14,10 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Changed
+
+- Sending attendance to the team's Google Form now has an on/off switch, and it starts off, so attendance can be tried out without adding responses to the form. While it's off, attendance cards don't show the Google Form status.
+
 ## 5.5.0 — 2026-10-17
 
 ### Added

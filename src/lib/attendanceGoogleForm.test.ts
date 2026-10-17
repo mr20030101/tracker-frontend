@@ -1,8 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
-import { GOOGLE_FORM_RESPONSE_URL, googleFormBody, handleSendAttendanceToGoogleForm } from './attendanceGoogleForm'
-import type { ServerSupabaseEnv } from './serverAuth'
+import { GOOGLE_FORM_RESPONSE_URL, googleFormBody, handleGoogleFormStatus, handleSendAttendanceToGoogleForm, type GoogleFormEnv } from './attendanceGoogleForm'
 
-const ENV: ServerSupabaseEnv = { SUPABASE_URL: 'https://project.supabase.co', SUPABASE_ANON_KEY: 'anon', SUPABASE_SERVICE_ROLE_KEY: 'service' }
+const ENV: GoogleFormEnv = {
+  SUPABASE_URL: 'https://project.supabase.co',
+  SUPABASE_ANON_KEY: 'anon',
+  SUPABASE_SERVICE_ROLE_KEY: 'service',
+  ATTENDANCE_GOOGLE_FORM: 'on',
+}
 const USER_ID = '11111111-2222-3333-4444-555555555555'
 
 describe('googleFormBody', () => {
@@ -100,5 +104,21 @@ describe('handleSendAttendanceToGoogleForm', () => {
 
   it('rejects a malformed request', async () => {
     expect((await handleSendAttendanceToGoogleForm(request({ user_id: 'x', date: 'today' }), ENV, fakeFetch())).status).toBe(400)
+  })
+
+  it('does nothing at all while sending is off', async () => {
+    for (const setting of [undefined, '', 'off']) {
+      const fetchImpl = fakeFetch()
+      const response = await handleSendAttendanceToGoogleForm(request(), { ...ENV, ATTENDANCE_GOOGLE_FORM: setting }, fetchImpl)
+      expect(await response.json()).toEqual({ sent: false, disabled: true })
+      expect(fetchImpl).not.toHaveBeenCalled()
+    }
+  })
+})
+
+describe('handleGoogleFormStatus', () => {
+  it('reports whether sending is on', async () => {
+    expect(await handleGoogleFormStatus(ENV).json()).toEqual({ enabled: true })
+    expect(await handleGoogleFormStatus({ ...ENV, ATTENDANCE_GOOGLE_FORM: undefined }).json()).toEqual({ enabled: false })
   })
 })

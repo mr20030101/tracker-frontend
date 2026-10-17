@@ -66,7 +66,22 @@ const json = (status: number, body: Record<string, unknown>) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } })
 const refuse = (status: number, message: string) => json(status, { message })
 
-export async function handleSendAttendanceToGoogleForm(request: Request, env: ServerSupabaseEnv, fetchImpl: typeof fetch = fetch): Promise<Response> {
+export interface GoogleFormEnv extends ServerSupabaseEnv {
+  /** "on" to send attendance to the Google Form. Anything else (or unset) leaves it off, e.g. while testing. */
+  ATTENDANCE_GOOGLE_FORM?: string
+}
+
+export const googleFormEnabled = (env: GoogleFormEnv) => env.ATTENDANCE_GOOGLE_FORM?.trim().toLowerCase() === 'on'
+
+/** GET: whether sending is on, so the Attendance page only shows the Google Form status when it is. */
+export function handleGoogleFormStatus(env: GoogleFormEnv): Response {
+  return json(200, { enabled: googleFormEnabled(env) })
+}
+
+export async function handleSendAttendanceToGoogleForm(request: Request, env: GoogleFormEnv, fetchImpl: typeof fetch = fetch): Promise<Response> {
+  // Off: nothing is sent or recorded, so turning it on later doesn't send these older saves.
+  if (!googleFormEnabled(env)) return json(200, { sent: false, disabled: true })
+
   const { url, anonKey, serviceKey } = serverSupabaseConfig(env)
   if (!serviceKey) {
     console.error('api/attendance-google-form: SUPABASE_SERVICE_ROLE_KEY is not set.')
