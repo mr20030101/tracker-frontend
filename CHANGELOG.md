@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 5.3.0 — 2026-10-17
+
 ### Changed
 
 - Filing your own attendance now needs a photo taken with your camera. The form opens the camera, you take the photo (and can retake it), then submit. When you edit today's entry, your photo stays unless you retake it. Attendance a lead files for you doesn't need one.
