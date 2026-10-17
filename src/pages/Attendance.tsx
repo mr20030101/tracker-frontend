@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../lib/auth'
@@ -15,6 +15,10 @@ import {
 import { AttendanceFormModal } from '../components/AttendanceFormModal'
 import { SearchInput, SegmentedTabs, TableToolbar, toolbarControlClass } from '../components/TableToolbar'
 import { Avatar } from '../components/Avatar'
+import { Modal } from '../components/Modal'
+import { Camera } from 'lucide-react'
+import { errorMessage } from '../lib/api'
+import { fetchAttendancePhoto } from '../lib/attendancePhoto'
 import { Select } from '../components/Select'
 import { downloadCsv } from '../lib/csv'
 import { contributorPath } from '../lib/urlRef'
@@ -67,6 +71,7 @@ function TeamAttendance() {
   const [team, setTeam] = useState(ALL_TEAMS)
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<{ person: Person; entry: AttendanceEntry | null } | null>(null)
+  const [viewingPhoto, setViewingPhoto] = useState<{ ref: string; name: string } | null>(null)
 
   const { data: roster, isLoading: rosterLoading } = useQuery({
     queryKey: ['attendance', 'roster'],
@@ -219,7 +224,10 @@ function TeamAttendance() {
                         Filed {formatTime(entry.updated_at)}
                         {entry.filed_by !== entry.user_id && <> by {entry.filer?.name ?? 'support'}</>}
                       </span>
-                      <CardAction>Edit</CardAction>
+                      <span className="flex items-center gap-1">
+                        {entry.photo_ref && <PhotoButton onClick={() => setViewingPhoto({ ref: entry.photo_ref!, name: person.name })} />}
+                        <CardAction>Edit</CardAction>
+                      </span>
                     </div>
                   </>
                 ) : (
@@ -244,6 +252,7 @@ function TeamAttendance() {
           onClose={() => setEditing(null)}
         />
       )}
+      {viewingPhoto && <PhotoModal photoRef={viewingPhoto.ref} name={viewingPhoto.name} onClose={() => setViewingPhoto(null)} />}
     </div>
   )
 }
@@ -277,6 +286,53 @@ function CardAction({ children }: { children: ReactNode }) {
   )
 }
 
+function PhotoButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation()
+        onClick()
+      }}
+      className="flex items-center gap-1 rounded-md px-2 py-1 font-semibold text-gray-600 hover:bg-gray-100"
+    >
+      <Camera className="h-3.5 w-3.5" />
+      Photo
+    </button>
+  )
+}
+
+/** An attendance photo, loaded from Google Drive (through api/attendance-photo) only when opened. */
+function PhotoModal({ photoRef, name, onClose }: { photoRef: string; name: string; onClose: () => void }) {
+  const [url, setUrl] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let objectUrl: string | null = null
+    let cancelled = false
+    fetchAttendancePhoto(photoRef).then(
+      (loaded) => {
+        objectUrl = loaded
+        if (cancelled) URL.revokeObjectURL(loaded)
+        else setUrl(loaded)
+      },
+      (err) => !cancelled && setError(errorMessage(err, "This photo couldn't be loaded.")),
+    )
+    return () => {
+      cancelled = true
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
+    }
+  }, [photoRef])
+
+  return (
+    <Modal title={`${name}'s attendance photo`} onClose={onClose}>
+      <div className="flex aspect-[4/3] items-center justify-center overflow-hidden rounded-lg bg-gray-100 text-sm text-gray-400">
+        {url ? <img src={url} alt={`${name}'s attendance photo`} className="h-full w-full object-cover" /> : (error ?? 'Loading...')}
+      </div>
+    </Modal>
+  )
+}
+
 function EmptyCard({ children }: { children: ReactNode }) {
   return <div className="rounded-xl border border-gray-200 bg-white px-5 py-10 text-center text-sm text-gray-400">{children}</div>
 }
@@ -288,6 +344,7 @@ function MyAttendance() {
   const today = todayIso(now)
   const windowState = attendanceWindow(new Date(now))
   const [filing, setFiling] = useState(false)
+  const [viewingPhoto, setViewingPhoto] = useState<string | null>(null)
 
   const { data: history = [], isLoading } = useQuery({
     queryKey: ['attendance', 'history', user?.id],
@@ -328,9 +385,12 @@ function MyAttendance() {
                 {hoursPill(entry.hours)}
               </div>
               <EntryDetails entry={entry} />
-              <div className="mt-auto border-t border-gray-100 pt-2 text-xs text-gray-400">
-                Filed {formatTime(entry.updated_at)}
-                {entry.filed_by !== entry.user_id && <> by {entry.filer?.name ?? 'your lead'}</>}
+              <div className="mt-auto flex items-center justify-between border-t border-gray-100 pt-2 text-xs text-gray-400">
+                <span>
+                  Filed {formatTime(entry.updated_at)}
+                  {entry.filed_by !== entry.user_id && <> by {entry.filer?.name ?? 'your lead'}</>}
+                </span>
+                {entry.photo_ref && <PhotoButton onClick={() => setViewingPhoto(entry.photo_ref)} />}
               </div>
             </li>
           ))}
@@ -340,6 +400,7 @@ function MyAttendance() {
       {filing && user && (
         <AttendanceFormModal person={{ id: user.id, name: user.name, email: user.email }} date={today} existing={todays} onClose={() => setFiling(false)} />
       )}
+      {viewingPhoto && user && <PhotoModal photoRef={viewingPhoto} name={user.name} onClose={() => setViewingPhoto(null)} />}
     </div>
   )
 }

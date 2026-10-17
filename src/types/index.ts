@@ -400,6 +400,9 @@ export interface Attendance {
   // Only set when tasking_status is 'Tasking'.
   task_id: string | null
   screenshot_url: string | null
+  // The Google Drive file id of the photo the contributor took when filing (see lib/attendancePhoto.ts).
+  // Null on support entries filed for someone, and on entries from before photos were required.
+  photo_ref: string | null
   // The contributor themselves, or the lead/admin who filed it for them.
   filed_by: string | null
   created_at: string

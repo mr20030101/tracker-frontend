@@ -11,6 +11,8 @@ import {
   fileAttendance,
 } from '../lib/attendance'
 import { confirmDialog } from '../lib/dialog'
+import { uploadAttendancePhoto } from '../lib/attendancePhoto'
+import { CameraCapture } from './CameraCapture'
 import { fromISODate } from '../lib/week'
 import { Modal } from './Modal'
 import { Select } from './Select'
@@ -41,6 +43,11 @@ export function AttendanceFormModal({
   const [taskId, setTaskId] = useState(existing?.task_id ?? '')
   const [screenshotUrl, setScreenshotUrl] = useState(existing?.screenshot_url ?? '')
   const [formError, setFormError] = useState<string | null>(null)
+  const [photo, setPhoto] = useState<Blob | null>(null)
+  // A contributor's own entry needs a photo from the camera; editing one that has a photo can keep it.
+  const needsPhoto = !support && !existing?.photo_ref
+  const [retaking, setRetaking] = useState(false)
+  const showCamera = !support && (needsPhoto || retaking)
 
   const hoursOptions = support ? [...CONTRIBUTOR_HOURS, ...SUPPORT_HOURS] : CONTRIBUTOR_HOURS
   const statusOptions = TASKING_STATUSES.map((s) => ({ value: s, label: s }))
@@ -57,15 +64,18 @@ export function AttendanceFormModal({
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['attendance'] })
 
   const saveMutation = useMutation({
-    mutationFn: () =>
-      fileAttendance({
+    mutationFn: async () => {
+      const photoRef = photo ? await uploadAttendancePhoto(photo) : null
+      await fileAttendance({
         userId: person.id,
         date,
         hours: hours as AttendanceHours,
         taskingStatus: status,
         taskId: tasking ? taskId : '',
         screenshotUrl: tasking ? screenshotUrl : '',
-      }),
+        photoRef,
+      })
+    },
     onSuccess: () => {
       invalidate()
       onClose()
@@ -90,6 +100,7 @@ export function AttendanceFormModal({
           e.preventDefault()
           if (!hours) return setFormError('Pick how many hours you can commit today.')
           if (!status) return setFormError('Pick a tasking status.')
+          if (needsPhoto && !photo) return setFormError('Take a photo with your camera first.')
           setFormError(null)
           saveMutation.mutate()
         }}
@@ -106,6 +117,24 @@ export function AttendanceFormModal({
           <p className="text-xs text-gray-500">
             One entry a day. Please pick your tasking status carefully. You can change it until the window closes.
           </p>
+        )}
+
+        {!support && (
+          <div className="flex flex-col gap-1 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="font-medium text-gray-700">Your photo</span>
+              {!needsPhoto && !retaking && (
+                <button type="button" onClick={() => setRetaking(true)} className="text-xs font-semibold text-sky-700 hover:underline">
+                  Retake photo
+                </button>
+              )}
+            </div>
+            {showCamera ? (
+              <CameraCapture onChange={setPhoto} />
+            ) : (
+              <p className="text-xs text-gray-500">You took a photo when you filed today. It stays unless you retake it.</p>
+            )}
+          </div>
         )}
 
         <fieldset className="flex flex-col gap-2 text-sm">
@@ -198,10 +227,11 @@ export function AttendanceFormModal({
           </button>
           <button
             type="submit"
-            disabled={busy}
+            disabled={busy || (needsPhoto && !photo)}
+            title={needsPhoto && !photo ? 'Take your photo first' : undefined}
             className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
           >
-            {saveMutation.isPending ? 'Saving...' : existing ? 'Save changes' : 'Submit attendance'}
+            {saveMutation.isPending ? (photo ? 'Saving photo...' : 'Saving...') : existing ? 'Save changes' : 'Submit attendance'}
           </button>
         </div>
       </form>

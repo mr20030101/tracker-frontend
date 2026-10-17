@@ -14,6 +14,15 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Changed
+
+- Filing your own attendance now needs a photo taken with your camera. The form opens the camera, you take the photo (and can retake it), then submit. When you edit today's entry, your photo stays unless you retake it. Attendance a lead files for you doesn't need one.
+- Today only (October 17), attendance stays open all day so the new photo step can be tried out.
+
+### Added
+
+- Leads and admins can open anyone's attendance photo from their card on the Attendance page, and contributors can see their own. Photos are kept in the team's Google Drive, not in the Tracker.
+
 ## 5.2.0 — 2026-10-17
 
 ### Changed
