@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../lib/auth'
 import {
   HOURS_LABELS,
@@ -10,15 +10,16 @@ import {
   fetchAttendanceForDate,
   fetchAttendanceHistory,
   fetchAttendanceRoster,
+  sentToGoogleForm,
   type AttendanceWithFiler,
 } from '../lib/attendance'
 import { AttendanceFormModal } from '../components/AttendanceFormModal'
 import { SearchInput, SegmentedTabs, TableToolbar, toolbarControlClass } from '../components/TableToolbar'
 import { Avatar } from '../components/Avatar'
 import { Modal } from '../components/Modal'
-import { Camera } from 'lucide-react'
+import { Camera, Check } from 'lucide-react'
 import { errorMessage } from '../lib/api'
-import { fetchAttendancePhoto } from '../lib/attendancePhoto'
+import { fetchAttendancePhoto, sendAttendanceToGoogleForm } from '../lib/attendancePhoto'
 import { Select } from '../components/Select'
 import { downloadCsv } from '../lib/csv'
 import { contributorPath } from '../lib/urlRef'
@@ -273,6 +274,40 @@ function EntryDetails({ entry }: { entry: AttendanceWithFiler }) {
           )}
         </div>
       )}
+      <GoogleFormStatus entry={entry} />
+    </div>
+  )
+}
+
+/** Whether the entry's latest save reached the team's Google Form, with a Retry when it didn't. */
+function GoogleFormStatus({ entry }: { entry: AttendanceWithFiler }) {
+  const queryClient = useQueryClient()
+  const retry = useMutation({
+    mutationFn: () => sendAttendanceToGoogleForm(entry.user_id, entry.date),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['attendance'] }),
+  })
+
+  if (sentToGoogleForm(entry)) {
+    return (
+      <div className="flex items-center gap-1 text-xs text-gray-400">
+        <Check className="h-3.5 w-3.5" />
+        Sent to the Google Form
+      </div>
+    )
+  }
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-status-warning-text" onClick={(e) => e.stopPropagation()}>
+      <span title={entry.google_form_error ?? undefined}>
+        {retry.isError ? errorMessage(retry.error, 'Not sent to the Google Form') : 'Not sent to the Google Form yet'}
+      </span>
+      <button
+        type="button"
+        onClick={() => retry.mutate()}
+        disabled={retry.isPending}
+        className="rounded-md px-1.5 py-0.5 font-semibold underline hover:bg-status-warning-bg disabled:opacity-50"
+      >
+        {retry.isPending ? 'Sending...' : 'Retry'}
+      </button>
     </div>
   )
 }

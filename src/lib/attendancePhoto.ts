@@ -33,3 +33,16 @@ export async function fetchAttendancePhoto(ref: string): Promise<string> {
   if (!response.ok) throw await failure(response, "This photo couldn't be loaded.")
   return URL.createObjectURL(await response.blob())
 }
+
+/**
+ * Sends a saved entry to the team's Google Form (api/attendance-google-form). The outcome is also
+ * recorded on the entry, so a failure shows on the Attendance page with a Retry.
+ */
+export async function sendAttendanceToGoogleForm(userId: string, date: string): Promise<void> {
+  const response = await fetch('/api/attendance-google-form', {
+    method: 'POST',
+    headers: { ...(await authHeader()), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user_id: userId, date }),
+  })
+  if (!response.ok) throw await failure(response, "This couldn't be sent to the Google Form.")
+}

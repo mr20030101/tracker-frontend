@@ -7,18 +7,12 @@
 //         their lead, an admin): the check is a read of the entry with the caller's own access.
 // Kept free of Vercel and browser APIs so it can be tested with a fake fetch (hence the .js imports).
 
-import { DEFAULT_SUPABASE_ANON_KEY, DEFAULT_SUPABASE_URL } from './supabaseConfig.js'
+import { serverSupabaseConfig as config, signedInCaller, type ServerSupabaseEnv } from './serverAuth.js'
 import { attendanceWindow } from './attendanceWindow.js'
 import { toISODate, fromISODate } from './week.js'
 import { downloadFromDrive, driveConfigured, uploadToDrive, type DriveEnv } from './googleDrive.js'
 
-export interface AttendancePhotoEnv extends DriveEnv {
-  SUPABASE_URL?: string
-  VITE_SUPABASE_URL?: string
-  SUPABASE_ANON_KEY?: string
-  VITE_SUPABASE_ANON_KEY?: string
-  SUPABASE_SERVICE_ROLE_KEY?: string
-}
+export interface AttendancePhotoEnv extends DriveEnv, ServerSupabaseEnv {}
 
 // The app shrinks a photo to a few dozen KB; these bound what a hand-made request can send.
 export const MAX_PHOTO_BYTES = 300 * 1024
@@ -29,40 +23,6 @@ export const MAX_UPLOADS_PER_DAY = 10
 const json = (status: number, body: Record<string, unknown>) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } })
 const refuse = (status: number, message: string) => json(status, { message })
-
-interface Caller {
-  id: string
-  email: string
-  token: string
-}
-
-function config(env: AttendancePhotoEnv) {
-  return {
-    url: env.SUPABASE_URL || env.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL,
-    anonKey: env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY,
-    serviceKey: env.SUPABASE_SERVICE_ROLE_KEY,
-  }
-}
-
-// The signed-in user behind the request's Supabase access token, if it's valid and their account
-// is active (read with their own access, so it's their own profile row).
-async function signedInCaller(request: Request, env: AttendancePhotoEnv, fetchImpl: typeof fetch): Promise<Caller | null> {
-  const token = request.headers.get('authorization')?.match(/^Bearer (.+)$/i)?.[1]
-  if (!token) return null
-  const { url, anonKey } = config(env)
-  const headers = { apikey: anonKey, Authorization: `Bearer ${token}` }
-  const userResponse = await fetchImpl(`${url}/auth/v1/user`, { headers })
-  if (!userResponse.ok) return null
-  const user = (await userResponse.json()) as { id?: string; email?: string }
-  if (!user.id) return null
-  const profileResponse = await fetchImpl(
-    `${url}/rest/v1/profiles?id=eq.${encodeURIComponent(user.id)}&select=is_active,must_change_password`,
-    { headers },
-  )
-  const [profile] = profileResponse.ok ? ((await profileResponse.json()) as { is_active: boolean; must_change_password: boolean }[]) : []
-  if (!profile?.is_active || profile.must_change_password) return null
-  return { id: user.id, email: user.email ?? '', token }
-}
 
 const isJpeg = (bytes: Uint8Array) => bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff
 

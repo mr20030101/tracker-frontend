@@ -128,3 +128,8 @@ export async function deleteAttendance(id: number): Promise<void> {
   const { error } = await supabase.from('attendance').delete().eq('id', id)
   if (error) throw error
 }
+
+/** True once the entry's latest save has reached the Google Form. */
+export function sentToGoogleForm(entry: Attendance): boolean {
+  return Boolean(entry.google_form_sent_at && Date.parse(entry.google_form_sent_at) >= Date.parse(entry.updated_at))
+}

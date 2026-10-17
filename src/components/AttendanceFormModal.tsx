@@ -11,7 +11,7 @@ import {
   fileAttendance,
 } from '../lib/attendance'
 import { confirmDialog } from '../lib/dialog'
-import { uploadAttendancePhoto } from '../lib/attendancePhoto'
+import { sendAttendanceToGoogleForm, uploadAttendancePhoto } from '../lib/attendancePhoto'
 import { CameraCapture } from './CameraCapture'
 import { fromISODate } from '../lib/week'
 import { Modal } from './Modal'
@@ -75,6 +75,8 @@ export function AttendanceFormModal({
         screenshotUrl: tasking ? screenshotUrl : '',
         photoRef,
       })
+      // Saved either way; a failed send is recorded on the entry and can be retried from its card.
+      await sendAttendanceToGoogleForm(person.id, date).catch(() => {})
     },
     onSuccess: () => {
       invalidate()
