@@ -14,6 +14,10 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Added
+
+- A Privacy page (linked at the bottom of every page) explaining what the Tracker keeps, who can see it, and how attendance photos are stored in Google Drive.
+
 ## 5.4.0 — 2026-10-17
 
 ### Changed
