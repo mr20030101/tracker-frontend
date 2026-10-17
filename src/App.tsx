@@ -4,6 +4,7 @@ import { AppShell } from './components/AppShell'
 import { RemotasksIdGate } from './components/RemotasksIdGate'
 import { isValidRemotasksId } from './lib/remotasks'
 import { Login } from './pages/Login'
+import { Privacy } from './pages/Privacy'
 import { ForcePasswordChange } from './pages/ForcePasswordChange'
 import { Dashboard } from './pages/Dashboard'
 import { ContributorDashboard } from './pages/ContributorDashboard'
@@ -87,6 +88,8 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      {/* Public: Google's sign-in consent screen links here. */}
+      <Route path="/privacy" element={<Privacy />} />
       {/* Public: applicants aren't signed in. */}
       <Route path="/apply/:leadId" element={<Apply />} />
       {/* Public: donors don't need an account. */}

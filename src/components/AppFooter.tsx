@@ -92,6 +92,10 @@ export function AppFooter({ className = '', releaseNotes = false }: { className?
       ) : (
         <span className="tabular-nums">v{APP_VERSION}</span>
       )}
+      <span aria-hidden="true">&bull;</span>
+      <a href="/privacy" className="hover:text-gray-700 hover:underline">
+        Privacy
+      </a>
       {/* Portaled, so a footer inside a transformed or clipped container can't trap it. */}
       {releaseNotes && showNotes && createPortal(<WhatsNew onClose={() => setShowNotes(false)} />, document.body)}
     </footer>
