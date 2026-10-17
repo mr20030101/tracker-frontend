@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 5.4.0 — 2026-10-17
+
 ### Changed
 
 - Every attendance you save in the Tracker is also sent to the team's "Centralize | Attendance" Google Form in the background, so the form's sheet keeps getting everyone's attendance. That includes the ones a lead files for someone, and changes to an entry, which arrive as a new response. Each attendance card shows whether it reached the form, with a Retry if it didn't.
