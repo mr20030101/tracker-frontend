@@ -14,6 +14,12 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 5.7.1 — 2026-10-17
+
+### Changed
+
+- Updated the team attendance cards with darker surfaces, clearer contrast, and matching accent actions.
+
 ## 5.7.0 — 2026-10-17
 
 ### Changed
