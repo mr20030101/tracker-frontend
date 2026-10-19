@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 5.7.2 — 2026-10-20
+
 ### Changed
 
 - A photo is required again to submit your attendance. Take one with your camera before submitting; when editing today's entry you can keep the photo you already took.
