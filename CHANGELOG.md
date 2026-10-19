@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 5.7.3 — 2026-10-20
+
 ### Added
 
 - If your camera can't be opened in the attendance form, you can upload a photo of yourself instead. It must have been taken in the last 30 minutes.
