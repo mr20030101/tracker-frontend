@@ -35,8 +35,8 @@ export interface Badge {
   label: string
   description: string
   icon: LucideIcon
-  // Tailwind classes for an earned badge's chip.
-  tone: string
+  // The badge's own colour: an earned chip is tinted with it (mid-shades, readable on light and dark).
+  color: string
   earned: (a: Achievements) => boolean
   /** How far along a not-yet-earned badge is, as [so far, needed]. Omitted when there's nothing to count. */
   progress?: (a: Achievements) => [number, number]
@@ -51,7 +51,7 @@ export const BADGES: Badge[] = [
     label: 'First Task',
     description: 'Submitted a first task.',
     icon: Sparkles,
-    tone: 'bg-sky-50 text-sky-700 border-sky-200',
+    color: '#0ea5e9',
     earned: (a) => a.total_submitted >= 1,
     progress: (a) => [a.total_submitted, 1],
   },
@@ -60,7 +60,7 @@ export const BADGES: Badge[] = [
     label: 'On Target',
     description: 'Hit a weekly target.',
     icon: Target,
-    tone: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    color: '#10b981',
     earned: (a) => a.weeks_hit >= 1,
   },
   {
@@ -68,7 +68,7 @@ export const BADGES: Badge[] = [
     label: 'On a Roll',
     description: 'Hit the target 3 weeks in a row.',
     icon: Flame,
-    tone: 'bg-orange-50 text-orange-700 border-orange-200',
+    color: '#f97316',
     earned: (a) => a.best_streak >= 3,
     progress: (a) => [a.current_streak, 3],
   },
@@ -77,7 +77,7 @@ export const BADGES: Badge[] = [
     label: 'Unstoppable',
     description: 'Hit the target 10 weeks in a row.',
     icon: Zap,
-    tone: 'bg-amber-50 text-amber-700 border-amber-200',
+    color: '#f59e0b',
     earned: (a) => a.best_streak >= 10,
     progress: (a) => [a.current_streak, 10],
   },
@@ -86,7 +86,7 @@ export const BADGES: Badge[] = [
     label: '100 Club',
     description: 'Submitted 100 tasks.',
     icon: Medal,
-    tone: 'bg-violet-50 text-violet-700 border-violet-200',
+    color: '#8b5cf6',
     earned: (a) => a.total_submitted >= 100,
     progress: (a) => [a.total_submitted, 100],
   },
@@ -95,7 +95,7 @@ export const BADGES: Badge[] = [
     label: '500 Club',
     description: 'Submitted 500 tasks.',
     icon: Award,
-    tone: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200',
+    color: '#d946ef',
     earned: (a) => a.total_submitted >= 500,
     progress: (a) => [a.total_submitted, 500],
   },
@@ -104,7 +104,7 @@ export const BADGES: Badge[] = [
     label: '1,000 Club',
     description: 'Submitted 1,000 tasks.',
     icon: Crown,
-    tone: 'bg-yellow-50 text-yellow-800 border-yellow-300',
+    color: '#ca8a04',
     earned: (a) => a.total_submitted >= 1000,
     progress: (a) => [a.total_submitted, 1000],
   },
@@ -113,7 +113,7 @@ export const BADGES: Badge[] = [
     label: 'Big Week',
     description: 'Submitted 100 tasks in a single week.',
     icon: Rocket,
-    tone: 'bg-rose-50 text-rose-700 border-rose-200',
+    color: '#f43f5e',
     earned: (a) => a.best_week >= 100,
     progress: (a) => [a.best_week, 100],
   },
@@ -122,7 +122,7 @@ export const BADGES: Badge[] = [
     label: 'Personal Best',
     description: 'Beat your own best week (after your first 4 weeks).',
     icon: TrendingUp,
-    tone: 'bg-teal-50 text-teal-700 border-teal-200',
+    color: '#14b8a6',
     earned: (a) => a.personal_bests >= 1,
   },
   {
@@ -130,7 +130,7 @@ export const BADGES: Badge[] = [
     label: 'Spooky Season',
     description: 'Hit the weekly target every week of October. October only!',
     icon: Ghost,
-    tone: 'bg-orange-50 text-orange-700 border-orange-300',
+    color: '#ea580c',
     earned: (a) => a.spooky_seasons >= 1,
     progress: (a) => [a.october_weeks_hit, a.october_weeks],
     month: 9,

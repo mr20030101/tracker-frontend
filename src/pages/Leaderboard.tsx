@@ -132,15 +132,12 @@ function ContributorLeaderboard() {
                       </span>
                       <Avatar name={row.name} photoUrl={row.avatar_url} size={36} />
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-medium text-gray-900">
-                          {row.name}
-                          <span className="ml-2">
-                            <StreakChip streak={achievements?.get(row.user_id)?.current_streak} />
-                          </span>
-                          <span className="ml-1.5">
-                            <FeaturedBadgeChip badgeId={featuredBadges?.get(row.user_id)} />
-                          </span>
-                          {isMe && <span className="ml-2 text-xs font-semibold text-accent">You</span>}
+                        {/* Only the name is cut short: clipping the whole line would also cut off the streak's flame. */}
+                        <div className="flex min-w-0 items-center gap-1.5 text-sm font-medium text-gray-900">
+                          <span className="mr-0.5 truncate">{row.name}</span>
+                          <StreakChip streak={achievements?.get(row.user_id)?.current_streak} />
+                          <FeaturedBadgeChip badgeId={featuredBadges?.get(row.user_id)} />
+                          {isMe && <span className="ml-0.5 shrink-0 text-xs font-semibold text-accent">You</span>}
                         </div>
                         <div className="mt-1 h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-gray-100">
                           <GrowBar className="h-full rounded-full bg-accent" pct={barPct} delay={300 + index * 45} />
@@ -485,8 +482,8 @@ function ManagerLeaderboard() {
                     >
                       <Avatar name={row.name || row.cb_email} />
                       <div className="min-w-0">
-                        <div className="flex items-center gap-2 truncate font-medium text-gray-900">
-                          {row.name}
+                        <div className="flex min-w-0 items-center gap-2 font-medium text-gray-900">
+                          <span className="truncate">{row.name}</span>
                           <StreakChip streak={achievements?.get(row.user_id)?.current_streak} />
                           <FeaturedBadgeChip badgeId={featuredBadges?.get(row.user_id)} />
                         </div>

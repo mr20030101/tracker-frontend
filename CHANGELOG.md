@@ -14,6 +14,12 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Changed
+
+- The featured badge beside people's names (Leaderboard, profiles) uses the same gold design as on the Dashboard.
+- All badges share the featured badge's look: the icon in a coloured disc, then the name. Earned badges are tinted in their own colour (readable in dark mode too), and ones still to earn are grey.
+- Streak flames flicker like real fire, and the streak chip beside names is a warm orange that suits dark mode too.
+
 ## 5.16.0 — 2026-10-20
 
 ### Changed

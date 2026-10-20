@@ -9,11 +9,14 @@ export function FeaturedBadgeChip({ badgeId }: { badgeId: string | null | undefi
   const badge = badgeById(badgeId)
   if (!badge) return null
   return (
+    // A small copy of the featured pill on the Dashboard's badge card (AchievementsCard below).
     <span
       title={`${badge.label}: ${badge.description}`}
-      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${badge.tone}`}
+      className="badge-featured relative inline-flex shrink-0 items-center gap-1 overflow-hidden rounded-full bg-linear-to-r from-accent to-[#f2c94c] py-0.5 pl-0.5 pr-2 text-[11px] font-bold text-accent-foreground shadow-[0_1px_6px_color-mix(in_srgb,var(--color-accent)_40%,transparent)]"
     >
-      <badge.icon className="h-3 w-3" />
+      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-white/35">
+        <badge.icon className="h-2.5 w-2.5" />
+      </span>
       {badge.label}
     </span>
   )
@@ -25,9 +28,9 @@ export function StreakChip({ streak }: { streak: number | undefined }) {
   return (
     <span
       title={`Hit the weekly target ${streak} week${streak === 1 ? '' : 's'} in a row`}
-      className="inline-flex items-center gap-0.5 rounded-full bg-orange-50 px-1.5 py-0.5 text-[11px] font-bold text-orange-600"
+      className="inline-flex shrink-0 items-center gap-0.5 rounded-full border border-[#f97316]/40 bg-linear-to-r from-[#f97316]/20 to-[#facc15]/15 px-1.5 py-0.5 text-[11px] font-bold text-[#f97316]"
     >
-      <Flame className="h-3 w-3" />
+      <Flame className="flame-flicker -mb-0.5 -ml-1.5 -mt-4 h-6 w-6 fill-[#facc15]/60" />
       {streak}
     </span>
   )
@@ -64,7 +67,7 @@ export function AchievementsCard({
       <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-3">
         <div className="text-sm font-semibold text-gray-700">{title}</div>
         <div className="flex items-center gap-2">
-          <Flame className={`h-6 w-6 ${a.current_streak ? 'text-orange-500' : 'text-gray-300'}`} />
+          <Flame className={`h-6 w-6 ${a.current_streak ? 'flame-flicker fill-[#facc15]/60 text-orange-500' : 'text-gray-300'}`} />
           <div>
             <div className="text-lg font-bold leading-tight text-gray-900">
               {a.current_streak} week{a.current_streak === 1 ? '' : 's'}
@@ -109,39 +112,44 @@ export function AchievementsCard({
           const has = badge.earned(a)
           const progress = !has && badge.progress ? badge.progress(a) : undefined
           const isFeatured = badge.id === featuredId
-          // The featured badge is a solid gold pill with its own "Featured" tag and a passing shine.
+          // Every chip has the same shape: the icon in a disc, then the name. The featured one is solid
+          // gold, earned ones are tinted with their badge's colour, ones still to earn are grey.
           const chip = isFeatured
             ? 'badge-featured relative inline-flex items-center gap-2 overflow-hidden rounded-full bg-linear-to-r from-accent to-[#f2c94c] py-1 pl-1 pr-1 text-xs font-bold text-accent-foreground shadow-[0_2px_10px_color-mix(in_srgb,var(--color-accent)_45%,transparent)]'
-            : `inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${
-                has ? badge.tone : 'border-gray-200 bg-gray-50 text-gray-300'
+            : `inline-flex items-center gap-2 rounded-full border py-1 pl-1 pr-3 text-xs font-semibold ${
+                has
+                  ? 'border-[color-mix(in_srgb,var(--badge)_45%,transparent)] bg-[color-mix(in_srgb,var(--badge)_12%,transparent)] text-(--badge)'
+                  : 'border-gray-200 text-gray-400'
               }`
-          const content = isFeatured ? (
+          const disc = isFeatured
+            ? 'bg-white/35'
+            : has
+              ? 'bg-(--badge) text-white'
+              : 'bg-gray-100 text-gray-400'
+          const content = (
             <>
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/35">
+              <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${disc}`}>
                 <badge.icon className="h-3 w-3" />
               </span>
-              {badge.label}
-              <span className="inline-flex items-center gap-1 rounded-full bg-accent-foreground/85 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#f2c94c]">
-                <Pin className="h-2.5 w-2.5" aria-hidden="true" />
-                Featured
-              </span>
-              <span className="sr-only">
-                {has ? '(earned)' : '(not yet earned)'}
-                {' (featured)'}
-              </span>
-            </>
-          ) : (
-            <>
-              <badge.icon className="h-3.5 w-3.5" />
               {badge.label}
               {progress && progress[1] > 0 && (
                 <span className="font-medium text-gray-400">
                   {Math.min(progress[0], progress[1]).toLocaleString()}/{progress[1].toLocaleString()}
                 </span>
               )}
-              <span className="sr-only">{has ? '(earned)' : '(not yet earned)'}</span>
+              {isFeatured && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-accent-foreground/85 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#f2c94c]">
+                  <Pin className="h-2.5 w-2.5" aria-hidden="true" />
+                  Featured
+                </span>
+              )}
+              <span className="sr-only">
+                {has ? '(earned)' : '(not yet earned)'}
+                {isFeatured ? ' (featured)' : ''}
+              </span>
             </>
           )
+          const style = { '--badge': badge.color } as React.CSSProperties
           return (
             <li key={badge.id}>
               {canFeature && has ? (
@@ -152,11 +160,12 @@ export function AchievementsCard({
                   disabled={feature.isPending}
                   onClick={() => feature.mutate(isFeatured ? null : badge.id)}
                   className={`${chip} transition-transform hover:scale-105 disabled:opacity-60`}
+                  style={style}
                 >
                   {content}
                 </button>
               ) : (
-                <span title={badge.description} className={chip}>
+                <span title={badge.description} className={chip} style={style}>
                   {content}
                 </span>
               )}
