@@ -14,6 +14,15 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Changed
+
+- The Attendance page for admins and leads lists contributors in the team's set order (kept in `src/lib/attendanceOrder.ts`). Anyone not on that list, such as a new contributor, appears at the bottom, A–Z by name.
+- Contributors with no attendance for the day are highlighted in red, instead of being moved to the top.
+
+### Fixed
+
+- The Attendance cards follow the light theme. They were dark navy on both themes.
+
 ## 5.8.0 — 2026-10-20
 
 ### Changed

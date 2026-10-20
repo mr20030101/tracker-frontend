@@ -29,6 +29,7 @@ import {
 import { Select } from '../components/Select'
 import { Switch } from '../components/Switch'
 import { downloadCsv } from '../lib/csv'
+import { compareAttendanceOrder } from '../lib/attendanceOrder'
 import { contributorPath } from '../lib/urlRef'
 import { formatTime, fromISODate, todayIso } from '../lib/week'
 import { useNow } from '../lib/useNow'
@@ -41,8 +42,8 @@ const pillClass = 'inline-flex items-center rounded-full border px-2.5 py-0.5 te
 
 function hoursPill(hours: AttendanceHours) {
   const style = SUPPORT_HOURS.includes(hours)
-    ? 'border-red-500/30 bg-red-500/10 text-red-300'
-    : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+    ? 'border-status-danger-text/30 bg-status-danger-bg text-status-danger-text'
+    : 'border-status-success-text/30 bg-status-success-bg text-status-success-text'
   return <span className={`${pillClass} ${style}`}>{HOURS_LABELS[hours]}</span>
 }
 
@@ -133,8 +134,8 @@ function TeamAttendance() {
   const countOf = (t: FilterTab) => (t === 'all' ? scoped.length : t === 'filed' ? filed.length : scoped.length - filed.length)
   const visible = scoped
     .filter((r) => (tab === 'all' ? true : tab === 'filed' ? r.entry : !r.entry))
-    // Missing first, so the people still to chase sit at the top.
-    .sort((a, b) => Number(Boolean(a.entry)) - Number(Boolean(b.entry)) || a.person.name.localeCompare(b.person.name))
+    // The team's fixed order; the missing ones stand out in red instead of moving.
+    .sort((a, b) => compareAttendanceOrder(a.person, b.person))
 
   const hoursSummary = (Object.keys(HOURS_LABELS) as AttendanceHours[])
     .map((h) => ({ hours: h, count: filed.filter((r) => r.entry!.hours === h).length }))
@@ -224,8 +225,8 @@ function TeamAttendance() {
               {/* The whole card opens the form for a mouse; the footer button is the keyboard way in. */}
               <div
                 onClick={() => setEditing({ person, entry })}
-                className={`flex h-full cursor-pointer flex-col gap-3 rounded-xl border bg-[#0b1624] p-4 text-sm shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)] transition-colors hover:shadow-lg ${
-                  entry ? 'border-slate-700/80 hover:border-slate-600' : 'border-dashed border-[#f7c667]/90 hover:border-[#ffd36a]'
+                className={`flex h-full cursor-pointer flex-col gap-3 rounded-xl border p-4 text-sm transition-shadow hover:shadow-md ${
+                  entry ? 'border-gray-200 bg-white hover:border-gray-300' : 'border-status-danger-text/60 bg-status-danger-bg hover:border-status-danger-text'
                 }`}
               >
                 <div className="flex items-start gap-3">
@@ -234,20 +235,24 @@ function TeamAttendance() {
                     <Link
                       to={contributorPath(person.email)}
                       onClick={(e) => e.stopPropagation()}
-                      className="block truncate font-semibold text-slate-100 hover:text-sky-400 hover:underline"
+                      className="block truncate font-semibold text-gray-900 hover:text-sky-600 hover:underline"
                     >
                       {person.name}
                     </Link>
-                    <div className="truncate text-xs text-slate-400">{person.email}</div>
-                    {isAdmin && person.lead_id && <div className="truncate text-xs text-slate-500">Lead: {leadNames.get(person.lead_id) ?? '—'}</div>}
+                    <div className="truncate text-xs text-gray-500">{person.email}</div>
+                    {isAdmin && person.lead_id && <div className="truncate text-xs text-gray-400">Lead: {leadNames.get(person.lead_id) ?? '—'}</div>}
                   </div>
-                  {entry ? hoursPill(entry.hours) : <span className={`${pillClass} shrink-0 border-amber-500/30 bg-amber-500/10 text-amber-300`}>Not filed</span>}
+                  {entry ? (
+                    hoursPill(entry.hours)
+                  ) : (
+                    <span className={`${pillClass} shrink-0 border-status-danger-text bg-status-danger-text text-white`}>Not filed</span>
+                  )}
                 </div>
 
                 {entry ? (
                   <>
                     <EntryDetails entry={entry} />
-                    <div className="mt-auto flex items-center justify-between border-t border-slate-800 pt-2 text-xs text-slate-400">
+                    <div className="mt-auto flex items-center justify-between border-t border-gray-100 pt-2 text-xs text-gray-400">
                       <span>
                         Filed {formatTime(entry.updated_at)}
                         {entry.filed_by !== entry.user_id && <> by {entry.filer?.name ?? 'support'}</>}
@@ -259,9 +264,9 @@ function TeamAttendance() {
                     </div>
                   </>
                 ) : (
-                  <div className="mt-auto flex items-center justify-between border-t border-slate-800 pt-2 text-xs text-slate-400">
+                  <div className="mt-auto flex items-center justify-between border-t border-status-danger-text/20 pt-2 text-xs font-medium text-status-danger-text">
                     <span>No attendance yet</span>
-                    <CardAction>File for them</CardAction>
+                    <CardAction danger>File for them</CardAction>
                   </div>
                 )}
               </div>
@@ -290,12 +295,12 @@ function EntryDetails({ entry }: { entry: AttendanceWithFiler }) {
   const link = entry.screenshot_url && /^https?:\/\//i.test(entry.screenshot_url) ? entry.screenshot_url : null
   return (
     <div className="flex flex-col gap-1.5">
-      <div className="text-slate-200">{entry.tasking_status}</div>
+      <div className="text-gray-800">{entry.tasking_status}</div>
       {entry.task_id && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-          <span className="font-mono break-all text-slate-400">{entry.task_id}</span>
+          <span className="font-mono break-all text-gray-500">{entry.task_id}</span>
           {link && (
-            <a href={link} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="font-medium text-sky-400 hover:underline">
+            <a href={link} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="font-medium text-sky-600 hover:underline">
               Screenshot
             </a>
           )}
@@ -343,13 +348,12 @@ function GoogleFormStatus({ entry }: { entry: AttendanceWithFiler }) {
 }
 
 // Bubbles up to the card's own click, which opens the form.
-function CardAction({ children }: { children: ReactNode }) {
-  return (
-    <button type="button" className="rounded-md border border-[#f7c667]/80 bg-[#0b1624] px-2.5 py-1 text-[11px] font-semibold text-[#f7c667] transition-colors hover:bg-[#f7c667]/10">
-      {children}
-    </button>
-  )
+function CardAction({ children, danger = false }: { children: ReactNode; danger?: boolean }) {
+  const tone = danger ? 'border-status-danger-text bg-status-danger-text text-white hover:opacity-90' : cardButtonTone
+  return <button type="button" className={`rounded-md border px-2.5 py-1 text-[11px] font-semibold transition-colors ${tone}`}>{children}</button>
 }
+
+const cardButtonTone = 'border-accent bg-white text-status-warning-text hover:bg-accent/10'
 
 function PhotoButton({ onClick }: { onClick: () => void }) {
   return (
@@ -359,7 +363,7 @@ function PhotoButton({ onClick }: { onClick: () => void }) {
         e.stopPropagation()
         onClick()
       }}
-      className="flex items-center gap-1 rounded-md border border-[#f7c667]/80 bg-[#0b1624] px-2.5 py-1 text-[11px] font-semibold text-[#f7c667] transition-colors hover:bg-[#f7c667]/10"
+      className={`flex items-center gap-1 rounded-md border px-2.5 py-1 text-[11px] font-semibold transition-colors ${cardButtonTone}`}
     >
       <Camera className="h-3.5 w-3.5" />
       Photo
