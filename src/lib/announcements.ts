@@ -54,6 +54,11 @@ export async function postAnnouncement(authorId: string, input: NewAnnouncement)
   if (error) throw error
 }
 
+export async function updateAnnouncement(id: number, input: NewAnnouncement): Promise<void> {
+  const { error } = await supabase.from('announcements').update({ ...input, updated_at: new Date().toISOString() }).eq('id', id)
+  if (error) throw error
+}
+
 export async function setAnnouncementPinned(id: number, pinned: boolean): Promise<void> {
   const { error } = await supabase.from('announcements').update({ pinned, updated_at: new Date().toISOString() }).eq('id', id)
   if (error) throw error
