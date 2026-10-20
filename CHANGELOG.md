@@ -14,6 +14,18 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Added
+
+- A **Settings** page (account menu → Settings, or search for it), in tabs:
+  - **Profile**: photo, name, Remotask ID, shift and bio.
+  - **Password**: a new password with a strength meter and a match check.
+  - **Appearance**: System (follows your device), Light or Dark, each with a picture of the app in that theme, plus the Halloween theme switch in October.
+  - **Calls**: the microphone and speaker your calls use, with a live mic test and a test sound (loudspeaker or phone on mobile).
+
+### Changed
+
+- **Edit Profile** on your profile page and the profile steps of the Getting started checklist now open Settings instead of a pop-up. Changing your password moved to its own Password tab.
+
 ## 5.12.0 — 2026-10-20
 
 ### Added

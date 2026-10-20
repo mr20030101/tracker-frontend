@@ -20,6 +20,11 @@ interface ThemeContextValue {
   /** True once the person has picked a theme with the toggle (it's then remembered). */
   manual: boolean
   toggleTheme: () => void
+  /**
+   * Picks a theme outright (the Settings page), remembered like the toggle. 'system' forgets the
+   * pick and follows the device's light/dark setting again, as before anything was chosen.
+   */
+  chooseTheme: (theme: Theme | 'system') => void
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null)
@@ -32,26 +37,32 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     document.documentElement.setAttribute('data-theme', theme)
   }, [theme])
 
+  // Following the system: switches along with the device (e.g. its own sunset schedule).
   useEffect(() => {
-    if (getStoredTheme()) return
+    if (manual) return
     const media = window.matchMedia('(prefers-color-scheme: dark)')
     const listener = (e: MediaQueryListEvent) => setTheme(e.matches ? 'dark' : 'light')
     media.addEventListener('change', listener)
     return () => media.removeEventListener('change', listener)
-  }, [])
+  }, [manual])
 
   function toggleTheme() {
-    const next: Theme = theme === 'dark' ? 'light' : 'dark'
-    setTheme(next)
-    setManual(true)
+    chooseTheme(theme === 'dark' ? 'light' : 'dark')
+  }
+
+  function chooseTheme(next: Theme | 'system') {
+    const followSystem = next === 'system'
+    setTheme(followSystem ? getSystemTheme() : next)
+    setManual(!followSystem)
     try {
-      localStorage.setItem('theme', next)
+      if (followSystem) localStorage.removeItem('theme')
+      else localStorage.setItem('theme', next)
     } catch {
       // Storage may be unavailable (private mode, blocked cookies) — theme still applies for this session.
     }
   }
 
-  return <ThemeContext.Provider value={{ theme, manual, toggleTheme }}>{children}</ThemeContext.Provider>
+  return <ThemeContext.Provider value={{ theme, manual, toggleTheme, chooseTheme }}>{children}</ThemeContext.Provider>
 }
 
 export function useTheme() {

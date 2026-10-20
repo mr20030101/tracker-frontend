@@ -115,7 +115,8 @@ export async function routeCallAudio(audio: HTMLAudioElement, prefs: CallDeviceP
 }
 
 // The microphones and speakers the browser lists, kept up to date as devices are plugged in.
-export function useMediaDevices(enabled: boolean) {
+// Bump `refresh` to list them again, e.g. once mic access is granted and their names appear.
+export function useMediaDevices(enabled: boolean, refresh = 0) {
   const [devices, setDevices] = useState<{ mics: DeviceOption[]; speakers: DeviceOption[] }>({ mics: [], speakers: [] })
   useEffect(() => {
     if (!enabled || !navigator.mediaDevices?.enumerateDevices) return
@@ -134,6 +135,6 @@ export function useMediaDevices(enabled: boolean) {
       alive = false
       navigator.mediaDevices.removeEventListener('devicechange', refresh)
     }
-  }, [enabled])
+  }, [enabled, refresh])
   return devices
 }

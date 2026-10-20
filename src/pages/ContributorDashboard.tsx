@@ -358,7 +358,6 @@ export function ContributorDashboard() {
         <OnboardingChecklist
           userId={contributorId}
           hasLead={Boolean(contributorLeadId)}
-          profilePath={contributorPath(email)}
           actions={{
             first_task: { label: 'Submit a task', onClick: () => setSubmitting(true) },
             ...(lead ? { message_lead: { label: `Message ${lead.name}`, onClick: () => openChatWith(lead.id, lead.name) } } : {}),

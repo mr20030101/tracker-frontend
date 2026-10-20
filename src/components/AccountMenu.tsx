@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
-import { ChevronDown, LogOut, UserRound } from 'lucide-react'
+import { ChevronDown, LogOut, Settings, UserRound } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { contributorPath } from '../lib/urlRef'
 import { Avatar } from './Avatar'
@@ -71,6 +71,14 @@ export function AccountMenu() {
             >
               <UserRound className="h-4 w-4 text-gray-400" />
               View profile
+            </NavLink>
+            <NavLink
+              to="/settings"
+              role="menuitem"
+              className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            >
+              <Settings className="h-4 w-4 text-gray-400" />
+              Settings
             </NavLink>
             <button
               type="button"

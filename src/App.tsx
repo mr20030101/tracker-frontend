@@ -26,6 +26,7 @@ import { Requests } from './pages/Requests'
 import { Feedback } from './pages/Feedback'
 import { Attendance } from './pages/Attendance'
 import { Announcements } from './pages/Announcements'
+import { Settings } from './pages/Settings'
 
 const MANAGER_ROLES = ['admin', 'lead']
 
@@ -62,6 +63,7 @@ function ProtectedLayout() {
         <Route path="/messages/group/:groupId" element={<Messages />} />
         <Route path="/messages/:userId" element={<Messages />} />
         <Route path="/announcements" element={<Announcements />} />
+        <Route path="/settings" element={<Settings />} />
         <Route path="/contributors/:email" element={<CbProfile />} />
         {isManager && <Route path="/users" element={<Users />} />}
         {isManager && <Route path="/projects" element={<Projects />} />}

@@ -20,6 +20,7 @@ import {
   CalendarCheck,
   Megaphone,
   UserRound,
+  Settings as SettingsIcon,
   Menu,
   X,
   type LucideIcon,
@@ -238,10 +239,13 @@ export function AppShell({ children }: { children: ReactNode }) {
   const searchPages = [
     ...sections.flatMap((section) => section.items.map(({ to, label, icon }) => ({ to, label, icon }))),
     { to: ownProfilePath, label: 'My profile', icon: UserRound },
+    { to: '/settings', label: 'Settings', icon: SettingsIcon },
   ]
 
   const crumb =
-    location.pathname === '/leaderboard'
+    location.pathname === '/settings'
+      ? 'Settings'
+      : location.pathname === '/leaderboard'
       ? 'Leaderboard'
       : location.pathname === '/task-log'
         ? 'Task Log'

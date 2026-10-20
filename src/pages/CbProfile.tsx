@@ -1,19 +1,17 @@
-import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Navigate, useParams, Link } from 'react-router-dom'
-import { Camera, ChevronDown, Eye, Lock, MessageCircle, Trophy } from 'lucide-react'
+import { ChevronDown, Eye, MessageCircle, Trophy } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, functionErrorMessage, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { weekStartIso } from '../lib/week'
 import { useNow } from '../lib/useNow'
-import { clearMustChangePassword, removeAvatarFile, updateOwnProfile, uploadAvatar } from '../lib/profile'
 import { isUserId, messagePath, parseContributorRef } from '../lib/urlRef'
 import type { ContributorProfile, ContributorProjectLevel, Project, ProjectLevel } from '../types'
 import { Avatar } from '../components/Avatar'
 import { LevelPill, LEVEL_TIERS } from '../components/LevelPill'
 import { ContributorWorkPanel } from '../components/ContributorWorkPanel'
-import { Modal } from '../components/Modal'
 import { Reveal } from '../components/Reveal'
 import { AchievementsCard, FeaturedBadgeChip } from '../components/Achievements'
 import { OnboardingProgress } from '../components/OnboardingChecklist'
@@ -21,8 +19,6 @@ import { useOnboardingStatus } from '../lib/onboarding'
 import { recordProfileView, useProfileViewCount } from '../lib/profileViews'
 import { useFeaturedBadges } from '../lib/achievements'
 import { usePageTitle } from '../lib/usePageTitle'
-import { normalizeRemotasksId, remotasksIdError } from '../lib/remotasks'
-import { RemotasksIdField } from '../components/RemotasksIdField'
 
 const LEVEL_OPTIONS: ProjectLevel[] = ['contributor', 'l0', 'l1', 'l10']
 
@@ -112,7 +108,7 @@ function LevelBadgePicker({ level, onChange }: { level: ProjectLevel; onChange: 
 }
 
 export function CbProfile() {
-  const { user: currentUser, refreshUser } = useAuth()
+  const { user: currentUser } = useAuth()
   const { email: contributorRef = '' } = useParams<{ email: string }>()
   // The URL carries an email, or a user id when the viewer isn't allowed to know the email.
   const target = parseContributorRef(contributorRef)
@@ -121,18 +117,6 @@ export function CbProfile() {
   const isOwnProfile = targetIsId ? currentUser?.id === target : currentUser?.email.toLowerCase() === target.toLowerCase()
 
   const [showWarning, setShowWarning] = useState(true)
-  const [editingProfile, setEditingProfile] = useState(false)
-  const [profileName, setProfileName] = useState(() => currentUser?.name ?? '')
-  const [profileRemotasksId, setProfileRemotasksId] = useState(() => currentUser?.remotasks_id ?? '')
-  const [profileSaveAttempted, setProfileSaveAttempted] = useState(false)
-  const [profileShift, setProfileShift] = useState(() => currentUser?.shift ?? '')
-  const [profileBio, setProfileBio] = useState(() => currentUser?.bio ?? '')
-  const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null)
-  const [profilePhotoPreview, setProfilePhotoPreview] = useState<string | null>(null)
-  const [profilePassword, setProfilePassword] = useState('')
-  const [profilePasswordConfirm, setProfilePasswordConfirm] = useState('')
-  const [profileError, setProfileError] = useState<string | null>(null)
-  const photoInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     setShowWarning(true)
@@ -140,11 +124,6 @@ export function CbProfile() {
     return () => clearTimeout(timer)
   }, [target])
 
-  useEffect(() => {
-    return () => {
-      if (profilePhotoPreview) URL.revokeObjectURL(profilePhotoPreview)
-    }
-  }, [profilePhotoPreview])
   const now = useNow(60_000)
   const thisWeekIso = weekStartIso(now)
 
@@ -239,82 +218,6 @@ export function CbProfile() {
     },
   })
 
-  const saveProfileMutation = useMutation({
-    mutationFn: async () => {
-      if (!currentUser) throw new Error('Unauthenticated')
-      const previousAvatarUrl = currentUser.avatar_url
-      let avatarUrl = previousAvatarUrl
-      if (profilePhotoFile) avatarUrl = await uploadAvatar(currentUser.id, profilePhotoFile)
-      try {
-        await updateOwnProfile(profileName.trim(), avatarUrl, normalizeRemotasksId(profileRemotasksId)!, profileShift.trim(), profileBio.trim())
-      } catch (e) {
-        if (avatarUrl !== previousAvatarUrl) await removeAvatarFile(avatarUrl)
-        throw e
-      }
-      // The old photo's file is no longer used once the profile points at the new one.
-      if (avatarUrl !== previousAvatarUrl) await removeAvatarFile(previousAvatarUrl)
-      if (profilePassword) {
-        const { error } = await supabase.auth.updateUser({ password: profilePassword })
-        if (error) throw error
-        await clearMustChangePassword()
-      }
-    },
-    onSuccess: async () => {
-      await refreshUser()
-      queryClient.invalidateQueries({ queryKey: ['contributor'] })
-      queryClient.invalidateQueries({ queryKey: ['users'] })
-      queryClient.invalidateQueries({ queryKey: ['directory'] })
-      setProfilePhotoFile(null)
-      setProfilePhotoPreview(null)
-      setProfilePassword('')
-      setProfilePasswordConfirm('')
-      setEditingProfile(false)
-    },
-    onError: (mutationError: Error) => setProfileError(mutationError.message || 'Could not save your profile.'),
-  })
-
-  // Every open starts from what is saved, so an abandoned edit doesn't linger into the next one.
-  function openEditProfile() {
-    setProfileName(currentUser?.name ?? '')
-    setProfileRemotasksId(currentUser?.remotasks_id ?? '')
-    setProfileShift(currentUser?.shift ?? '')
-    setProfileBio(currentUser?.bio ?? '')
-    setProfilePhotoFile(null)
-    setProfilePhotoPreview(null)
-    setProfilePassword('')
-    setProfilePasswordConfirm('')
-    setProfileError(null)
-    setProfileSaveAttempted(false)
-    setEditingProfile(true)
-  }
-
-  function closeEditProfile() {
-    setEditingProfile(false)
-    setProfilePassword('')
-    setProfilePasswordConfirm('')
-  }
-
-  function handlePhotoChange(file: File | null) {
-    setProfilePhotoFile(file)
-    setProfilePhotoPreview(file ? URL.createObjectURL(file) : null)
-  }
-
-  function handleSaveProfile(e: FormEvent) {
-    e.preventDefault()
-    setProfileSaveAttempted(true)
-    if (remotasksIdError(profileRemotasksId)) return
-    if (profilePassword && profilePassword.length < 8) {
-      setProfileError('New password must be at least 8 characters.')
-      return
-    }
-    if (profilePassword !== profilePasswordConfirm) {
-      setProfileError('New password and confirmation do not match.')
-      return
-    }
-    setProfileError(null)
-    saveProfileMutation.mutate()
-  }
-
   if (isError) {
     return (
       <div className="rounded-xl border border-status-danger-text bg-status-danger-bg px-5 py-4 text-sm text-status-danger-text">
@@ -398,155 +301,16 @@ export function CbProfile() {
             </Link>
           )}
           {isOwnProfile && (
-            <button
-              onClick={openEditProfile}
+            <Link
+              to="/settings"
               className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
             >
               Edit Profile
-            </button>
+            </Link>
           )}
         </div>
       </div>
 
-      {isOwnProfile && editingProfile && (
-        <Modal title="Edit Profile" onClose={closeEditProfile} maxWidthClassName="max-w-2xl">
-          <form onSubmit={handleSaveProfile} className="flex flex-col gap-5">
-            <div className="flex items-center gap-4">
-              <div className="group relative shrink-0">
-                <Avatar name={profileName || displayName} photoUrl={profilePhotoPreview ?? currentUser?.avatar_url} size={72} />
-                <button
-                  type="button"
-                  onClick={() => photoInputRef.current?.click()}
-                  aria-label="Change photo"
-                  className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-accent text-accent-foreground shadow-sm hover:brightness-95"
-                >
-                  <Camera className="h-3.5 w-3.5" />
-                </button>
-                <input
-                  ref={photoInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => handlePhotoChange(e.target.files?.[0] ?? null)}
-                />
-              </div>
-              <div>
-                <div className="text-sm font-semibold text-gray-900">{profileName || displayName}</div>
-                <button
-                  type="button"
-                  onClick={() => photoInputRef.current?.click()}
-                  className="text-xs font-medium text-sky-700 hover:underline"
-                >
-                  Change photo
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Name</label>
-                <input
-                  required
-                  value={profileName}
-                  onChange={(e) => setProfileName(e.target.value)}
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
-                />
-              </div>
-              <RemotasksIdField
-                value={profileRemotasksId}
-                onChange={setProfileRemotasksId}
-                showError={profileSaveAttempted}
-                hint="Prefills the Reclaim / Extend form when your lead approves an extension."
-              />
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Shift</label>
-                <input
-                  value={profileShift}
-                  onChange={(e) => setProfileShift(e.target.value)}
-                  placeholder="e.g. 9 AM – 5 PM PHT"
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
-                />
-                <p className="mt-1 text-xs text-gray-400">Shown on your profile so your lead knows when you're online.</p>
-              </div>
-              <div>
-                <label className="mb-1 flex items-center gap-1.5 text-sm font-medium text-gray-700">
-                  <Lock className="h-3.5 w-3.5 text-gray-400" />
-                  Email
-                </label>
-                <input
-                  disabled
-                  value={decodedEmail}
-                  className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500"
-                />
-              </div>
-            </div>
-
-            <div>
-              <div className="mb-1 flex items-center justify-between">
-                <label className="block text-sm font-medium text-gray-700">Bio</label>
-                <span className="text-xs text-gray-400">{profileBio.length}/240</span>
-              </div>
-              <textarea
-                rows={2}
-                maxLength={240}
-                value={profileBio}
-                onChange={(e) => setProfileBio(e.target.value)}
-                placeholder="A short line about yourself — shown on your profile."
-                className="w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
-              />
-            </div>
-
-            <div className="border-t border-gray-100 pt-5">
-              <div className="mb-3 flex items-center gap-1.5 text-sm font-semibold text-gray-700">
-                <Lock className="h-3.5 w-3.5 text-gray-400" />
-                Password
-              </div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">New Password</label>
-              <input
-                type="password"
-                minLength={8}
-                placeholder="Leave blank to keep your current password"
-                value={profilePassword}
-                onChange={(e) => setProfilePassword(e.target.value)}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
-              />
-              {profilePassword && (
-                <div className="mt-4">
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Confirm New Password</label>
-                  <input
-                    type="password"
-                    minLength={8}
-                    value={profilePasswordConfirm}
-                    onChange={(e) => setProfilePasswordConfirm(e.target.value)}
-                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
-                  />
-                </div>
-              )}
-            </div>
-
-            {profileError && <div className="rounded-lg bg-status-danger-text px-3 py-2 text-sm text-status-danger-bg">{profileError}</div>}
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={closeEditProfile}
-                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={saveProfileMutation.isPending || !profileName.trim()}
-                className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
-              >
-                {saveProfileMutation.isPending ? 'Saving...' : 'Save Changes'}
-              </button>
-            </div>
-          </form>
-        </Modal>
-      )}
 
       {/* A CB's own "no submissions yet" nudge lives on their Dashboard now; keep it here only
           for a lead/admin reviewing someone else. */}

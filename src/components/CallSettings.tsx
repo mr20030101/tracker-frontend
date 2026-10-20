@@ -64,7 +64,7 @@ export function CallSettings() {
 }
 
 // Loudspeaker or earpiece, with a pill that slides to the one in use.
-function SpeakerModeSwitch({ mode, onChange }: { mode: SpeakerMode; onChange: (mode: SpeakerMode) => void }) {
+export function SpeakerModeSwitch({ mode, onChange }: { mode: SpeakerMode; onChange: (mode: SpeakerMode) => void }) {
   const options: { value: SpeakerMode; label: string; icon: typeof Volume2 }[] = [
     { value: 'speaker', label: 'Loudspeaker', icon: Volume2 },
     { value: 'phone', label: 'Phone', icon: Smartphone },
@@ -98,8 +98,8 @@ function SpeakerModeSwitch({ mode, onChange }: { mode: SpeakerMode; onChange: (m
   )
 }
 
-// Lights up as you talk (the card sets --mic), so you can tell the right mic is picked.
-function MicMeter() {
+// Lights up as you talk (an ancestor sets --mic, see lib/useAudioLevel), so you can tell the right mic is picked.
+export function MicMeter() {
   return (
     <div className="flex h-2 gap-0.5" aria-hidden>
       {Array.from({ length: METER_SEGMENTS }, (_, i) => (

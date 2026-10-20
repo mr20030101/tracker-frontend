@@ -14,12 +14,10 @@ function visibleSteps(hasLead: boolean) {
 export function OnboardingChecklist({
   userId,
   hasLead,
-  profilePath,
   actions,
 }: {
   userId: string
   hasLead: boolean
-  profilePath: string
   actions: Partial<Record<OnboardingStep, { label: string; onClick: () => void }>>
 }) {
   const queryClient = useQueryClient()
@@ -33,9 +31,9 @@ export function OnboardingChecklist({
   if (!status || status.dismissed || status.done >= status.total) return null
 
   const links: Partial<Record<OnboardingStep, { to: string; label: string }>> = {
-    photo: { to: profilePath, label: 'Edit profile' },
-    remotasks_id: { to: profilePath, label: 'Edit profile' },
-    shift: { to: profilePath, label: 'Edit profile' },
+    photo: { to: '/settings', label: 'Open settings' },
+    remotasks_id: { to: '/settings', label: 'Open settings' },
+    shift: { to: '/settings', label: 'Open settings' },
     read_resources: { to: '/resources', label: 'Open Resources' },
   }
 
