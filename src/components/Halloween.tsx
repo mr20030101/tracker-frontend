@@ -1,6 +1,4 @@
 import { useId } from 'react'
-import { Ghost } from 'lucide-react'
-import { useSeason } from '../lib/season'
 
 // The October look. HalloweenScene replaces the page background (behind the app, and in place of
 // the login and dashboard skies); it's aria-hidden and pointer-events-none, so it never gets in the
@@ -543,24 +541,5 @@ function Skyline({ c, night }: { c: Palette; night: boolean }) {
         <Pumpkin x={1330} y={282} r={19} c={c} carved />
         <Pumpkin x={1370} y={284} r={10} c={c} />
     </svg>
-  )
-}
-
-/** Next to the light/dark toggle, through October only: switches the Halloween look off and on. */
-export function HalloweenToggle() {
-  const { inSeason, halloween, toggleHalloween } = useSeason()
-  if (!inSeason) return null
-
-  const label = halloween ? 'Turn off Halloween theme' : 'Turn on Halloween theme'
-  return (
-    <button
-      onClick={toggleHalloween}
-      aria-label={label}
-      title={label}
-      aria-pressed={halloween}
-      className={`rounded-lg p-2 hover:bg-gray-100 ${halloween ? 'text-accent' : 'text-gray-400 hover:text-gray-700'}`}
-    >
-      <Ghost className="h-5 w-5" />
-    </button>
   )
 }

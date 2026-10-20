@@ -14,6 +14,10 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Changed
+
+- The light/dark and Halloween buttons are gone from the header. Both live in **Settings → Appearance** now.
+
 ## 5.13.0 — 2026-10-20
 
 ### Added

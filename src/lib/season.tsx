@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 
 // The Halloween look (orange accent, bats, a cobweb, a pumpkin by the logo) is on through October,
-// unless the person switches it off with the ghost button; that choice is remembered on the device.
+// unless the person switches it off in Settings → Appearance; that choice is remembered on the device.
 // index.css keys off <html data-season="halloween">, so the colours repaint without touching components.
 
 const STORAGE_KEY = 'halloween'
@@ -17,7 +17,7 @@ function getStoredOff(): boolean {
 }
 
 interface SeasonContextValue {
-  /** It's October, so the ghost button shows at all. */
+  /** It's October, so the Halloween switch shows in Settings at all. */
   inSeason: boolean
   /** The Halloween look is showing right now. */
   halloween: boolean

@@ -34,8 +34,7 @@ import { AccountMenu } from './AccountMenu'
 import { Logo } from './Logo'
 import { NotificationBell } from './NotificationBell'
 import { MessagesButton } from './MessagesButton'
-import { ThemeToggle } from './ThemeToggle'
-import { HalloweenScene, HalloweenToggle } from './Halloween'
+import { HalloweenScene } from './Halloween'
 import { useTheme } from '../lib/theme'
 import { useSeason } from '../lib/season'
 import { OnlineUsers } from './OnlineUsers'
@@ -414,8 +413,6 @@ export function AppShell({ children }: { children: ReactNode }) {
               </div>
               <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
                 {user && <GlobalSearch pages={searchPages} />}
-                <HalloweenToggle />
-                <ThemeToggle />
                 {user && !onMessages && <MessagesButton />}
                 {user && <NotificationBell />}
                 {user && <AccountMenu />}

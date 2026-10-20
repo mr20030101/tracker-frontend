@@ -17,11 +17,10 @@ function getStoredTheme(): Theme | null {
 
 interface ThemeContextValue {
   theme: Theme
-  /** True once the person has picked a theme with the toggle (it's then remembered). */
+  /** True once the person has picked Light or Dark in Settings (it's then remembered); false while following the system. */
   manual: boolean
-  toggleTheme: () => void
   /**
-   * Picks a theme outright (the Settings page), remembered like the toggle. 'system' forgets the
+   * Picks a theme in Settings → Appearance, remembered on the device. 'system' forgets the
    * pick and follows the device's light/dark setting again, as before anything was chosen.
    */
   chooseTheme: (theme: Theme | 'system') => void
@@ -46,10 +45,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return () => media.removeEventListener('change', listener)
   }, [manual])
 
-  function toggleTheme() {
-    chooseTheme(theme === 'dark' ? 'light' : 'dark')
-  }
-
   function chooseTheme(next: Theme | 'system') {
     const followSystem = next === 'system'
     setTheme(followSystem ? getSystemTheme() : next)
@@ -62,7 +57,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  return <ThemeContext.Provider value={{ theme, manual, toggleTheme, chooseTheme }}>{children}</ThemeContext.Provider>
+  return <ThemeContext.Provider value={{ theme, manual, chooseTheme }}>{children}</ThemeContext.Provider>
 }
 
 export function useTheme() {
@@ -78,7 +73,7 @@ const isNightHour = (date: Date) => date.getHours() >= 18 || date.getHours() < 5
 
 /**
  * Whether the playful sky (login page, dashboard banner) shows night. It follows the clock, so the
- * sky matches the greeting, unless the person has picked a theme with the toggle: then it follows that.
+ * sky matches the greeting, unless the person has picked Light or Dark in Settings: then it follows that.
  */
 export function useNightSky(): boolean {
   const { theme, manual } = useTheme()
