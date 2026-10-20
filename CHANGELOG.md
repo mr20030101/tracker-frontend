@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 5.10.0 — 2026-10-20
+
 ### Added
 
 - Call settings: the gear on the call card lets you pick your microphone (with a live level meter) and speaker on a computer, or switch between loudspeaker and phone (earpiece) on a phone. Changes apply mid-call and are remembered.
