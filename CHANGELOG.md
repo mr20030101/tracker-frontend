@@ -14,6 +14,10 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Changed
+
+- Admins choose whether a photo is required to file attendance, with the **Require photo** switch on the Attendance page. It starts off, so the photo is optional; when it's on, contributors must take one before submitting. Each change is recorded in the Activity Log under Settings.
+
 ## 5.7.3 — 2026-10-20
 
 ### Added

@@ -53,3 +53,16 @@ export async function fetchGoogleFormEnabled(): Promise<boolean> {
   if (!response.ok) return false
   return Boolean(((await response.json()) as { enabled?: boolean }).enabled)
 }
+
+/** Whether contributors must take a photo to file attendance (an admin setting; off by default). */
+export async function fetchAttendancePhotoRequired(): Promise<boolean> {
+  const { data, error } = await supabase.rpc('attendance_photo_required')
+  if (error) throw error
+  return Boolean(data)
+}
+
+/** Admins only; the database refuses anyone else. */
+export async function setAttendancePhotoRequired(required: boolean): Promise<void> {
+  const { error } = await supabase.rpc('set_attendance_photo_required', { p_required: required })
+  if (error) throw error
+}

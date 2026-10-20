@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { errorMessage } from '../lib/api'
 import {
   CONTRIBUTOR_HOURS,
@@ -11,7 +11,7 @@ import {
   fileAttendance,
 } from '../lib/attendance'
 import { confirmDialog } from '../lib/dialog'
-import { sendAttendanceToGoogleForm, uploadAttendancePhoto } from '../lib/attendancePhoto'
+import { fetchAttendancePhotoRequired, sendAttendanceToGoogleForm, uploadAttendancePhoto } from '../lib/attendancePhoto'
 import { CameraCapture } from './CameraCapture'
 import { fromISODate } from '../lib/week'
 import { Modal } from './Modal'
@@ -44,13 +44,21 @@ export function AttendanceFormModal({
   const [screenshotUrl, setScreenshotUrl] = useState(existing?.screenshot_url ?? '')
   const [formError, setFormError] = useState<string | null>(null)
   const [photo, setPhoto] = useState<Blob | null>(null)
-  // A contributor's own entry needs a photo from the camera; editing one that has a photo can keep it.
-  const needsPhoto = !support && !existing?.photo_ref
+  // Admins choose whether a contributor's own entry needs a photo. Until the setting loads the form
+  // treats it as optional; file_attendance() enforces the real setting either way.
+  const { data: photoRequired = false } = useQuery({
+    queryKey: ['attendance-photo-required'],
+    queryFn: fetchAttendancePhotoRequired,
+    staleTime: 60_000,
+  })
+  // A contributor filing their own sees the camera until there's a photo; one that has a photo keeps
+  // it unless they retake it.
+  const hasPhoto = Boolean(existing?.photo_ref)
   const [retaking, setRetaking] = useState(false)
-  const showCamera = !support && (needsPhoto || retaking)
-  // Retaking (or filing for the first time) means a new photo is needed before saving, so a save
-  // can't quietly keep the old one.
-  const waitingForPhoto = showCamera && !photo
+  const showCamera = !support && (!hasPhoto || retaking)
+  // When the photo is required, filing for the first time means taking one before saving. Retaking
+  // can always fall back to "Keep current photo".
+  const waitingForPhoto = photoRequired && showCamera && !photo
 
   const hoursOptions = support ? [...CONTRIBUTOR_HOURS, ...SUPPORT_HOURS] : CONTRIBUTOR_HOURS
   const statusOptions = TASKING_STATUSES.map((s) => ({ value: s, label: s }))
@@ -127,8 +135,10 @@ export function AttendanceFormModal({
         {!support && (
           <div className="flex flex-col gap-1 text-sm">
             <div className="flex items-center justify-between">
-              <span className="font-medium text-gray-700">Your photo</span>
-              {!needsPhoto && !retaking && (
+              <span className="font-medium text-gray-700">
+                Your photo{!photoRequired && <span className="font-normal text-gray-500"> (optional)</span>}
+              </span>
+              {hasPhoto && !retaking && (
                 <button type="button" onClick={() => setRetaking(true)} className="text-xs font-semibold text-sky-700 hover:underline">
                   Retake photo
                 </button>
