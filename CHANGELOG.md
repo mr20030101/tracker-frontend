@@ -14,6 +14,18 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Added
+
+- Announcements can be edited: **Edit** in an announcement's menu (for its author and admins) reopens it in the editor, audience, title, message and pin included.
+
+### Changed
+
+- Announcements show their first few lines, fading out. Click the preview or **Read more** to open the whole message, and **Show less** to fold it again. Short announcements show in full.
+- The **Seen by** window is redesigned: a ring showing how much of the audience has seen it, the latest faces, tabs for All / Seen / Not yet, search for long lists, and how long ago each person saw it.
+- The sidebar is black with white text, in every theme.
+- Your name, profile link and **Sign out** moved from the bottom of the sidebar to an account menu on your avatar in the header.
+- Scrollbars are hidden on the main page area, in Messages and in the **Seen by** list. Everything still scrolls.
+
 ## 5.11.1 — 2026-10-20
 
 ### Fixed

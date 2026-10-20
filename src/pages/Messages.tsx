@@ -191,7 +191,7 @@ export function Messages() {
           </div>
         </div>
         {userSearch.trim() ? (
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto scrollbar-none">
             {searchResults.length === 0 && (
               <div className="px-4 py-6 text-center text-sm text-gray-400">No matching people.</div>
             )}
@@ -212,7 +212,7 @@ export function Messages() {
             ))}
           </div>
         ) : (
-          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto scrollbar-none">
             {(groups.length > 0 || canCreateGroups) && (
               <>
                 <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
@@ -397,7 +397,7 @@ export function Messages() {
                 <Info className="h-5 w-5" />
               </button>
             </div>
-            <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-4 sm:px-5">
+            <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-none px-3 py-4 sm:px-5">
               {hasOlder && (
                 <button
                   type="button"

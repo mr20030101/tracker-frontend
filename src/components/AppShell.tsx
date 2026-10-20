@@ -4,7 +4,6 @@ import { animate } from 'animejs'
 import { useQuery } from '@tanstack/react-query'
 import {
   LayoutDashboard,
-  LogOut,
   MessageCircle,
   ClipboardList,
   ShieldCheck,
@@ -30,7 +29,7 @@ import { prefersReducedMotion } from '../lib/motion'
 import { MessagingProvider } from '../lib/messagingContext'
 import { CallProvider } from '../lib/call'
 import { CallBar } from './CallBar'
-import { Avatar } from './Avatar'
+import { AccountMenu } from './AccountMenu'
 import { Logo } from './Logo'
 import { NotificationBell } from './NotificationBell'
 import { MessagesButton } from './MessagesButton'
@@ -152,7 +151,7 @@ function writeNavCollapsed(collapsed: boolean) {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { user, logout } = useAuth()
+  const { user } = useAuth()
   const { halloween } = useSeason()
   const { theme } = useTheme()
   const location = useLocation()
@@ -299,7 +298,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             onClick={(e) => {
               if ((e.target as HTMLElement).closest('a')) setMenuOpen(false)
             }}
-            className={`flex flex-col border-r border-gray-200 bg-white ${
+            className={`nav-dark flex flex-col border-r border-gray-200 bg-white ${
               docked
                 ? 'w-64 shrink-0'
                 : rail
@@ -380,44 +379,6 @@ export function AppShell({ children }: { children: ReactNode }) {
                 ))}
               </nav>
 
-              {user && rail && (
-                <div className="flex flex-col items-center gap-2 border-t border-gray-200 py-3">
-                  <NavLink to={ownProfilePath} aria-label="Open your profile" title={user.name} className="rounded-full">
-                    <Avatar name={user.name} photoUrl={user.avatar_url} size={32} />
-                  </NavLink>
-                  <button
-                    onClick={() => logout()}
-                    aria-label="Sign out"
-                    title="Sign out"
-                    className="rounded-md p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
-                  >
-                    <LogOut className="h-4 w-4" />
-                  </button>
-                </div>
-              )}
-              {user && !rail && (
-                <div className="border-t border-gray-200 p-3">
-                  <div className="flex items-center gap-2 rounded-lg p-2 hover:bg-gray-100">
-                    <NavLink
-                      to={ownProfilePath}
-                      className="flex min-w-0 flex-1 items-center gap-2"
-                      aria-label="Open your profile"
-                    >
-                      <Avatar name={user.name} photoUrl={user.avatar_url} size={32} />
-                      <div className="min-w-0">
-                        <div className="truncate text-sm font-semibold">{user.name}</div>
-                        <div className="truncate text-xs text-gray-400 capitalize">{user.role}</div>
-                      </div>
-                    </NavLink>
-                    <button
-                      onClick={() => logout()}
-                      className="text-xs font-medium text-gray-400 hover:text-gray-700"
-                    >
-                      Sign out
-                    </button>
-                  </div>
-                </div>
-              )}
           </aside>
 
           <div className="flex min-w-0 flex-1 flex-col">
@@ -453,17 +414,13 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <ThemeToggle />
                 {user && !onMessages && <MessagesButton />}
                 {user && <NotificationBell />}
-                {user && (
-                  <NavLink to={ownProfilePath} aria-label="Open your profile" className="shrink-0 rounded-full">
-                    <Avatar name={user.name} photoUrl={user.avatar_url} size={32} />
-                  </NavLink>
-                )}
+                {user && <AccountMenu />}
               </div>
             </header>
 
             <main
               ref={mainRef}
-              className={`relative flex-1 overflow-y-auto px-3 py-4 sm:px-6 sm:py-6 ${user && !onMessages ? 'lg:pr-20' : ''}`}
+              className={`relative flex-1 overflow-y-auto px-3 py-4 [scrollbar-width:none] sm:px-6 sm:py-6 [&::-webkit-scrollbar]:hidden ${user && !onMessages ? 'lg:pr-20' : ''}`}
             >
               {/* Tasks saved on this device while offline, until they're sent. */}
               <OfflineQueueBanner />
