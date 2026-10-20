@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 5.12.0 — 2026-10-20
+
 ### Added
 
 - Announcements can be edited: **Edit** in an announcement's menu (for its author and admins) reopens it in the editor, audience, title, message and pin included.
