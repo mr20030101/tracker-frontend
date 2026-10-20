@@ -109,10 +109,28 @@ export function AchievementsCard({
           const has = badge.earned(a)
           const progress = !has && badge.progress ? badge.progress(a) : undefined
           const isFeatured = badge.id === featuredId
-          const chip = `inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${
-            has ? badge.tone : 'border-gray-200 bg-gray-50 text-gray-300'
-          } ${isFeatured ? 'ring-2 ring-accent ring-offset-1' : ''}`
-          const content = (
+          // The featured badge is a solid gold pill with its own "Featured" tag and a passing shine.
+          const chip = isFeatured
+            ? 'badge-featured relative inline-flex items-center gap-2 overflow-hidden rounded-full bg-linear-to-r from-accent to-[#f2c94c] py-1 pl-1 pr-1 text-xs font-bold text-accent-foreground shadow-[0_2px_10px_color-mix(in_srgb,var(--color-accent)_45%,transparent)]'
+            : `inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${
+                has ? badge.tone : 'border-gray-200 bg-gray-50 text-gray-300'
+              }`
+          const content = isFeatured ? (
+            <>
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/35">
+                <badge.icon className="h-3 w-3" />
+              </span>
+              {badge.label}
+              <span className="inline-flex items-center gap-1 rounded-full bg-accent-foreground/85 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#f2c94c]">
+                <Pin className="h-2.5 w-2.5" aria-hidden="true" />
+                Featured
+              </span>
+              <span className="sr-only">
+                {has ? '(earned)' : '(not yet earned)'}
+                {' (featured)'}
+              </span>
+            </>
+          ) : (
             <>
               <badge.icon className="h-3.5 w-3.5" />
               {badge.label}
@@ -121,11 +139,7 @@ export function AchievementsCard({
                   {Math.min(progress[0], progress[1]).toLocaleString()}/{progress[1].toLocaleString()}
                 </span>
               )}
-              {isFeatured && <Pin className="h-3 w-3" aria-hidden="true" />}
-              <span className="sr-only">
-                {has ? '(earned)' : '(not yet earned)'}
-                {isFeatured ? ' (featured)' : ''}
-              </span>
+              <span className="sr-only">{has ? '(earned)' : '(not yet earned)'}</span>
             </>
           )
           return (

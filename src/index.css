@@ -505,7 +505,24 @@ body {
   opacity: clamp(0.15, (var(--mic, 0) - var(--at)) * 40, 1);
 }
 
+/* The featured badge (components/Achievements): a streak of light crosses it every few seconds. */
+@keyframes badge-shine {
+  0%, 70% { transform: translateX(-120%) skewX(-20deg); }
+  100% { transform: translateX(320%) skewX(-20deg); }
+}
+
+.badge-featured::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 35%;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.55), transparent);
+  animation: badge-shine 4s ease-in-out infinite;
+  pointer-events: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .badge-featured::after,
   .call-card-in,
   .call-sonar,
   .call-ring-shake,
@@ -514,7 +531,8 @@ body {
     animation: none;
   }
 
-  .call-sonar {
+  .call-sonar,
+  .badge-featured::after {
     display: none;
   }
 
