@@ -75,15 +75,20 @@ const isHtml = (body: string) => body.trimStart().startsWith('<')
 /** An announcement body as sanitized HTML, safe for dangerouslySetInnerHTML. */
 export function renderRichText(body: string): string {
   if (!isHtml(body)) {
-    // Plain text: blank lines split paragraphs, single line breaks stay as breaks.
+    // Plain text: a blank line splits paragraphs, and each extra one stays as an empty paragraph
+    // (shown as a blank line), so spacing isn't squeezed out. Single line breaks stay as breaks.
     return body
       .trim()
-      .split(/\n{2,}/)
+      .split(/\n\n/)
       .map((para) => `<p>${escapeHtml(para).replace(/\n/g, '<br>')}</p>`)
       .join('')
   }
   addHooks()
-  return DOMPurify.sanitize(body, { ALLOWED_TAGS, ALLOWED_ATTR: ['href', 'target', 'rel', 'style', 'start'] })
+  return (
+    DOMPurify.sanitize(body, { ALLOWED_TAGS, ALLOWED_ATTR: ['href', 'target', 'rel', 'style', 'start'] })
+      // A line break (Shift+Enter) at the very end of a block needs a second one to show as a new line.
+      .replace(/<br>(?=<\/(?:p|li|h2|h3)>)/g, '<br><br>')
+  )
 }
 
 /** The words of a body without its markup, for search. */

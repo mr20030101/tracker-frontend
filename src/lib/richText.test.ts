@@ -35,6 +35,14 @@ describe('renderRichText', () => {
       '<p>Meeting at 2PM<br>Link: below</p><p>&lt;b&gt;not bold&lt;/b&gt;</p>',
     )
   })
+
+  it('keeps extra blank lines in plain text', () => {
+    expect(renderRichText('one\n\n\n\ntwo')).toBe('<p>one</p><p></p><p>two</p>')
+  })
+
+  it('keeps empty paragraphs and a line break at the end of a paragraph', () => {
+    expect(renderRichText('<p>one</p><p></p><p>two<br></p>')).toBe('<p>one</p><p></p><p>two<br><br></p>')
+  })
 })
 
 describe('richTextToPlain', () => {

@@ -14,6 +14,11 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Fixed
+
+- Typing in a new announcement's message no longer stalls on every key: the editor was being rebuilt with each key press.
+- Announcements keep their spacing as typed: blank lines, extra spaces and a line break at the end of a paragraph are no longer squeezed out.
+
 ## 5.11.0 — 2026-10-20
 
 ### Added

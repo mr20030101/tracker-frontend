@@ -556,6 +556,14 @@ body {
 .rich-text > * + * {
   @apply mt-2;
 }
+/* Keep spacing as it was typed: runs of spaces, and empty paragraphs (Enter on a blank line),
+   which would otherwise have no height and vanish. */
+.rich-text :is(p, li, h2, h3) {
+  white-space: pre-wrap;
+}
+.rich-text p:empty::before {
+  content: '\00a0';
+}
 .rich-text h2 {
   @apply text-base font-semibold text-gray-900;
 }
