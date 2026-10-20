@@ -7,7 +7,7 @@ import { api, functionErrorMessage, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { weekStartIso } from '../lib/week'
 import { useNow } from '../lib/useNow'
-import { clearMustChangePassword, updateOwnProfile, uploadAvatar } from '../lib/profile'
+import { clearMustChangePassword, removeAvatarFile, updateOwnProfile, uploadAvatar } from '../lib/profile'
 import { isUserId, messagePath, parseContributorRef } from '../lib/urlRef'
 import type { ContributorProfile, ContributorProjectLevel, Project, ProjectLevel } from '../types'
 import { Avatar } from '../components/Avatar'
@@ -242,9 +242,17 @@ export function CbProfile() {
   const saveProfileMutation = useMutation({
     mutationFn: async () => {
       if (!currentUser) throw new Error('Unauthenticated')
-      let avatarUrl = currentUser.avatar_url
+      const previousAvatarUrl = currentUser.avatar_url
+      let avatarUrl = previousAvatarUrl
       if (profilePhotoFile) avatarUrl = await uploadAvatar(currentUser.id, profilePhotoFile)
-      await updateOwnProfile(profileName.trim(), avatarUrl, normalizeRemotasksId(profileRemotasksId)!, profileShift.trim(), profileBio.trim())
+      try {
+        await updateOwnProfile(profileName.trim(), avatarUrl, normalizeRemotasksId(profileRemotasksId)!, profileShift.trim(), profileBio.trim())
+      } catch (e) {
+        if (avatarUrl !== previousAvatarUrl) await removeAvatarFile(avatarUrl)
+        throw e
+      }
+      // The old photo's file is no longer used once the profile points at the new one.
+      if (avatarUrl !== previousAvatarUrl) await removeAvatarFile(previousAvatarUrl)
       if (profilePassword) {
         const { error } = await supabase.auth.updateUser({ password: profilePassword })
         if (error) throw error

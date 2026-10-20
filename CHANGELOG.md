@@ -14,6 +14,14 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 5.7.4 — 2026-10-20
+
+### Fixed
+
+- Profile photos are cropped to a square and shrunk to 256px when uploaded, so a photo straight from a phone is about 15 KB instead of several MB. Avatars load faster and use far less of the Supabase download quota.
+- Profile photos are now kept by browsers for good instead of re-downloaded every hour. Each upload gets a new file name, so a new photo still shows straight away, and the replaced photo's file is deleted.
+- `scripts/shrink-avatars.mjs` shrinks photos uploaded before this the same way (dry run by default).
+
 ## 5.7.1 — 2026-10-17
 
 ### Changed
