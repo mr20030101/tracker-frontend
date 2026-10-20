@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 5.16.0 — 2026-10-20
+
 ### Changed
 
 - Your featured badge stands out: a gold pill with a **Featured** tag and a light that sweeps across it now and then, in place of the thin outline.
