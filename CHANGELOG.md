@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 5.15.0 — 2026-10-20
+
 ### Changed
 
 - The row of shortcut tiles (Profile, Leaderboard, Task Log, Resources, Messages) is gone from the contributor Dashboard. The sidebar has the same links.
