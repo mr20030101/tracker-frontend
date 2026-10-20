@@ -14,6 +14,10 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Added
+
+- The call card can be dragged anywhere on screen, with the mouse or a finger. Double-click an empty spot on it to send it back to the top.
+
 ## 5.10.0 — 2026-10-20
 
 ### Added

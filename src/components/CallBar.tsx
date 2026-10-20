@@ -30,6 +30,7 @@ export function CallBar() {
   const [expanded, setExpanded] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const card = useRef<HTMLDivElement>(null)
+  const drag = useDraggable(card)
   // Their voice moves the rings and bars; yours lights the mute button and the settings meter.
   useAudioLevel(reduced ? null : remoteStream, card, '--peer')
   useAudioLevel(localStream, card, '--mic')
@@ -116,9 +117,13 @@ export function CallBar() {
   return (
     <div
       ref={card}
+      {...drag.handlers}
+      style={drag.style}
       role={incoming ? 'alertdialog' : 'status'}
       aria-label={incoming ? `Incoming call from ${peer.name}` : `Call with ${peer.name}`}
-      className="call-card-in fixed inset-x-3 top-3 z-[70] mx-auto max-w-sm overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl"
+      className={`call-card-in fixed inset-x-3 top-3 z-[70] mx-auto max-w-sm touch-none select-none overflow-hidden rounded-2xl border border-gray-200 bg-white ${
+        drag.dragging ? 'cursor-grabbing shadow-2xl' : 'cursor-grab shadow-xl'
+      }`}
     >
       {/* A soft glow behind the card that swells as they talk. */}
       {phase === 'active' && (
@@ -162,6 +167,104 @@ export function CallBar() {
       </div>
     </div>
   )
+}
+
+// Edge kept clear of the window when the card is dragged.
+const DRAG_MARGIN = 8
+// How far the pointer moves before a press becomes a drag, so taps on the buttons still work.
+const DRAG_THRESHOLD = 5
+
+// Lets the call card be dragged anywhere on screen (mouse or touch), never off it. Uses the
+// `translate` property, so it doesn't fight the card's entrance animation, which uses `transform`.
+// Double-click an empty spot to send it back to the top.
+function useDraggable(ref: React.RefObject<HTMLDivElement | null>) {
+  const [offset, setOffset] = useState({ x: 0, y: 0 })
+  const [dragging, setDragging] = useState(false)
+  const offsetRef = useRef(offset)
+  offsetRef.current = offset
+  const press = useRef<{ id: number; x: number; y: number; base: { x: number; y: number }; rect: DOMRect; moved: boolean } | null>(null)
+  const justDragged = useRef(false)
+
+  // The offset that puts a card at `rect` (measured at `base`) inside the window.
+  const clamp = (rect: DOMRect, base: { x: number; y: number }, dx: number, dy: number) => {
+    const maxLeft = Math.max(DRAG_MARGIN, window.innerWidth - rect.width - DRAG_MARGIN)
+    const maxTop = Math.max(DRAG_MARGIN, window.innerHeight - rect.height - DRAG_MARGIN)
+    const left = Math.min(maxLeft, Math.max(DRAG_MARGIN, rect.left + dx))
+    const top = Math.min(maxTop, Math.max(DRAG_MARGIN, rect.top + dy))
+    return { x: base.x + left - rect.left, y: base.y + top - rect.top }
+  }
+
+  // Opening the full view or the settings, or shrinking the window, can push it off screen.
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const fit = () => {
+      if (press.current?.moved) return
+      const next = clamp(el.getBoundingClientRect(), offsetRef.current, 0, 0)
+      if (next.x !== offsetRef.current.x || next.y !== offsetRef.current.y) setOffset(next)
+    }
+    const observer = new ResizeObserver(fit)
+    observer.observe(el)
+    window.addEventListener('resize', fit)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', fit)
+    }
+  })
+
+  const handlers = {
+    onPointerDown: (e: React.PointerEvent<HTMLDivElement>) => {
+      // React bubbles events from the settings' dropdown lists (portals) up to here too.
+      if (e.button !== 0 || !ref.current?.contains(e.target as Node)) return
+      press.current = { id: e.pointerId, x: e.clientX, y: e.clientY, base: offsetRef.current, rect: ref.current.getBoundingClientRect(), moved: false }
+    },
+    onPointerMove: (e: React.PointerEvent<HTMLDivElement>) => {
+      const p = press.current
+      if (!p || p.id !== e.pointerId) return
+      const dx = e.clientX - p.x
+      const dy = e.clientY - p.y
+      if (!p.moved) {
+        if (Math.hypot(dx, dy) < DRAG_THRESHOLD) return
+        p.moved = true
+        e.currentTarget.setPointerCapture(e.pointerId)
+        setDragging(true)
+      }
+      setOffset(clamp(p.rect, p.base, dx, dy))
+    },
+    onPointerUp: (e: React.PointerEvent<HTMLDivElement>) => {
+      const p = press.current
+      if (!p || p.id !== e.pointerId) return
+      press.current = null
+      if (p.moved) {
+        justDragged.current = true
+        setDragging(false)
+        // A click only follows on some browsers; clear the flag either way.
+        setTimeout(() => (justDragged.current = false), 0)
+      }
+    },
+    onPointerCancel: () => {
+      press.current = null
+      setDragging(false)
+    },
+    // The release at the end of a drag isn't a tap on whatever button it ended over.
+    onClickCapture: (e: React.MouseEvent) => {
+      if (!justDragged.current) return
+      justDragged.current = false
+      e.preventDefault()
+      e.stopPropagation()
+    },
+    onDoubleClick: (e: React.MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (!ref.current?.contains(target) || target.closest('button')) return
+      setOffset({ x: 0, y: 0 })
+    },
+  }
+
+  const style: React.CSSProperties = {
+    translate: `${offset.x}px ${offset.y}px`,
+    transition: dragging ? 'none' : 'translate 300ms cubic-bezier(0.2, 0.9, 0.3, 1.2)',
+  }
+  return { handlers, style, dragging }
 }
 
 // Five bars that dance with their voice.
