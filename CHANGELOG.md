@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 5.17.0 — 2026-10-20
+
 ### Changed
 
 - The featured badge beside people's names (Leaderboard, profiles) uses the same gold design as on the Dashboard.
