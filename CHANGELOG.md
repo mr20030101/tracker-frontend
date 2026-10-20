@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 5.9.0 — 2026-10-20
+
 ### Changed
 
 - The Attendance page for admins and leads lists contributors in the team's set order (kept in `src/lib/attendanceOrder.ts`). Anyone not on that list, such as a new contributor, appears at the bottom, A–Z by name.
