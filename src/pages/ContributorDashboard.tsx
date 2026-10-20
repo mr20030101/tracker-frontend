@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { BookOpen, ClipboardList, MessageCircle, Trophy, User, type LucideIcon } from 'lucide-react'
+import { MessageCircle, Trophy } from 'lucide-react'
 import { api, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useMessaging } from '../lib/messagingContext'
@@ -20,7 +19,6 @@ import { TaskSubmissionForm } from '../components/TaskSubmissionForm'
 import { NoSubmissionNudge } from '../components/NoSubmissionNudge'
 import { LevelPill } from '../components/LevelPill'
 import { Modal } from '../components/Modal'
-import { contributorPath } from '../lib/urlRef'
 import { OnboardingChecklist } from '../components/OnboardingChecklist'
 import { AchievementsCard } from '../components/Achievements'
 import { StreakRiskCard, TeamPulseCard, WeeklyRecap, type RecapStats } from '../components/DashboardMotivation'
@@ -33,12 +31,6 @@ import { DashboardHero } from '../components/DashboardHero'
 import { usePageTitle } from '../lib/usePageTitle'
 
 const TREND_DAYS = 30
-
-interface QuickLink {
-  to: string
-  label: string
-  icon: LucideIcon
-}
 
 // Cleared when the browser tab/session ends, so the warning comes back the next time they sign in fresh.
 const WARNING_DISMISSED_KEY = 'dashboard-week-warning-dismissed'
@@ -174,14 +166,6 @@ export function ContributorDashboard() {
     .map((id) => allProjects.find((project) => project.id === id))
     .filter((project): project is Project => Boolean(project))
     .map((project) => ({ project, level: levelByProjectId.get(project.id) ?? ('contributor' as ProjectLevel) }))
-
-  const quickLinks: QuickLink[] = [
-    { to: contributorPath(email), label: 'Profile', icon: User },
-    { to: '/leaderboard', label: 'Leaderboard', icon: Trophy },
-    { to: '/task-log', label: 'Task Log', icon: ClipboardList },
-    { to: '/resources', label: 'Resources', icon: BookOpen },
-    { to: '/messages', label: 'Messages', icon: MessageCircle },
-  ]
 
   const lead = contributorLeadId ? usersById.get(contributorLeadId) : undefined
 
@@ -376,19 +360,6 @@ export function ContributorDashboard() {
       )}
 
       {showCtsModal && <CtsFormModal email={email} submissions={todaysSubmissions} onClose={() => setShowCtsModal(false)} />}
-
-      <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-        {quickLinks.map((link) => (
-          <Link
-            key={link.to}
-            to={link.to}
-            className="flex flex-col items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-6 text-center hover:border-accent hover:bg-accent-bg"
-          >
-            <link.icon className="h-6 w-6 text-gray-500" strokeWidth={2} />
-            <span className="text-sm font-semibold text-gray-700">{link.label}</span>
-          </Link>
-        ))}
-      </div>
 
       {ranked.length > 0 && <TeamPulseCard standing={standing} team={teamGoal(ranked)} />}
 
