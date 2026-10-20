@@ -195,6 +195,12 @@ export function Announcements() {
   )
 }
 
+// The editor is a large library only people writing an announcement need, so it loads on first use.
+// Made once here: created inside the form, every keystroke would make a new component and remount it.
+const RichTextEditor = lazy(() => import('../components/RichTextEditor').then((m) => ({ default: m.RichTextEditor })))
+
+const fieldClass = 'w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent'
+
 function ComposeAnnouncement({
   authorId,
   isAdmin,
@@ -263,11 +269,6 @@ function ComposeAnnouncement({
       pinned,
     })
   }
-
-  // The editor is a large library only people writing an announcement need, so it loads on first use.
-const RichTextEditor = lazy(() => import('../components/RichTextEditor').then((m) => ({ default: m.RichTextEditor })))
-
-const fieldClass = 'w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent'
 
   return (
     <Modal title="New announcement" onClose={onClose} maxWidthClassName="max-w-xl">
