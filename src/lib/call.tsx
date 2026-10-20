@@ -9,6 +9,15 @@ import { CALL_RINGBACK_SOUND, CALL_RINGTONE_SOUND, loopSound } from './sound'
 import { VOICE_PAUSED_MESSAGE, fetchIceServers } from './voice'
 import { pageTitle } from './usePageTitle'
 import { callerShouldActOnResponse } from './callSignal'
+import {
+  isMobileDevice,
+  loadDevicePrefs,
+  routeCallAudio,
+  saveDevicePrefs,
+  setAudioSession,
+  type CallDevicePrefs,
+  type SpeakerMode,
+} from './callDevices'
 
 // One-to-one voice calls, started from a conversation in Messages. The call itself is a direct
 // WebRTC audio connection (relayed through Cloudflare TURN when needed, see lib/voice); a shared
@@ -54,6 +63,15 @@ interface CallState {
 
 interface CallContextValue extends CallState {
   muted: boolean
+  // Your microphone and their voice, for the call card's level animations.
+  localStream: MediaStream | null
+  remoteStream: MediaStream | null
+  devices: CallDevicePrefs
+  // Phones get a loudspeaker/earpiece switch instead of a list of outputs.
+  mobile: boolean
+  setMic: (deviceId: string) => void
+  setSpeaker: (deviceId: string) => void
+  setSpeakerMode: (mode: SpeakerMode) => void
   startCall: (peer: CallPeer) => void
   accept: () => void
   decline: () => void
@@ -94,6 +112,15 @@ export function CallProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient()
   const [state, setState] = useState<CallState>(IDLE)
   const [muted, setMuted] = useState(false)
+  const mutedRef = useRef(muted)
+  useEffect(() => {
+    mutedRef.current = muted
+  })
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null)
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null)
+  const [devices, setDevices] = useState<CallDevicePrefs>(loadDevicePrefs)
+  const devicesRef = useRef(devices)
+  const [mobile] = useState(isMobileDevice)
 
   const call = useRef<LiveCall | null>(null)
   const channelRef = useRef<RealtimeChannel | null>(null)
@@ -152,10 +179,13 @@ export function CallProvider({ children }: { children: ReactNode }) {
         c.audio.remove()
       }
       call.current = null
+      if (mobile) setAudioSession('auto')
       setMuted(false)
+      setLocalStream(null)
+      setRemoteStream(null)
       setState({ ...IDLE, notice })
     },
-    [send, queryClient, myId],
+    [send, queryClient, myId, mobile],
   )
 
   // Microphone plus connection servers, for either side. Null (with the call ended) when the mic
@@ -164,15 +194,13 @@ export function CallProvider({ children }: { children: ReactNode }) {
     const c = call.current
     if (!c) return false
     try {
-      const [stream, ice] = await Promise.all([
-        navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }),
-        fetchIceServers(),
-      ])
+      const [stream, ice] = await Promise.all([openMic(devicesRef.current.micId), fetchIceServers()])
       if (call.current !== c) {
         stream.getTracks().forEach((t) => t.stop())
         return false
       }
       c.stream = stream
+      setLocalStream(stream)
       c.iceServers = ice.iceServers
       if (ice.paused) {
         end(VOICE_PAUSED_MESSAGE, tell)
@@ -201,8 +229,11 @@ export function CallProvider({ children }: { children: ReactNode }) {
     audio.autoplay = true
     document.body.appendChild(audio)
     c.audio = audio
+    void routeCallAudio(audio, devicesRef.current, mobile)
     pc.ontrack = (e) => {
-      audio.srcObject = e.streams[0] ?? new MediaStream([e.track])
+      const remote = e.streams[0] ?? new MediaStream([e.track])
+      audio.srcObject = remote
+      if (call.current === c) setRemoteStream(remote)
     }
     pc.onicecandidate = (e) => {
       if (e.candidate) send(c.id, c.peer.id, { kind: 'ice', candidate: e.candidate.toJSON() })
@@ -223,7 +254,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
     }, CONNECT_MS)
     setPhase('connecting')
     return pc
-  }, [send, setPhase, end])
+  }, [send, setPhase, end, mobile])
 
   const applyRemote = useCallback(async (pc: RTCPeerConnection, sdp: RTCSessionDescriptionInit) => {
     await pc.setRemoteDescription(sdp)
@@ -441,6 +472,52 @@ export function CallProvider({ children }: { children: ReactNode }) {
   }, [muted])
   const dismissNotice = useCallback(() => setState((s) => ({ ...s, notice: null })), [])
 
+  const updateDevices = useCallback((change: Partial<CallDevicePrefs>) => {
+    const next = { ...devicesRef.current, ...change }
+    devicesRef.current = next
+    setDevices(next)
+    saveDevicePrefs(next)
+    return next
+  }, [])
+
+  // Switching mics mid-call swaps the track being sent, so the call carries on without renegotiating.
+  const setMic = useCallback(
+    (deviceId: string) => {
+      updateDevices({ micId: deviceId })
+      const c = call.current
+      if (!c?.stream) return
+      void openMic(deviceId)
+        .then(async (stream) => {
+          if (call.current !== c || !c.stream) {
+            stream.getTracks().forEach((t) => t.stop())
+            return
+          }
+          const track = stream.getAudioTracks()[0]
+          track.enabled = !mutedRef.current
+          await Promise.all((c.pc?.getSenders() ?? []).filter((s) => s.track?.kind === 'audio').map((s) => s.replaceTrack(track)))
+          c.stream.getTracks().forEach((t) => t.stop())
+          c.stream = stream
+          setLocalStream(stream)
+        })
+        .catch(() => setState((s) => ({ ...s, notice: "Couldn't switch to that microphone." })))
+    },
+    [updateDevices],
+  )
+  const setSpeaker = useCallback(
+    (deviceId: string) => {
+      const next = updateDevices({ speakerId: deviceId })
+      if (call.current?.audio) void routeCallAudio(call.current.audio, next, mobile)
+    },
+    [updateDevices, mobile],
+  )
+  const setSpeakerMode = useCallback(
+    (mode: SpeakerMode) => {
+      const next = updateDevices({ speakerMode: mode })
+      if (call.current?.audio) void routeCallAudio(call.current.audio, next, mobile)
+    },
+    [updateDevices, mobile],
+  )
+
   // While a call rings in, the tab title flashes, so it's noticed in another tab or when the
   // browser blocked the ringtone (no click on the page since it loaded).
   const incomingName = state.phase === 'incoming' ? state.peer?.name ?? null : null
@@ -459,10 +536,42 @@ export function CallProvider({ children }: { children: ReactNode }) {
   }, [incomingName])
 
   return (
-    <CallContext.Provider value={{ ...state, muted, startCall, accept, decline, hangUp, toggleMute, dismissNotice }}>
+    <CallContext.Provider
+      value={{
+        ...state,
+        muted,
+        localStream,
+        remoteStream,
+        devices,
+        mobile,
+        setMic,
+        setSpeaker,
+        setSpeakerMode,
+        startCall,
+        accept,
+        decline,
+        hangUp,
+        toggleMute,
+        dismissNotice,
+      }}
+    >
       {children}
     </CallContext.Provider>
   )
+}
+
+// The chosen mic, falling back to the default one when it's been unplugged since it was picked.
+async function openMic(deviceId: string): Promise<MediaStream> {
+  const audio = { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+  if (!deviceId) return navigator.mediaDevices.getUserMedia({ audio })
+  try {
+    return await navigator.mediaDevices.getUserMedia({ audio: { ...audio, deviceId: { exact: deviceId } } })
+  } catch (err) {
+    if (err instanceof DOMException && (err.name === 'OverconstrainedError' || err.name === 'NotFoundError')) {
+      return navigator.mediaDevices.getUserMedia({ audio })
+    }
+    throw err
+  }
 }
 
 export function useCall() {

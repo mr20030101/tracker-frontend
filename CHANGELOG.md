@@ -14,6 +14,11 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Added
+
+- Call settings: the gear on the call card lets you pick your microphone (with a live level meter) and speaker on a computer, or switch between loudspeaker and phone (earpiece) on a phone. Changes apply mid-call and are remembered.
+- The call card is animated: sonar rings while it rings, a spinning arc while it connects, and rings and bars that move with the other person's voice on a call. Tap the name for a bigger full view.
+
 ## 5.9.0 — 2026-10-20
 
 ### Changed

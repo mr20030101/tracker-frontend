@@ -24,6 +24,8 @@ interface SelectProps {
   autoOpen?: boolean
   /** Called whenever the panel closes, whether or not a value was chosen. */
   onClose?: () => void
+  /** Stacking level for the open list, when the select sits in something above modals (e.g. the call card). */
+  zIndex?: number
   'aria-label'?: string
 }
 
@@ -69,6 +71,7 @@ export function Select({
   className = '',
   autoOpen = false,
   onClose,
+  zIndex = PANEL_Z_INDEX,
   'aria-label': ariaLabel,
 }: SelectProps) {
   const id = useId()
@@ -269,12 +272,12 @@ export function Select({
         pos &&
         createPortal(
           <>
-            <div className="fixed inset-0" style={{ zIndex: PANEL_Z_INDEX }} onClick={() => close(false)} />
+            <div className="fixed inset-0" style={{ zIndex }} onClick={() => close(false)} />
             <div
               ref={panelRef}
               id={`${id}-list`}
               role="listbox"
-              style={{ position: 'fixed', zIndex: PANEL_Z_INDEX + 1, ...pos }}
+              style={{ position: 'fixed', zIndex: zIndex + 1, ...pos }}
               className="overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
             >
               {options.length === 0 && <div className="px-3 py-2 text-sm text-gray-400">No options</div>}
