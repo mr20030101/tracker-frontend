@@ -42,6 +42,7 @@ export const AUDIT_CATEGORIES: { value: string; label: string; actions: string[]
     ],
   },
   { value: 'announcements', label: 'Announcements', actions: ['announcement_posted'] },
+  { value: 'settings', label: 'Settings', actions: ['setting_changed'] },
 ]
 
 export function auditCategory(action: string): string {

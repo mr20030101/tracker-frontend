@@ -19,8 +19,15 @@ import { Avatar } from '../components/Avatar'
 import { Modal } from '../components/Modal'
 import { Camera, Check } from 'lucide-react'
 import { errorMessage } from '../lib/api'
-import { fetchAttendancePhoto, fetchGoogleFormEnabled, sendAttendanceToGoogleForm } from '../lib/attendancePhoto'
+import {
+  fetchAttendancePhoto,
+  fetchAttendancePhotoRequired,
+  fetchGoogleFormEnabled,
+  sendAttendanceToGoogleForm,
+  setAttendancePhotoRequired,
+} from '../lib/attendancePhoto'
 import { Select } from '../components/Select'
+import { Switch } from '../components/Switch'
 import { downloadCsv } from '../lib/csv'
 import { contributorPath } from '../lib/urlRef'
 import { formatTime, fromISODate, todayIso } from '../lib/week'
@@ -62,6 +69,23 @@ type FilterTab = 'all' | 'filed' | 'missing'
 const TAB_LABELS: Record<FilterTab, string> = { all: 'All', filed: 'Filed', missing: 'Missing' }
 const ALL_TEAMS = ''
 const UNASSIGNED = 'unassigned'
+
+/** Admins: whether contributors must take a photo to file their attendance. */
+function PhotoRequiredSetting() {
+  const queryClient = useQueryClient()
+  const { data: required, isLoading } = useQuery({ queryKey: ['attendance-photo-required'], queryFn: fetchAttendancePhotoRequired })
+  const save = useMutation({
+    mutationFn: setAttendancePhotoRequired,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['attendance-photo-required'] }),
+  })
+  const checked = save.isPending ? Boolean(save.variables) : Boolean(required)
+  return (
+    <label className="flex items-center gap-2 text-sm text-gray-700" title={save.error ? errorMessage(save.error, "Couldn't save the setting.") : 'Whether contributors must take a photo to file attendance'}>
+      <Switch checked={checked} onChange={(next) => save.mutate(next)} disabled={isLoading || save.isPending} label="Require attendance photo" />
+      <span className={save.error ? 'text-red-600' : undefined}>{save.error ? "Couldn't save" : 'Require photo'}</span>
+    </label>
+  )
+}
 
 /** Leads and admins: who has and hasn't filed on a given day, and filing for someone on their behalf. */
 function TeamAttendance() {
@@ -179,6 +203,7 @@ function TeamAttendance() {
         />
         {isAdmin && <Select value={team} onChange={setTeam} options={teamOptions} aria-label="Filter by team" className={toolbarControlClass} />}
         <SearchInput value={search} onChange={setSearch} placeholder="Search contributor..." />
+        {isAdmin && <PhotoRequiredSetting />}
         <button
           onClick={exportRows}
           disabled={visible.length === 0}

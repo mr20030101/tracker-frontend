@@ -14,6 +14,10 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Changed
+
+- Admins choose whether a photo is required to file attendance, with the **Require photo** switch on the Attendance page. It starts off, so the photo is optional; when it's on, contributors must take one before submitting. Each change is recorded in the Activity Log under Settings.
+
 ## 5.7.4 — 2026-10-20
 
 ### Fixed
@@ -21,6 +25,18 @@ each stretch of work by the date it shipped.
 - Profile photos are cropped to a square and shrunk to 256px when uploaded, so a photo straight from a phone is about 15 KB instead of several MB. Avatars load faster and use far less of the Supabase download quota.
 - Profile photos are now kept by browsers for good instead of re-downloaded every hour. Each upload gets a new file name, so a new photo still shows straight away, and the replaced photo's file is deleted.
 - `scripts/shrink-avatars.mjs` shrinks photos uploaded before this the same way (dry run by default).
+
+## 5.7.3 — 2026-10-20
+
+### Added
+
+- If your camera can't be opened in the attendance form, you can upload a photo of yourself instead. It must have been taken in the last 30 minutes.
+
+## 5.7.2 — 2026-10-20
+
+### Changed
+
+- A photo is required again to submit your attendance. Take one with your camera before submitting; when editing today's entry you can keep the photo you already took.
 
 ## 5.7.1 — 2026-10-17
 

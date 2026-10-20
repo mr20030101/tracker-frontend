@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Camera, RotateCcw } from 'lucide-react'
+import { Camera, RotateCcw, Upload } from 'lucide-react'
 
 // Saved photos are this wide at most: plenty to recognise someone, and about 20–40 KB as a JPEG.
 const PHOTO_WIDTH = 480
 const JPEG_QUALITY = 0.75
+// A photo picked from a file (only offered when the camera can't open) must be this fresh, the same
+// window the server gives an upload to be used.
+const MAX_FILE_AGE_MS = 30 * 60 * 1000
 
-type CameraState = { kind: 'starting' } | { kind: 'live' } | { kind: 'taken'; previewUrl: string } | { kind: 'error'; message: string }
+type CameraState = { kind: 'starting' } | { kind: 'live' } | { kind: 'taken'; previewUrl: string; mirrored: boolean } | { kind: 'error'; message: string }
 
 function cameraError(error: unknown): string {
   const name = error instanceof DOMException ? error.name : ''
@@ -17,14 +20,26 @@ function cameraError(error: unknown): string {
   return "Your camera couldn't be opened. Please try again."
 }
 
+// Scales an image or video frame down to PHOTO_WIDTH and encodes it as the JPEG the server expects.
+function toJpeg(source: CanvasImageSource, width: number, height: number): Promise<Blob | null> {
+  const scale = Math.min(1, PHOTO_WIDTH / width)
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.round(width * scale)
+  canvas.height = Math.round(height * scale)
+  canvas.getContext('2d')?.drawImage(source, 0, 0, canvas.width, canvas.height)
+  return new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', JPEG_QUALITY))
+}
+
 /**
- * Takes a photo with the device's camera, live only (no picking a file from the gallery). Calls
+ * Takes a photo with the device's camera, live. Only when the camera can't be opened can a photo
+ * be picked from a file instead, and it must have been taken in the last 30 minutes. Calls
  * `onChange` with the JPEG once taken, and with null on a retake.
  */
 export function CameraCapture({ onChange }: { onChange: (photo: Blob | null) => void }) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const [state, setState] = useState<CameraState>({ kind: 'starting' })
+  const [fileError, setFileError] = useState<string | null>(null)
 
   const stop = useCallback(() => {
     streamRef.current?.getTracks().forEach((track) => track.stop())
@@ -61,28 +76,38 @@ export function CameraCapture({ onChange }: { onChange: (photo: Blob | null) => 
     if (previewUrl) URL.revokeObjectURL(previewUrl)
   }, [previewUrl])
 
-  function take() {
+  async function take() {
     const video = videoRef.current
     if (!video || !video.videoWidth) return
-    const scale = Math.min(1, PHOTO_WIDTH / video.videoWidth)
-    const canvas = document.createElement('canvas')
-    canvas.width = Math.round(video.videoWidth * scale)
-    canvas.height = Math.round(video.videoHeight * scale)
-    canvas.getContext('2d')?.drawImage(video, 0, 0, canvas.width, canvas.height)
-    canvas.toBlob(
-      (blob) => {
-        if (!blob) return
-        stop()
-        setState({ kind: 'taken', previewUrl: URL.createObjectURL(blob) })
-        onChange(blob)
-      },
-      'image/jpeg',
-      JPEG_QUALITY,
-    )
+    const blob = await toJpeg(video, video.videoWidth, video.videoHeight)
+    if (!blob) return
+    stop()
+    setState({ kind: 'taken', previewUrl: URL.createObjectURL(blob), mirrored: true })
+    onChange(blob)
+  }
+
+  async function pickFile(file: File | undefined) {
+    if (!file) return
+    if (Date.now() - file.lastModified > MAX_FILE_AGE_MS) {
+      setFileError('That photo is too old. Take a new one now, then choose it.')
+      return
+    }
+    try {
+      const image = await createImageBitmap(file)
+      const blob = await toJpeg(image, image.width, image.height)
+      image.close()
+      if (!blob) throw new Error('encode failed')
+      setFileError(null)
+      setState({ kind: 'taken', previewUrl: URL.createObjectURL(blob), mirrored: false })
+      onChange(blob)
+    } catch {
+      setFileError("That photo couldn't be read. Try a different one.")
+    }
   }
 
   function retake() {
     onChange(null)
+    setFileError(null)
     void start()
   }
 
@@ -96,7 +121,7 @@ export function CameraCapture({ onChange }: { onChange: (photo: Blob | null) => 
           muted
           className={`h-full w-full -scale-x-100 object-cover ${state.kind === 'live' ? '' : 'hidden'}`}
         />
-        {state.kind === 'taken' && <img src={state.previewUrl} alt="Your attendance photo" className="h-full w-full -scale-x-100 object-cover" />}
+        {state.kind === 'taken' && <img src={state.previewUrl} alt="Your attendance photo" className={`h-full w-full object-cover ${state.mirrored ? '-scale-x-100' : ''}`} />}
         {state.kind === 'starting' && <div className="flex h-full items-center justify-center text-sm text-gray-300">Opening camera...</div>}
         {state.kind === 'error' && (
           <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center text-sm text-gray-200">
@@ -107,10 +132,31 @@ export function CameraCapture({ onChange }: { onChange: (photo: Blob | null) => 
           </div>
         )}
       </div>
+      {state.kind === 'error' && (
+        <>
+          <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+            <Upload className="h-4 w-4" />
+            Upload a photo instead
+            {/* capture opens the camera app directly on phones; elsewhere it's a file picker. */}
+            <input
+              type="file"
+              accept="image/*"
+              capture="user"
+              className="sr-only"
+              onChange={(e) => {
+                void pickFile(e.target.files?.[0])
+                e.target.value = ''
+              }}
+            />
+          </label>
+          <p className="text-xs text-gray-500">Use a photo of yourself taken in the last 30 minutes.</p>
+          {fileError && <p className="text-xs text-red-600">{fileError}</p>}
+        </>
+      )}
       {state.kind === 'live' && (
         <button
           type="button"
-          onClick={take}
+          onClick={() => void take()}
           className="flex items-center justify-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
         >
           <Camera className="h-4 w-4" />
