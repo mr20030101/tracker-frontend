@@ -14,6 +14,10 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Fixed
+
+- The attendance countdown's beeps could stay silent, especially on iPhones and in Safari. Any click, tap or key press on the page now turns the sound on. While the browser is still holding it back, the speaker turns amber and an **Allow sound** link appears.
+
 ## 5.20.0 — 2026-10-21
 
 ### Changed

@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Minus, Volume2, VolumeX } from 'lucide-react'
 import { ATTENDANCE_OPENS_MIN, attendanceTimeLabel, attendanceWindow, fetchOwnAttendance } from '../lib/attendance'
 import { useAuth } from '../lib/auth'
-import { playBombSound, prepareBombSound, type BombSound } from '../lib/bombSound'
+import { bombSoundBlocked, playBombSound, prepareBombSound, subscribeBombSound, unlockBombSound, type BombSound } from '../lib/bombSound'
 import { useAttendanceClosesMin } from '../lib/useAttendanceClosesMin'
 import { sgMinutesSinceMidnight, todayIso } from '../lib/week'
 import { useNow } from '../lib/useNow'
@@ -105,6 +105,9 @@ function FloatingBomb({ secondsLeft, closesMin, silent, onFile }: { secondsLeft:
   const fuse = Math.min(1, Math.max(0, secondsLeft / ((closesMin - ATTENDANCE_OPENS_MIN) * 60)))
 
   useEffect(prepareBombSound, [])
+  // The browser holds sound back until the page is clicked; the speaker says so, and clicking it
+  // (or anything else) lets the beeps through.
+  const blocked = useSyncExternalStore(subscribeBombSound, bombSoundBlocked)
 
   useEffect(() => {
     const sound = soundFor(secondsLeft)
@@ -112,6 +115,7 @@ function FloatingBomb({ secondsLeft, closesMin, silent, onFile }: { secondsLeft:
   }, [secondsLeft, muted, silent])
 
   function toggleMuted() {
+    if (blocked && !muted) return unlockBombSound()
     setMuted(!muted)
     writeFlag(() => localStorage, MUTED_KEY, !muted)
   }
@@ -126,6 +130,7 @@ function FloatingBomb({ secondsLeft, closesMin, silent, onFile }: { secondsLeft:
   const position = 'fixed bottom-3 right-3 z-40 lg:bottom-6 lg:right-24'
   const tone = urgent ? 'border-status-danger-text/60 bg-status-danger-bg' : 'border-status-warning-text/40 bg-status-warning-bg'
   const digitsTone = urgent ? 'text-status-danger-text' : 'text-gray-900'
+  const soundLabel = muted ? 'Turn the beeping on' : blocked ? 'Your browser is holding the sound back. Click to allow it.' : 'Turn the beeping off'
   const label = `Attendance closes in ${formatCountdown(secondsLeft)}`
 
   if (minimized) {
@@ -153,18 +158,25 @@ function FloatingBomb({ secondsLeft, closesMin, silent, onFile }: { secondsLeft:
       <div className="min-w-0 flex-1">
         <div className="truncate text-xs font-semibold text-gray-900">{STAGE_TEXT[stage]}</div>
         <div className={`attendance-bomb-digits font-mono text-2xl font-bold tabular-nums ${digitsTone}`}>{formatCountdown(secondsLeft)}</div>
-        <div className="text-xs text-gray-600">Closes at {attendanceTimeLabel(closesMin)}</div>
+        <div className="text-xs text-gray-600">
+          Closes at {attendanceTimeLabel(closesMin)}
+          {blocked && !muted && (
+            <button type="button" onClick={unlockBombSound} className="ml-1 font-semibold text-status-warning-text underline">
+              Allow sound
+            </button>
+          )}
+        </div>
       </div>
       <div className="flex flex-col items-end gap-1.5">
         <div className="flex items-center">
           <button
             type="button"
             onClick={toggleMuted}
-            aria-label={muted ? 'Turn the beeping on' : 'Turn the beeping off'}
-            title={muted ? 'Turn the beeping on' : 'Turn the beeping off'}
-            className="rounded-md p-1.5 text-gray-500 hover:bg-black/5"
+            aria-label={soundLabel}
+            title={soundLabel}
+            className={`rounded-md p-1.5 hover:bg-black/5 ${blocked && !muted ? 'text-status-warning-text' : 'text-gray-500'}`}
           >
-            {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+            {muted || blocked ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
           </button>
           <button
             type="button"
