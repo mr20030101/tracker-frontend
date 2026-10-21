@@ -14,6 +14,7 @@ import { GrowBar } from '../components/GrowBar'
 import { Reveal } from '../components/Reveal'
 import { CtsFormModal } from '../components/CtsFormModal'
 import { AttendanceFormModal } from '../components/AttendanceFormModal'
+import { AttendanceBomb } from '../components/AttendanceBomb'
 import { attendanceWindow, fetchOwnAttendance } from '../lib/attendance'
 import { useAttendanceClosesMin } from '../lib/useAttendanceClosesMin'
 import { TaskSubmissionForm } from '../components/TaskSubmissionForm'
@@ -271,6 +272,11 @@ export function ContributorDashboard() {
           </>
         }
       />
+
+      {/* Only once we know they haven't filed (null, not still loading). Quiet while the form is open. */}
+      {attendanceOpen && todaysAttendance === null && (
+        <AttendanceBomb closesMin={closesMin} silent={showAttendanceForm} onFile={() => setShowAttendanceForm(true)} />
+      )}
 
       {showAttendanceForm && user && (
         <AttendanceFormModal

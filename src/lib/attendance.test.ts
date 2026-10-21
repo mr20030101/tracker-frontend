@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { attendanceTimeLabel, attendanceWindow, minutesToTimeInput, timeInputToMinutes } from './attendance'
+import { formatCountdown, secondsUntilClose } from '../components/AttendanceBomb'
 
 // Singapore is UTC+8 all year, so 06:00 SGT is 22:00 UTC the day before.
 const sg = (hhmm: string, day = '2026-10-16') => new Date(`${day}T${hhmm}:00+08:00`)
@@ -49,5 +50,19 @@ describe('attendance time helpers', () => {
     expect(minutesToTimeInput(810)).toBe('13:30')
     expect(timeInputToMinutes('13:30')).toBe(810)
     expect(timeInputToMinutes('')).toBeNull()
+  })
+})
+
+describe('attendance countdown', () => {
+  it('counts the seconds to the closing time', () => {
+    expect(secondsUntilClose(sg('13:29'), 810)).toBe(60)
+    expect(secondsUntilClose(new Date('2026-10-16T13:29:45+08:00'), 810)).toBe(15)
+    expect(secondsUntilClose(sg('06:00'), 810)).toBe(7.5 * 3600)
+  })
+
+  it('shows it as hours, minutes and seconds', () => {
+    expect(formatCountdown(7.5 * 3600)).toBe('07:30:00')
+    expect(formatCountdown(59)).toBe('00:00:59')
+    expect(formatCountdown(-5)).toBe('00:00:00')
   })
 })
