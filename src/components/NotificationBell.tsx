@@ -1,9 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
+import { ALERT_NOTIFICATION_SOUND, loopSound } from '../lib/sound'
 import { Avatar } from './Avatar'
+import { RequestAlarm } from './RequestAlarm'
 import { contributorPath } from '../lib/urlRef'
 
 const MANAGER_ROLES = ['admin', 'lead']
@@ -12,6 +14,8 @@ const PANEL_WIDTH = 320
 const EDGE_GAP = 8
 // Above Modal's z-50, so a panel opened inside a modal isn't covered by it.
 const PANEL_Z_INDEX = 60
+// How often the tab title flips while a new request is ringing.
+const TITLE_FLASH_MS = 1000
 
 interface SubmissionAlert {
   id: string
@@ -47,6 +51,12 @@ export function NotificationBell() {
   const [pos, setPos] = useState<{ top?: number; bottom?: number; right: number } | null>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const isManager = Boolean(user && MANAGER_ROLES.includes(user.role))
+  const { pathname } = useLocation()
+  // Leads only (admins keep the quiet bell): up from the moment a new request lands until they look,
+  // by opening the bell, the Requests page or the alarm's own buttons. `unseen` is how many came in meanwhile.
+  const isLead = user?.role === 'lead'
+  const [ringing, setRinging] = useState(false)
+  const [unseen, setUnseen] = useState(0)
 
   // Fixed-position panel, measured against the button: never clipped by an ancestor's
   // overflow-hidden, and flips upward if there isn't room below.
@@ -129,6 +139,10 @@ export function NotificationBell() {
       setRequestAlerts((prev) =>
         [{ id, name: profile?.name ?? 'Someone', email: profile?.email ?? '', type: row.type }, ...prev].slice(0, MAX_SUBMISSION_ALERTS),
       )
+      if (isLead) {
+        setRinging(true)
+        setUnseen((n) => n + 1)
+      }
     }
 
     const channel = supabase
@@ -138,7 +152,8 @@ export function NotificationBell() {
         { event: 'INSERT', schema: 'public', table: 'task_requests' },
         (payload) => {
           const row = payload.new as TaskRequestRow
-          if (row.status === 'pending') addRequestAlert(row)
+          // Not your own: a lead flagging a bad video shouldn't set off their own alarm.
+          if (row.status === 'pending' && row.requested_by !== user?.id) addRequestAlert(row)
         },
       )
       .subscribe()
@@ -146,7 +161,32 @@ export function NotificationBell() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [isManager, profilesById])
+  }, [isManager, isLead, profilesById, user?.id])
+
+  // Deliberately hard to ignore: the alert sound plays on repeat, the bell shakes and the tab title
+  // flashes, and none of it stops until the request has been seen.
+  useEffect(() => {
+    if (open || pathname.startsWith('/requests')) setRinging(false)
+  }, [open, pathname])
+
+  useEffect(() => {
+    if (!ringing) {
+      setUnseen(0)
+      return
+    }
+    const stopSound = loopSound(ALERT_NOTIFICATION_SOUND)
+    const title = document.title
+    let flipped = false
+    const flash = setInterval(() => {
+      flipped = !flipped
+      document.title = flipped ? '🔔 NEW REQUEST 🔔' : title
+    }, TITLE_FLASH_MS)
+    return () => {
+      stopSound()
+      clearInterval(flash)
+      document.title = title
+    }
+  }, [ringing])
 
   function dismissSubmissionAlert(id: string) {
     setSubmissionAlerts((prev) => prev.filter((a) => a.id !== id))
@@ -168,10 +208,15 @@ export function NotificationBell() {
       <button
         ref={buttonRef}
         onClick={() => setOpen((v) => !v)}
-        className="relative rounded-lg border border-gray-200 bg-white p-2 text-gray-500 hover:bg-gray-50"
-        aria-label="Notifications"
+        className={`relative rounded-lg border p-2 ${
+          ringing
+            ? 'border-status-danger-text bg-status-danger-bg text-status-danger-text'
+            : 'border-gray-200 bg-white text-gray-500 hover:bg-gray-50'
+        }`}
+        aria-label={ringing ? 'Notifications: new request' : 'Notifications'}
       >
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-5 w-5">
+        {ringing && <span className="call-sonar absolute inset-0 rounded-lg border-2 border-status-danger-text" aria-hidden />}
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className={`h-5 w-5 ${ringing ? 'call-ring-shake' : ''}`}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2a2 2 0 0 1-.6 1.4L4 17h5m6 0v1a3 3 0 1 1-6 0v-1m6 0H9" />
         </svg>
         {count > 0 && (
@@ -180,6 +225,8 @@ export function NotificationBell() {
           </span>
         )}
       </button>
+
+      {ringing && <RequestAlarm requests={requestAlerts.slice(0, unseen)} onDismiss={() => setRinging(false)} />}
 
       {open &&
         pos &&
