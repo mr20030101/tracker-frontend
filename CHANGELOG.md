@@ -14,6 +14,18 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Added
+
+- You can edit the reason on your own extension or reclaim request while it's still pending: use **Edit request** in the task's ⋮ menu, or **Edit** on the Requests page or in the "awaiting review" box.
+- If an extension or reclaim request is denied, you can send it again with **Resend request** in the task's ⋮ menu or **Resend** on the Requests page. The reason from last time is already filled in.
+- Approved or denied a request by mistake? Leads can now put it back to pending with **Unapprove** or **Undo deny** on the Requests page, or in the task's ⋮ menu for extensions and reclaims. If the Scale form was already submitted, that isn't undone, and the confirm message says so.
+
+### Changed
+
+- When a lead clicks **Request** on an extension or reclaim, the Scale form no longer opens straight away. A popup first shows the details that go on the form (Extend or Reclaim, task ID, Remotask ID and reason), and the lead can change any of them. The form opens only when they click **Open form**, and the request is marked approved at that point.
+
+Needs the `20261021_edit_own_task_request` database migration before contributors can edit a request. Until it's applied, saving an edit fails with an error. Resending works without it.
+
 ## 5.22.0 — 2026-10-21
 
 ### Added

@@ -1,14 +1,15 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Flame, Image } from 'lucide-react'
-import { api, errorMessage, supabase } from '../lib/api'
+import { api, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, yearMonth, toISODate, weekStartIso, formatRange, formatTime } from '../lib/week'
 import { useNow } from '../lib/useNow'
 import { remotasksDiffViewerUrl } from '../lib/remotasks'
 import {
   buildBadVideoRequestFormUrl,
-  buildExtensionRequestFormUrl,
+  editTaskRequest,
+  reopenTaskRequest,
   requestExtension,
   reviewTaskRequest,
   deleteTaskRequest,
@@ -25,31 +26,14 @@ import { CtsFormModal } from './CtsFormModal'
 import { TaskSubmissionForm } from './TaskSubmissionForm'
 import { BulkImportModal } from './BulkImportModal'
 import { BadVideoReportModal } from './BadVideoReportModal'
-import { Modal } from './Modal'
+import { FileTimeRequestModal, type TimeRequestFormFields } from './FileTimeRequestModal'
+import { TIME_REQUEST_LABELS, TimeRequestReasonModal, type TimeRequestMode, type TimeRequestType } from './TimeRequestReasonModal'
 import { confirmDialog } from '../lib/dialog'
 
 const TREND_DAYS = 30
 const MANAGER_ROLES = ['admin', 'lead']
 // A request only makes sense before the outcome is settled.
 const EXTENSION_ELIGIBLE_STATUSES = ['in_progress', 'expired']
-
-// The two self-service requests a contributor can send their lead — both end up on the same Scale
-// "Reclaim / Extend" form, just with a different request type.
-type TimeRequestType = 'extension' | 'reclaim'
-const TIME_REQUEST_LABELS: Record<TimeRequestType, { noun: string; title: string; description: (task: ReactNode) => ReactNode; placeholder: string }> = {
-  extension: {
-    noun: 'extension',
-    title: 'Request an extension?',
-    description: (task) => <>Asks your lead for more time on {task} before it's marked expired.</>,
-    placeholder: 'Why do you need more time?',
-  },
-  reclaim: {
-    noun: 'reclaim',
-    title: 'Request a reclaim?',
-    description: (task) => <>Asks your lead to reclaim {task} back for you.</>,
-    placeholder: 'Why does this task need to be reclaimed?',
-  },
-}
 
 type SortKey = 'task_id' | 'project' | 'stage' | 'status' | 'date'
 type ViewMode = 'day' | 'week' | 'month'
@@ -88,8 +72,16 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
   const [showCtsModal, setShowCtsModal] = useState(false)
   const [formTarget, setFormTarget] = useState<'new' | TaskSubmission | null>(null)
   const [bulkImporting, setBulkImporting] = useState(false)
-  const [requestingExtensionFor, setRequestingExtensionFor] = useState<{ submission: TaskSubmission; type: TimeRequestType } | null>(null)
-  const [extensionReason, setExtensionReason] = useState('')
+  // The reason form a contributor is filling in: a new request, a resend after a denial, or an edit
+  // of a pending one (`request` is the earlier/pending one for the last two).
+  const [requestingExtensionFor, setRequestingExtensionFor] = useState<{
+    submission: TaskSubmission
+    type: TimeRequestType
+    mode: TimeRequestMode
+    request?: TaskRequest
+  } | null>(null)
+  // The extension/reclaim a lead is checking before filing it with Scale.
+  const [filingRequest, setFilingRequest] = useState<{ request: TaskRequest; fields: TimeRequestFormFields } | null>(null)
   const [reportingBadVideoFor, setReportingBadVideoFor] = useState<TaskSubmission | null>(null)
   const pageSize = 10
 
@@ -153,8 +145,20 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['task-requests'] })
       setRequestingExtensionFor(null)
-      setExtensionReason('')
     },
+  })
+
+  const editRequestMutation = useMutation({
+    mutationFn: ({ id, reason }: { id: number; reason: string }) => editTaskRequest(id, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['task-requests'] })
+      setRequestingExtensionFor(null)
+    },
+  })
+
+  const reopenRequestMutation = useMutation({
+    mutationFn: reopenTaskRequest,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['task-requests'] }),
   })
 
   const withdrawRequestMutation = useMutation({
@@ -170,12 +174,13 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['task-requests'] }),
   })
 
-  // Opens the actual Scale "Reclaim / Extend" form, prefilled from this request (as Extend or
-  // Reclaim to match its type), then marks it approved here — filing that form is what approving
-  // really means.
+  // Shows the details for the Scale "Reclaim / Extend" form, prefilled from this request (as Extend
+  // or Reclaim to match its type), for the lead to check before opening the form. Opening it marks
+  // the request approved: filing that form is what approving really means.
   function handleRequestExtension(request: TaskRequest, submission: TaskSubmission | undefined) {
-    window.open(
-      buildExtensionRequestFormUrl({
+    setFilingRequest({
+      request,
+      fields: {
         requestType: request.type === 'reclaim' ? 'Reclaim' : 'Extend',
         taskId: submission?.task_id ?? null,
         cbEmail: submission?.cb_email ?? null,
@@ -184,11 +189,8 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
         stage: submission?.stage ?? null,
         projectName: submission?.project?.name ?? null,
         reason: request.reason,
-      }),
-      '_blank',
-      'noopener,noreferrer',
-    )
-    reviewRequestMutation.mutate({ id: request.id, status: 'approved' })
+      },
+    })
   }
 
   // Same mechanism, pointed at the Bad Video Validation/Removal form instead.
@@ -407,7 +409,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                             title={
                               request.type === 'bad_video'
                                 ? 'Opens the Bad Video Validation/Removal form, prefilled, and marks this approved'
-                                : 'Opens the Reclaim / Extend form, prefilled, and marks this approved'
+                                : 'Check the details, then open the Reclaim / Extend form and mark this approved'
                             }
                             className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground disabled:opacity-50"
                           >
@@ -433,13 +435,23 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                           </button>
                         </>
                       ) : (
-                        <button
-                          onClick={() => withdrawRequestMutation.mutate(request.id)}
-                          disabled={withdrawRequestMutation.isPending}
-                          className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
-                        >
-                          Withdraw
-                        </button>
+                        <>
+                          {request.type !== 'bad_video' && submission && (
+                            <button
+                              onClick={() => setRequestingExtensionFor({ submission, type: request.type, mode: 'edit', request })}
+                              className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+                            >
+                              Edit
+                            </button>
+                          )}
+                          <button
+                            onClick={() => withdrawRequestMutation.mutate(request.id)}
+                            disabled={withdrawRequestMutation.isPending}
+                            className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+                          >
+                            Withdraw
+                          </button>
+                        </>
                       ))}
                   </div>
                 </div>
@@ -656,23 +668,29 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                     const extension = timeRequestFor(row.id, 'extension')
                     const reclaim = timeRequestFor(row.id, 'reclaim')
                     const canRequestExtension = !isManager && EXTENSION_ELIGIBLE_STATUSES.includes(row.status)
-                    // Menu items for one extension/reclaim request on this row: a contributor sends or
-                    // withdraws their own; a lead/admin files or denies a pending one, or deletes it.
+                    // Menu items for one extension/reclaim request on this row: a contributor sends,
+                    // edits or withdraws their own, or resends one that was denied; a lead/admin files
+                    // or denies a pending one, or deletes it.
                     const timeRequestItems = (type: TimeRequestType, request: TaskRequest | undefined) => {
                       const { noun } = TIME_REQUEST_LABELS[type]
                       return [
                         ...(canRequestExtension
                           ? request?.status === 'pending'
-                            ? [{ label: `Withdraw ${noun} request`, onClick: () => withdrawRequestMutation.mutate(request.id) }]
-                            : [
+                            ? [
                                 {
-                                  label: `Request ${noun}`,
-                                  onClick: () => {
-                                    setRequestingExtensionFor({ submission: row, type })
-                                    setExtensionReason('')
-                                  },
+                                  label: `Edit ${noun} request`,
+                                  onClick: () => setRequestingExtensionFor({ submission: row, type, mode: 'edit', request }),
                                 },
+                                { label: `Withdraw ${noun} request`, onClick: () => withdrawRequestMutation.mutate(request.id) },
                               ]
+                            : request?.status === 'denied'
+                              ? [
+                                  {
+                                    label: `Resend ${noun} request`,
+                                    onClick: () => setRequestingExtensionFor({ submission: row, type, mode: 'resend', request }),
+                                  },
+                                ]
+                              : [{ label: `Request ${noun}`, onClick: () => setRequestingExtensionFor({ submission: row, type, mode: 'new' }) }]
                           : []),
                         ...(isManager && request?.status === 'pending'
                           ? [
@@ -681,6 +699,23 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                                 label: `Deny ${noun}`,
                                 variant: 'danger' as const,
                                 onClick: () => reviewRequestMutation.mutate({ id: request.id, status: 'denied' }),
+                              },
+                            ]
+                          : []),
+                        // For an accidental click: back to pending (a Scale form already filed stays filed).
+                        ...(isManager && request && request.status !== 'pending'
+                          ? [
+                              {
+                                label: request.status === 'approved' ? `Unapprove ${noun}` : `Undo ${noun} denial`,
+                                onClick: async () => {
+                                  const message =
+                                    request.status === 'approved'
+                                      ? "Unapprove this request? It goes back to pending. If the Scale form was already submitted, that isn't undone."
+                                      : 'Undo the denial? It goes back to pending.'
+                                  if (await confirmDialog(message, { confirmLabel: request.status === 'approved' ? 'Unapprove' : 'Undo deny' })) {
+                                    reopenRequestMutation.mutate(request.id)
+                                  }
+                                },
                               },
                             ]
                           : []),
@@ -844,56 +879,32 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
       )}
 
       {requestingExtensionFor && (
-        <Modal title={TIME_REQUEST_LABELS[requestingExtensionFor.type].title} onClose={() => setRequestingExtensionFor(null)}>
-          <div className="flex flex-col gap-4">
-            <p className="text-sm text-gray-600">
-              {TIME_REQUEST_LABELS[requestingExtensionFor.type].description(
-                <span className="font-mono text-gray-900">{requestingExtensionFor.submission.task_id ?? 'this task'}</span>,
-              )}
-            </p>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Reason</label>
-              <textarea
-                rows={3}
-                required
-                maxLength={500}
-                value={extensionReason}
-                onChange={(e) => setExtensionReason(e.target.value)}
-                placeholder={TIME_REQUEST_LABELS[requestingExtensionFor.type].placeholder}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
-              />
-            </div>
-            {requestExtensionMutation.isError && (
-              <div className="text-sm text-status-danger-text">
-                {errorMessage(requestExtensionMutation.error, 'Could not send this request.')}
-              </div>
-            )}
-            <div className="mt-2 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setRequestingExtensionFor(null)}
-                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                // The lead files this reason with Scale, so a request can't go without one.
-                disabled={requestExtensionMutation.isPending || extensionReason.trim() === ''}
-                onClick={() =>
-                  requestExtensionMutation.mutate({
-                    submissionId: requestingExtensionFor.submission.id,
-                    reason: extensionReason,
-                    type: requestingExtensionFor.type,
-                  })
-                }
-                className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
-              >
-                {requestExtensionMutation.isPending ? 'Sending...' : 'Send request'}
-              </button>
-            </div>
-          </div>
-        </Modal>
+        <TimeRequestReasonModal
+          type={requestingExtensionFor.type}
+          taskId={requestingExtensionFor.submission.task_id}
+          mode={requestingExtensionFor.mode}
+          initialReason={requestingExtensionFor.request?.reason ?? ''}
+          isPending={requestExtensionMutation.isPending || editRequestMutation.isPending}
+          error={requestExtensionMutation.error ?? editRequestMutation.error}
+          onSubmit={(reason) => {
+            const { submission, type, mode, request } = requestingExtensionFor
+            if (mode === 'edit' && request) editRequestMutation.mutate({ id: request.id, reason })
+            else requestExtensionMutation.mutate({ submissionId: submission.id, reason, type })
+          }}
+          onClose={() => {
+            setRequestingExtensionFor(null)
+            requestExtensionMutation.reset()
+            editRequestMutation.reset()
+          }}
+        />
+      )}
+
+      {filingRequest && (
+        <FileTimeRequestModal
+          initial={filingRequest.fields}
+          onFiled={() => reviewRequestMutation.mutate({ id: filingRequest.request.id, status: 'approved' })}
+          onClose={() => setFilingRequest(null)}
+        />
       )}
 
       {reportingBadVideoFor && (

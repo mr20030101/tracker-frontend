@@ -2,11 +2,14 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../lib/auth'
+import { errorMessage } from '../lib/api'
 import {
   buildBadVideoRequestFormUrl,
-  buildExtensionRequestFormUrl,
   deleteTaskRequestsBulk,
+  editTaskRequest,
   fetchTaskRequests,
+  reopenTaskRequest,
+  requestExtension,
   reviewTaskRequest,
   reviewTaskRequestsBulk,
   deleteTaskRequest,
@@ -18,6 +21,8 @@ import {
 import { BadVideoReportModal } from '../components/BadVideoReportModal'
 import { Detail } from '../components/Detail'
 import { Modal } from '../components/Modal'
+import { FileTimeRequestModal, type TimeRequestFormFields } from '../components/FileTimeRequestModal'
+import { TimeRequestReasonModal, type TimeRequestMode } from '../components/TimeRequestReasonModal'
 import type { RequestStatus, RequestType } from '../types'
 import { contributorPath } from '../lib/urlRef'
 import { useNow } from '../lib/useNow'
@@ -30,6 +35,7 @@ const MANAGER_ROLES = ['admin', 'lead']
 type StatusFilter = RequestStatus | 'all'
 type TypeFilter = RequestType | 'all'
 type Notice = { tone: 'success' | 'error'; text: string }
+type TimeRequest = Extract<TaskRequestWithContext, { type: 'extension' | 'reclaim' }>
 
 const STATUS_FILTERS: StatusFilter[] = ['pending', 'approved', 'denied', 'all']
 const STATUS_LABELS: Record<StatusFilter, string> = { pending: 'Pending', approved: 'Approved', denied: 'Denied', all: 'All' }
@@ -62,6 +68,10 @@ export function Requests() {
   const [notice, setNotice] = useState<Notice | null>(null)
   const [newReport, setNewReport] = useState(false)
   const [viewingId, setViewingId] = useState<number | null>(null)
+  // The extension/reclaim a lead is checking before filing it with Scale.
+  const [filingRequest, setFilingRequest] = useState<{ request: TaskRequestWithContext; fields: TimeRequestFormFields } | null>(null)
+  // The requester's own extension/reclaim they're editing (pending) or resending (denied).
+  const [revisingRequest, setRevisingRequest] = useState<{ request: TimeRequest; mode: Extract<TimeRequestMode, 'edit' | 'resend'> } | null>(null)
 
   const { data: requests = [], isLoading } = useQuery({
     queryKey: ['task-requests', 'all'],
@@ -75,6 +85,28 @@ export function Requests() {
       return reviewTaskRequest(id, status, user.id)
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['task-requests'] }),
+  })
+
+  const reviseMutation = useMutation({
+    mutationFn: async ({ request, mode, reason }: { request: TimeRequest; mode: 'edit' | 'resend'; reason: string }) => {
+      if (!user) throw new Error('Unauthenticated')
+      if (mode === 'edit') return editTaskRequest(request.id, reason)
+      // A resend is a new request: the denied one stays as it was.
+      return requestExtension(request.task_submission_id, user.id, reason, request.type, user.remotasks_id)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['task-requests'] })
+      setRevisingRequest(null)
+    },
+  })
+
+  const reopenMutation = useMutation({
+    mutationFn: reopenTaskRequest,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['task-requests'] })
+      setNotice({ tone: 'success', text: 'Moved back to pending.' })
+    },
+    onError: (error) => setNotice({ tone: 'error', text: errorMessage(error, 'Could not move this back to pending.') }),
   })
 
   const withdrawMutation = useMutation({
@@ -120,12 +152,13 @@ export function Requests() {
     },
   })
 
-  // Opens the actual Scale "Reclaim / Extend" form, prefilled from this request (as Extend or
-  // Reclaim to match its type), then marks it approved here — filing that form is what approving
-  // really means.
+  // Shows the details for the Scale "Reclaim / Extend" form, prefilled from this request (as Extend
+  // or Reclaim to match its type), for the lead to check before opening the form. Opening it marks
+  // the request approved: filing that form is what approving really means.
   function handleRequestExtension(request: TaskRequestWithContext) {
-    window.open(
-      buildExtensionRequestFormUrl({
+    setFilingRequest({
+      request,
+      fields: {
         requestType: request.type === 'reclaim' ? 'Reclaim' : 'Extend',
         taskId: request.task_submission?.task_id ?? null,
         cbEmail: request.task_submission?.cb_email ?? null,
@@ -134,11 +167,8 @@ export function Requests() {
         stage: request.task_submission?.stage ?? null,
         projectName: request.task_submission?.project?.name ?? null,
         reason: request.reason,
-      }),
-      '_blank',
-      'noopener,noreferrer',
-    )
-    reviewMutation.mutate({ id: request.id, status: 'approved' })
+      },
+    })
   }
 
   // Same mechanism, pointed at the Bad Video Validation/Removal form instead.
@@ -180,7 +210,7 @@ export function Requests() {
               title={
                 request.type === 'bad_video'
                   ? 'Opens the Bad Video Validation/Removal form, prefilled, and marks this approved'
-                  : 'Opens the Reclaim / Extend form, prefilled, and marks this approved'
+                  : 'Check the details, then open the Reclaim / Extend form and mark this approved'
               }
               className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground disabled:opacity-50"
             >
@@ -198,17 +228,64 @@ export function Requests() {
             </button>
           </>
         ) : (
+          <>
+            {request.type !== 'bad_video' && (
+              <button
+                onClick={() => {
+                  setRevisingRequest({ request, mode: 'edit' })
+                  after?.()
+                }}
+                className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+              >
+                Edit
+              </button>
+            )}
+            <button
+              onClick={() => {
+                withdrawMutation.mutate(request.id)
+                after?.()
+              }}
+              disabled={withdrawMutation.isPending}
+              className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+            >
+              Withdraw
+            </button>
+          </>
+        ))}
+        {/* A denied extension/reclaim can be sent again, unless a newer one for that task is already waiting. */}
+        {request.status === 'denied' &&
+          request.type !== 'bad_video' &&
+          request.requested_by === user?.id &&
+          !requests.some((r) => r.task_submission_id === request.task_submission_id && r.type === request.type && r.status === 'pending') && (
+            <button
+              onClick={() => {
+                setRevisingRequest({ request, mode: 'resend' })
+                after?.()
+              }}
+              className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground"
+            >
+              Resend
+            </button>
+          )}
+        {/* For an accidental click: puts it back to pending. A Scale form that was already filed stays filed. */}
+        {isManager && request.status !== 'pending' && (
           <button
-            onClick={() => {
-              withdrawMutation.mutate(request.id)
-              after?.()
+            onClick={async () => {
+              const message =
+                request.status === 'approved'
+                  ? "Unapprove this request? It goes back to pending. If the Scale form was already submitted, that isn't undone."
+                  : 'Undo the denial? It goes back to pending.'
+              if (await confirmDialog(message, { confirmLabel: request.status === 'approved' ? 'Unapprove' : 'Undo deny' })) {
+                reopenMutation.mutate(request.id)
+                after?.()
+              }
             }}
-            disabled={withdrawMutation.isPending}
+            disabled={reopenMutation.isPending}
             className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
           >
-            Withdraw
+            {request.status === 'approved' ? 'Unapprove' : 'Undo deny'}
           </button>
-        ))}
+        )}
         {!inModal && request.status !== 'pending' && (
           <span className="text-xs text-gray-400">{request.reviewed_at ? new Date(request.reviewed_at).toLocaleDateString() : ''}</span>
         )}
@@ -558,6 +635,30 @@ export function Requests() {
       )}
 
       {newReport && <BadVideoReportModal onClose={() => setNewReport(false)} />}
+
+      {filingRequest && (
+        <FileTimeRequestModal
+          initial={filingRequest.fields}
+          onFiled={() => reviewMutation.mutate({ id: filingRequest.request.id, status: 'approved' })}
+          onClose={() => setFilingRequest(null)}
+        />
+      )}
+
+      {revisingRequest && (
+        <TimeRequestReasonModal
+          type={revisingRequest.request.type}
+          taskId={revisingRequest.request.task_submission?.task_id ?? null}
+          mode={revisingRequest.mode}
+          initialReason={revisingRequest.request.reason ?? ''}
+          isPending={reviseMutation.isPending}
+          error={reviseMutation.error}
+          onSubmit={(reason) => reviseMutation.mutate({ ...revisingRequest, reason })}
+          onClose={() => {
+            setRevisingRequest(null)
+            reviseMutation.reset()
+          }}
+        />
+      )}
     </div>
   )
 }

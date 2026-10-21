@@ -102,6 +102,12 @@ export async function requestExtension(
   if (error) throw error
 }
 
+/** Changes the reason on the caller's own extension or reclaim request while it's still pending. */
+export async function editTaskRequest(id: number, reason: string): Promise<void> {
+  const { error } = await supabase.rpc('edit_own_task_request', { p_request_id: id, p_reason: reason.trim() })
+  if (error) throw error
+}
+
 export async function reportBadVideo(params: {
   submissionId: number
   requestedBy: string
@@ -137,6 +143,13 @@ export async function reviewTaskRequest(
     .from('task_requests')
     .update({ status, reviewed_by: reviewedBy, reviewed_at: new Date().toISOString() })
     .eq('id', id)
+  if (error) throw error
+}
+
+/** Puts a reviewed request back to pending, for a lead who approved or denied it by mistake. It
+ * doesn't take back a Scale form that was already filed. */
+export async function reopenTaskRequest(id: number): Promise<void> {
+  const { error } = await supabase.from('task_requests').update({ status: 'pending', reviewed_by: null, reviewed_at: null }).eq('id', id)
   if (error) throw error
 }
 
