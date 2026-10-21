@@ -76,3 +76,64 @@ export function playBombSound(sound: BombSound) {
   tone(ctx, { type: 'sine', frequency: 2300, duration: 0.11, volume: 0.16 })
   if (sound === 'double-beep') tone(ctx, { type: 'sine', frequency: 2300, duration: 0.11, volume: 0.16, delay: 0.5 })
 }
+
+// Decaying white noise, `seconds` long, falling away with `curve` (higher dies faster).
+function noiseBuffer(ctx: AudioContext, seconds: number, curve: number): AudioBuffer {
+  const length = Math.floor(ctx.sampleRate * seconds)
+  const buffer = ctx.createBuffer(2, length, ctx.sampleRate)
+  for (let channel = 0; channel < 2; channel++) {
+    const samples = buffer.getChannelData(channel)
+    for (let i = 0; i < length; i++) samples[i] = (Math.random() * 2 - 1) * (1 - i / length) ** curve
+  }
+  return buffer
+}
+
+function noise(ctx: AudioContext, out: AudioNode, { seconds, curve, type, from, to, volume, at }: { seconds: number; curve: number; type: BiquadFilterType; from: number; to: number; volume: number; at: number }) {
+  const source = ctx.createBufferSource()
+  source.buffer = noiseBuffer(ctx, seconds, curve)
+  const filter = ctx.createBiquadFilter()
+  filter.type = type
+  filter.frequency.setValueAtTime(from, at)
+  filter.frequency.exponentialRampToValueAtTime(to, at + seconds)
+  const gain = ctx.createGain()
+  gain.gain.setValueAtTime(volume, at)
+  source.connect(filter).connect(gain).connect(out)
+  source.start(at)
+}
+
+/** Time's up: a sharp crack, the roar of the blast, a deep thump you feel, and a rumble rolling away. */
+export function playExplosion() {
+  const ctx = audio()
+  if (!ctx || ctx.state !== 'running') return
+  const at = ctx.currentTime + 0.01
+
+  // Everything through a compressor, so it's loud and full without crackling.
+  const out = ctx.createDynamicsCompressor()
+  out.threshold.value = -18
+  out.ratio.value = 6
+  out.attack.value = 0.002
+  out.release.value = 0.4
+  const master = ctx.createGain()
+  master.gain.value = 0.9
+  out.connect(master).connect(ctx.destination)
+
+  // The crack: a very short, bright burst.
+  noise(ctx, out, { seconds: 0.12, curve: 4, type: 'highpass', from: 1800, to: 900, volume: 0.9, at })
+  // The roar: broadband noise that darkens as it dies.
+  noise(ctx, out, { seconds: 1.6, curve: 2.2, type: 'lowpass', from: 4500, to: 220, volume: 1, at })
+  // The rumble: low noise rolling on long after.
+  noise(ctx, out, { seconds: 3.2, curve: 1.6, type: 'lowpass', from: 260, to: 60, volume: 1.1, at: at + 0.05 })
+
+  // The thump: a sub-bass punch that drops in pitch.
+  const thump = ctx.createOscillator()
+  thump.type = 'sine'
+  thump.frequency.setValueAtTime(140, at)
+  thump.frequency.exponentialRampToValueAtTime(28, at + 0.7)
+  const thumpGain = ctx.createGain()
+  thumpGain.gain.setValueAtTime(0.0001, at)
+  thumpGain.gain.exponentialRampToValueAtTime(1, at + 0.01)
+  thumpGain.gain.exponentialRampToValueAtTime(0.0001, at + 1)
+  thump.connect(thumpGain).connect(out)
+  thump.start(at)
+  thump.stop(at + 1.05)
+}

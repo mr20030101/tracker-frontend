@@ -1,9 +1,10 @@
-import { useEffect, useState, useSyncExternalStore } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Minus, Volume2, VolumeX } from 'lucide-react'
+import { Minus, Volume2, VolumeX, X } from 'lucide-react'
 import { ATTENDANCE_OPENS_MIN, attendanceTimeLabel, attendanceWindow, fetchOwnAttendance } from '../lib/attendance'
 import { useAuth } from '../lib/auth'
-import { bombSoundBlocked, playBombSound, prepareBombSound, subscribeBombSound, unlockBombSound, type BombSound } from '../lib/bombSound'
+import { bombSoundBlocked, playBombSound, playExplosion, prepareBombSound, subscribeBombSound, unlockBombSound, type BombSound } from '../lib/bombSound'
+import { runExplosion } from '../lib/explosion'
 import { useAttendanceClosesMin } from '../lib/useAttendanceClosesMin'
 import { sgMinutesSinceMidnight, todayIso } from '../lib/week'
 import { useNow } from '../lib/useNow'
@@ -85,12 +86,78 @@ export function AttendanceBomb() {
   const [filing, setFiling] = useState(false)
 
   // Only once we know they haven't filed (null, not still loading).
-  const show = isContributor && todaysAttendance === null && attendanceWindow(new Date(now), closesMin) === 'open'
+  const windowState = attendanceWindow(new Date(now), closesMin)
+  const show = isContributor && todaysAttendance === null && windowState === 'open'
+  // The bomb goes off when time runs out with nothing filed (not when it goes because they filed).
+  const [wasShown, setWasShown] = useState(show)
+  const [exploding, setExploding] = useState(false)
+  if (show !== wasShown) {
+    setWasShown(show)
+    if (!show && windowState === 'closed' && todaysAttendance === null) setExploding(true)
+  }
+
   return (
     <>
+      {exploding && <Explosion closesMin={closesMin} onDone={() => setExploding(false)} />}
       {show && <FloatingBomb secondsLeft={secondsUntilClose(new Date(now), closesMin)} closesMin={closesMin} silent={filing} onFile={() => setFiling(true)} />}
       {filing && user && (
         <AttendanceFormModal person={{ id: user.id, name: user.name, email: user.email }} date={today} existing={todaysAttendance ?? null} onClose={() => setFiling(false)} />
+      )}
+    </>
+  )
+}
+
+// The same corner as the floating bomb, so the blast comes from where it was.
+const FLOATING_POSITION = 'fixed bottom-3 right-3 lg:bottom-6 lg:right-24'
+const FLOATING_WIDTH = 'w-[min(22rem,calc(100vw-1.5rem))]'
+
+/** Time's up: the bomb goes off where it was (see lib/explosion), with a boom; then a note that attendance has closed. */
+function Explosion({ closesMin, onDone }: { closesMin: number; onDone: () => void }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  // An invisible stand-in for the bomb card, to find where the bomb was.
+  const markerRef = useRef<HTMLDivElement>(null)
+  const [blasting, setBlasting] = useState(true)
+  const [showNote, setShowNote] = useState(false)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    const marker = markerRef.current?.getBoundingClientRect()
+    if (!canvas || !marker) return
+    if (!readFlag(() => localStorage, MUTED_KEY)) playExplosion()
+    const stop = runExplosion(canvas, {
+      // The bomb sits at the card's left, halfway down.
+      x: marker.left + 44,
+      y: marker.top + marker.height / 2,
+      reducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+      shake: document.getElementById('root'),
+      onDone: () => setBlasting(false),
+    })
+    // The note comes in as the fire dies down, while the smoke still rolls.
+    const note = setTimeout(() => setShowNote(true), 1300)
+    return () => {
+      stop()
+      clearTimeout(note)
+    }
+  }, [])
+
+  return (
+    <>
+      {blasting && (
+        <>
+          <canvas ref={canvasRef} aria-hidden="true" className="pointer-events-none fixed inset-0 z-[80] h-full w-full" />
+          <div ref={markerRef} aria-hidden="true" className={`${FLOATING_POSITION} ${FLOATING_WIDTH} pointer-events-none invisible h-[5.5rem]`} />
+        </>
+      )}
+      {showNote && (
+        <div role="alert" className={`${FLOATING_POSITION} ${FLOATING_WIDTH} attendance-boom-note z-40 flex items-start gap-3 rounded-2xl border border-status-danger-text/60 bg-status-danger-bg p-4 shadow-lg`}>
+          <div className="min-w-0 flex-1">
+            <div className="font-bold text-status-danger-text">BOOM! Attendance has closed.</div>
+            <div className="text-sm text-gray-700">It closed at {attendanceTimeLabel(closesMin)}. Ask your lead to file today's attendance for you.</div>
+          </div>
+          <button type="button" onClick={onDone} aria-label="Close" className="rounded-md p-1 text-gray-500 hover:bg-black/5">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
       )}
     </>
   )
@@ -127,7 +194,7 @@ function FloatingBomb({ secondsLeft, closesMin, silent, onFile }: { secondsLeft:
 
   // Bottom right on a phone; on a desktop, just left of the online people's chat bubbles. Under
   // the chat window (z-50), so an open conversation isn't covered.
-  const position = 'fixed bottom-3 right-3 z-40 lg:bottom-6 lg:right-24'
+  const position = `${FLOATING_POSITION} z-40`
   const tone = urgent ? 'border-status-danger-text/60 bg-status-danger-bg' : 'border-status-warning-text/40 bg-status-warning-bg'
   const digitsTone = urgent ? 'text-status-danger-text' : 'text-gray-900'
   const soundLabel = muted ? 'Turn the beeping on' : blocked ? 'Your browser is holding the sound back. Click to allow it.' : 'Turn the beeping off'
@@ -150,7 +217,7 @@ function FloatingBomb({ secondsLeft, closesMin, silent, onFile }: { secondsLeft:
 
   return (
     <div
-      className={`attendance-bomb attendance-bomb--${stage} ${position} flex w-[min(22rem,calc(100vw-1.5rem))] items-center gap-3 rounded-2xl border p-3 shadow-lg ${tone}`}
+      className={`attendance-bomb attendance-bomb--${stage} ${position} flex ${FLOATING_WIDTH} items-center gap-3 rounded-2xl border p-3 shadow-lg ${tone}`}
       role="timer"
       aria-label={label}
     >

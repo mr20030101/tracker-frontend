@@ -617,7 +617,19 @@ body {
   animation: bomb-digits-blink 0.5s steps(1) infinite;
 }
 
+/* When the attendance bomb goes off (components/AttendanceBomb, lib/explosion), the note that
+   follows pops in. */
+@keyframes boom-note-in {
+  0% { transform: scale(0.85); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.attendance-boom-note {
+  animation: boom-note-in 0.25s ease-out;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .attendance-boom-note,
   .attendance-bomb-spark,
   .attendance-bomb-spark-glow,
   .attendance-bomb-ember,
