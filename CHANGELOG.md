@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 5.23.0 — 2026-10-21
+
 ### Added
 
 - You can edit the reason on your own extension or reclaim request while it's still pending: use **Edit request** in the task's ⋮ menu, or **Edit** on the Requests page or in the "awaiting review" box.
