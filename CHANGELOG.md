@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 5.20.0 — 2026-10-21
+
 ### Changed
 
 - The attendance countdown floats in the corner of every page, not just the Dashboard, until you've filed today. **File now** opens the form wherever you are, and the minus button shrinks it to a small pill.
