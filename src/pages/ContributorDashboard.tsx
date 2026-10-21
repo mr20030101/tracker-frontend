@@ -218,7 +218,8 @@ export function ContributorDashboard() {
   const attendanceOpen = attendanceState === 'open'
 
   function handleAttendanceClick() {
-    if (attendanceOpen) {
+    // The time right now, not `now`, which is up to a minute old.
+    if (attendanceWindow(new Date(), closesMin) === 'open') {
       setShowAttendanceForm(true)
     } else {
       // Only reachable once it's opened for the day (the button is disabled before 6 AM), so this is the "already closed" case.

@@ -7,13 +7,17 @@ import {
   SUPPORT_HOURS,
   TASKING,
   TASKING_STATUSES,
+  attendanceTimeLabel,
+  attendanceWindow,
   deleteAttendance,
   fileAttendance,
 } from '../lib/attendance'
+import { useAttendanceClosesMin } from '../lib/useAttendanceClosesMin'
+import { useNow } from '../lib/useNow'
 import { confirmDialog } from '../lib/dialog'
 import { fetchAttendancePhotoRequired, sendAttendanceToGoogleForm, uploadAttendancePhoto } from '../lib/attendancePhoto'
 import { CameraCapture } from './CameraCapture'
-import { fromISODate } from '../lib/week'
+import { fromISODate, todayIso } from '../lib/week'
 import { Modal } from './Modal'
 import { Select } from './Select'
 import type { Attendance, AttendanceHours } from '../types'
@@ -59,6 +63,13 @@ export function AttendanceFormModal({
   // When the photo is required, filing for the first time means taking one before saving. Retaking
   // can always fall back to "Keep current photo".
   const waitingForPhoto = photoRequired && showCamera && !photo
+
+  // A contributor's own form shuts as soon as the window does, even if it was opened before, so
+  // they're told now instead of when file_attendance() refuses the save.
+  const now = useNow(1000)
+  const { closesMin } = useAttendanceClosesMin()
+  const closed = !support && (date !== todayIso(now) || attendanceWindow(new Date(now), closesMin) !== 'open')
+  const closedMessage = `Attendance closed at ${attendanceTimeLabel(closesMin)}. Ask your lead to file it for you.`
 
   const hoursOptions = support ? [...CONTRIBUTOR_HOURS, ...SUPPORT_HOURS] : CONTRIBUTOR_HOURS
   const statusOptions = TASKING_STATUSES.map((s) => ({ value: s, label: s }))
@@ -111,6 +122,7 @@ export function AttendanceFormModal({
       <form
         onSubmit={(e) => {
           e.preventDefault()
+          if (!support && (date !== todayIso(Date.now()) || attendanceWindow(new Date(), closesMin) !== 'open')) return setFormError(closedMessage)
           if (!hours) return setFormError('Pick how many hours you can commit today.')
           if (!status) return setFormError('Pick a tasking status.')
           if (waitingForPhoto) return setFormError(retaking ? 'Take your new photo, or keep the current one.' : 'Take a photo with your camera first.')
@@ -230,8 +242,12 @@ export function AttendanceFormModal({
           </>
         )}
 
-        {(formError || mutationError) && (
-          <div className="text-sm text-status-danger-text">{formError ?? errorMessage(mutationError, 'Could not save the attendance.')}</div>
+        {closed ? (
+          <div className="rounded-lg border border-status-danger-text/30 bg-status-danger-bg px-3 py-2 text-sm font-medium text-status-danger-text">{closedMessage}</div>
+        ) : (
+          (formError || mutationError) && (
+            <div className="text-sm text-status-danger-text">{formError ?? errorMessage(mutationError, 'Could not save the attendance.')}</div>
+          )
         )}
 
         <div className="mt-1 flex flex-wrap items-center justify-end gap-2">
@@ -254,8 +270,8 @@ export function AttendanceFormModal({
           </button>
           <button
             type="submit"
-            disabled={busy || waitingForPhoto}
-            title={waitingForPhoto ? 'Take your photo first' : undefined}
+            disabled={busy || waitingForPhoto || closed}
+            title={closed ? closedMessage : waitingForPhoto ? 'Take your photo first' : undefined}
             className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
           >
             {saveMutation.isPending ? (photo ? 'Saving photo...' : 'Saving...') : existing ? 'Save changes' : 'Submit attendance'}
