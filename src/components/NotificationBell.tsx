@@ -45,6 +45,14 @@ interface TaskRequestRow {
   status: string
 }
 
+// A fresh topic each time a subscription starts. supabase.channel() hands back an existing channel
+// with the same name, and removeChannel() only drops one once it has finished leaving, so
+// resubscribing straight after a cleanup used to get the old, closing channel back: no error, just
+// no more events. That's how a lead missed the alarm for a new request.
+function liveChannelName(name: string): string {
+  return `${name}-${crypto.randomUUID()}`
+}
+
 export function NotificationBell() {
   const { user } = useAuth()
   const [open, setOpen] = useState(false)
@@ -77,6 +85,12 @@ export function NotificationBell() {
   const [profileNames, setProfileNames] = useState<Map<string, string>>()
   const [profilesById, setProfilesById] = useState<Map<string, { name: string; email: string }>>()
   const [projectNames, setProjectNames] = useState<Map<number, string>>()
+  // Read through refs so the live subscriptions below don't restart when these load: restarting one
+  // left it dead (see liveChannelName).
+  const lookups = useRef({ profileNames, profilesById, projectNames, isLead })
+  useEffect(() => {
+    lookups.current = { profileNames, profilesById, projectNames, isLead }
+  })
 
   useEffect(() => {
     if (!isManager) return
@@ -98,6 +112,7 @@ export function NotificationBell() {
     if (!isManager) return
 
     function addSubmissionAlert(row: TaskSubmissionRow) {
+      const { profileNames, projectNames } = lookups.current
       const name = profileNames?.get(row.cb_email.toLowerCase()) ?? row.cb_email
       const project = row.project_id != null ? (projectNames?.get(row.project_id) ?? null) : null
       const id = `${row.id}-${Date.now()}`
@@ -105,7 +120,7 @@ export function NotificationBell() {
     }
 
     const channel = supabase
-      .channel('task-submissions-live')
+      .channel(liveChannelName('task-submissions-live'))
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'task_submissions' },
@@ -128,12 +143,13 @@ export function NotificationBell() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [isManager, profileNames, projectNames])
+  }, [isManager])
 
   useEffect(() => {
     if (!isManager) return
 
     function addRequestAlert(row: TaskRequestRow) {
+      const { profilesById, isLead } = lookups.current
       const profile = profilesById?.get(row.requested_by)
       const id = `${row.id}-${Date.now()}`
       setRequestAlerts((prev) =>
@@ -146,7 +162,7 @@ export function NotificationBell() {
     }
 
     const channel = supabase
-      .channel('task-requests-live')
+      .channel(liveChannelName('task-requests-live'))
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'task_requests' },
@@ -161,7 +177,7 @@ export function NotificationBell() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [isManager, isLead, profilesById, user?.id])
+  }, [isManager, user?.id])
 
   // Deliberately hard to ignore: the alert sound plays on repeat, the bell shakes and the tab title
   // flashes, and none of it stops until the request has been seen.

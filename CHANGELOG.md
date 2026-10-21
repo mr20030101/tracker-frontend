@@ -14,6 +14,10 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Fixed
+
+- The new-request alarm, and the bell's live alerts for new submissions and requests, stopped listening a moment after the page loaded, so leads got no alarm when a request came in. They now stay connected.
+
 ## 5.23.0 — 2026-10-21
 
 ### Added
