@@ -38,6 +38,7 @@ import { HalloweenScene } from './Halloween'
 import { useTheme } from '../lib/theme'
 import { useSeason } from '../lib/season'
 import { OnlineUsers } from './OnlineUsers'
+import { AttendanceBomb } from './AttendanceBomb'
 import { GlobalSearch } from './GlobalSearch'
 import { contributorPath } from '../lib/urlRef'
 import { OVERDUE_HOURS, fetchOverdueRequestCount, fetchPendingRequestCount } from '../lib/taskRequests'
@@ -292,6 +293,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
           )}
           {user && !onMessages && <OnlineUsers />}
+          {/* Contributors: the countdown to today's attendance closing, until they've filed. */}
+          {user && <AttendanceBomb />}
           {menuOpen && !docked && (
             <div className="fixed inset-0 z-40 bg-black/40" aria-hidden="true" onClick={() => setMenuOpen(false)} />
           )}

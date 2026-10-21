@@ -14,7 +14,6 @@ import { GrowBar } from '../components/GrowBar'
 import { Reveal } from '../components/Reveal'
 import { CtsFormModal } from '../components/CtsFormModal'
 import { AttendanceFormModal } from '../components/AttendanceFormModal'
-import { AttendanceBomb } from '../components/AttendanceBomb'
 import { attendanceWindow, fetchOwnAttendance } from '../lib/attendance'
 import { useAttendanceClosesMin } from '../lib/useAttendanceClosesMin'
 import { TaskSubmissionForm } from '../components/TaskSubmissionForm'
@@ -215,7 +214,6 @@ export function ContributorDashboard() {
 
   const attendanceState = attendanceWindow(new Date(now), closesMin)
   const attendanceNotYetOpen = attendanceState === 'not-open'
-  const attendanceOpen = attendanceState === 'open'
 
   function handleAttendanceClick() {
     // The time right now, not `now`, which is up to a minute old.
@@ -273,11 +271,6 @@ export function ContributorDashboard() {
           </>
         }
       />
-
-      {/* Only once we know they haven't filed (null, not still loading). Quiet while the form is open. */}
-      {attendanceOpen && todaysAttendance === null && (
-        <AttendanceBomb closesMin={closesMin} silent={showAttendanceForm} onFile={() => setShowAttendanceForm(true)} />
-      )}
 
       {showAttendanceForm && user && (
         <AttendanceFormModal

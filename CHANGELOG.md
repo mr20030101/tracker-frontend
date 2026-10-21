@@ -14,6 +14,14 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Changed
+
+- The attendance countdown floats in the corner of every page, not just the Dashboard, until you've filed today. **File now** opens the form wherever you are, and the minus button shrinks it to a small pill.
+
+### Fixed
+
+- Attendance could still be filed after closing time on a page that had been left open. An open attendance form now locks at closing time with a note to ask your lead, and the Dashboard button notices the closing time straight away.
+
 ## 5.19.0 — 2026-10-21
 
 ### Added
