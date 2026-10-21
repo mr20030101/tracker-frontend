@@ -1,8 +1,18 @@
 import { supabase } from './api'
 import { fetchAllPages } from './fetchAll'
 import type { Attendance, AttendanceHours, User } from '../types'
+import { ATTENDANCE_CLOSES_MIN } from './attendanceWindow'
 
-export { ATTENDANCE_CLOSES_LABEL, ATTENDANCE_CLOSES_MIN, ATTENDANCE_OPENS_MIN, attendanceWindow, type AttendanceWindow } from './attendanceWindow'
+export {
+  ATTENDANCE_CLOSES_MIN,
+  ATTENDANCE_CLOSES_MIN_RANGE,
+  ATTENDANCE_OPENS_MIN,
+  attendanceTimeLabel,
+  attendanceWindow,
+  minutesToTimeInput,
+  timeInputToMinutes,
+  type AttendanceWindow,
+} from './attendanceWindow'
 
 export const HOURS_LABELS: Record<AttendanceHours, string> = {
   '1-2': '1–2 hours',
@@ -132,4 +142,38 @@ export async function deleteAttendance(id: number): Promise<void> {
 /** True once the entry has reached the Google Form (only its first submission is ever sent). */
 export function sentToGoogleForm(entry: Attendance): boolean {
   return Boolean(entry.google_form_sent_at)
+}
+
+/** When the caller's own attendance closes: their team's time, or the default. */
+export async function fetchOwnAttendanceClosesMin(): Promise<number> {
+  const { data, error } = await supabase.rpc('attendance_closes_min')
+  if (error) throw error
+  return typeof data === 'number' ? data : ATTENDANCE_CLOSES_MIN
+}
+
+export interface AttendanceCloseTimes {
+  // For everyone whose team hasn't set its own.
+  defaultMin: number
+  // Teams with their own closing time, by lead id: every team's for an admin, a lead's own.
+  teams: Map<string, number>
+}
+
+/** The closing times a lead or admin can see and change. */
+export async function fetchAttendanceCloseTimes(): Promise<AttendanceCloseTimes> {
+  const { data, error } = await supabase.rpc('attendance_close_times')
+  if (error) throw error
+  const rows = (data ?? []) as { lead_id: string | null; closes_min: number }[]
+  return {
+    defaultMin: rows.find((r) => r.lead_id === null)?.closes_min ?? ATTENDANCE_CLOSES_MIN,
+    teams: new Map(rows.filter((r) => r.lead_id !== null).map((r) => [r.lead_id!, r.closes_min])),
+  }
+}
+
+/**
+ * Sets when attendance closes. A null leadId is the default for everyone (admins only); otherwise
+ * that lead's team, where a null closesMin puts the team back on the default.
+ */
+export async function setAttendanceClosesMin(leadId: string | null, closesMin: number | null): Promise<void> {
+  const { error } = await supabase.rpc('set_attendance_closes_min', { p_lead_id: leadId, p_closes_min: closesMin })
+  if (error) throw error
 }

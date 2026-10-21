@@ -8,7 +8,7 @@
 // Kept free of Vercel and browser APIs so it can be tested with a fake fetch (hence the .js imports).
 
 import { serverSupabaseConfig as config, signedInCaller, type ServerSupabaseEnv } from './serverAuth.js'
-import { ATTENDANCE_CLOSES_LABEL, attendanceWindow } from './attendanceWindow.js'
+import { ATTENDANCE_CLOSES_MIN, attendanceTimeLabel, attendanceWindow } from './attendanceWindow.js'
 import { toISODate, fromISODate } from './week.js'
 import { downloadFromDrive, driveConfigured, uploadToDrive, type DriveEnv } from './googleDrive.js'
 
@@ -30,6 +30,18 @@ const sgTime = (date: Date) =>
 
 const isJpeg = (bytes: Uint8Array) => bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff
 
+// When the caller's attendance closes (their team's time, or the default), asked with their own
+// access. Falls back to the default: file_attendance() checks the real time either way.
+async function callerClosesMin(url: string, anonKey: string, token: string, fetchImpl: typeof fetch): Promise<number> {
+  const response = await fetchImpl(`${url}/rest/v1/rpc/attendance_closes_min`, {
+    method: 'POST',
+    headers: { apikey: anonKey, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: '{}',
+  }).catch(() => null)
+  const minutes = response?.ok ? await response.json().catch(() => null) : null
+  return typeof minutes === 'number' ? minutes : ATTENDANCE_CLOSES_MIN
+}
+
 export async function handleUploadAttendancePhoto(
   request: Request,
   env: AttendancePhotoEnv,
@@ -44,7 +56,8 @@ export async function handleUploadAttendancePhoto(
 
   const caller = await signedInCaller(request, env, fetchImpl)
   if (!caller) return refuse(401, 'Sign in again to file attendance.')
-  if (attendanceWindow(now) !== 'open') return refuse(403, `Attendance is only taken from 6:00 AM to ${ATTENDANCE_CLOSES_LABEL}.`)
+  const closesMin = await callerClosesMin(url, config(env).anonKey, caller.token, fetchImpl)
+  if (attendanceWindow(now, closesMin) !== 'open') return refuse(403, `Attendance is only taken from 6:00 AM to ${attendanceTimeLabel(closesMin)}.`)
 
   const bytes = new Uint8Array(await request.arrayBuffer())
   if (bytes.length > MAX_PHOTO_BYTES) return refuse(413, 'That photo is too large. Please take it again.')

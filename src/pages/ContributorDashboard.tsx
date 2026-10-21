@@ -14,7 +14,8 @@ import { GrowBar } from '../components/GrowBar'
 import { Reveal } from '../components/Reveal'
 import { CtsFormModal } from '../components/CtsFormModal'
 import { AttendanceFormModal } from '../components/AttendanceFormModal'
-import { ATTENDANCE_CLOSES_LABEL, attendanceWindow, fetchOwnAttendance } from '../lib/attendance'
+import { attendanceWindow, fetchOwnAttendance } from '../lib/attendance'
+import { useAttendanceClosesMin } from '../lib/useAttendanceClosesMin'
 import { TaskSubmissionForm } from '../components/TaskSubmissionForm'
 import { NoSubmissionNudge } from '../components/NoSubmissionNudge'
 import { LevelPill } from '../components/LevelPill'
@@ -65,6 +66,7 @@ export function ContributorDashboard() {
   const [showAttendanceEnded, setShowAttendanceEnded] = useState(false)
   const [showAttendanceForm, setShowAttendanceForm] = useState(false)
   const now = useNow(60_000)
+  const { closesMin, closesLabel } = useAttendanceClosesMin()
   const thisWeekIso = weekStartIso(now)
   const today = todayIso(now)
 
@@ -210,7 +212,7 @@ export function ContributorDashboard() {
     (row) => row.date?.slice(0, 10) === today && row.status !== 'in_progress' && !row.cts_submitted_at,
   )
 
-  const attendanceState = attendanceWindow(new Date(now))
+  const attendanceState = attendanceWindow(new Date(now), closesMin)
   const attendanceNotYetOpen = attendanceState === 'not-open'
   const attendanceOpen = attendanceState === 'open'
 
@@ -283,7 +285,7 @@ export function ContributorDashboard() {
         <Modal title="Attendance has ended" onClose={() => setShowAttendanceEnded(false)}>
           <div className="flex flex-col gap-4">
             <p className="text-sm text-gray-600">
-              Today's attendance window closes at {ATTENDANCE_CLOSES_LABEL}, and it's already past that. If you couldn't file, ask your lead to file it for you.
+              Today's attendance window closes at {closesLabel}, and it's already past that. If you couldn't file, ask your lead to file it for you.
             </p>
             <div className="flex justify-end">
               <button

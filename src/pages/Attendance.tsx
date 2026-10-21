@@ -5,12 +5,17 @@ import { useAuth } from '../lib/auth'
 import {
   HOURS_LABELS,
   SUPPORT_HOURS,
+  ATTENDANCE_CLOSES_MIN_RANGE,
+  attendanceTimeLabel,
   attendanceWindow,
-  ATTENDANCE_CLOSES_LABEL,
+  fetchAttendanceCloseTimes,
   fetchAttendanceForDate,
   fetchAttendanceHistory,
   fetchAttendanceRoster,
+  minutesToTimeInput,
   sentToGoogleForm,
+  setAttendanceClosesMin,
+  timeInputToMinutes,
   type AttendanceWithFiler,
 } from '../lib/attendance'
 import { AttendanceFormModal } from '../components/AttendanceFormModal'
@@ -33,6 +38,7 @@ import { compareAttendanceOrder } from '../lib/attendanceOrder'
 import { contributorPath } from '../lib/urlRef'
 import { formatTime, fromISODate, todayIso } from '../lib/week'
 import { useNow } from '../lib/useNow'
+import { useAttendanceClosesMin } from '../lib/useAttendanceClosesMin'
 import { usePageTitle } from '../lib/usePageTitle'
 import type { Attendance as AttendanceEntry, AttendanceHours } from '../types'
 
@@ -88,6 +94,81 @@ function PhotoRequiredSetting() {
   )
 }
 
+/**
+ * When attendance closes: a lead's own team (leadId), or for an admin, any team's or (leadId null)
+ * the default everyone else uses. A team without its own time shows the default.
+ */
+function CloseTimeSetting({ leadId }: { leadId: string | null }) {
+  const queryClient = useQueryClient()
+  const { data: times } = useQuery({ queryKey: ['attendance-close-times'], queryFn: fetchAttendanceCloseTimes })
+  const teamMin = leadId ? times?.teams.get(leadId) : undefined
+  const current = teamMin ?? times?.defaultMin
+  // What's typed, until it's saved.
+  const [draft, setDraft] = useState<string | null>(null)
+  const save = useMutation({
+    mutationFn: (closesMin: number | null) => setAttendanceClosesMin(leadId, closesMin),
+    onSuccess: () => {
+      setDraft(null)
+      queryClient.invalidateQueries({ queryKey: ['attendance-close-times'] })
+      queryClient.invalidateQueries({ queryKey: ['attendance-closes-min'] })
+    },
+  })
+
+  const draftMin = draft === null ? null : timeInputToMinutes(draft)
+  const changed = draftMin !== null && draftMin !== current
+  const valid = draftMin !== null && draftMin >= ATTENDANCE_CLOSES_MIN_RANGE.min && draftMin <= ATTENDANCE_CLOSES_MIN_RANGE.max
+  const error = save.error ? errorMessage(save.error, "Couldn't save the closing time.") : changed && !valid ? 'Pick a time after 6:00 AM.' : null
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault()
+        if (changed && valid) save.mutate(draftMin)
+      }}
+      className="flex items-center gap-2 text-sm text-gray-700"
+      title={error ?? (leadId ? 'When this team can no longer file their own attendance' : 'When attendance closes for teams without their own time')}
+    >
+      <label className="flex items-center gap-2">
+        <span className="whitespace-nowrap">{leadId ? 'Team closes at' : 'Closes at'}</span>
+        <input
+          type="time"
+          value={draft ?? (current !== undefined ? minutesToTimeInput(current) : '')}
+          min={minutesToTimeInput(ATTENDANCE_CLOSES_MIN_RANGE.min)}
+          max={minutesToTimeInput(ATTENDANCE_CLOSES_MIN_RANGE.max)}
+          onChange={(e) => setDraft(e.target.value)}
+          disabled={!times || save.isPending}
+          className={toolbarControlClass}
+        />
+      </label>
+      {changed ? (
+        <>
+          <button
+            type="submit"
+            disabled={!valid || save.isPending}
+            className="h-9 rounded-lg bg-accent px-3 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+          >
+            {save.isPending ? 'Saving...' : 'Save'}
+          </button>
+          <button type="button" onClick={() => setDraft(null)} className="text-xs text-gray-500 hover:underline">
+            Cancel
+          </button>
+        </>
+      ) : (
+        leadId &&
+        times &&
+        (teamMin === undefined ? (
+          <span className="text-xs text-gray-400">Default</span>
+        ) : (
+          <button type="button" onClick={() => save.mutate(null)} disabled={save.isPending} className="text-xs text-gray-500 hover:underline">
+            Use default ({attendanceTimeLabel(times.defaultMin)})
+          </button>
+        ))
+      )}
+      {error && <span className="text-xs text-red-600">{error}</span>}
+    </form>
+  )
+}
+
 /** Leads and admins: who has and hasn't filed on a given day, and filing for someone on their behalf. */
 function TeamAttendance() {
   const { user } = useAuth()
@@ -100,6 +181,11 @@ function TeamAttendance() {
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<{ person: Person; entry: AttendanceEntry | null } | null>(null)
   const [viewingPhoto, setViewingPhoto] = useState<{ ref: string; name: string } | null>(null)
+  // The closing time shown and changed here: a lead's own team; for an admin, the team picked in the
+  // filter, or the default when it's all teams or no lead.
+  const closeTimeLead = isAdmin ? (team !== ALL_TEAMS && team !== UNASSIGNED ? team : null) : (user?.id ?? null)
+  const { data: closeTimes } = useQuery({ queryKey: ['attendance-close-times'], queryFn: fetchAttendanceCloseTimes })
+  const closesMin = closeTimes && ((closeTimeLead ? closeTimes.teams.get(closeTimeLead) : undefined) ?? closeTimes.defaultMin)
 
   const { data: roster, isLoading: rosterLoading } = useQuery({
     queryKey: ['attendance', 'roster'],
@@ -170,7 +256,9 @@ function TeamAttendance() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Attendance</h1>
         <p className="text-sm text-gray-500">
-          Who filed their daily attendance, and who hasn't yet. Contributors file theirs from the Dashboard until {ATTENDANCE_CLOSES_LABEL}. Open
+          Who filed their daily attendance, and who hasn't yet. Contributors file theirs from the Dashboard until{' '}
+          {closesMin !== undefined ? attendanceTimeLabel(closesMin) : 'their closing time'}
+          {isAdmin && !closeTimeLead && ', unless their team closes at a different time'}. Open
           anyone's row to file or correct it for them.
         </p>
       </div>
@@ -204,6 +292,7 @@ function TeamAttendance() {
         />
         {isAdmin && <Select value={team} onChange={setTeam} options={teamOptions} aria-label="Filter by team" className={toolbarControlClass} />}
         <SearchInput value={search} onChange={setSearch} placeholder="Search contributor..." />
+        <CloseTimeSetting key={closeTimeLead ?? 'default'} leadId={closeTimeLead} />
         {isAdmin && <PhotoRequiredSetting />}
         <button
           onClick={exportRows}
@@ -411,7 +500,8 @@ function MyAttendance() {
   const { user } = useAuth()
   const now = useNow(60_000)
   const today = todayIso(now)
-  const windowState = attendanceWindow(new Date(now))
+  const { closesMin, closesLabel } = useAttendanceClosesMin()
+  const windowState = attendanceWindow(new Date(now), closesMin)
   const [filing, setFiling] = useState(false)
   const [viewingPhoto, setViewingPhoto] = useState<string | null>(null)
 
@@ -428,13 +518,13 @@ function MyAttendance() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Attendance</h1>
           <p className="text-sm text-gray-500">
-            File your attendance once a day, between 6:00 AM and {ATTENDANCE_CLOSES_LABEL}. If you can't, your lead files it for you.
+            File your attendance once a day, between 6:00 AM and {closesLabel}. If you can't, your lead files it for you.
           </p>
         </div>
         <button
           onClick={() => setFiling(true)}
           disabled={windowState !== 'open'}
-          title={windowState === 'not-open' ? 'Opens at 6:00 AM' : windowState === 'closed' ? `Closed at ${ATTENDANCE_CLOSES_LABEL}` : undefined}
+          title={windowState === 'not-open' ? 'Opens at 6:00 AM' : windowState === 'closed' ? `Closed at ${closesLabel}` : undefined}
           className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:cursor-not-allowed disabled:opacity-50"
         >
           {todays ? "Edit today's attendance" : "File today's attendance"}

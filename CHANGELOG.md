@@ -14,6 +14,11 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Added
+
+- Leads can change when their team's attendance closes, from the Attendance page. Admins set the default closing time for everyone (still 1:30 PM to start) and can change any team's. Every change is recorded in the Activity Log.
+- Contributors see their own team's closing time on the Dashboard and the Attendance page, and can file until then.
+
 ## 5.17.0 — 2026-10-20
 
 ### Changed

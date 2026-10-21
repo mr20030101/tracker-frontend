@@ -31,11 +31,12 @@ function upload(body: Uint8Array<ArrayBuffer>, token: string | null = 'user-toke
 }
 
 // Answers Supabase auth/profile/count/insert, Google's token and Drive calls; records every call.
-function fakeFetch({ user = true, active = true, uploadsToday = 0, visibleEntries = 1 } = {}) {
+function fakeFetch({ user = true, active = true, uploadsToday = 0, visibleEntries = 1, closesMin = 810 } = {}) {
   return vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
     const url = String(input)
     if (url.endsWith('/auth/v1/user')) return user ? Response.json({ id: 'user-1', email: 'cb@example.com' }) : new Response(null, { status: 401 })
     if (url.includes('/rest/v1/profiles')) return Response.json([{ is_active: active, must_change_password: false }])
+    if (url.endsWith('/rest/v1/rpc/attendance_closes_min')) return Response.json(closesMin)
     if (url.includes('/rest/v1/attendance_photo_uploads') && init?.method === 'HEAD') {
       return new Response(null, { headers: { 'content-range': `*/${uploadsToday}` } })
     }
@@ -71,6 +72,13 @@ describe('handleUploadAttendancePhoto', () => {
 
   it('refuses outside the attendance window', async () => {
     expect((await handleUploadAttendancePhoto(upload(jpeg()), ENV, fakeFetch(), CLOSED)).status).toBe(403)
+  })
+
+  it("follows the caller's team closing time", async () => {
+    expect((await handleUploadAttendancePhoto(upload(jpeg()), ENV, fakeFetch({ closesMin: 16 * 60 }), CLOSED)).status).toBe(200)
+    const early = await handleUploadAttendancePhoto(upload(jpeg()), ENV, fakeFetch({ closesMin: 9 * 60 }), OPEN)
+    expect(early.status).toBe(403)
+    expect(await early.json()).toEqual({ message: 'Attendance is only taken from 6:00 AM to 9:00 AM.' })
   })
 
   it('refuses anything that is not a small JPEG, before touching Drive', async () => {
