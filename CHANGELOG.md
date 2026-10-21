@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 5.19.0 — 2026-10-21
+
 ### Added
 
 - Until you've filed today's attendance, the Dashboard shows a countdown to closing time with a lit bomb whose fuse burns down through the day. It wobbles in the last hour, then shakes and glows red in the last 15 minutes. In the last 5 minutes it beeps every second, twice a second in the final minute. A button on it opens the attendance form, and a speaker button turns the beeps off.
