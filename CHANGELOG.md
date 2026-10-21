@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 5.21.0 — 2026-10-21
+
 ### Added
 
 - If attendance closes before you've filed, the countdown bomb goes off: a flash, a fireball, flying sparks and debris, rolling smoke, a jolt of the page and a boom. Then a note says attendance has closed and to ask your lead to file it for you. The boom stays quiet if you've muted the beeps, and there's no shaking if your device is set to reduce motion.
