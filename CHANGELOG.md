@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 5.22.0 — 2026-10-21
+
 ### Added
 
 - Leads can't miss a new request any more. When an extension, reclaim or bad video request comes in, an alarm pops up over the page: the screen pulses red, a bell shakes inside sonar rings, and it lists who asked for what. An alert sound plays on repeat, the bell in the header shakes and the tab title flashes **NEW REQUEST** until you choose **Review now** (opens Requests) or **Later**. Your own requests don't set it off. With reduced motion turned on, the pulsing and shaking stop.
