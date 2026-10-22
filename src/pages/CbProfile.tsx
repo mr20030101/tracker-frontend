@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Navigate, useParams, Link } from 'react-router-dom'
-import { ChevronDown, Eye, MessageCircle, Trophy } from 'lucide-react'
+import { ChevronDown, ChevronLeft, Eye, MessageCircle, Pencil, Sparkles, Trophy, X } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, functionErrorMessage, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
@@ -257,8 +257,9 @@ export function CbProfile() {
   return (
     <Reveal>
       {canManageLevels && (
-        <Link to="/" className="mb-4 inline-block text-sm text-gray-500 hover:text-gray-800">
-          ← Back to Dashboard
+        <Link to="/" className="mb-4 inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800">
+          <ChevronLeft className="h-4 w-4" aria-hidden />
+          Back to Dashboard
         </Link>
       )}
 
@@ -303,8 +304,9 @@ export function CbProfile() {
           {isOwnProfile && (
             <Link
               to="/settings"
-              className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
             >
+              <Pencil className="h-4 w-4" aria-hidden />
               Edit Profile
             </Link>
           )}
@@ -323,7 +325,7 @@ export function CbProfile() {
             className="ml-auto text-lg leading-none text-white/80 hover:text-white"
             aria-label="Dismiss"
           >
-            ×
+            <X className="h-4 w-4" aria-hidden />
           </button>
         </div>
       )}
@@ -381,8 +383,9 @@ export function CbProfile() {
             <button
               onClick={() => recommendationMutation.mutate()}
               disabled={recommendationMutation.isPending}
-              className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
             >
+              <Sparkles className="h-4 w-4" aria-hidden />
               {recommendationMutation.isPending
                 ? 'Generating...'
                 : recommendationMutation.data

@@ -112,21 +112,33 @@ export function RevealToggle({ shown, onToggle }: { shown: boolean; onToggle: ()
   )
 }
 
-export function SubmitButton({ pending, label, pendingLabel }: { pending: boolean; label: string; pendingLabel: string }) {
+export function SubmitButton({
+  pending,
+  label,
+  pendingLabel,
+  icon: Icon,
+}: {
+  pending: boolean
+  label: string
+  pendingLabel: string
+  icon?: LucideIcon
+}) {
   return (
     <button
       type="submit"
       disabled={pending}
-      className="mt-1 rounded-xl bg-accent px-4 py-3 text-sm font-bold text-accent-foreground shadow-[0_4px_0_0_#a87c0c] transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_0_0_#a87c0c] active:translate-y-1 active:shadow-[0_0_0_0_#a87c0c] disabled:translate-y-0 disabled:opacity-60 disabled:shadow-[0_4px_0_0_#a87c0c]"
+      className="mt-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-accent px-4 py-3 text-sm font-bold text-accent-foreground shadow-[0_4px_0_0_#a87c0c] transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_0_0_#a87c0c] active:translate-y-1 active:shadow-[0_0_0_0_#a87c0c] disabled:translate-y-0 disabled:opacity-60 disabled:shadow-[0_4px_0_0_#a87c0c]"
     >
+      {Icon && <Icon className="h-4 w-4" aria-hidden />}
       {pending ? pendingLabel : label}
     </button>
   )
 }
 
-export function LinkButton({ onClick, children }: { onClick: () => void; children: ReactNode }) {
+export function LinkButton({ onClick, children, icon: Icon }: { onClick: () => void; children: ReactNode; icon?: LucideIcon }) {
   return (
-    <button type="button" onClick={onClick} className="text-sm font-medium text-sky-700 hover:underline">
+    <button type="button" onClick={onClick} className="inline-flex items-center gap-1.5 text-sm font-medium text-sky-700 hover:underline">
+      {Icon && <Icon className="h-4 w-4" aria-hidden />}
       {children}
     </button>
   )

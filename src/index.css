@@ -162,8 +162,8 @@ body {
   }
 }
 
+/* No display here: it would override the button's own inline-flex and stack its icon above the label. */
 .animate-heartbeat-soft {
-  display: inline-block;
   animation: heartbeat-soft 1.4s ease-in-out infinite;
   transform-origin: center;
 }

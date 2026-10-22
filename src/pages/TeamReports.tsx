@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { Download } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { downloadCsv } from '../lib/csv'
 import { TEAM_METRICS, fetchTeamReports, type TeamMetric } from '../lib/teamReports'
@@ -60,8 +61,9 @@ export function TeamReports() {
         <button
           onClick={exportCsv}
           disabled={!data || teams.length === 0}
-          className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
         >
+          <Download className="h-4 w-4" aria-hidden />
           Export CSV
         </button>
       </div>

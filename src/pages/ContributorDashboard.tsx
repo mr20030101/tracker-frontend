@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { MessageCircle, Trophy } from 'lucide-react'
+import { ArrowRight, Check, ClipboardCheck, ClipboardList, MessageCircle, MessageSquare, Plus, Trophy } from 'lucide-react'
 import { api, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useMessaging } from '../lib/messagingContext'
@@ -234,15 +234,17 @@ export function ContributorDashboard() {
               <button
                 type="button"
                 onClick={() => setSubmitting(true)}
-                className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
               >
-                + Submit a Task
+                <Plus className="h-4 w-4" aria-hidden />
+                Submit a Task
               </button>
               <button
                 type="button"
                 onClick={() => setShowCtsModal(true)}
-                className="animate-heartbeat-soft rounded-lg bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600"
+                className="inline-flex animate-heartbeat-soft items-center gap-1.5 rounded-lg bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600"
               >
+                <ClipboardCheck className="h-4 w-4" aria-hidden />
                 CTS Form
               </button>
               <button
@@ -250,12 +252,13 @@ export function ContributorDashboard() {
                 onClick={handleAttendanceClick}
                 disabled={attendanceNotYetOpen}
                 title={attendanceNotYetOpen ? 'Opens at 6:00 AM' : undefined}
-                className={`rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold ${
+                className={`inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold ${
                   attendanceNotYetOpen
                     ? 'cursor-not-allowed bg-gray-100 text-gray-400'
                     : 'bg-white text-gray-700 hover:bg-gray-50'
                 }`}
               >
+                <ClipboardList className="h-4 w-4" aria-hidden />
                 {todaysAttendance ? 'Attendance filed ✓' : 'Attendance Form'}
               </button>
               {bot && (
@@ -291,8 +294,9 @@ export function ContributorDashboard() {
               <button
                 type="button"
                 onClick={() => setShowAttendanceEnded(false)}
-                className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
               >
+                <Check className="h-4 w-4" aria-hidden />
                 OK
               </button>
             </div>
@@ -320,7 +324,7 @@ export function ContributorDashboard() {
           <SpotlightDialog
             icon={celebration.current.icon}
             title={celebration.current.title}
-            primary={{ label: 'Keep it going!', onClick: celebration.dismiss }}
+            primary={{ label: 'Keep it going!', icon: ArrowRight, onClick: celebration.dismiss }}
             onClose={celebration.dismiss}
           >
             {celebration.current.body}
@@ -345,8 +349,8 @@ export function ContributorDashboard() {
           userId={contributorId}
           hasLead={Boolean(contributorLeadId)}
           actions={{
-            first_task: { label: 'Submit a task', onClick: () => setSubmitting(true) },
-            ...(lead ? { message_lead: { label: `Message ${lead.name}`, onClick: () => openChatWith(lead.id, lead.name) } } : {}),
+            first_task: { label: 'Submit a task', icon: Plus, onClick: () => setSubmitting(true) },
+            ...(lead ? { message_lead: { label: `Message ${lead.name}`, icon: MessageSquare, onClick: () => openChatWith(lead.id, lead.name) } } : {}),
           }}
         />
       )}

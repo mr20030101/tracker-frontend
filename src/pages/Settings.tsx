@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Camera, Check, Eye, EyeOff, Ghost, KeyRound, Lock, Mic, Monitor, Moon, Palette, PhoneCall, Sun, UserRound, Volume2, type LucideIcon } from 'lucide-react'
+import { Camera, Check, Eye, EyeOff, Ghost, KeyRound, Lock, Mic, MicOff, Monitor, Moon, Palette, PhoneCall, Save, Sun, Undo2, UserRound, Volume2, type LucideIcon } from 'lucide-react'
 import { supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useCall } from '../lib/call'
@@ -124,7 +124,7 @@ function Section({ id, icon: Icon, title, description, children }: { id: string;
 }
 
 // The save button's row: an error, or a brief "Saved" once it worked.
-function SaveRow({ label, pending, disabled, saved, error }: { label: string; pending: boolean; disabled?: boolean; saved: boolean; error: string | null }) {
+function SaveRow({ label, icon: Icon = Save, pending, disabled, saved, error }: { label: string; icon?: LucideIcon; pending: boolean; disabled?: boolean; saved: boolean; error: string | null }) {
   return (
     <div className="flex flex-wrap items-center justify-end gap-3 border-t border-gray-100 pt-4">
       {error && <div className="mr-auto text-sm text-status-danger-text">{error}</div>}
@@ -137,8 +137,9 @@ function SaveRow({ label, pending, disabled, saved, error }: { label: string; pe
       <button
         type="submit"
         disabled={pending || disabled}
-        className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+        className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
       >
+        <Icon className="h-4 w-4" aria-hidden />
         {pending ? 'Saving...' : label}
       </button>
     </div>
@@ -250,7 +251,8 @@ function ProfileSection() {
             <div className="truncate text-base font-semibold text-gray-900">{name || user.name}</div>
             <div className="text-xs capitalize text-gray-500">{user.role}</div>
             <div className="mt-1 flex gap-3">
-              <button type="button" onClick={() => photoInput.current?.click()} className="text-xs font-medium text-sky-700 hover:underline">
+              <button type="button" onClick={() => photoInput.current?.click()} className="inline-flex items-center gap-1.5 text-xs font-medium text-sky-700 hover:underline">
+                <Camera className="h-3.5 w-3.5" aria-hidden />
                 {photoFile ? 'Pick another photo' : 'Change photo'}
               </button>
               {photoFile && (
@@ -260,8 +262,9 @@ function ProfileSection() {
                     setPhotoFile(null)
                     setPhotoPreview(null)
                   }}
-                  className="text-xs font-medium text-gray-500 hover:underline"
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:underline"
                 >
+                  <Undo2 className="h-3.5 w-3.5" aria-hidden />
                   Keep current
                 </button>
               )}
@@ -409,7 +412,7 @@ function PasswordSection() {
             )}
           </div>
         </div>
-        <SaveRow label="Update password" pending={save.isPending} disabled={!password} saved={saved} error={error} />
+        <SaveRow label="Update password" icon={KeyRound} pending={save.isPending} disabled={!password} saved={saved} error={error} />
       </form>
     </Section>
   )
@@ -624,10 +627,11 @@ function CallsSection() {
               <button
                 type="button"
                 onClick={() => (testStream ? stopTest() : void startTest())}
-                className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
                   testStream ? 'border-status-danger-text text-status-danger-text hover:bg-status-danger-bg' : 'border-gray-200 text-gray-700 hover:bg-gray-50'
                 }`}
               >
+                {testStream ? <MicOff className="h-4 w-4" aria-hidden /> : <Mic className="h-4 w-4" aria-hidden />}
                 {testStream ? 'Stop test' : 'Test microphone'}
               </button>
             </div>
@@ -665,7 +669,8 @@ function CallsSection() {
                 <p className="py-2 text-sm text-gray-500">This browser plays calls through your system's sound output.</p>
               )}
             </div>
-            <button type="button" onClick={playTestSound} className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+            <button type="button" onClick={playTestSound} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+              <Volume2 className="h-4 w-4" aria-hidden />
               Test speaker
             </button>
           </div>

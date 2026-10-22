@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { CloudOff, RefreshCw } from 'lucide-react'
+import { CloudOff, RefreshCw, Trash2 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { discardQueued, onQueueChange, readQueue, sendQueued, type QueuedSubmission } from '../lib/offlineQueue'
 
@@ -107,8 +107,9 @@ export function OfflineQueueBanner() {
               <button
                 type="button"
                 onClick={() => discardQueued(userId, entry.id)}
-                className="text-xs font-semibold underline"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold underline"
               >
+                <Trash2 className="h-3.5 w-3.5" aria-hidden />
                 Discard
               </button>
             </li>

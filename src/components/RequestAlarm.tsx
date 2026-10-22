@@ -1,6 +1,6 @@
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
-import { BellRing } from 'lucide-react'
+import { ArrowRight, BellRing, Clock } from 'lucide-react'
 import { Avatar } from './Avatar'
 
 export interface RequestAlarmItem {
@@ -52,11 +52,13 @@ export function RequestAlarm({ requests, onDismiss }: { requests: RequestAlarmIt
             <Link
               to="/requests"
               onClick={onDismiss}
-              className="call-accept-bounce flex-1 rounded-xl bg-status-danger-text px-4 py-2.5 text-sm font-bold text-white hover:opacity-90"
+              className="call-accept-bounce inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-status-danger-text px-4 py-2.5 text-sm font-bold text-white hover:opacity-90"
             >
+              <ArrowRight className="h-4 w-4" aria-hidden />
               Review now
             </Link>
-            <button type="button" onClick={onDismiss} className="flex-1 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50">
+            <button type="button" onClick={onDismiss} className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50">
+              <Clock className="h-4 w-4" aria-hidden />
               Later
             </button>
           </div>

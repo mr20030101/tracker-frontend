@@ -3,7 +3,7 @@ import { useEditor, useEditorState, EditorContent, type Editor } from '@tiptap/r
 import StarterKit from '@tiptap/starter-kit'
 import { FontFamily, FontSize, TextStyle } from '@tiptap/extension-text-style'
 import Placeholder from '@tiptap/extension-placeholder'
-import { Bold, Heading2, Italic, Link2, List, ListOrdered, Quote, Redo2, Strikethrough, Underline, Undo2, type LucideIcon } from 'lucide-react'
+import { Bold, Check, Heading2, Italic, Link2, List, ListOrdered, Quote, Redo2, Strikethrough, Underline, Undo2, Unlink, type LucideIcon } from 'lucide-react'
 import { FONTS, FONT_SIZES, loadRichTextFonts } from '../lib/richText'
 import { Select } from './Select'
 
@@ -163,7 +163,8 @@ function Toolbar({ editor }: { editor: Editor }) {
             aria-label="Link address"
             className="min-w-0 flex-1 rounded-md border border-gray-200 px-2 py-1 text-sm outline-none focus:border-accent"
           />
-          <button type="button" onClick={applyLink} className="rounded-md bg-accent px-2.5 py-1 text-xs font-semibold text-accent-foreground">
+          <button type="button" onClick={applyLink} className="inline-flex items-center gap-1.5 rounded-md bg-accent px-2.5 py-1 text-xs font-semibold text-accent-foreground">
+            {linkUrl.trim() ? <Check className="h-3.5 w-3.5" aria-hidden /> : <Unlink className="h-3.5 w-3.5" aria-hidden />}
             {linkUrl.trim() ? 'Apply' : 'Remove link'}
           </button>
         </div>

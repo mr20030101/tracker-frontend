@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { ExternalLink, X } from 'lucide-react'
 import { buildExtensionRequestFormUrl } from '../lib/taskRequests'
 import type { Stage } from '../types'
 import { Modal } from './Modal'
@@ -78,10 +79,12 @@ export function FileTimeRequestModal({
           {[fields.cbEmail, fields.projectName, fields.stage?.toUpperCase()].filter(Boolean).join(' · ')}
         </p>
         <div className="mt-2 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600">
+          <button type="button" onClick={onClose} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600">
+            <X className="h-4 w-4" aria-hidden />
             Cancel
           </button>
-          <button type="submit" className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground">
+          <button type="submit" className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground">
+            <ExternalLink className="h-4 w-4" aria-hidden />
             Open form
           </button>
         </div>

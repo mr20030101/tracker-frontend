@@ -1,6 +1,26 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Flame, Image } from 'lucide-react'
+import {
+  Ban,
+  CalendarDays,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  ClipboardCheck,
+  Clock,
+  ExternalLink,
+  FileUp,
+  Flag,
+  Flame,
+  Image,
+  Pencil,
+  Plus,
+  RotateCcw,
+  RotateCw,
+  Trash2,
+  Undo2,
+} from 'lucide-react'
 import { api, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, yearMonth, toISODate, weekStartIso, formatRange, formatTime } from '../lib/week'
@@ -411,15 +431,17 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                                 ? 'Opens the Bad Video Validation/Removal form, prefilled, and marks this approved'
                                 : 'Check the details, then open the Reclaim / Extend form and mark this approved'
                             }
-                            className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground disabled:opacity-50"
+                            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground disabled:opacity-50"
                           >
+                            <ExternalLink className="h-3.5 w-3.5" aria-hidden />
                             Request
                           </button>
                           <button
                             onClick={() => reviewRequestMutation.mutate({ id: request.id, status: 'denied' })}
                             disabled={reviewRequestMutation.isPending}
-                            className="rounded-lg border border-status-danger-text/30 px-3 py-1.5 text-xs font-semibold text-status-danger-text hover:bg-status-danger-bg disabled:opacity-50"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-status-danger-text/30 px-3 py-1.5 text-xs font-semibold text-status-danger-text hover:bg-status-danger-bg disabled:opacity-50"
                           >
+                            <Ban className="h-3.5 w-3.5" aria-hidden />
                             Deny
                           </button>
                           <button
@@ -429,8 +451,9 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                               }
                             }}
                             disabled={withdrawRequestMutation.isPending}
-                            className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
                           >
+                            <Trash2 className="h-3.5 w-3.5" aria-hidden />
                             Delete
                           </button>
                         </>
@@ -439,16 +462,18 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                           {request.type !== 'bad_video' && submission && (
                             <button
                               onClick={() => setRequestingExtensionFor({ submission, type: request.type, mode: 'edit', request })}
-                              className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50"
                             >
+                              <Pencil className="h-3.5 w-3.5" aria-hidden />
                               Edit
                             </button>
                           )}
                           <button
                             onClick={() => withdrawRequestMutation.mutate(request.id)}
                             disabled={withdrawRequestMutation.isPending}
-                            className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
                           >
+                            <Undo2 className="h-3.5 w-3.5" aria-hidden />
                             Withdraw
                           </button>
                         </>
@@ -468,6 +493,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
           aria-expanded={showGraphs}
           className="mb-4 inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
         >
+          {showGraphs ? <ChevronUp className="h-4 w-4" aria-hidden /> : <ChevronDown className="h-4 w-4" aria-hidden />}
           {showGraphs ? 'Hide graphs' : 'Show graphs'}
         </button>
       )}
@@ -591,9 +617,10 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
 
             <button
               onClick={() => shiftRange(-1)}
-              className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
             >
-              ← Prev
+              <ChevronLeft className="h-4 w-4" aria-hidden />
+              Prev
             </button>
             <div className="min-w-48 rounded-lg border border-gray-200 bg-white px-4 py-2 text-center text-sm font-medium text-gray-700">
               {rangeLabel()}
@@ -602,9 +629,10 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
               onClick={() => shiftRange(1)}
               disabled={isCurrentRange}
               title={isCurrentRange ? "Can't browse into the future." : undefined}
-              className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              Next →
+              Next
+              <ChevronRight className="h-4 w-4" aria-hidden />
             </button>
             {!isCurrentRange && (
               <button
@@ -612,29 +640,33 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                   setAnchorDate(new Date())
                   setPage(1)
                 }}
-                className="text-sm font-medium text-sky-700 hover:underline"
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-sky-700 hover:underline"
               >
+                <CalendarDays className="h-4 w-4" aria-hidden />
                 Back to {viewMode === 'day' ? 'today' : viewMode === 'week' ? 'this week' : 'this month'}
               </button>
             )}
 
             <button
               onClick={() => setShowCtsModal(true)}
-              className="ml-auto animate-heartbeat-soft rounded-lg bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600"
+              className="ml-auto inline-flex animate-heartbeat-soft items-center gap-1.5 rounded-lg bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600"
             >
+              <ClipboardCheck className="h-4 w-4" aria-hidden />
               CTS Form
             </button>
             <button
               onClick={() => setBulkImporting(true)}
-              className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50"
             >
+              <FileUp className="h-4 w-4" aria-hidden />
               Bulk Import
             </button>
             <button
               onClick={() => setFormTarget('new')}
-              className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
             >
-              + Add Submission
+              <Plus className="h-4 w-4" aria-hidden />
+              Add Submission
             </button>
           </div>
 
@@ -679,24 +711,33 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                             ? [
                                 {
                                   label: `Edit ${noun} request`,
+                                  icon: Pencil,
                                   onClick: () => setRequestingExtensionFor({ submission: row, type, mode: 'edit', request }),
                                 },
-                                { label: `Withdraw ${noun} request`, onClick: () => withdrawRequestMutation.mutate(request.id) },
+                                { label: `Withdraw ${noun} request`, icon: Undo2, onClick: () => withdrawRequestMutation.mutate(request.id) },
                               ]
                             : request?.status === 'denied'
                               ? [
                                   {
                                     label: `Resend ${noun} request`,
+                                    icon: RotateCw,
                                     onClick: () => setRequestingExtensionFor({ submission: row, type, mode: 'resend', request }),
                                   },
                                 ]
-                              : [{ label: `Request ${noun}`, onClick: () => setRequestingExtensionFor({ submission: row, type, mode: 'new' }) }]
+                              : [
+                                  {
+                                    label: `Request ${noun}`,
+                                    icon: type === 'extension' ? Clock : RotateCcw,
+                                    onClick: () => setRequestingExtensionFor({ submission: row, type, mode: 'new' }),
+                                  },
+                                ]
                           : []),
                         ...(isManager && request?.status === 'pending'
                           ? [
-                              { label: `Request ${noun}`, onClick: () => handleRequestExtension(request, row) },
+                              { label: `Request ${noun}`, icon: ExternalLink, onClick: () => handleRequestExtension(request, row) },
                               {
                                 label: `Deny ${noun}`,
+                                icon: Ban,
                                 variant: 'danger' as const,
                                 onClick: () => reviewRequestMutation.mutate({ id: request.id, status: 'denied' }),
                               },
@@ -707,6 +748,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                           ? [
                               {
                                 label: request.status === 'approved' ? `Unapprove ${noun}` : `Undo ${noun} denial`,
+                                icon: RotateCcw,
                                 onClick: async () => {
                                   const message =
                                     request.status === 'approved'
@@ -723,6 +765,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                           ? [
                               {
                                 label: `Delete ${noun} request`,
+                                icon: Trash2,
                                 variant: 'danger' as const,
                                 onClick: async () => {
                                   if (await confirmDialog(`Delete this ${noun} request? This cannot be undone.`, { confirmLabel: 'Delete', danger: true })) {
@@ -809,21 +852,23 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                         <div className="flex justify-end">
                           <ActionsMenu
                             items={[
-                              { label: 'Edit', onClick: () => setFormTarget(row) },
+                              { label: 'Edit', icon: Pencil, onClick: () => setFormTarget(row) },
                               ...timeRequestItems('extension', extension),
                               ...timeRequestItems('reclaim', reclaim),
                               !canReportBadVideo
                                 ? {
                                     label: 'Report bad video',
+                                    icon: Flag,
                                     disabled: true,
                                     title: 'Only reportable on the day it was logged.',
                                     onClick: () => {},
                                   }
                                 : badVideoPending
-                                  ? { label: 'Bad video report pending', disabled: true, onClick: () => {} }
-                                  : { label: 'Report bad video', onClick: () => setReportingBadVideoFor(row) },
+                                  ? { label: 'Bad video report pending', icon: Flag, disabled: true, onClick: () => {} }
+                                  : { label: 'Report bad video', icon: Flag, onClick: () => setReportingBadVideoFor(row) },
                               {
                                 label: 'Delete',
+                                icon: Trash2,
                                 variant: 'danger',
                                 onClick: async () => {
                                   if (await confirmDialog('Delete this submission?', { confirmLabel: 'Delete', danger: true })) {
@@ -850,16 +895,18 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                   <button
                     disabled={page <= 1}
                     onClick={() => setPage((p) => p - 1)}
-                    className="rounded-lg border border-gray-200 px-3 py-1 disabled:opacity-40"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1 disabled:opacity-40"
                   >
+                    <ChevronLeft className="h-4 w-4" aria-hidden />
                     Prev
                   </button>
                   <button
                     disabled={page >= totalPages}
                     onClick={() => setPage((p) => p + 1)}
-                    className="rounded-lg border border-gray-200 px-3 py-1 disabled:opacity-40"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1 disabled:opacity-40"
                   >
                     Next
+                    <ChevronRight className="h-4 w-4" aria-hidden />
                   </button>
                 </div>
               </div>

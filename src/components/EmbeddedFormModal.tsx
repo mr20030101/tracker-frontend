@@ -1,4 +1,5 @@
 import { useRef, useState, type ReactNode } from 'react'
+import { Check, ExternalLink } from 'lucide-react'
 import { Modal } from './Modal'
 
 // Shows a public Google Form inside the Tracker instead of sending people off to a new tab.
@@ -55,7 +56,8 @@ export function EmbeddedFormModal({
       </div>
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         {openedInTab && onSubmitted && !wasSubmitted ? (
-          <button type="button" onClick={markSubmitted} className="text-xs font-semibold text-accent underline">
+          <button type="button" onClick={markSubmitted} className="inline-flex items-center gap-1.5 text-xs font-semibold text-accent underline">
+            <Check className="h-3.5 w-3.5 shrink-0" aria-hidden />
             Submitted it in the new tab? Mark it as submitted
           </button>
         ) : (
@@ -64,8 +66,9 @@ export function EmbeddedFormModal({
             target="_blank"
             rel="noopener noreferrer"
             onClick={() => setOpenedInTab(true)}
-            className="text-xs text-gray-400 underline hover:text-gray-600"
+            className="inline-flex items-center gap-1.5 text-xs text-gray-400 underline hover:text-gray-600"
           >
+            <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden />
             Form not loading? Open it in a new tab
           </a>
         )}
@@ -74,8 +77,9 @@ export function EmbeddedFormModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
           >
+            <Check className="h-4 w-4" aria-hidden />
             Done
           </button>
         </div>

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { CalendarDays, ChevronLeft, ChevronRight, Download, UserCheck, UserMinus, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, supabase } from '../lib/api'
@@ -359,7 +359,8 @@ function ManagerLeaderboard() {
           </button>
         </div>
         {!isCurrentRange && (
-          <button onClick={() => setAnchorDate(new Date())} className="px-1 text-sm font-medium text-sky-700 hover:underline">
+          <button onClick={() => setAnchorDate(new Date())} className="inline-flex items-center gap-1.5 px-1 text-sm font-medium text-sky-700 hover:underline">
+            <CalendarDays className="h-4 w-4" aria-hidden />
             Back to {periodPhrase}
           </button>
         )}
@@ -412,8 +413,9 @@ function ManagerLeaderboard() {
                   setStatusFilter('all')
                   setActivityFilter('all')
                 }}
-                className="px-1 text-sm font-medium text-sky-700 hover:underline"
+                className="inline-flex items-center gap-1.5 px-1 text-sm font-medium text-sky-700 hover:underline"
               >
+                <X className="h-4 w-4" aria-hidden />
                 Clear filters
               </button>
             )}
@@ -433,8 +435,9 @@ function ManagerLeaderboard() {
                 )
               }
               disabled={rows.length === 0}
-              className="ml-auto h-9 rounded-lg border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
             >
+              <Download className="h-4 w-4" aria-hidden />
               Export CSV
             </button>
           </TableToolbar>
@@ -527,9 +530,10 @@ function ManagerLeaderboard() {
                   <td className="px-5 py-3 text-right">
                     <button
                       onClick={() => toggleActiveMutation.mutate({ userId: row.user_id, isActive: !row.is_active })}
-                      className={`text-xs font-medium hover:underline ${row.is_active ? 'text-status-danger-text' : 'text-sky-700'
+                      className={`inline-flex items-center gap-1.5 text-xs font-medium hover:underline ${row.is_active ? 'text-status-danger-text' : 'text-sky-700'
                         }`}
                     >
+                      {row.is_active ? <UserMinus className="h-3.5 w-3.5" aria-hidden /> : <UserCheck className="h-3.5 w-3.5" aria-hidden />}
                       {row.is_active ? 'Disable' : 'Enable'}
                     </button>
                   </td>

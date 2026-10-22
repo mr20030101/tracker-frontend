@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Rocket } from 'lucide-react'
+import { Plus, Rocket } from 'lucide-react'
 import { SpotlightDialog } from './SpotlightDialog'
 
 // The contributor's "nothing submitted yet this week" nudge: a rocket in a spinning ring, a line
@@ -17,7 +17,7 @@ export function NoSubmissionNudge({ onSubmit, onDismiss }: { onSubmit: () => voi
   const [message] = useState(() => ENCOURAGEMENTS[Math.floor(Math.random() * ENCOURAGEMENTS.length)])
 
   return (
-    <SpotlightDialog icon={Rocket} title="You have no submissions yet." primary={{ label: '+ Submit a Task', onClick: onSubmit }} onClose={onDismiss}>
+    <SpotlightDialog icon={Rocket} title="You have no submissions yet." primary={{ label: 'Submit a Task', icon: Plus, onClick: onSubmit }} onClose={onDismiss}>
       {message}
     </SpotlightDialog>
   )

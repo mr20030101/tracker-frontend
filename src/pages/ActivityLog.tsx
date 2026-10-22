@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ColumnDef } from '@tanstack/react-table'
+import { Trash2, X } from 'lucide-react'
 import { api, supabase } from '../lib/api'
 import { AUDIT_CATEGORIES, auditCategory, fetchAuditLogs } from '../lib/auditLog'
 import type { ActivityEvent, ActivityLog, AuditLog } from '../types'
@@ -235,8 +236,9 @@ function SignInLog() {
           <button
             onClick={() => setClearConfirm(true)}
             disabled={!data || data.length === 0}
-            className="rounded-lg border border-status-danger-text/30 bg-white px-4 py-2 text-sm font-semibold text-status-danger-text hover:bg-status-danger-bg disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-status-danger-text/30 bg-white px-4 py-2 text-sm font-semibold text-status-danger-text hover:bg-status-danger-bg disabled:cursor-not-allowed disabled:opacity-50"
           >
+            <Trash2 className="h-4 w-4" aria-hidden />
             Clear log
           </button>
         </div>
@@ -282,16 +284,18 @@ function SignInLog() {
               <button
                 type="button"
                 onClick={() => setClearConfirm(false)}
-                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
               >
+                <X className="h-4 w-4" aria-hidden />
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={() => clearMutation.mutate()}
                 disabled={clearMutation.isPending}
-                className="rounded-lg bg-status-danger-text px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-status-danger-text px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
               >
+                <Trash2 className="h-4 w-4" aria-hidden />
                 {clearMutation.isPending ? 'Clearing...' : 'Clear Log'}
               </button>
             </div>

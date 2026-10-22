@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { Pencil, Trash2 } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ColumnDef } from '@tanstack/react-table'
 import { supabase } from '../lib/api'
@@ -205,8 +206,9 @@ export function DataQuality() {
           <div className="flex justify-end">
             <button
               onClick={() => handleDelete(row.original.id)}
-              className="text-xs font-medium text-status-danger-text hover:underline"
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-status-danger-text hover:underline"
             >
+              <Trash2 className="h-3.5 w-3.5" aria-hidden />
               Delete
             </button>
           </div>
@@ -262,8 +264,9 @@ export function DataQuality() {
           <div className="flex justify-end">
             <button
               onClick={() => setEditTarget(row.original as unknown as TaskSubmission)}
-              className="text-xs font-medium text-gray-500 hover:text-gray-900"
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-gray-900"
             >
+              <Pencil className="h-3.5 w-3.5" aria-hidden />
               Edit
             </button>
           </div>
@@ -306,8 +309,9 @@ export function DataQuality() {
           <div className="flex justify-end">
             <button
               onClick={() => handleDelete(row.original.id)}
-              className="text-xs font-medium text-status-danger-text hover:underline"
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-status-danger-text hover:underline"
             >
+              <Trash2 className="h-3.5 w-3.5" aria-hidden />
               Delete
             </button>
           </div>
@@ -384,8 +388,9 @@ export function DataQuality() {
                 <button
                   onClick={() => handleDeleteAll(missingTaskId.map((row) => row.id))}
                   disabled={deleteAllMutation.isPending}
-                  className="text-xs font-medium text-status-danger-text hover:underline disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-status-danger-text hover:underline disabled:opacity-50"
                 >
+                  <Trash2 className="h-3.5 w-3.5" aria-hidden />
                   {deleteAllMutation.isPending ? 'Deleting...' : 'Delete All'}
                 </button>
               )

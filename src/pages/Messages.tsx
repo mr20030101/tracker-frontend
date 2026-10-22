@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Info, Plus, Search } from 'lucide-react'
+import { ArrowLeft, ChevronUp, Info, Plus, Search, Send, Trash2, X } from 'lucide-react'
 import { useMessaging } from '../lib/messagingContext'
 import { deleteConversationForMe, deleteMessageForMe, deleteMessagesForMe, markThreadRead, sendMessage } from '../lib/messages'
 import { formatActiveStatus } from '../lib/presence'
@@ -310,6 +310,7 @@ export function Messages() {
                         items={[
                           {
                             label: 'Delete conversation',
+                            icon: Trash2,
                             variant: 'danger',
                             onClick: () => handleDeleteConversation(c.otherUserId, c.otherUserName),
                           },
@@ -403,8 +404,9 @@ export function Messages() {
                   type="button"
                   onClick={loadOlder}
                   disabled={loadingOlder}
-                  className="mx-auto mb-3 block rounded-full border border-gray-200 px-3 py-1 text-xs font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                  className="mx-auto mb-3 flex items-center gap-1.5 rounded-full border border-gray-200 px-3 py-1 text-xs font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
                 >
+                  <ChevronUp className="h-3.5 w-3.5" aria-hidden />
                   {loadingOlder ? 'Loading...' : 'Load earlier messages'}
                 </button>
               )}
@@ -461,8 +463,9 @@ export function Messages() {
                     setSelectMode(false)
                     setSelectedIds(new Set())
                   }}
-                  className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600"
                 >
+                  <X className="h-4 w-4" aria-hidden />
                   Cancel
                 </button>
                 <span className="flex-1 text-sm text-gray-500">{selectedIds.size} selected</span>
@@ -470,8 +473,9 @@ export function Messages() {
                   type="button"
                   onClick={handleBulkDelete}
                   disabled={selectedIds.size === 0 || bulkDeleteMutation.isPending}
-                  className="rounded-lg bg-status-danger-text px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-status-danger-text px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
                 >
+                  <Trash2 className="h-4 w-4" aria-hidden />
                   Delete
                 </button>
               </div>
@@ -488,8 +492,9 @@ export function Messages() {
                   type="submit"
                   disabled={!draft.trim() || sendMutation.isPending}
                   style={{ backgroundColor: BUBBLE_BLUE }}
-                  className="rounded-full px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
                 >
+                  <Send className="h-4 w-4" aria-hidden />
                   Send
                 </button>
               </form>

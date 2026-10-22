@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Minus, Volume2, VolumeX, X } from 'lucide-react'
+import { FilePlus, Minus, Volume2, VolumeX, X } from 'lucide-react'
 import { ATTENDANCE_OPENS_MIN, attendanceTimeLabel, attendanceWindow, fetchOwnAttendance } from '../lib/attendance'
 import { useAuth } from '../lib/auth'
 import { bombSoundBlocked, playBombSound, playExplosion, prepareBombSound, subscribeBombSound, unlockBombSound, type BombSound } from '../lib/bombSound'
@@ -228,7 +228,8 @@ function FloatingBomb({ secondsLeft, closesMin, silent, onFile }: { secondsLeft:
         <div className="text-xs text-gray-600">
           Closes at {attendanceTimeLabel(closesMin)}
           {blocked && !muted && (
-            <button type="button" onClick={unlockBombSound} className="ml-1 font-semibold text-status-warning-text underline">
+            <button type="button" onClick={unlockBombSound} className="ml-1 inline-flex items-center gap-1.5 align-middle font-semibold text-status-warning-text underline">
+              <Volume2 className="h-3.5 w-3.5" aria-hidden />
               Allow sound
             </button>
           )}
@@ -255,7 +256,8 @@ function FloatingBomb({ secondsLeft, closesMin, silent, onFile }: { secondsLeft:
             <Minus className="h-4 w-4" />
           </button>
         </div>
-        <button type="button" onClick={onFile} className="rounded-lg bg-red-600 px-3 py-1.5 text-sm font-semibold whitespace-nowrap text-white hover:bg-red-700">
+        <button type="button" onClick={onFile} className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-sm font-semibold whitespace-nowrap text-white hover:bg-red-700">
+          <FilePlus className="h-4 w-4" aria-hidden />
           File now
         </button>
       </div>

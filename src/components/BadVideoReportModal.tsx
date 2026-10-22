@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Flag, Pencil, X } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { errorMessage, supabase } from '../lib/api'
 import { sanitiseOrTerm } from '../lib/sanitiseOrTerm'
@@ -119,8 +120,9 @@ export function BadVideoReportModal({ submission: initialSubmission, onClose }: 
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
             >
+              <X className="h-4 w-4" aria-hidden />
               Cancel
             </button>
           </div>
@@ -140,8 +142,9 @@ export function BadVideoReportModal({ submission: initialSubmission, onClose }: 
               <button
                 type="button"
                 onClick={() => setSubmission(null)}
-                className="mt-1 text-xs font-medium text-sky-700 hover:underline"
+                className="mt-1 inline-flex items-center gap-1.5 text-xs font-medium text-sky-700 hover:underline"
               >
+                <Pencil className="h-3.5 w-3.5" aria-hidden />
                 Change task
               </button>
             )}
@@ -173,15 +176,17 @@ export function BadVideoReportModal({ submission: initialSubmission, onClose }: 
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
             >
+              <X className="h-4 w-4" aria-hidden />
               Cancel
             </button>
             <button
               type="submit"
               disabled={reportMutation.isPending}
-              className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
             >
+              <Flag className="h-4 w-4" aria-hidden />
               {reportMutation.isPending ? 'Filing...' : 'File report'}
             </button>
           </div>

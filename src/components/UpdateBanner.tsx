@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { RefreshCw, X } from 'lucide-react'
 import { APP_VERSION, fetchDeployedVersion, isNewerVersion } from '../lib/version'
 
 // "A new version is available": a tab left open across a deploy keeps running the old code
@@ -46,8 +47,9 @@ export function UpdateBanner() {
       <button
         type="button"
         onClick={() => window.location.reload()}
-        className="shrink-0 rounded-lg bg-accent px-3 py-1.5 font-semibold text-accent-foreground hover:opacity-90"
+        className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 font-semibold text-accent-foreground hover:opacity-90"
       >
+        <RefreshCw className="h-4 w-4" aria-hidden />
         Reload
       </button>
       <button
@@ -56,7 +58,7 @@ export function UpdateBanner() {
         aria-label="Dismiss"
         className="shrink-0 rounded-lg px-1.5 py-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
       >
-        ✕
+        <X className="h-4 w-4" aria-hidden />
       </button>
     </div>
   )

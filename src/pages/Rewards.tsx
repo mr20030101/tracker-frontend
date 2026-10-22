@@ -1,7 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CalendarDays, Check, Gift, Plus, Trophy, Users } from 'lucide-react'
+import { Award, CalendarDays, Check, ChevronDown, ChevronUp, Gift, Plus, Trash2, Trophy, Users, X } from 'lucide-react'
 import { api, errorMessage } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useMessaging } from '../lib/messagingContext'
@@ -227,7 +227,8 @@ function RewardCard({
         {canManage && (
           <div className="flex shrink-0 gap-2">
             {phase === 'ended' && (
-              <button type="button" onClick={() => setAwarding(true)} className="rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground">
+              <button type="button" onClick={() => setAwarding(true)} className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground">
+                <Award className="h-4 w-4" aria-hidden />
                 Award winners
               </button>
             )}
@@ -235,8 +236,9 @@ function RewardCard({
               <button
                 type="button"
                 onClick={() => setConfirmCancel(true)}
-                className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
               >
+                <Trash2 className="h-4 w-4" aria-hidden />
                 Cancel
               </button>
             )}
@@ -257,15 +259,17 @@ function RewardCard({
           <p className="text-sm text-gray-600">“{reward.title}” will be removed for everyone. This can’t be undone.</p>
           {cancel.isError && <p className="mt-2 text-sm text-red-600">{errorMessage(cancel.error, 'Could not cancel it.')}</p>}
           <div className="mt-4 flex justify-end gap-2">
-            <button type="button" onClick={() => setConfirmCancel(false)} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600">
+            <button type="button" onClick={() => setConfirmCancel(false)} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600">
+              <X className="h-4 w-4" aria-hidden />
               Keep it
             </button>
             <button
               type="button"
               disabled={cancel.isPending}
               onClick={() => cancel.mutate()}
-              className="rounded-lg bg-status-danger-text px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-status-danger-text px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
             >
+              <Trash2 className="h-4 w-4" aria-hidden />
               {cancel.isPending ? 'Cancelling...' : 'Cancel reward'}
             </button>
           </div>
@@ -331,7 +335,8 @@ function StandingsList({ reward, standings, meId }: { reward: Reward; standings:
         })}
       </ul>
       {standings.length > STANDINGS_SHOWN && (
-        <button type="button" onClick={() => setAll(!all)} className="mt-2 text-xs font-semibold text-accent hover:underline">
+        <button type="button" onClick={() => setAll(!all)} className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-accent hover:underline">
+          {all ? <ChevronUp className="h-3.5 w-3.5" aria-hidden /> : <ChevronDown className="h-3.5 w-3.5" aria-hidden />}
           {all ? 'Show fewer' : `Show all ${standings.length}`}
         </button>
       )}
@@ -387,11 +392,12 @@ function WinnersList({
                   type="button"
                   disabled={pay.isPending}
                   onClick={() => pay.mutate({ userId: w.user_id, paid: !w.paid_at })}
-                  className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${
+                  className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${
                     w.paid_at ? 'bg-status-success-bg text-status-success-text' : 'border border-gray-200 text-gray-600 hover:bg-gray-50'
                   }`}
                   title={w.paid_at ? 'Paid. Click to mark unpaid.' : 'Mark as paid'}
                 >
+                  <Check className="h-3.5 w-3.5" aria-hidden />
                   {w.paid_at ? 'Paid' : 'Mark paid'}
                 </button>
               ) : (
@@ -491,14 +497,16 @@ function AwardModal({ reward, standings, onClose }: { reward: Reward; standings:
         </label>
         {award.isError && <div className="rounded-lg bg-status-danger-text px-3 py-2 text-sm text-status-danger-bg">{errorMessage(award.error, 'Could not award it.')}</div>}
         <div className="flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600">
+          <button type="button" onClick={onClose} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600">
+            <X className="h-4 w-4" aria-hidden />
             Not yet
           </button>
           <button
             type="submit"
             disabled={award.isPending || (custom && picked.length === 0)}
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
           >
+            <Award className="h-4 w-4" aria-hidden />
             {award.isPending ? 'Awarding...' : 'Award'}
           </button>
         </div>
@@ -716,12 +724,14 @@ function NewRewardModal({ projects, onClose }: { projects: Project[]; onClose: (
           {rule === 'custom' && (
             <div className="mt-1 flex gap-3 text-xs">
               {prizes.length < 10 && (
-                <button type="button" onClick={() => setPrizes([...prizes, ''])} className="font-semibold text-accent hover:underline">
-                  + Different prize for the next place
+                <button type="button" onClick={() => setPrizes([...prizes, ''])} className="inline-flex items-center gap-1.5 font-semibold text-accent hover:underline">
+                  <Plus className="h-3.5 w-3.5" aria-hidden />
+                  Different prize for the next place
                 </button>
               )}
               {prizes.length > 1 && (
-                <button type="button" onClick={() => setPrizes(prizes.slice(0, -1))} className="font-semibold text-gray-500 hover:underline">
+                <button type="button" onClick={() => setPrizes(prizes.slice(0, -1))} className="inline-flex items-center gap-1.5 font-semibold text-gray-500 hover:underline">
+                  <Trash2 className="h-3.5 w-3.5" aria-hidden />
                   Remove last
                 </button>
               )}
@@ -803,14 +813,16 @@ function NewRewardModal({ projects, onClose }: { projects: Project[]; onClose: (
         </label>
         {formError && <div className="rounded-lg bg-status-danger-text px-3 py-2 text-sm text-status-danger-bg">{formError}</div>}
         <div className="flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600">
+          <button type="button" onClick={onClose} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600">
+            <X className="h-4 w-4" aria-hidden />
             Cancel
           </button>
           <button
             type="submit"
             disabled={create.isPending || !title.trim()}
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
           >
+            <Plus className="h-4 w-4" aria-hidden />
             {create.isPending ? 'Creating...' : 'Create reward'}
           </button>
         </div>

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Check, Phone, PhoneMissed } from 'lucide-react'
+import { Check, Phone, PhoneMissed, Trash2 } from 'lucide-react'
 import { callLogTitle, formatCallDuration, parseCallLog, type CallLog } from '../lib/callLog'
 import { convertEmoticons } from '../lib/emoticons'
 import { formatBotMessage } from '../lib/formatBotMessage'
@@ -87,7 +87,7 @@ export function MessageBubble({
               <ActionsMenu
                 label="Message actions"
                 onOpenChange={setMenuOpen}
-                items={[{ label: 'Delete', variant: 'danger', onClick: onDelete }]}
+                items={[{ label: 'Delete', icon: Trash2, variant: 'danger', onClick: onDelete }]}
               />
             </div>
           )}
@@ -140,7 +140,8 @@ function CallEntry({
           {onCallBack && (
             <>
               {log.outcome === 'ended' && ' · '}
-              <button type="button" onClick={onCallBack} className="font-semibold text-status-success-text hover:underline">
+              <button type="button" onClick={onCallBack} className="inline-flex items-center gap-1.5 font-semibold text-status-success-text hover:underline">
+                <Phone className="h-3.5 w-3.5" aria-hidden />
                 {mine ? 'Call again' : 'Call back'}
               </button>
             </>

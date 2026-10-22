@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { MessageCircle } from 'lucide-react'
+import { CalendarDays, ChevronLeft, ChevronRight, MessageCircle, Send } from 'lucide-react'
 import { api, functionErrorMessage, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { downloadCsv } from '../lib/csv'
@@ -192,8 +192,9 @@ export function Dashboard() {
                   onClick={() => weeklyReportMutation.mutate()}
                   disabled={weeklyReportMutation.isPending}
                   title="Messages every lead a summary of last week (Tuesday–Monday), and every admin an all-teams overview."
-                  className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                 >
+                  <Send className="h-4 w-4" aria-hidden />
                   {weeklyReportMutation.isPending ? 'Sending...' : 'Send weekly report'}
                 </button>
               )}
@@ -256,24 +257,27 @@ export function Dashboard() {
 
         <button
           onClick={() => shiftRange(-1)}
-          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
         >
-          ← Prev
+          <ChevronLeft className="h-4 w-4" aria-hidden />
+          Prev
         </button>
         <div className="min-w-48 rounded-lg border border-gray-200 bg-white px-4 py-2 text-center text-sm font-medium text-gray-700">
           {rangeLabel()}
         </div>
         <button
           onClick={() => shiftRange(1)}
-          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
         >
-          Next →
+          Next
+          <ChevronRight className="h-4 w-4" aria-hidden />
         </button>
         {!isCurrentRange && (
           <button
             onClick={() => setAnchorDate(new Date())}
-            className="text-sm font-medium text-sky-700 hover:underline"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-sky-700 hover:underline"
           >
+            <CalendarDays className="h-4 w-4" aria-hidden />
             Back to {periodPhrase}
           </button>
         )}

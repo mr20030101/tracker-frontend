@@ -1,6 +1,6 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, ChevronDown, Eye, Megaphone, Pin, Search, Users } from 'lucide-react'
+import { Check, ChevronDown, Eye, Megaphone, Pencil, Pin, PinOff, Plus, Save, Search, Trash2, Users, X } from 'lucide-react'
 import { api, errorMessage, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useMessaging } from '../lib/messagingContext'
@@ -107,9 +107,10 @@ export function Announcements() {
         {isManager && (
           <button
             onClick={() => setComposing(true)}
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
           >
-            + New announcement
+            <Plus className="h-4 w-4" aria-hidden />
+            New announcement
           </button>
         )}
       </div>
@@ -160,11 +161,12 @@ export function Announcements() {
                   {canManage && (
                     <ActionsMenu
                       items={[
-                        { label: 'Edit', onClick: () => setEditing(a) },
-                        { label: a.pinned ? 'Unpin' : 'Pin to top', onClick: () => pinMutation.mutate({ id: a.id, pinned: !a.pinned }) },
-                        { label: 'Seen by…', onClick: () => setReadersFor(a) },
+                        { label: 'Edit', icon: Pencil, onClick: () => setEditing(a) },
+                        { label: a.pinned ? 'Unpin' : 'Pin to top', icon: a.pinned ? PinOff : Pin, onClick: () => pinMutation.mutate({ id: a.id, pinned: !a.pinned }) },
+                        { label: 'Seen by…', icon: Eye, onClick: () => setReadersFor(a) },
                         {
                           label: 'Delete',
+                          icon: Trash2,
                           variant: 'danger',
                           onClick: async () => {
                             if (await confirmDialog(`Delete "${a.title}"? Everyone it was sent to loses it too.`, { confirmLabel: 'Delete', danger: true })) deleteMutation.mutate(a.id)
@@ -407,14 +409,16 @@ function ComposeAnnouncement({
         </label>
         {formError && <div className="rounded-lg bg-status-danger-text px-3 py-2 text-sm text-status-danger-bg">{formError}</div>}
         <div className="flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600">
+          <button type="button" onClick={onClose} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600">
+            <X className="h-4 w-4" aria-hidden />
             Cancel
           </button>
           <button
             type="submit"
             disabled={postMutation.isPending || !title.trim() || !body.trim() || tooLong}
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
           >
+            {editing ? <Save className="h-4 w-4" aria-hidden /> : <Megaphone className="h-4 w-4" aria-hidden />}
             {postMutation.isPending ? (editing ? 'Saving...' : 'Posting...') : editing ? 'Save changes' : 'Post'}
           </button>
         </div>

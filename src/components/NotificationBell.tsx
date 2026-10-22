@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useLocation } from 'react-router-dom'
+import { X } from 'lucide-react'
 import { supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { ALERT_NOTIFICATION_SOUND, loopSound } from '../lib/sound'
@@ -261,8 +262,9 @@ export function NotificationBell() {
                       setSubmissionAlerts([])
                       setRequestAlerts([])
                     }}
-                    className="text-xs font-medium text-sky-700 hover:underline"
+                    className="inline-flex items-center gap-1.5 text-xs font-medium text-sky-700 hover:underline"
                   >
+                    <X className="h-3.5 w-3.5" aria-hidden />
                     Clear all
                   </button>
                 )}
@@ -293,7 +295,7 @@ export function NotificationBell() {
                       className="shrink-0 rounded p-1 text-gray-300 hover:bg-gray-200 hover:text-gray-600"
                       aria-label="Dismiss"
                     >
-                      ×
+                      <X className="h-4 w-4" aria-hidden />
                     </button>
                   </div>
                 ))}
@@ -315,7 +317,7 @@ export function NotificationBell() {
                       className="shrink-0 rounded p-1 text-gray-300 hover:bg-gray-200 hover:text-gray-600"
                       aria-label="Dismiss"
                     >
-                      ×
+                      <X className="h-4 w-4" aria-hidden />
                     </button>
                   </div>
                 ))}

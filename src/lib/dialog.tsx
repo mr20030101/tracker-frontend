@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useSyncExternalStore } from 'react'
 import { animate } from 'animejs'
-import { CircleAlert, TriangleAlert } from 'lucide-react'
+import { Check, CircleAlert, Trash2, TriangleAlert, X } from 'lucide-react'
 import { prefersReducedMotion } from './motion'
 
 // Themed stand-ins for window.confirm / window.alert. They return promises, so a call site reads
@@ -129,8 +129,9 @@ function Dialog({ request, onDone }: { request: DialogRequest; onDone: (confirme
               ref={cancelRef}
               type="button"
               onClick={() => onDone(false)}
-              className="flex-1 rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
+              className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
             >
+              <X className="h-4 w-4 shrink-0" aria-hidden />
               {request.cancelLabel}
             </button>
           )}
@@ -139,10 +140,11 @@ function Dialog({ request, onDone }: { request: DialogRequest; onDone: (confirme
             type="button"
             onClick={() => onDone(true)}
             // Explicit hex text: the dark theme remaps --color-white to a dark colour.
-            className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold ${
+            className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg px-4 py-2.5 text-sm font-semibold ${
               request.danger ? 'bg-red-600 text-[#ffffff] hover:bg-red-700' : 'bg-accent text-accent-foreground hover:opacity-90'
             }`}
           >
+            {request.danger ? <Trash2 className="h-4 w-4 shrink-0" aria-hidden /> : <Check className="h-4 w-4 shrink-0" aria-hidden />}
             {request.confirmLabel}
           </button>
         </div>

@@ -1,9 +1,11 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { MoreVertical } from 'lucide-react'
+import { MoreVertical, type LucideIcon } from 'lucide-react'
 
 export interface ActionsMenuItem {
   label: string
+  /** A Lucide icon shown before the label. Every action gets one. */
+  icon?: LucideIcon
   onClick: () => void
   variant?: 'default' | 'danger'
   disabled?: boolean
@@ -111,10 +113,11 @@ export function ActionsMenu({ items, label = 'Actions', onOpenChange }: ActionsM
                   onClick={() => choose(item)}
                   disabled={item.disabled}
                   title={item.title}
-                  className={`block w-full whitespace-nowrap px-3 py-1.5 text-left text-xs font-medium hover:bg-gray-50 disabled:cursor-not-allowed disabled:text-gray-300 ${
+                  className={`flex w-full items-center gap-2 whitespace-nowrap px-3 py-1.5 text-left text-xs font-medium hover:bg-gray-50 disabled:cursor-not-allowed disabled:text-gray-300 ${
                     item.variant === 'danger' ? 'text-status-danger-text' : 'text-sky-700'
                   }`}
                 >
+                  {item.icon && <item.icon className="h-3.5 w-3.5 shrink-0" aria-hidden />}
                   {item.label}
                 </button>
               ))}

@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
+import { ArrowRight, CalendarDays, ChevronLeft, ChevronRight, MessageSquare, User as UserIcon } from 'lucide-react'
 import type { ColumnDef } from '@tanstack/react-table'
 import { api } from '../lib/api'
 import { fetchLeadTeam, type TeamMember } from '../lib/leadTeam'
@@ -135,8 +136,9 @@ export function LeadTeam() {
   )
 
   const backLink = (
-    <Link to="/users" className="mb-4 inline-block text-sm font-medium text-sky-700 hover:underline">
-      ← Back to Users
+    <Link to="/users" className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-sky-700 hover:underline">
+      <ChevronLeft className="h-4 w-4" aria-hidden />
+      Back to Users
     </Link>
   )
 
@@ -206,14 +208,16 @@ export function LeadTeam() {
           )}
           <Link
             to={messagePath(lead.id)}
-            className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50"
           >
+            <MessageSquare className="h-4 w-4" aria-hidden />
             Message
           </Link>
           <Link
             to={contributorPath(lead.email)}
-            className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50"
           >
+            <UserIcon className="h-4 w-4" aria-hidden />
             Profile
           </Link>
         </div>
@@ -222,21 +226,24 @@ export function LeadTeam() {
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <button
           onClick={() => shiftWeek(-1)}
-          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
         >
-          ← Prev
+          <ChevronLeft className="h-4 w-4" aria-hidden />
+          Prev
         </button>
         <div className="min-w-48 rounded-lg border border-gray-200 bg-white px-4 py-2 text-center text-sm font-medium text-gray-700">
           {formatRange(team.weekStart, team.weekEnd)}
         </div>
         <button
           onClick={() => shiftWeek(1)}
-          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
         >
-          Next →
+          <ChevronRight className="h-4 w-4" aria-hidden />
+          Next
         </button>
         {!isCurrentWeek && (
-          <button onClick={() => setAnchorDate(new Date())} className="text-sm font-medium text-sky-700 hover:underline">
+          <button onClick={() => setAnchorDate(new Date())} className="inline-flex items-center gap-1.5 text-sm font-medium text-sky-700 hover:underline">
+            <CalendarDays className="h-4 w-4" aria-hidden />
             Back to this week
           </button>
         )}
@@ -248,8 +255,9 @@ export function LeadTeam() {
           <p className="mt-1 text-sm text-gray-500">Assign contributors to this lead from the Users page.</p>
           <Link
             to="/users"
-            className="mt-4 inline-block rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
+            className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
           >
+            <ArrowRight className="h-4 w-4" aria-hidden />
             Go to Users
           </Link>
         </div>

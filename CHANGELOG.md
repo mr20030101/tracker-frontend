@@ -14,6 +14,11 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Changed
+
+- Every button and ⋮ menu item now shows an icon next to its label, so actions are quicker to spot. The same action uses the same icon everywhere: a bin for Delete, a pencil for Edit, a plus for Add, a tick for Confirm, an × for Cancel, and so on. Confirmation popups show a bin when the action deletes something, and the small × close buttons now match the rest.
+- The dashboard banner has a new look. Today's date sits at the top, and your greeting rides a gold ribbon (orange for Halloween) that flows across the banner from edge to edge. Hover over it to pause it, or drag it to spin it along. It holds still with reduced motion on.
+
 ## 5.23.1 — 2026-10-21
 
 ### Fixed

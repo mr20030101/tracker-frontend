@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { ChevronLeft, ChevronRight, Download, Eye, FileUp, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, supabase } from '../lib/api'
 import { sanitiseOrTerm } from '../lib/sanitiseOrTerm'
@@ -187,15 +188,17 @@ function ManagerTaskLog() {
         <div className="flex gap-2">
           <button
             onClick={() => setBulkImportOpen(true)}
-            className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
           >
+            <FileUp className="h-4 w-4" aria-hidden />
             Bulk Import
           </button>
           <button
             onClick={() => setFormTarget('new')}
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
           >
-            + Add Submission
+            <Plus className="h-4 w-4" aria-hidden />
+            Add Submission
           </button>
         </div>
       </div>
@@ -244,8 +247,9 @@ function ManagerTaskLog() {
                   setDateTo('')
                   setPage(1)
                 }}
-                className="px-1 text-sm font-medium text-sky-700 hover:underline"
+                className="inline-flex items-center gap-1.5 px-1 text-sm font-medium text-sky-700 hover:underline"
               >
+                <X className="h-4 w-4" aria-hidden />
                 Clear filters
               </button>
             )}
@@ -253,8 +257,9 @@ function ManagerTaskLog() {
               <button
                 onClick={handleExport}
                 disabled={exporting}
-                className="ml-auto h-9 rounded-lg border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
               >
+                <Download className="h-4 w-4" aria-hidden />
                 {exporting ? 'Exporting...' : 'Export CSV'}
               </button>
             )}
@@ -270,8 +275,9 @@ function ManagerTaskLog() {
                 <button
                   disabled={page <= 1}
                   onClick={() => setPage((p) => p - 1)}
-                  className="rounded-lg border border-gray-200 px-3 py-1.5 font-medium text-gray-600 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 font-medium text-gray-600 disabled:cursor-not-allowed disabled:opacity-40"
                 >
+                  <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
                   Previous
                 </button>
                 <span>
@@ -280,9 +286,10 @@ function ManagerTaskLog() {
                 <button
                   disabled={page >= data.last_page}
                   onClick={() => setPage((p) => p + 1)}
-                  className="rounded-lg border border-gray-200 px-3 py-1.5 font-medium text-gray-600 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 font-medium text-gray-600 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Next
+                  <ChevronRight className="h-3.5 w-3.5" aria-hidden />
                 </button>
               </div>
             </div>
@@ -363,15 +370,17 @@ function ManagerTaskLog() {
                   <div className="flex items-center justify-end gap-2">
                     <button
                       onClick={() => setViewingId(row.id)}
-                      className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50"
                     >
+                      <Eye className="h-3.5 w-3.5" aria-hidden />
                       Details
                     </button>
                     <ActionsMenu
                       items={[
-                        { label: 'Edit', onClick: () => setFormTarget(row) },
+                        { label: 'Edit', icon: Pencil, onClick: () => setFormTarget(row) },
                         {
                           label: 'Delete',
+                          icon: Trash2,
                           variant: 'danger',
                           onClick: async () => {
                             if (await confirmDialog('Delete this submission?', { confirmLabel: 'Delete', danger: true })) {

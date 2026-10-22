@@ -22,7 +22,7 @@ import { AttendanceFormModal } from '../components/AttendanceFormModal'
 import { SearchInput, SegmentedTabs, TableToolbar, toolbarControlClass } from '../components/TableToolbar'
 import { Avatar } from '../components/Avatar'
 import { Modal } from '../components/Modal'
-import { Camera, Check } from 'lucide-react'
+import { Camera, Check, Download, FilePlus, Pencil, RotateCcw, RotateCw, Save, X, type LucideIcon } from 'lucide-react'
 import { errorMessage } from '../lib/api'
 import {
   fetchAttendancePhoto,
@@ -145,11 +145,13 @@ function CloseTimeSetting({ leadId }: { leadId: string | null }) {
           <button
             type="submit"
             disabled={!valid || save.isPending}
-            className="h-9 rounded-lg bg-accent px-3 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-accent px-3 text-sm font-semibold text-accent-foreground disabled:opacity-50"
           >
+            <Save className="h-4 w-4" aria-hidden />
             {save.isPending ? 'Saving...' : 'Save'}
           </button>
-          <button type="button" onClick={() => setDraft(null)} className="text-xs text-gray-500 hover:underline">
+          <button type="button" onClick={() => setDraft(null)} className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:underline">
+            <X className="h-3.5 w-3.5" aria-hidden />
             Cancel
           </button>
         </>
@@ -159,7 +161,8 @@ function CloseTimeSetting({ leadId }: { leadId: string | null }) {
         (teamMin === undefined ? (
           <span className="text-xs text-gray-400">Default</span>
         ) : (
-          <button type="button" onClick={() => save.mutate(null)} disabled={save.isPending} className="text-xs text-gray-500 hover:underline">
+          <button type="button" onClick={() => save.mutate(null)} disabled={save.isPending} className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:underline">
+            <RotateCcw className="h-3.5 w-3.5" aria-hidden />
             Use default ({attendanceTimeLabel(times.defaultMin)})
           </button>
         ))
@@ -297,8 +300,9 @@ function TeamAttendance() {
         <button
           onClick={exportRows}
           disabled={visible.length === 0}
-          className="ml-auto h-9 rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
         >
+          <Download className="h-4 w-4" aria-hidden />
           Export
         </button>
       </TableToolbar>
@@ -348,14 +352,16 @@ function TeamAttendance() {
                       </span>
                       <span className="flex items-center gap-1">
                         {entry.photo_ref && <PhotoButton onClick={() => setViewingPhoto({ ref: entry.photo_ref!, name: person.name })} />}
-                        <CardAction>Edit</CardAction>
+                        <CardAction icon={Pencil}>Edit</CardAction>
                       </span>
                     </div>
                   </>
                 ) : (
                   <div className="mt-auto flex items-center justify-between border-t border-status-danger-text/20 pt-2 text-xs font-medium text-status-danger-text">
                     <span>No attendance yet</span>
-                    <CardAction danger>File for them</CardAction>
+                    <CardAction icon={FilePlus} danger>
+                      File for them
+                    </CardAction>
                   </div>
                 )}
               </div>
@@ -428,8 +434,9 @@ function GoogleFormStatus({ entry }: { entry: AttendanceWithFiler }) {
         type="button"
         onClick={() => retry.mutate()}
         disabled={retry.isPending}
-        className="rounded-md px-1.5 py-0.5 font-semibold underline hover:bg-status-warning-bg disabled:opacity-50"
+        className="inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 font-semibold underline hover:bg-status-warning-bg disabled:opacity-50"
       >
+        <RotateCw className="h-3.5 w-3.5" aria-hidden />
         {retry.isPending ? 'Sending...' : 'Retry'}
       </button>
     </div>
@@ -437,9 +444,14 @@ function GoogleFormStatus({ entry }: { entry: AttendanceWithFiler }) {
 }
 
 // Bubbles up to the card's own click, which opens the form.
-function CardAction({ children, danger = false }: { children: ReactNode; danger?: boolean }) {
+function CardAction({ children, icon: Icon, danger = false }: { children: ReactNode; icon: LucideIcon; danger?: boolean }) {
   const tone = danger ? 'border-status-danger-text bg-status-danger-text text-white hover:opacity-90' : cardButtonTone
-  return <button type="button" className={`rounded-md border px-2.5 py-1 text-[11px] font-semibold transition-colors ${tone}`}>{children}</button>
+  return (
+    <button type="button" className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] font-semibold transition-colors ${tone}`}>
+      <Icon className="h-3.5 w-3.5" aria-hidden />
+      {children}
+    </button>
+  )
 }
 
 const cardButtonTone = 'border-accent bg-white text-status-warning-text hover:bg-accent/10'
@@ -525,8 +537,9 @@ function MyAttendance() {
           onClick={() => setFiling(true)}
           disabled={windowState !== 'open'}
           title={windowState === 'not-open' ? 'Opens at 6:00 AM' : windowState === 'closed' ? `Closed at ${closesLabel}` : undefined}
-          className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:cursor-not-allowed disabled:opacity-50"
         >
+          {todays ? <Pencil className="h-4 w-4" aria-hidden /> : <FilePlus className="h-4 w-4" aria-hidden />}
           {todays ? "Edit today's attendance" : "File today's attendance"}
         </button>
       </div>

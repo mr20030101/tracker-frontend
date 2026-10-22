@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react'
+import { RotateCw, Save, Send, X } from 'lucide-react'
 import { errorMessage } from '../lib/api'
 import { Modal } from './Modal'
 
@@ -72,7 +73,8 @@ export function TimeRequestReasonModal({
         </div>
         {Boolean(error) && <div className="text-sm text-status-danger-text">{errorMessage(error, mode === 'edit' ? 'Could not save this request.' : 'Could not send this request.')}</div>}
         <div className="mt-2 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600">
+          <button type="button" onClick={onClose} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600">
+            <X className="h-4 w-4" aria-hidden />
             Cancel
           </button>
           <button
@@ -80,8 +82,9 @@ export function TimeRequestReasonModal({
             // The lead files this reason with Scale, so a request can't go without one.
             disabled={isPending || reason.trim() === ''}
             onClick={() => onSubmit(reason)}
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
           >
+            {mode === 'edit' ? <Save className="h-4 w-4" aria-hidden /> : mode === 'resend' ? <RotateCw className="h-4 w-4" aria-hidden /> : <Send className="h-4 w-4" aria-hidden />}
             {mode === 'edit' ? (isPending ? 'Saving...' : 'Save') : isPending ? 'Sending...' : mode === 'resend' ? 'Resend request' : 'Send request'}
           </button>
         </div>

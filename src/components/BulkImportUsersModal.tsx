@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { Check, ChevronLeft, Eye, FileUp, X } from 'lucide-react'
 import { api } from '../lib/api'
 import type { User } from '../types'
 import { Select } from './Select'
@@ -99,7 +100,7 @@ export function BulkImportUsersModal({ existingEmails, canSetRole = true, onClos
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900">Bulk Import Users</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-700" aria-label="Close">
-            ✕
+            <X className="h-4 w-4" aria-hidden />
           </button>
         </div>
 
@@ -118,14 +119,16 @@ export function BulkImportUsersModal({ existingEmails, canSetRole = true, onClos
             />
             {error && <div className="text-sm text-status-danger-text">{error}</div>}
             <div className="mt-2 flex justify-end gap-2">
-              <button onClick={onClose} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600">
+              <button onClick={onClose} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600">
+                <X className="h-4 w-4" aria-hidden />
                 Cancel
               </button>
               <button
                 onClick={handleParse}
                 disabled={!rawText.trim()}
-                className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
               >
+                <Eye className="h-4 w-4" aria-hidden />
                 Preview
               </button>
             </div>
@@ -179,14 +182,16 @@ export function BulkImportUsersModal({ existingEmails, canSetRole = true, onClos
             </div>
             {error && <div className="text-sm text-status-danger-text">{error}</div>}
             <div className="mt-2 flex justify-end gap-2">
-              <button onClick={() => setStep('input')} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600">
+              <button onClick={() => setStep('input')} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600">
+                <ChevronLeft className="h-4 w-4" aria-hidden />
                 Back
               </button>
               <button
                 onClick={handleImport}
                 disabled={importing || includedRows.length === 0}
-                className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
               >
+                <FileUp className="h-4 w-4" aria-hidden />
                 {importing ? 'Importing...' : `Import ${includedRows.length} Logins`}
               </button>
             </div>
@@ -212,7 +217,8 @@ export function BulkImportUsersModal({ existingEmails, canSetRole = true, onClos
               </div>
             )}
             <div className="flex justify-end">
-              <button onClick={onClose} className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground">
+              <button onClick={onClose} className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground">
+                <Check className="h-4 w-4" aria-hidden />
                 Done
               </button>
             </div>

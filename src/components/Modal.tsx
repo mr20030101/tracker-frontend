@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, type ReactNode } from 'react'
+import { X } from 'lucide-react'
 import { animate } from 'animejs'
 import { prefersReducedMotion } from '../lib/motion'
 
@@ -46,7 +47,7 @@ export function Modal({
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-700" aria-label="Close">
-              ✕
+              <X className="h-4 w-4" aria-hidden />
             </button>
           </div>
           {children}

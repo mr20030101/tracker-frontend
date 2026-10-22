@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ColumnDef, RowSelectionState } from '@tanstack/react-table'
-import { Check, Copy, ExternalLink } from 'lucide-react'
+import { ArrowRight, Ban, Check, Copy, Download, ExternalLink, Eye, Pencil, RotateCcw, RotateCw, Send, Save, Trash2, UserPlus, X } from 'lucide-react'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { toISODate } from '../lib/week'
@@ -195,8 +195,9 @@ function NotesEditor({ application, onSaved }: { application: HiringApplication;
           type="button"
           onClick={() => save.mutate()}
           disabled={!changed || save.isPending}
-          className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground disabled:opacity-50"
         >
+          <Save className="h-3.5 w-3.5" aria-hidden />
           {save.isPending ? 'Saving...' : 'Save notes'}
         </button>
       </div>
@@ -696,8 +697,9 @@ export function Hiring() {
                       onClick={() => onboardMutation.mutate({ id: application.id, onboarded: true })}
                       disabled={onboardMutation.isPending}
                       title="Mark onboarded once they've finished the bootcamp"
-                      className={`${pillClass} border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50`}
+                      className={`${pillClass} gap-1.5 border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50`}
                     >
+                      <Check className="h-3.5 w-3.5" aria-hidden />
                       Mark onboarded
                     </button>
                   </div>
@@ -750,12 +752,13 @@ export function Hiring() {
               <ActionsMenu
                 label={`Actions for ${application.full_name}`}
                 items={[
-                  { label: 'View', onClick: () => setDetails(application) },
+                  { label: 'View', icon: Eye, onClick: () => setDetails(application) },
                   ...(application.status === 'pending'
                     ? [
-                        { label: 'Accept', onClick: () => openReview({ applications: [application], decision: 'accept' }) },
+                        { label: 'Accept', icon: Check, onClick: () => openReview({ applications: [application], decision: 'accept' }) },
                         {
                           label: 'Deny',
+                          icon: Ban,
                           variant: 'danger' as const,
                           onClick: () => openReview({ applications: [application], decision: 'deny' }),
                         },
@@ -766,13 +769,14 @@ export function Hiring() {
                       ? [
                           {
                             label: 'View profile',
+                            icon: ArrowRight,
                             // Their login email: Remotasks, or active when they applied without one.
                             onClick: () => navigate(contributorPath(application.remotasks_email ?? application.active_email)),
                           },
                         ]
-                      : [{ label: 'Create account', onClick: () => openCreate(application) }]
+                      : [{ label: 'Create account', icon: UserPlus, onClick: () => openCreate(application) }]
                     : []),
-                  { label: 'Delete', variant: 'danger' as const, onClick: () => openDelete([application]) },
+                  { label: 'Delete', icon: Trash2, variant: 'danger' as const, onClick: () => openDelete([application]) },
                 ]}
               />
             </div>
@@ -838,8 +842,9 @@ export function Hiring() {
             <button
               type="button"
               onClick={openClearHiring}
-              className="h-9 rounded-lg border border-status-danger-text/30 px-3 text-sm font-semibold text-status-danger-text hover:bg-status-danger-bg"
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-status-danger-text/30 px-3 text-sm font-semibold text-status-danger-text hover:bg-status-danger-bg"
             >
+              <Trash2 className="h-4 w-4" aria-hidden />
               Clear all hiring
             </button>
           )}
@@ -853,7 +858,7 @@ export function Hiring() {
         >
           <span>{notice.text}</span>
           <button onClick={() => setNotice(null)} className="opacity-60 hover:opacity-100" aria-label="Dismiss">
-            ✕
+            <X className="h-4 w-4" aria-hidden />
           </button>
         </div>
       )}
@@ -941,14 +946,16 @@ export function Hiring() {
             <>
               <button
                 onClick={() => openReview({ applications: selected, decision: 'accept' })}
-                className="rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground"
               >
+                <Check className="h-4 w-4" aria-hidden />
                 Accept selected
               </button>
               <button
                 onClick={() => openReview({ applications: selected, decision: 'deny' })}
-                className="rounded-lg border border-status-danger-text/30 px-3 py-1.5 text-sm font-semibold text-status-danger-text hover:bg-status-danger-bg"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-status-danger-text/30 px-3 py-1.5 text-sm font-semibold text-status-danger-text hover:bg-status-danger-bg"
               >
+                <Ban className="h-4 w-4" aria-hidden />
                 Deny selected
               </button>
             </>
@@ -958,10 +965,11 @@ export function Hiring() {
               onClick={openEmail}
               className={
                 statusFilter === 'to_email'
-                  ? 'rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground'
-                  : 'rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50'
+                  ? 'inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground'
+                  : 'inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50'
               }
             >
+              {statusFilter === 'to_email' ? <Send className="h-4 w-4" aria-hidden /> : <RotateCw className="h-4 w-4" aria-hidden />}
               {statusFilter === 'to_email' ? 'Send bootcamp email' : 'Resend bootcamp email'}
             </button>
           )}
@@ -969,8 +977,9 @@ export function Hiring() {
             <button
               onClick={() => onboardBulkMutation.mutate({ applications: selected, onboarded: true })}
               disabled={onboardBulkMutation.isPending}
-              className="rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground disabled:opacity-50"
             >
+              <Check className="h-4 w-4" aria-hidden />
               Mark onboarded
             </button>
           )}
@@ -978,24 +987,28 @@ export function Hiring() {
             <button
               onClick={() => onboardBulkMutation.mutate({ applications: selected, onboarded: false })}
               disabled={onboardBulkMutation.isPending}
-              className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
             >
+              <RotateCcw className="h-4 w-4" aria-hidden />
               Mark not onboarded
             </button>
           )}
           <button
             onClick={() => exportApplications(selected, `hiring-selected-${todayStamp()}.csv`)}
-            className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
           >
+            <Download className="h-4 w-4" aria-hidden />
             Export selected
           </button>
           <button
             onClick={() => openDelete(selected)}
-            className="rounded-lg border border-status-danger-text/30 px-3 py-1.5 text-sm font-semibold text-status-danger-text hover:bg-status-danger-bg"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-status-danger-text/30 px-3 py-1.5 text-sm font-semibold text-status-danger-text hover:bg-status-danger-bg"
           >
+            <Trash2 className="h-4 w-4" aria-hidden />
             Delete selected
           </button>
-          <button onClick={() => setRowSelection({})} className="ml-auto text-sm font-medium text-gray-500 hover:underline">
+          <button onClick={() => setRowSelection({})} className="ml-auto inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:underline">
+            <X className="h-4 w-4" aria-hidden />
             Clear selection
           </button>
         </div>
@@ -1010,8 +1023,9 @@ export function Hiring() {
               type="button"
               onClick={() => exportApplications(rows, `hiring-${statusFilter}-${todayStamp()}.csv`)}
               disabled={rows.length === 0}
-              className="ml-auto h-9 rounded-lg border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
             >
+              <Download className="h-4 w-4" aria-hidden />
               Export all
             </button>
           </TableToolbar>
@@ -1100,15 +1114,17 @@ export function Hiring() {
                 <button
                   type="button"
                   onClick={() => setDetails(null)}
-                  className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
                 >
+                  <X className="h-4 w-4" aria-hidden />
                   Close
                 </button>
                 <button
                   type="button"
                   onClick={() => setEditingApplicant(details)}
-                  className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
                 >
+                  <Pencil className="h-4 w-4" aria-hidden />
                   Edit details
                 </button>
                 {/* Both go to the active email as it is now, so a corrected address gets them. */}
@@ -1117,8 +1133,9 @@ export function Hiring() {
                     type="button"
                     onClick={() => setEmailing([details])}
                     title={`Emails the bootcamp details to ${details.active_email}`}
-                    className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
                   >
+                    {details.emailed_at ? <RotateCw className="h-4 w-4" aria-hidden /> : <Send className="h-4 w-4" aria-hidden />}
                     {details.emailed_at ? 'Resend bootcamp email' : 'Send bootcamp email'}
                   </button>
                 )}
@@ -1128,8 +1145,9 @@ export function Hiring() {
                     onClick={() => confirmResendAccountEmail(details)}
                     disabled={resendAccountMutation.isPending}
                     title={`Emails their login and a new temporary password to ${details.active_email}`}
-                    className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                   >
+                    <RotateCw className="h-4 w-4" aria-hidden />
                     {resendAccountMutation.isPending ? 'Resending...' : 'Resend account email'}
                   </button>
                 )}
@@ -1140,8 +1158,9 @@ export function Hiring() {
                       setDetails(null)
                       openCreate(details)
                     }}
-                    className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
                   >
+                    <UserPlus className="h-4 w-4" aria-hidden />
                     Create account
                   </button>
                 )}
@@ -1150,8 +1169,9 @@ export function Hiring() {
                     type="button"
                     onClick={() => onboardMutation.mutate({ id: details.id, onboarded: !details.onboarded_at })}
                     disabled={onboardMutation.isPending}
-                    className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                   >
+                    {details.onboarded_at ? <RotateCcw className="h-4 w-4" aria-hidden /> : <Check className="h-4 w-4" aria-hidden />}
                     {onboardMutation.isPending ? 'Saving...' : details.onboarded_at ? 'Mark not onboarded' : 'Mark onboarded'}
                   </button>
                 )}
@@ -1163,8 +1183,9 @@ export function Hiring() {
                         setDetails(null)
                         openReview({ applications: [details], decision: 'deny' })
                       }}
-                      className="rounded-lg border border-status-danger-text/30 px-4 py-2 text-sm font-semibold text-status-danger-text hover:bg-status-danger-bg"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-status-danger-text/30 px-4 py-2 text-sm font-semibold text-status-danger-text hover:bg-status-danger-bg"
                     >
+                      <Ban className="h-4 w-4" aria-hidden />
                       Deny
                     </button>
                     <button
@@ -1173,8 +1194,9 @@ export function Hiring() {
                         setDetails(null)
                         openReview({ applications: [details], decision: 'accept' })
                       }}
-                      className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
                     >
+                      <Check className="h-4 w-4" aria-hidden />
                       Accept
                     </button>
                   </>
@@ -1185,8 +1207,9 @@ export function Hiring() {
                     setDetails(null)
                     openDelete([details])
                   }}
-                  className="rounded-lg border border-status-danger-text/30 px-4 py-2 text-sm font-semibold text-status-danger-text hover:bg-status-danger-bg"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-status-danger-text/30 px-4 py-2 text-sm font-semibold text-status-danger-text hover:bg-status-danger-bg"
                 >
+                  <Trash2 className="h-4 w-4" aria-hidden />
                   Delete
                 </button>
               </div>
@@ -1304,8 +1327,9 @@ export function Hiring() {
               <button
                 type="button"
                 onClick={() => setEmailing(null)}
-                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
               >
+                <X className="h-4 w-4" aria-hidden />
                 Cancel
               </button>
               <button
@@ -1319,8 +1343,9 @@ export function Hiring() {
                   !bootcamp.meetUrl.trim()
                 }
                 onClick={() => emailMutation.mutate({ ids: emailing.map((applicant) => applicant.id), details: bootcamp })}
-                className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
               >
+                <Send className="h-4 w-4" aria-hidden />
                 {emailMutation.isPending ? 'Sending...' : `Send ${plural(emailing.length, 'email')}`}
               </button>
             </div>
@@ -1355,16 +1380,18 @@ export function Hiring() {
               <button
                 type="button"
                 onClick={() => setCreating(null)}
-                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
               >
+                <X className="h-4 w-4" aria-hidden />
                 Cancel
               </button>
               <button
                 type="button"
                 disabled={createAccountMutation.isPending}
                 onClick={() => createAccountMutation.mutate(creating)}
-                className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
               >
+                <UserPlus className="h-4 w-4" aria-hidden />
                 {createAccountMutation.isPending ? 'Creating...' : 'Create account'}
               </button>
             </div>
@@ -1420,18 +1447,20 @@ export function Hiring() {
                   <button
                     type="button"
                     onClick={() => setReview(null)}
-                    className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
                   >
+                    <X className="h-4 w-4" aria-hidden />
                     Cancel
                   </button>
                   <button
                     type="button"
                     disabled={reviewMutation.isPending}
                     onClick={() => reviewMutation.mutate(review)}
-                    className={`rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-50 ${
+                    className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-50 ${
                       review.decision === 'accept' ? 'bg-accent text-accent-foreground' : 'bg-status-danger-text text-white'
                     }`}
                   >
+                    {review.decision === 'accept' ? <Check className="h-4 w-4" aria-hidden /> : <Ban className="h-4 w-4" aria-hidden />}
                     {reviewMutation.isPending
                       ? 'Saving...'
                       : `${review.decision === 'accept' ? 'Accept' : 'Deny'}${isSingle ? ' application' : ` ${review.applications.length}`}`}
@@ -1482,8 +1511,9 @@ export function Hiring() {
               <button
                 type="button"
                 onClick={() => setCredentials(null)}
-                className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
               >
+                <Check className="h-4 w-4" aria-hidden />
                 Done
               </button>
             </div>
@@ -1514,16 +1544,18 @@ export function Hiring() {
               <button
                 type="button"
                 onClick={() => setDeleting(null)}
-                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
               >
+                <X className="h-4 w-4" aria-hidden />
                 Cancel
               </button>
               <button
                 type="button"
                 disabled={deleteMutation.isPending}
                 onClick={() => deleteMutation.mutate(deleting)}
-                className="rounded-lg bg-status-danger-text px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-status-danger-text px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
               >
+                <Trash2 className="h-4 w-4" aria-hidden />
                 {deleteMutation.isPending ? 'Deleting...' : `Delete ${plural(deleting.length, 'application')}`}
               </button>
             </div>
@@ -1559,16 +1591,18 @@ export function Hiring() {
               <button
                 type="button"
                 onClick={() => setClearingHiring(false)}
-                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
               >
+                <X className="h-4 w-4" aria-hidden />
                 Cancel
               </button>
               <button
                 type="button"
                 disabled={clearHiringMutation.isPending || clearConfirmText !== 'CLEAR'}
                 onClick={() => clearHiringMutation.mutate()}
-                className="rounded-lg bg-status-danger-text px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-status-danger-text px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
               >
+                <Trash2 className="h-4 w-4" aria-hidden />
                 {clearHiringMutation.isPending ? 'Clearing...' : 'Clear all hiring data'}
               </button>
             </div>

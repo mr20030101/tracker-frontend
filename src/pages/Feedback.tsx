@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Ban, Check, ClipboardCheck, Download, ExternalLink, Eye, Flag, Send, Trash2, Undo2, X } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../lib/auth'
 import { errorMessage } from '../lib/api'
@@ -92,7 +93,8 @@ export function Feedback() {
               : 'Report the feedback you got on a task. Your lead checks whether it holds up and adds their remarks.'}
           </p>
         </div>
-        <button onClick={() => setNewReport(true)} className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground">
+        <button onClick={() => setNewReport(true)} className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground">
+          <Flag className="h-4 w-4" aria-hidden />
           Report feedback
         </button>
       </div>
@@ -114,8 +116,9 @@ export function Feedback() {
               <button
                 onClick={exportRows}
                 disabled={rows.length === 0}
-                className="ml-auto h-9 rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
               >
+                <Download className="h-4 w-4" aria-hidden />
                 Export
               </button>
             )}
@@ -187,14 +190,20 @@ export function Feedback() {
                       href={report.screenshot_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-sky-700 hover:bg-gray-50"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-sky-700 hover:bg-gray-50"
                     >
+                      <ExternalLink className="h-3.5 w-3.5" aria-hidden />
                       Screenshot
                     </a>
                     <button
                       onClick={() => setViewingId(report.id)}
-                      className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50"
                     >
+                      {report.status === 'pending' && (isAdmin || (isManager && report.user_id !== user?.id)) ? (
+                        <ClipboardCheck className="h-3.5 w-3.5" aria-hidden />
+                      ) : (
+                        <Eye className="h-3.5 w-3.5" aria-hidden />
+                      )}
                       {report.status === 'pending' && (isAdmin || (isManager && report.user_id !== user?.id)) ? 'Check' : 'Details'}
                     </button>
                   </div>
@@ -357,8 +366,9 @@ function FeedbackDetailsModal({
                 if (ok) deleteMutation.mutate()
               }}
               disabled={busy}
-              className="mr-auto rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+              className="mr-auto inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
             >
+              {withdrawing ? <Undo2 className="h-3.5 w-3.5" aria-hidden /> : <Trash2 className="h-3.5 w-3.5" aria-hidden />}
               {withdrawing ? 'Withdraw' : 'Delete'}
             </button>
           )}
@@ -368,16 +378,18 @@ function FeedbackDetailsModal({
                 onClick={() => reviewMutation.mutate('invalid')}
                 disabled={busy}
                 title="The feedback doesn't hold up"
-                className="rounded-lg border border-status-danger-text/30 px-3 py-1.5 text-xs font-semibold text-status-danger-text hover:bg-status-danger-bg disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-status-danger-text/30 px-3 py-1.5 text-xs font-semibold text-status-danger-text hover:bg-status-danger-bg disabled:opacity-50"
               >
+                <Ban className="h-3.5 w-3.5" aria-hidden />
                 Mark invalid
               </button>
               <button
                 onClick={() => reviewMutation.mutate('valid')}
                 disabled={busy}
                 title="The feedback is true"
-                className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground disabled:opacity-50"
               >
+                <Check className="h-3.5 w-3.5" aria-hidden />
                 Mark valid
               </button>
             </>
@@ -455,14 +467,16 @@ function NewFeedbackModal({ onClose }: { onClose: () => void }) {
           <div className="text-sm text-status-danger-text">{errorMessage(fileMutation.error, 'Could not file this report.')}</div>
         )}
         <div className="mt-2 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600">
+          <button type="button" onClick={onClose} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600">
+            <X className="h-4 w-4" aria-hidden />
             Cancel
           </button>
           <button
             type="submit"
             disabled={fileMutation.isPending}
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
           >
+            <Send className="h-4 w-4" aria-hidden />
             {fileMutation.isPending ? 'Sending...' : 'Send to lead'}
           </button>
         </div>

@@ -10,6 +10,7 @@ import { X, type LucideIcon } from 'lucide-react'
 export interface SpotlightAction {
   label: string
   onClick: () => void
+  icon?: LucideIcon
 }
 
 export function SpotlightDialog({
@@ -81,8 +82,9 @@ export function SpotlightDialog({
               <button
                 type="button"
                 onClick={secondary.onClick}
-                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
               >
+                {secondary.icon && <secondary.icon className="h-4 w-4" aria-hidden />}
                 {secondary.label}
               </button>
             )}
@@ -90,8 +92,9 @@ export function SpotlightDialog({
               <button
                 type="button"
                 onClick={primary.onClick}
-                className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
               >
+                {primary.icon && <primary.icon className="h-4 w-4" aria-hidden />}
                 {primary.label}
               </button>
             )}

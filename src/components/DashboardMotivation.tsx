@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { CalendarCheck, Flame, Trophy, Users } from 'lucide-react'
+import { ArrowRight, CalendarCheck, Flame, Plus, Trophy, Users } from 'lucide-react'
 import { GrowBar } from './GrowBar'
 import { SpotlightDialog } from './SpotlightDialog'
 import type { Standing } from '../lib/teamWeeks'
@@ -96,8 +96,9 @@ export function StreakRiskCard({
           {daysLeft > 1 && `, about ${plural(perDay, 'task')} a day.`}
         </div>
       </div>
-      <button type="button" onClick={onSubmit} className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600">
-        + Submit a Task
+      <button type="button" onClick={onSubmit} className="inline-flex items-center gap-1.5 rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600">
+        <Plus className="h-4 w-4" aria-hidden />
+        Submit a Task
       </button>
     </div>
   )
@@ -120,8 +121,8 @@ export function WeeklyRecap({ stats, onSubmit, onClose }: { stats: RecapStats; o
     <SpotlightDialog
       icon={CalendarCheck}
       title="Your week in review"
-      primary={{ label: '+ Submit a Task', onClick: onSubmit }}
-      secondary={{ label: 'Let’s go', onClick: onClose }}
+      primary={{ label: 'Submit a Task', icon: Plus, onClick: onSubmit }}
+      secondary={{ label: 'Let’s go', icon: ArrowRight, onClick: onClose }}
       onClose={onClose}
     >
       <div className="mt-3 grid grid-cols-3 gap-2">

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'rea
 import { createPortal } from 'react-dom'
 import { useParams } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { CircuitBoard, Cpu, IdCard, Link as LinkIcon, Mail, MailCheck, MemoryStick, User, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CircuitBoard, Cpu, IdCard, Link as LinkIcon, Mail, MailCheck, MemoryStick, Send, User, X } from 'lucide-react'
 import {
   describeIssues,
   fetchApplicationLead,
@@ -238,7 +238,7 @@ function PersonalStep({
         </div>
         <FormErrors errors={errors} nudge={nudge} />
         <div className={`flex flex-col ${FULL_ROW}`}>
-          <SubmitButton pending={false} label="Next" pendingLabel="Next" />
+          <SubmitButton pending={false} label="Next" pendingLabel="Next" icon={ChevronRight} />
         </div>
       </form>
     </div>
@@ -351,12 +351,13 @@ function ComputerStep({
           <button
             type="button"
             onClick={onBack}
-            className="mt-1 rounded-xl border-2 border-gray-200 px-5 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+            className="mt-1 inline-flex items-center gap-1.5 rounded-xl border-2 border-gray-200 px-5 text-sm font-semibold text-gray-600 hover:bg-gray-50"
           >
+            <ChevronLeft className="h-4 w-4" aria-hidden />
             Back
           </button>
           <div className="flex flex-1 flex-col">
-            <SubmitButton pending={pending} label="Submit application" pendingLabel="Submitting..." />
+            <SubmitButton pending={pending} label="Submit application" pendingLabel="Submitting..." icon={Send} />
           </div>
         </div>
       </form>

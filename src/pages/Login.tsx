@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { supabase } from '../lib/api'
-import { Lock, Mail } from 'lucide-react'
+import { ChevronLeft, KeyRound, Lock, LogIn, Mail, Send } from 'lucide-react'
 import { ErrorNote, LinkButton, PlayfulInput, RevealToggle, SubmitButton, SuccessNote } from '../components/PlayfulForm'
 import type { OwlMood } from '../components/LoginOwl'
 import { CardHeading, PerchedCard } from '../components/PerchedCard'
@@ -144,7 +144,7 @@ export function Login() {
             trailing={<RevealToggle shown={showPassword} onToggle={() => setShowPassword((v) => !v)} />}
           />
           {error && <ErrorNote message={error} />}
-          <SubmitButton pending={submitting} pendingLabel="Updating..." label="Update password" />
+          <SubmitButton pending={submitting} pendingLabel="Updating..." label="Update password" icon={KeyRound} />
         </form>
       ) : mode === 'forgot' ? (
         <form onSubmit={handleForgotPassword} className="flex flex-col gap-4">
@@ -162,8 +162,10 @@ export function Login() {
           />
           {error && <ErrorNote message={error} />}
           {notice && <SuccessNote message={notice} />}
-          <SubmitButton pending={submitting} pendingLabel="Sending..." label="Send reset link" />
-          <LinkButton onClick={() => switchMode('login')}>Back to sign in</LinkButton>
+          <SubmitButton pending={submitting} pendingLabel="Sending..." label="Send reset link" icon={Send} />
+          <LinkButton onClick={() => switchMode('login')} icon={ChevronLeft}>
+            Back to sign in
+          </LinkButton>
         </form>
       ) : (
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -195,8 +197,12 @@ export function Login() {
           {error && <ErrorNote message={error} />}
           {/* e.g. "Password updated" after resetting: they land back here, so it has to show here. */}
           {notice && <SuccessNote message={notice} />}
-          <SubmitButton pending={submitting} pendingLabel="Signing in..." label="Sign in" />
-          {FORGOT_PASSWORD_ENABLED && <LinkButton onClick={() => switchMode('forgot')}>Forgot password?</LinkButton>}
+          <SubmitButton pending={submitting} pendingLabel="Signing in..." label="Sign in" icon={LogIn} />
+          {FORGOT_PASSWORD_ENABLED && (
+            <LinkButton onClick={() => switchMode('forgot')} icon={KeyRound}>
+              Forgot password?
+            </LinkButton>
+          )}
         </form>
       )}
     </PerchedCard>

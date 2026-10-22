@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { MoreHorizontal, SquarePen, X } from 'lucide-react'
+import { MessageSquare, MoreHorizontal, SquarePen, X } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { messagePreview } from '../lib/callLog'
 import { useMessaging } from '../lib/messagingContext'
@@ -50,7 +50,8 @@ export function OnlineUsers() {
           <>
             <div className="fixed inset-0" onClick={() => setMenuOpen(false)} aria-hidden="true" />
             <div className="absolute right-full top-0 mr-3 w-44 overflow-hidden rounded-xl border border-gray-200 bg-white py-1 text-sm shadow-lg">
-              <Link to="/messages" onClick={() => setMenuOpen(false)} className="block px-3 py-2 text-gray-700 hover:bg-gray-50">
+              <Link to="/messages" onClick={() => setMenuOpen(false)} className="flex items-center gap-1.5 px-3 py-2 text-gray-700 hover:bg-gray-50">
+                <MessageSquare className="h-4 w-4" aria-hidden />
                 Open Messages
               </Link>
               <button
@@ -59,8 +60,9 @@ export function OnlineUsers() {
                   setDismissed(new Set([...dismissed, ...online.map((u) => u.id)]))
                   setMenuOpen(false)
                 }}
-                className="block w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
+                className="flex w-full items-center gap-1.5 px-3 py-2 text-left text-gray-700 hover:bg-gray-50"
               >
+                <X className="h-4 w-4" aria-hidden />
                 Close all bubbles
               </button>
             </div>

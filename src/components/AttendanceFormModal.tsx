@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { RotateCcw, Save, Send, Trash2, X } from 'lucide-react'
 import { errorMessage } from '../lib/api'
 import {
   CONTRIBUTOR_HOURS,
@@ -151,7 +152,8 @@ export function AttendanceFormModal({
                 Your photo{!photoRequired && <span className="font-normal text-gray-500"> (optional)</span>}
               </span>
               {hasPhoto && !retaking && (
-                <button type="button" onClick={() => setRetaking(true)} className="text-xs font-semibold text-sky-700 hover:underline">
+                <button type="button" onClick={() => setRetaking(true)} className="inline-flex items-center gap-1.5 text-xs font-semibold text-sky-700 hover:underline">
+                  <RotateCcw className="h-3.5 w-3.5" aria-hidden />
                   Retake photo
                 </button>
               )}
@@ -162,8 +164,9 @@ export function AttendanceFormModal({
                     setRetaking(false)
                     setPhoto(null)
                   }}
-                  className="text-xs font-semibold text-gray-500 hover:underline"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:underline"
                 >
+                  <X className="h-3.5 w-3.5" aria-hidden />
                   Keep current photo
                 </button>
               )}
@@ -260,20 +263,23 @@ export function AttendanceFormModal({
                   deleteMutation.mutate()
                 }
               }}
-              className="mr-auto rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+              className="mr-auto inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50"
             >
+              <Trash2 className="h-4 w-4" aria-hidden />
               Delete
             </button>
           )}
-          <button type="button" onClick={onClose} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600">
+          <button type="button" onClick={onClose} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600">
+            <X className="h-4 w-4" aria-hidden />
             Cancel
           </button>
           <button
             type="submit"
             disabled={busy || waitingForPhoto || closed}
             title={closed ? closedMessage : waitingForPhoto ? 'Take your photo first' : undefined}
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
           >
+            {existing ? <Save className="h-4 w-4" aria-hidden /> : <Send className="h-4 w-4" aria-hidden />}
             {saveMutation.isPending ? (photo ? 'Saving photo...' : 'Saving...') : existing ? 'Save changes' : 'Submit attendance'}
           </button>
         </div>

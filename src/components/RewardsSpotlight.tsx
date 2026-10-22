@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Gift } from 'lucide-react'
+import { ArrowRight, Gift } from 'lucide-react'
 import { describePrize, myStandingLine, rewardPhase, useRewardStandings, useRewards, type Reward } from '../lib/rewards'
 import { toISODate } from '../lib/week'
 
@@ -27,8 +27,9 @@ export function RewardsSpotlight({ meId }: { meId: string }) {
           <Gift className="h-4 w-4 text-accent" />
           Rewards up for grabs
         </div>
-        <Link to="/rewards" className="text-xs font-semibold text-accent hover:underline">
-          See all →
+        <Link to="/rewards" className="inline-flex items-center gap-1.5 text-xs font-semibold text-accent hover:underline">
+          <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+          See all
         </Link>
       </div>
       <ul className="flex flex-col gap-3">

@@ -5,6 +5,7 @@ import { useAuth } from '../lib/auth'
 import type { Project, User } from '../types'
 import { Modal } from '../components/Modal'
 import { Combobox } from '../components/Combobox'
+import { Pencil, Plus, Save, Trash2, UserPlus, X } from 'lucide-react'
 import { ActionsMenu } from '../components/ActionsMenu'
 import { confirmDialog } from '../lib/dialog'
 import { usePageTitle } from '../lib/usePageTitle'
@@ -151,9 +152,10 @@ export function Projects() {
         {isAdmin && (
           <button
             onClick={() => setAdding(true)}
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
           >
-            + Add Project
+            <Plus className="h-4 w-4" aria-hidden />
+            Add Project
           </button>
         )}
       </div>
@@ -212,7 +214,7 @@ export function Projects() {
                               className="text-accent-foreground/60 hover:text-accent-foreground"
                               aria-label="Remove lead"
                             >
-                              ×
+                              <X className="h-3 w-3" aria-hidden />
                             </button>
                           </span>
                         ))}
@@ -223,9 +225,10 @@ export function Projects() {
                             setSelectedLeadId('')
                             setLeadError(null)
                           }}
-                          className="rounded-full border border-dashed border-gray-300 px-2 py-0.5 text-xs font-medium text-gray-500 hover:bg-gray-50"
+                          className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-gray-300 px-2 py-0.5 text-xs font-medium text-gray-500 hover:bg-gray-50"
                         >
-                          + Add lead
+                          <UserPlus className="h-3.5 w-3.5" aria-hidden />
+                          Add lead
                         </button>
                       </div>
                     </td>
@@ -237,6 +240,7 @@ export function Projects() {
                           items={[
                             {
                               label: 'Edit',
+                              icon: Pencil,
                               onClick: () => {
                                 setEditTarget(project)
                                 setEditName(project.name)
@@ -246,6 +250,7 @@ export function Projects() {
                             },
                             {
                               label: 'Delete',
+                              icon: Trash2,
                               variant: 'danger',
                               onClick: async () => {
                                 if (
@@ -297,15 +302,17 @@ export function Projects() {
               <button
                 type="button"
                 onClick={() => setAdding(false)}
-                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
               >
+                <X className="h-4 w-4" aria-hidden />
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={createMutation.isPending}
-                className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
               >
+                <Plus className="h-4 w-4" aria-hidden />
                 {createMutation.isPending ? 'Saving...' : 'Add Project'}
               </button>
             </div>
@@ -340,15 +347,17 @@ export function Projects() {
               <button
                 type="button"
                 onClick={() => setEditTarget(null)}
-                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
               >
+                <X className="h-4 w-4" aria-hidden />
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={updateMutation.isPending}
-                className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
               >
+                <Save className="h-4 w-4" aria-hidden />
                 {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
@@ -375,15 +384,17 @@ export function Projects() {
               <button
                 type="button"
                 onClick={() => setAssignTarget(null)}
-                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
               >
+                <X className="h-4 w-4" aria-hidden />
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={!selectedLeadId || addProjectLeadMutation.isPending}
-                className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
               >
+                <UserPlus className="h-4 w-4" aria-hidden />
                 {addProjectLeadMutation.isPending ? 'Saving...' : 'Add Lead'}
               </button>
             </div>

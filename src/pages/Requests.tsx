@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Ban, ExternalLink, Eye, Filter, Pencil, Plus, RotateCcw, RotateCw, Trash2, Undo2, X } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../lib/auth'
 import { errorMessage } from '../lib/api'
@@ -212,8 +213,9 @@ export function Requests() {
                   ? 'Opens the Bad Video Validation/Removal form, prefilled, and marks this approved'
                   : 'Check the details, then open the Reclaim / Extend form and mark this approved'
               }
-              className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground disabled:opacity-50"
             >
+              <ExternalLink className="h-3.5 w-3.5" aria-hidden />
               Request
             </button>
             <button
@@ -222,8 +224,9 @@ export function Requests() {
                 after?.()
               }}
               disabled={reviewMutation.isPending}
-              className="rounded-lg border border-status-danger-text/30 px-3 py-1.5 text-xs font-semibold text-status-danger-text hover:bg-status-danger-bg disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-status-danger-text/30 px-3 py-1.5 text-xs font-semibold text-status-danger-text hover:bg-status-danger-bg disabled:opacity-50"
             >
+              <Ban className="h-3.5 w-3.5" aria-hidden />
               Deny
             </button>
           </>
@@ -235,8 +238,9 @@ export function Requests() {
                   setRevisingRequest({ request, mode: 'edit' })
                   after?.()
                 }}
-                className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50"
               >
+                <Pencil className="h-3.5 w-3.5" aria-hidden />
                 Edit
               </button>
             )}
@@ -246,8 +250,9 @@ export function Requests() {
                 after?.()
               }}
               disabled={withdrawMutation.isPending}
-              className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
             >
+              <Undo2 className="h-3.5 w-3.5" aria-hidden />
               Withdraw
             </button>
           </>
@@ -262,8 +267,9 @@ export function Requests() {
                 setRevisingRequest({ request, mode: 'resend' })
                 after?.()
               }}
-              className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground"
             >
+              <RotateCw className="h-3.5 w-3.5" aria-hidden />
               Resend
             </button>
           )}
@@ -281,8 +287,9 @@ export function Requests() {
               }
             }}
             disabled={reopenMutation.isPending}
-            className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
           >
+            <RotateCcw className="h-3.5 w-3.5" aria-hidden />
             {request.status === 'approved' ? 'Unapprove' : 'Undo deny'}
           </button>
         )}
@@ -298,8 +305,9 @@ export function Requests() {
               }
             }}
             disabled={withdrawMutation.isPending}
-            className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
           >
+            <Trash2 className="h-3.5 w-3.5" aria-hidden />
             Delete
           </button>
         )}
@@ -357,8 +365,9 @@ export function Requests() {
         {isManager && (
           <button
             onClick={() => setNewReport(true)}
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
           >
+            <Plus className="h-4 w-4" aria-hidden />
             New report
           </button>
         )}
@@ -375,7 +384,7 @@ export function Requests() {
         >
           <span>{notice.text}</span>
           <button onClick={() => setNotice(null)} className="opacity-60 hover:opacity-100" aria-label="Dismiss">
-            ✕
+            <X className="h-4 w-4" aria-hidden />
           </button>
         </div>
       )}
@@ -392,7 +401,8 @@ export function Requests() {
             They're marked Overdue below.
           </span>
           {statusFilter !== 'pending' && (
-            <button onClick={() => setStatusFilter('pending')} className="font-semibold underline">
+            <button onClick={() => setStatusFilter('pending')} className="inline-flex items-center gap-1.5 font-semibold underline">
+              <Filter className="h-4 w-4" aria-hidden />
               Show pending
             </button>
           )}
@@ -422,8 +432,9 @@ export function Requests() {
               <button
                 onClick={() => bulkReviewMutation.mutate({ ids: selected.map((r) => r.id), status: 'denied' })}
                 disabled={bulkReviewMutation.isPending}
-                className="rounded-lg border border-status-danger-text/30 px-3 py-1.5 text-sm font-semibold text-status-danger-text hover:bg-status-danger-bg disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-status-danger-text/30 px-3 py-1.5 text-sm font-semibold text-status-danger-text hover:bg-status-danger-bg disabled:opacity-50"
               >
+                <Ban className="h-4 w-4" aria-hidden />
                 {bulkReviewMutation.isPending ? 'Denying...' : 'Deny selected'}
               </button>
             ) : (
@@ -434,8 +445,9 @@ export function Requests() {
                   }
                 }}
                 disabled={bulkDeleteMutation.isPending}
-                className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
               >
+                <Undo2 className="h-4 w-4" aria-hidden />
                 {bulkDeleteMutation.isPending ? 'Withdrawing...' : 'Withdraw selected'}
               </button>
             ))}
@@ -447,12 +459,14 @@ export function Requests() {
                 }
               }}
               disabled={bulkDeleteMutation.isPending}
-              className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
             >
+              <Trash2 className="h-4 w-4" aria-hidden />
               {bulkDeleteMutation.isPending ? 'Deleting...' : 'Delete selected'}
             </button>
           )}
-          <button onClick={() => setSelectedIds(new Set())} className="ml-auto text-sm font-medium text-gray-500 hover:underline">
+          <button onClick={() => setSelectedIds(new Set())} className="ml-auto inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:underline">
+            <X className="h-4 w-4" aria-hidden />
             Clear selection
           </button>
         </div>
@@ -540,8 +554,9 @@ export function Requests() {
                   <div className="flex flex-wrap items-center justify-end gap-2">
                     <button
                       onClick={() => setViewingId(request.id)}
-                      className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50"
                     >
+                      <Eye className="h-3.5 w-3.5" aria-hidden />
                       Details
                     </button>
                     {actionButtons(request)}

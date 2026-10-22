@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Camera, RotateCcw, Upload } from 'lucide-react'
+import { Camera, RotateCcw, RotateCw, Upload } from 'lucide-react'
 
 // Saved photos are this wide at most: plenty to recognise someone, and about 20–40 KB as a JPEG.
 const PHOTO_WIDTH = 480
@@ -126,7 +126,8 @@ export function CameraCapture({ onChange }: { onChange: (photo: Blob | null) => 
         {state.kind === 'error' && (
           <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center text-sm text-gray-200">
             {state.message}
-            <button type="button" onClick={() => void start()} className="rounded-lg bg-white/15 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/25">
+            <button type="button" onClick={() => void start()} className="inline-flex items-center gap-1.5 rounded-lg bg-white/15 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/25">
+              <RotateCw className="h-3.5 w-3.5" aria-hidden />
               Try again
             </button>
           </div>

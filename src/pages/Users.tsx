@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { FileUp, KeyRound, Trash2, UserCheck, UserMinus, UserPlus, X } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ColumnDef, RowSelectionState } from '@tanstack/react-table'
 import { api } from '../lib/api'
@@ -435,15 +436,18 @@ export function Users() {
                 items={[
                   {
                     label: u.is_active ? 'Disable' : 'Enable',
+                    icon: u.is_active ? UserMinus : UserCheck,
                     variant: u.is_active ? 'danger' : 'default',
                     onClick: () => toggleActiveMutation.mutate({ id: u.id, isActive: !u.is_active }),
                   },
                   {
                     label: 'Reset Password',
+                    icon: KeyRound,
                     onClick: () => openReset(u),
                   },
                   {
                     label: 'Delete',
+                    icon: Trash2,
                     variant: 'danger',
                     disabled: isSelf || deleteMutation.isPending,
                     title: isSelf ? 'You cannot delete your own account.' : undefined,
@@ -480,12 +484,14 @@ export function Users() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setBulkImporting(true)}
-            className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50"
           >
+            <FileUp className="h-4 w-4" aria-hidden />
             Bulk Import
           </button>
-          <button onClick={openAdd} className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground">
-            + Add Login
+          <button onClick={openAdd} className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground">
+            <UserPlus className="h-4 w-4" aria-hidden />
+            Add Login
           </button>
         </div>
       </div>
@@ -497,7 +503,7 @@ export function Users() {
         >
           <span>{notice.text}</span>
           <button onClick={() => setNotice(null)} className="opacity-60 hover:opacity-100" aria-label="Dismiss">
-            ✕
+            <X className="h-4 w-4" aria-hidden />
           </button>
         </div>
       )}
@@ -534,15 +540,17 @@ export function Users() {
           <button
             onClick={() => bulkSetActive(true)}
             disabled={bulkBusy}
-            className="text-sm font-medium text-sky-700 hover:underline disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-sky-700 hover:underline disabled:opacity-50"
           >
+            <UserCheck className="h-4 w-4" aria-hidden />
             Enable
           </button>
           <button
             onClick={() => bulkSetActive(false)}
             disabled={bulkBusy}
-            className="text-sm font-medium text-status-danger-text hover:underline disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-status-danger-text hover:underline disabled:opacity-50"
           >
+            <UserMinus className="h-4 w-4" aria-hidden />
             Disable
           </button>
           <button
@@ -551,12 +559,14 @@ export function Users() {
               setBulkDeleteConfirm(true)
             }}
             disabled={bulkBusy}
-            className="text-sm font-medium text-status-danger-text hover:underline disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-status-danger-text hover:underline disabled:opacity-50"
           >
+            <Trash2 className="h-4 w-4" aria-hidden />
             Delete
           </button>
           {bulkBusy && <span className="text-xs text-gray-500">Working...</span>}
-          <button onClick={() => setRowSelection({})} className="ml-auto text-sm font-medium text-gray-500 hover:underline">
+          <button onClick={() => setRowSelection({})} className="ml-auto inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:underline">
+            <X className="h-4 w-4" aria-hidden />
             Clear selection
           </button>
         </div>
@@ -593,7 +603,8 @@ export function Users() {
               </>
             )}
             {hasActiveFilters && (
-              <button onClick={clearFilters} className="px-1 text-sm font-medium text-sky-700 hover:underline">
+              <button onClick={clearFilters} className="inline-flex items-center gap-1.5 px-1 text-sm font-medium text-sky-700 hover:underline">
+                <X className="h-4 w-4" aria-hidden />
                 Clear filters
               </button>
             )}
@@ -678,15 +689,17 @@ export function Users() {
               <button
                 type="button"
                 onClick={() => setAdding(false)}
-                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
               >
+                <X className="h-4 w-4" aria-hidden />
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={createMutation.isPending}
-                className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
               >
+                <UserPlus className="h-4 w-4" aria-hidden />
                 {createMutation.isPending ? 'Saving...' : 'Add Login'}
               </button>
             </div>
@@ -713,15 +726,17 @@ export function Users() {
               <button
                 type="button"
                 onClick={() => setResetTarget(null)}
-                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
               >
+                <X className="h-4 w-4" aria-hidden />
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={resetMutation.isPending}
-                className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
               >
+                <KeyRound className="h-4 w-4" aria-hidden />
                 {resetMutation.isPending ? 'Saving...' : 'Set Password'}
               </button>
             </div>
@@ -741,15 +756,17 @@ export function Users() {
               <button
                 type="button"
                 onClick={() => setDeleteTarget(null)}
-                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
               >
+                <X className="h-4 w-4" aria-hidden />
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={deleteMutation.isPending}
-                className="rounded-lg bg-status-danger-text px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-status-danger-text px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
               >
+                <Trash2 className="h-4 w-4" aria-hidden />
                 {deleteMutation.isPending ? 'Deleting...' : 'Delete Login'}
               </button>
             </div>
@@ -769,15 +786,17 @@ export function Users() {
               <button
                 type="button"
                 onClick={() => setBulkDeleteConfirm(false)}
-                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
               >
+                <X className="h-4 w-4" aria-hidden />
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={bulkMutation.isPending}
-                className="rounded-lg bg-status-danger-text px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-status-danger-text px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
               >
+                <Trash2 className="h-4 w-4" aria-hidden />
                 {bulkMutation.isPending ? 'Deleting...' : `Delete ${selectedIds.length} Login${selectedIds.length === 1 ? '' : 's'}`}
               </button>
             </div>

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Copy, ExternalLink, Pencil, Trash2 } from 'lucide-react'
 import { remotasksDiffViewerUrl } from '../lib/remotasks'
 import { contributorPath } from '../lib/urlRef'
 import type { TaskSubmission } from '../types'
@@ -23,8 +24,9 @@ function CopyButton({ text }: { text: string }) {
           })
           .catch(() => {})
       }}
-      className="shrink-0 rounded-md border border-gray-200 px-2 py-0.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
+      className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-gray-200 px-2 py-0.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
     >
+      <Copy className="h-3.5 w-3.5" aria-hidden />
       {copied ? 'Copied' : 'Copy'}
     </button>
   )
@@ -65,9 +67,10 @@ export function SubmissionDetailsModal({
                 href={remotasksDiffViewerUrl(s.task_id)}
                 target="_blank"
                 rel="noreferrer"
-                className="shrink-0 text-xs font-medium text-sky-700 hover:underline"
+                className="inline-flex shrink-0 items-center gap-1.5 text-xs font-medium text-sky-700 hover:underline"
               >
-                Open ↗
+                <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                Open
               </a>
               <CopyButton text={s.task_id} />
             </div>
@@ -101,13 +104,15 @@ export function SubmissionDetailsModal({
           {onDelete && (
             <button
               onClick={onDelete}
-              className="rounded-lg border border-status-danger-text/30 px-3 py-1.5 text-sm font-semibold text-status-danger-text hover:bg-status-danger-bg"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-status-danger-text/30 px-3 py-1.5 text-sm font-semibold text-status-danger-text hover:bg-status-danger-bg"
             >
+              <Trash2 className="h-4 w-4" aria-hidden />
               Delete
             </button>
           )}
           {onEdit && (
-            <button onClick={onEdit} className="rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground">
+            <button onClick={onEdit} className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground">
+              <Pencil className="h-4 w-4" aria-hidden />
               Edit
             </button>
           )}

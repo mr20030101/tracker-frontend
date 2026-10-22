@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Check, Settings, Users } from 'lucide-react'
+import { ArrowLeft, Check, ChevronUp, LogOut, Pencil, Plus, Send, Settings, Trash2, UserMinus, UserPlus, Users, X } from 'lucide-react'
 import { api, errorMessage, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { convertEmoticons } from '../lib/emoticons'
@@ -146,8 +146,9 @@ export function GroupChatPane({ group, onBack, onGone }: { group: ChatGroupSumma
             type="button"
             onClick={loadOlder}
             disabled={loadingOlder}
-            className="mx-auto mb-3 block rounded-full border border-gray-200 px-3 py-1 text-xs font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+            className="mx-auto mb-3 flex items-center gap-1.5 rounded-full border border-gray-200 px-3 py-1 text-xs font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
           >
+            <ChevronUp className="h-3.5 w-3.5" aria-hidden />
             {loadingOlder ? 'Loading...' : 'Load earlier messages'}
           </button>
         )}
@@ -215,8 +216,9 @@ export function GroupChatPane({ group, onBack, onGone }: { group: ChatGroupSumma
           type="submit"
           disabled={!draft.trim() || sendMutation.isPending}
           style={{ backgroundColor: BUBBLE_BLUE }}
-          className="rounded-full px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
         >
+          <Send className="h-4 w-4" aria-hidden />
           Send
         </button>
       </form>
@@ -320,8 +322,9 @@ function MemberPicker({
               key={preset.label}
               type="button"
               onClick={() => addAll(preset.ids)}
-              className="rounded-full border border-gray-200 px-2.5 py-0.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
+              className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 px-2.5 py-0.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
             >
+              <Plus className="h-3.5 w-3.5" aria-hidden />
               {preset.label} ({preset.ids.length})
             </button>
           ))}
@@ -400,14 +403,16 @@ export function NewGroupModal({ onClose, onCreated }: { onClose: () => void; onC
         </div>
         {formError && <div className="rounded-lg bg-status-danger-text px-3 py-2 text-sm text-status-danger-bg">{formError}</div>}
         <div className="flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600">
+          <button type="button" onClick={onClose} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600">
+            <X className="h-4 w-4" aria-hidden />
             Cancel
           </button>
           <button
             type="submit"
             disabled={!name.trim() || selected.size === 0 || createMutation.isPending}
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
           >
+            <Plus className="h-4 w-4" aria-hidden />
             {createMutation.isPending ? 'Creating...' : 'Create group'}
           </button>
         </div>
@@ -482,8 +487,9 @@ function GroupSettingsModal({ group, onClose, onGone }: { group: ChatGroupSummar
             <button
               type="submit"
               disabled={!name.trim() || name.trim() === group.name || renameMutation.isPending}
-              className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
             >
+              <Pencil className="h-4 w-4" aria-hidden />
               Rename
             </button>
           </form>
@@ -493,8 +499,9 @@ function GroupSettingsModal({ group, onClose, onGone }: { group: ChatGroupSummar
           <div className="mb-2 flex items-center justify-between">
             <span className="text-sm font-medium text-gray-700">{group.members.length} members</span>
             {canManage && adding === null && (
-              <button type="button" onClick={() => setAdding(new Set())} className="text-xs font-semibold text-sky-700 hover:underline">
-                + Add people
+              <button type="button" onClick={() => setAdding(new Set())} className="inline-flex items-center gap-1.5 text-xs font-semibold text-sky-700 hover:underline">
+                <UserPlus className="h-3.5 w-3.5" aria-hidden />
+                Add people
               </button>
             )}
           </div>
@@ -502,15 +509,17 @@ function GroupSettingsModal({ group, onClose, onGone }: { group: ChatGroupSummar
             <div className="flex flex-col gap-2">
               <MemberPicker selected={adding} onChange={setAdding} excludeIds={group.members.map((m) => m.id)} />
               <div className="flex justify-end gap-2">
-                <button type="button" onClick={() => setAdding(null)} className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-600">
+                <button type="button" onClick={() => setAdding(null)} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-600">
+                  <X className="h-4 w-4" aria-hidden />
                   Cancel
                 </button>
                 <button
                   type="button"
                   onClick={() => addMutation.mutate([...adding])}
                   disabled={adding.size === 0 || addMutation.isPending}
-                  className="rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground disabled:opacity-50"
                 >
+                  <UserPlus className="h-4 w-4" aria-hidden />
                   Add {adding.size || ''}
                 </button>
               </div>
@@ -531,8 +540,9 @@ function GroupSettingsModal({ group, onClose, onGone }: { group: ChatGroupSummar
                       onClick={async () => {
                         if (await confirmDialog(`Remove ${m.name} from ${group.name}?`, { confirmLabel: 'Remove', danger: true })) removeMutation.mutate(m.id)
                       }}
-                      className="text-xs font-medium text-status-danger-text hover:underline"
+                      className="inline-flex items-center gap-1.5 text-xs font-medium text-status-danger-text hover:underline"
                     >
+                      <UserMinus className="h-3.5 w-3.5" aria-hidden />
                       Remove
                     </button>
                   )}
@@ -550,8 +560,9 @@ function GroupSettingsModal({ group, onClose, onGone }: { group: ChatGroupSummar
             onClick={async () => {
               if (await confirmDialog(`Leave ${group.name}? You'll stop getting its messages.`, { confirmLabel: 'Leave', danger: true })) removeMutation.mutate(myId!)
             }}
-            className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
           >
+            <LogOut className="h-4 w-4" aria-hidden />
             Leave group
           </button>
           {canManage && (
@@ -560,8 +571,9 @@ function GroupSettingsModal({ group, onClose, onGone }: { group: ChatGroupSummar
               onClick={async () => {
                 if (await confirmDialog(`Delete ${group.name} and all its messages for everyone? This cannot be undone.`, { confirmLabel: 'Delete', danger: true })) deleteMutation.mutate()
               }}
-              className="rounded-lg bg-status-danger-text px-4 py-2 text-sm font-semibold text-white"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-status-danger-text px-4 py-2 text-sm font-semibold text-white"
             >
+              <Trash2 className="h-4 w-4" aria-hidden />
               Delete group
             </button>
           )}

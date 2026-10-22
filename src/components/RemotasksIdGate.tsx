@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { LogOut, Save } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { errorMessage } from '../lib/api'
 import { useAuth } from '../lib/auth'
@@ -57,11 +58,13 @@ export function RemotasksIdGate() {
           <button
             type="submit"
             disabled={submitting}
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
           >
+            <Save className="h-4 w-4" aria-hidden />
             {submitting ? 'Saving...' : 'Save and continue'}
           </button>
-          <button type="button" onClick={() => logout()} className="text-sm text-sky-700 hover:underline">
+          <button type="button" onClick={() => logout()} className="inline-flex items-center justify-center gap-1.5 text-sm text-sky-700 hover:underline">
+            <LogOut className="h-4 w-4" aria-hidden />
             Sign out
           </button>
         </form>

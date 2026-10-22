@@ -2,6 +2,7 @@ import { useState, type FormEvent, type ReactNode } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { normalizeProfileUrl, normalizeRemotasksId, updateApplication, type ApplicationEdit } from '../lib/hiring'
 import type { HiringApplication } from '../types'
+import { Save, X } from 'lucide-react'
 import { Modal } from './Modal'
 
 // Correcting an applicant's details (a mistyped email, Remotasks ID or Facebook link). The
@@ -183,14 +184,16 @@ export function EditApplicantModal({
         )}
 
         <div className="flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600">
+          <button type="button" onClick={onClose} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600">
+            <X className="h-4 w-4" aria-hidden />
             Cancel
           </button>
           <button
             type="submit"
             disabled={save.isPending}
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
           >
+            <Save className="h-4 w-4" aria-hidden />
             {save.isPending ? 'Saving...' : 'Save changes'}
           </button>
         </div>

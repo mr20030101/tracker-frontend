@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { ClipboardCheck, RotateCw, X } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/api'
 import { toISODate } from '../lib/week'
@@ -187,8 +188,9 @@ export function CtsFormModal({ email, submissions, onClose }: Props) {
                     type="button"
                     onClick={() => openCtsForm(group)}
                     disabled={chosen.length === 0}
-                    className="rounded-lg bg-green-500 px-3 py-1.5 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-green-500 px-3 py-1.5 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-50"
                   >
+                    <ClipboardCheck className="h-4 w-4" aria-hidden />
                     Open CTS Form ({chosen.length})
                   </button>
                 </div>
@@ -261,8 +263,9 @@ export function CtsFormModal({ email, submissions, onClose }: Props) {
         <button
           type="button"
           onClick={onClose}
-          className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
         >
+          <X className="h-4 w-4" aria-hidden />
           Close
         </button>
       </div>
@@ -286,7 +289,8 @@ export function CtsFormModal({ email, submissions, onClose }: Props) {
             ) : markSubmittedMutation.isError ? (
               <span className="flex items-center gap-2 text-xs text-status-danger-text">
                 Submitted, but the Tracker couldn't save it.
-                <button type="button" onClick={() => markSubmittedMutation.mutate(openForm.ids)} className="font-semibold underline">
+                <button type="button" onClick={() => markSubmittedMutation.mutate(openForm.ids)} className="inline-flex items-center gap-1.5 font-semibold underline">
+                  <RotateCw className="h-3.5 w-3.5" aria-hidden />
                   Retry
                 </button>
               </span>

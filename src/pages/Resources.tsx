@@ -1,5 +1,6 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Pencil, Plus, Save, Trash2, X } from 'lucide-react'
 import { api, errorMessage, supabase } from '../lib/api'
 import { openResourceFile, resourceFilePath, uploadResourceFile } from '../lib/resourceFiles'
 import { useAuth } from '../lib/auth'
@@ -172,9 +173,10 @@ export function Resources() {
         {isManager && (
           <button
             onClick={openAdd}
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
           >
-            + Add Resource
+            <Plus className="h-4 w-4" aria-hidden />
+            Add Resource
           </button>
         )}
       </div>
@@ -228,9 +230,10 @@ export function Resources() {
                     <div className="flex shrink-0">
                       <ActionsMenu
                         items={[
-                          { label: 'Edit', onClick: () => openEdit(item) },
+                          { label: 'Edit', icon: Pencil, onClick: () => openEdit(item) },
                           {
                             label: 'Delete',
+                            icon: Trash2,
                             variant: 'danger',
                             onClick: async () => {
                               if (await confirmDialog('Delete this resource?', { confirmLabel: 'Delete', danger: true })) {
@@ -322,15 +325,17 @@ export function Resources() {
               <button
                 type="button"
                 onClick={closeForm}
-                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
               >
+                <X className="h-4 w-4" aria-hidden />
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={saveMutation.isPending || uploading || (!isAdmin && projectOptions.length === 0)}
-                className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
               >
+                {formTarget === 'new' ? <Plus className="h-4 w-4" aria-hidden /> : <Save className="h-4 w-4" aria-hidden />}
                 {saveMutation.isPending ? 'Saving...' : formTarget === 'new' ? 'Add Resource' : 'Save Changes'}
               </button>
             </div>

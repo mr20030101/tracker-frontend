@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Check, ListChecks } from 'lucide-react'
+import { ArrowRight, Check, ListChecks, Settings, X, type LucideIcon } from 'lucide-react'
 import { ONBOARDING_STEPS, setOnboardingStep, useOnboardingStatus } from '../lib/onboarding'
 import type { OnboardingStatus, OnboardingStep } from '../types'
 import { GrowBar } from './GrowBar'
@@ -18,7 +18,7 @@ export function OnboardingChecklist({
 }: {
   userId: string
   hasLead: boolean
-  actions: Partial<Record<OnboardingStep, { label: string; onClick: () => void }>>
+  actions: Partial<Record<OnboardingStep, { label: string; onClick: () => void; icon?: LucideIcon }>>
 }) {
   const queryClient = useQueryClient()
   const { data: status } = useOnboardingStatus(userId)
@@ -30,11 +30,11 @@ export function OnboardingChecklist({
 
   if (!status || status.dismissed || status.done >= status.total) return null
 
-  const links: Partial<Record<OnboardingStep, { to: string; label: string }>> = {
-    photo: { to: '/settings', label: 'Open settings' },
-    remotasks_id: { to: '/settings', label: 'Open settings' },
-    shift: { to: '/settings', label: 'Open settings' },
-    read_resources: { to: '/resources', label: 'Open Resources' },
+  const links: Partial<Record<OnboardingStep, { to: string; label: string; icon: LucideIcon }>> = {
+    photo: { to: '/settings', label: 'Open settings', icon: Settings },
+    remotasks_id: { to: '/settings', label: 'Open settings', icon: Settings },
+    shift: { to: '/settings', label: 'Open settings', icon: Settings },
+    read_resources: { to: '/resources', label: 'Open Resources', icon: ArrowRight },
   }
 
   return (
@@ -48,8 +48,9 @@ export function OnboardingChecklist({
         <button
           type="button"
           onClick={() => stepMutation.mutate({ step: 'dismissed', done: true })}
-          className="ml-auto text-xs font-medium text-gray-400 hover:text-gray-700"
+          className="ml-auto inline-flex items-center gap-1.5 text-xs font-medium text-gray-400 hover:text-gray-700"
         >
+          <X className="h-3.5 w-3.5" aria-hidden />
           Hide
         </button>
       </div>
@@ -84,12 +85,14 @@ export function OnboardingChecklist({
                 {!done && <div className="text-xs text-gray-400">{hint}</div>}
               </div>
               {!done && link && (
-                <Link to={link.to} className="text-xs font-semibold text-sky-700 hover:underline">
+                <Link to={link.to} className="inline-flex items-center gap-1.5 text-xs font-semibold text-sky-700 hover:underline">
+                  <link.icon className="h-3.5 w-3.5" aria-hidden />
                   {link.label}
                 </Link>
               )}
               {!done && action && (
-                <button type="button" onClick={action.onClick} className="text-xs font-semibold text-sky-700 hover:underline">
+                <button type="button" onClick={action.onClick} className="inline-flex items-center gap-1.5 text-xs font-semibold text-sky-700 hover:underline">
+                  {action.icon && <action.icon className="h-3.5 w-3.5" aria-hidden />}
                   {action.label}
                 </button>
               )}
