@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useAuth } from '../lib/auth'
+import { useSeason } from '../lib/season'
 import { useNightSky } from '../lib/theme'
 import { LoginOwl, type OwlMood } from './LoginOwl'
+import TextLoop from './TextLoop'
 import { SkyBackdrop } from './SkyBackdrop'
 
 // The playful banner at the top of both dashboards, matching the login page: the same day/night
@@ -25,6 +27,14 @@ function greeting(name: string | undefined, date: Date): string {
   if (hour < 12) return `Good morning${who}!`
   if (hour < 18) return `Good afternoon${who}!`
   return `Good evening${who}!`
+}
+
+// The greeting rides a ribbon in the accent colour (orange for Halloween) that flows across the
+// banner. Dark ink on it reads the same against the day and the night sky.
+const RIBBON = { colour: '#d4a017', halloween: '#ea580c', ink: '#1a1500' }
+
+function dateLine(date: Date): string {
+  return date.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })
 }
 
 const clamp = (value: number) => Math.max(-1, Math.min(1, value))
@@ -103,23 +113,46 @@ function PeekingOwl({ night }: { night: boolean }) {
 
 export function DashboardHero({ subtitle, actions }: { subtitle: ReactNode; actions?: ReactNode }) {
   const { user } = useAuth()
+  const { halloween } = useSeason()
   // Recomputed on render; the dashboards re-render often enough for the greeting to stay current.
-  const title = greeting(user?.name, new Date())
+  const now = new Date()
+  const title = greeting(user?.name, now)
   // The sky can be night on the light theme (or day on the dark one), so the text is coloured for
   // the sky behind it rather than by the theme.
   const night = useNightSky()
+  const muted = night ? 'text-[#cdd2db]' : 'text-[#4b5260]'
 
   return (
     // overflow-clip, not -hidden: a hidden overflow can still be scrolled, and focusing the owl
     // (whose body hangs below the edge) would scroll the whole banner up to show it.
     <section className="relative mb-6 overflow-clip rounded-3xl border border-gray-200">
       <SkyBackdrop compact />
+      <div className="relative px-5 pt-5 sm:px-8 sm:pt-7">
+        <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${muted}`}>{dateLine(now)}</p>
+        {/* Screen readers get the greeting as text; the ribbon only shows it. */}
+        <h1 className="sr-only">{title}</h1>
+      </div>
+      {/* Edge to edge. TextLoop draws into a 1200 × 520 box with the ribbon through the middle, so
+          this crops that box to the band the ribbon waves within. Hover pauses it; drag to spin it. */}
+      <div className="relative aspect-[1200/190] overflow-hidden" aria-hidden>
+        <TextLoop
+          text={title}
+          shape="wave"
+          curviness={14}
+          tilt={-2}
+          speed={70}
+          fontSize={40}
+          ribbonWidth={72}
+          ribbonColor={halloween ? RIBBON.halloween : RIBBON.colour}
+          color={RIBBON.ink}
+          separator="✦"
+          draggable
+          className="absolute left-0 top-1/2 -translate-y-1/2"
+        />
+      </div>
       {/* The owl gets the bottom-right corner: room underneath on a phone, beside on wider screens. */}
-      <div className="relative flex flex-col gap-4 px-5 pb-20 pt-5 sm:px-8 sm:pb-8 sm:pr-40 sm:pt-7">
-        <div>
-          <h1 className={`text-2xl font-bold sm:text-3xl ${night ? 'text-[#f5f6f8]' : 'text-[#1f2329]'}`}>{title}</h1>
-          <p className={`mt-1 text-sm ${night ? 'text-[#cdd2db]' : 'text-[#4b5260]'}`}>{subtitle}</p>
-        </div>
+      <div className="relative flex flex-col gap-4 px-5 pb-20 sm:px-8 sm:pb-8 sm:pr-40">
+        <p className={`text-sm ${muted}`}>{subtitle}</p>
         {actions && <div className="flex flex-wrap items-center gap-2 sm:gap-3">{actions}</div>}
       </div>
       <PeekingOwl night={night} />
