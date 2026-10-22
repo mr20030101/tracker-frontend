@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 5.24.0 — 2026-10-22
+
 ### Changed
 
 - Every button and ⋮ menu item now shows an icon next to its label, so actions are quicker to spot. The same action uses the same icon everywhere: a bin for Delete, a pencil for Edit, a plus for Add, a tick for Confirm, an × for Cancel, and so on. Confirmation popups show a bin when the action deletes something, and the small × close buttons now match the rest.
