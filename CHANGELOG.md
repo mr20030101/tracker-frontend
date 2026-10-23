@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 5.26.0 — 2026-10-23
+
 ### Changed
 
 - On the Rewards page, task levels show as coloured pills: orange for Attempter, blue for L0 and purple for L1. A reward lists the levels it counts and what each is worth, and each person in the standings shows how many tasks they've done at each level, with the levels they haven't touched faded out.
