@@ -4130,8 +4130,8 @@ $$;
 revoke execute on function public.set_lead_shift(uuid, int, int) from public, anon;
 grant execute on function public.set_lead_shift(uuid, int, int) to authenticated;
 
--- A contributor's request only goes in during their lead's shift. Leads and admins (filing a
--- bad-video report themselves) aren't held to it.
+-- A contributor's extension or reclaim request only goes in during their lead's shift. A bad-video
+-- report can be sent any time, and leads and admins aren't held to it.
 create or replace function public.task_requests_within_lead_shift()
 returns trigger language plpgsql security definer set search_path = public
 as $$
@@ -4144,7 +4144,7 @@ begin
   from public.profiles me
   join public.profiles l on l.id = me.lead_id
   join public.lead_shifts s on s.lead_id = l.id
-  where me.id = new.requested_by and me.role = 'contributor';
+  where me.id = new.requested_by and me.role = 'contributor' and new.type <> 'bad_video';
 
   if found and not public.in_shift(v_shift.starts_min, v_shift.ends_min, sg_minutes) then
     raise exception 'Requests can only be sent during your lead''s shift, % to %.',

@@ -351,7 +351,7 @@ export function Requests() {
   const now = useNow(60_000)
   const overdueCount = requests.filter((r) => isOverdue(r, now)).length
   const outsideShift = !isManager && requestShift !== null && !inShift(requestShift, now)
-  const outsideShiftHint = outsideShift ? `Requests open during ${requestShift.leadName}'s shift, ${shiftLabel(requestShift)}.` : undefined
+  const outsideShiftHint = outsideShift ? `Extension and reclaim requests open during ${requestShift.leadName}'s shift, ${shiftLabel(requestShift)}.` : undefined
   const rows = requests.filter((r) => (statusFilter === 'all' || r.status === statusFilter) && (typeFilter === 'all' || r.type === typeFilter))
   const selected = rows.filter((r) => selectedIds.has(r.id))
   const allVisibleSelected = rows.length > 0 && rows.every((r) => selectedIds.has(r.id))
@@ -402,8 +402,8 @@ export function Requests() {
       {requestShift && (
         <p className={`mb-4 rounded-lg border px-4 py-2.5 text-sm ${outsideShift ? 'border-status-warning-text/30 bg-status-warning-bg text-status-warning-text' : 'border-gray-200 text-gray-600'}`}>
           {outsideShift
-            ? `${requestShift.leadName} is off shift, so requests can't be sent right now. They open again at ${attendanceTimeLabel(requestShift.startsMin)}.`
-            : `You can send requests during ${requestShift.leadName}'s shift, ${shiftLabel(requestShift)}.`}
+            ? `${requestShift.leadName} is off shift, so extension and reclaim requests can't be sent right now (bad-video reports still can). They open again at ${attendanceTimeLabel(requestShift.startsMin)}.`
+            : `You can send extension and reclaim requests during ${requestShift.leadName}'s shift, ${shiftLabel(requestShift)}.`}
         </p>
       )}
 

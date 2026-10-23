@@ -346,7 +346,7 @@ function ProfileSection() {
               <p className={`mt-1 text-xs ${attempted && leadShiftError ? 'text-red-600' : 'text-gray-400'}`}>
                 {attempted && leadShiftError
                   ? leadShiftError
-                  : 'Singapore time. Shown on your profile, and your team can only send requests during it. Leave both empty for any time.'}
+                  : 'Singapore time. Shown on your profile, and your team can only send extension and reclaim requests during it. Leave both empty for any time.'}
               </p>
             </div>
           ) : (

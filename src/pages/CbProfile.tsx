@@ -342,7 +342,7 @@ export function CbProfile() {
       {(leadShift || (!isOwnProfile && data.user?.shift)) && (
         <div className="mb-6 rounded-xl border border-gray-200 bg-white px-5 py-4 text-sm text-gray-600">
           <span className="font-medium text-gray-700">Shift:</span> {leadShift ? shiftLabel(leadShift) : data.user?.shift}
-          {leadShift && <span className="ml-2 text-xs text-gray-400">Requests can be sent during this shift</span>}
+          {leadShift && <span className="ml-2 text-xs text-gray-400">Extension and reclaim requests can be sent during this shift</span>}
           {data.user?.meet_link && (
             <>
               <span className="mx-2 text-gray-300">|</span>

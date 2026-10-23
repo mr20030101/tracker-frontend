@@ -84,8 +84,9 @@ export async function fetchOverdueRequestCount(): Promise<number> {
 }
 
 // A lead's shift, in minutes after midnight, Singapore time. One that ends before it starts runs
-// past midnight. A lead's contributors can only send requests during it; the database checks the
-// same (task_requests_within_lead_shift in supabase/migrations/20261023_lead_shifts.sql).
+// past midnight. A lead's contributors can only send extension and reclaim requests during it
+// (bad-video reports go any time); the database checks the same (task_requests_within_lead_shift
+// in supabase/migrations/20261023_bad_video_any_time.sql).
 export interface Shift {
   startsMin: number
   endsMin: number

@@ -134,7 +134,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
   // A contributor can only send a request during their lead's shift (the database checks it too).
   const { data: requestShift = null } = useQuery({ queryKey: ['request-shift'], queryFn: fetchRequestShift, enabled: !isManager })
   const outsideShift = !isManager && requestShift !== null && !inShift(requestShift, now)
-  const outsideShiftHint = outsideShift ? `Requests open during ${requestShift.leadName}'s shift, ${shiftLabel(requestShift)}.` : undefined
+  const outsideShiftHint = outsideShift ? `Extension and reclaim requests open during ${requestShift.leadName}'s shift, ${shiftLabel(requestShift)}.` : undefined
   const { data: taskRequests = [] } = useQuery({
     queryKey: ['task-requests', submissionIdsKey],
     queryFn: async () => {
@@ -876,7 +876,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                                   }
                                 : badVideoPending
                                   ? { label: 'Bad video report pending', icon: Flag, disabled: true, onClick: () => {} }
-                                  : { label: 'Report bad video', icon: Flag, disabled: outsideShift, title: outsideShiftHint, onClick: () => setReportingBadVideoFor(row) },
+                                  : { label: 'Report bad video', icon: Flag, onClick: () => setReportingBadVideoFor(row) },
                               {
                                 label: 'Delete',
                                 icon: Trash2,
