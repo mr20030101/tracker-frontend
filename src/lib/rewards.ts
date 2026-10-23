@@ -1,9 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from './api'
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, toISODate } from './week'
+import type { Stage } from '../types'
 
 // Rewards (supabase/migrations/20261014_rewards.sql): a lead or admin offers a prize for a rule
 // over a date range. The database works out who's winning and, once it's over, the winners.
+// Each task level (Attempter, L0, L1) is worth a number of points on a reward
+// (20261023_reward_levels.sql); a level worth 0 doesn't count.
 
 export type RewardRule = 'top_submitters' | 'min_tasks' | 'every_week_on_target' | 'custom'
 export type RewardStatus = 'active' | 'awarded' | 'cancelled'
@@ -24,6 +27,9 @@ export interface Reward {
   starts_on: string
   ends_on: string
   status: RewardStatus
+  points_attempt: number
+  points_l0: number
+  points_l1: number
   awarded_at: string | null
   created_at: string
 }
@@ -34,7 +40,13 @@ export interface RewardStanding {
   avatar_url: string | null
   /** Only returned to leads and admins; contributors get null. */
   cb_email: string | null
+  /** Tasks at the levels that count. */
   submitted: number
+  attempt_tasks: number
+  l0_tasks: number
+  l1_tasks: number
+  /** What places and thresholds go by: each counted task's level points, added up. */
+  points: number
   weeks_hit: number
   weeks_total: number
   reached_at: string | null
@@ -58,13 +70,85 @@ export const RULE_LABELS: Record<RewardRule, string> = {
   custom: 'Custom (you pick the winners)',
 }
 
+export const STAGES: Stage[] = ['attempt', 'l0', 'l1']
+
+export const STAGE_LABELS: Record<Stage, string> = { attempt: 'Attempter', l0: 'L0', l1: 'L1' }
+
+type LevelPoints = Pick<Reward, 'points_attempt' | 'points_l0' | 'points_l1'>
+
+export function stagePoints(reward: LevelPoints): Record<Stage, number> {
+  return { attempt: reward.points_attempt, l0: reward.points_l0, l1: reward.points_l1 }
+}
+
+/** The levels a reward counts, in order. */
+export function countedStages(reward: LevelPoints): Stage[] {
+  const points = stagePoints(reward)
+  return STAGES.filter((stage) => points[stage] > 0)
+}
+
+/** Whether the counted levels are worth different amounts, so the score is points rather than tasks. */
+export function usesPoints(reward: LevelPoints): boolean {
+  const points = stagePoints(reward)
+  return countedStages(reward).some((stage) => points[stage] !== 1)
+}
+
+/** "tasks" or "points", whichever the reward scores by, for n of them. */
+export function scoreUnit(reward: LevelPoints, n: number): string {
+  return `${usesPoints(reward) ? 'point' : 'task'}${n === 1 ? '' : 's'}`
+}
+
+/** A score, with up to two decimals since a level can be worth e.g. 1.5 points. */
+export const formatScore = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: 2 })
+
+/** "12 tasks" or "12.5 points". */
+export const scoreText = (reward: LevelPoints, n: number) => `${formatScore(n)} ${scoreUnit(reward, n)}`
+
+/** "Attempter 10 · L0 7 · L1 6", the counted levels only. */
+export function levelBreakdown(reward: LevelPoints, s: Pick<RewardStanding, 'attempt_tasks' | 'l0_tasks' | 'l1_tasks'>): string {
+  const counts: Record<Stage, number> = { attempt: s.attempt_tasks, l0: s.l0_tasks, l1: s.l1_tasks }
+  return countedStages(reward)
+    .map((stage) => `${STAGE_LABELS[stage]} ${counts[stage].toLocaleString()}`)
+    .join(' · ')
+}
+
+/**
+ * Which levels count and what each is worth, e.g. "Attempter 1 pt · L0 2 pts · L1 3 pts" or
+ * "L0 and L1 tasks only". Undefined for the default of every level at 1.
+ */
+export function describeLevels(reward: LevelPoints): string | undefined {
+  const stages = countedStages(reward)
+  const points = stagePoints(reward)
+  if (usesPoints(reward)) return stages.map((stage) => `${STAGE_LABELS[stage]} ${points[stage]} pt${points[stage] === 1 ? '' : 's'}`).join(' · ')
+  if (stages.length === STAGES.length) return undefined
+  const names = stages.map((stage) => STAGE_LABELS[stage])
+  return `${names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : names[0]} tasks only`
+}
+
+// Before the levels migration, rewards have no points (every level counted as 1) and standings no
+// per-level counts.
+const asReward = (r: Reward): Reward => ({
+  ...r,
+  prize_amounts: r.prize_amounts.map(Number),
+  points_attempt: Number(r.points_attempt ?? 1),
+  points_l0: Number(r.points_l0 ?? 1),
+  points_l1: Number(r.points_l1 ?? 1),
+})
+
+const asStanding = (s: RewardStanding): RewardStanding => ({
+  ...s,
+  attempt_tasks: s.attempt_tasks ?? 0,
+  l0_tasks: s.l0_tasks ?? 0,
+  l1_tasks: s.l1_tasks ?? 0,
+  points: Number(s.points ?? s.submitted),
+})
+
 export function useRewards() {
   return useQuery({
     queryKey: ['rewards'],
     queryFn: async () => {
       const { data, error } = await supabase.from('rewards').select('*').neq('status', 'cancelled').order('ends_on', { ascending: false })
       if (error) throw error
-      return ((data ?? []) as Reward[]).map((r) => ({ ...r, prize_amounts: r.prize_amounts.map(Number) }))
+      return ((data ?? []) as Reward[]).map(asReward)
     },
     // Before the migration is applied the table is missing; the page says so instead of retrying.
     retry: false,
@@ -77,7 +161,7 @@ export function useRewardStandings(rewardId: number, enabled = true) {
     queryFn: async () => {
       const { data, error } = await supabase.rpc('reward_standings', { p_reward_id: rewardId })
       if (error) throw error
-      return (data ?? []) as RewardStanding[]
+      return ((data ?? []) as RewardStanding[]).map(asStanding)
     },
     enabled,
     staleTime: 60_000,
@@ -110,6 +194,9 @@ export interface NewReward {
   starts_on: string
   ends_on: string
   announce: boolean
+  points_attempt: number
+  points_l0: number
+  points_l1: number
 }
 
 export async function createReward(input: NewReward): Promise<number> {
@@ -127,6 +214,9 @@ export async function createReward(input: NewReward): Promise<number> {
     p_starts_on: input.starts_on,
     p_ends_on: input.ends_on,
     p_announce: input.announce,
+    p_points_attempt: input.points_attempt,
+    p_points_l0: input.points_l0,
+    p_points_l1: input.points_l1,
   })
   if (error) throw error
   return data as number
@@ -184,16 +274,22 @@ export function describePrize(reward: Pick<Reward, 'rule' | 'places' | 'prize_am
   return reward.prize_note ? `${text} ${reward.prize_note}` : text
 }
 
-/** The rule as a sentence, e.g. "Whoever submits the most tasks (at least 20 to qualify)." */
-export function describeRule(reward: Pick<Reward, 'rule' | 'threshold' | 'places'>, projectName?: string): string {
+/** The rule as a sentence, e.g. "Whoever submits the most tasks (at least 20 tasks to qualify)." */
+export function describeRule(reward: Pick<Reward, 'rule' | 'threshold' | 'places'> & LevelPoints, projectName?: string): string {
   const where = projectName ? ` on ${projectName}` : ''
+  const points = usesPoints(reward)
   switch (reward.rule) {
     case 'top_submitters': {
-      const who = reward.places === 1 ? 'Whoever submits the most tasks' : `The top ${reward.places} by tasks submitted`
-      return `${who}${where}${reward.threshold ? ` (at least ${reward.threshold} to qualify)` : ''}. A tie goes to whoever got there first.`
+      const who =
+        reward.places === 1
+          ? points ? 'Whoever scores the most points' : 'Whoever submits the most tasks'
+          : `The top ${reward.places} by ${points ? 'points' : 'tasks submitted'}`
+      return `${who}${where}${reward.threshold ? ` (at least ${scoreText(reward, reward.threshold)} to qualify)` : ''}. A tie goes to whoever got there first.`
     }
     case 'min_tasks':
-      return `Everyone who submits at least ${reward.threshold} tasks${where}.`
+      return points
+        ? `Everyone who scores at least ${scoreText(reward, reward.threshold ?? 0)}${where}.`
+        : `Everyone who submits at least ${reward.threshold} tasks${where}.`
     case 'every_week_on_target':
       return `Everyone who hits their weekly target every week${where}.`
     case 'custom':
@@ -205,20 +301,26 @@ export function describeRule(reward: Pick<Reward, 'rule' | 'threshold' | 'places
 export function myStandingLine(reward: Reward, standings: RewardStanding[], meId: string | undefined): string | undefined {
   const me = standings.find((s) => s.user_id === meId)
   if (!me) return undefined
-  const plural = (n: number) => `${n.toLocaleString()} more task${n === 1 ? '' : 's'}`
+  const more = (n: number) => `${formatScore(n)} more ${scoreUnit(reward, n)}`
+  const score = me.points
   switch (reward.rule) {
     case 'top_submitters': {
       if (me.qualifies && me.place) return `You're in ${ordinal(me.place)} place: ${formatMoney(reward.prize_amounts[me.place - 1], reward.currency)}! Hold on to it.`
       const minimum = reward.threshold ?? 1
-      if (me.submitted < minimum) return `${plural(minimum - me.submitted)} to qualify.`
+      if (score < minimum) return `${more(minimum - score)} to qualify.`
       const lastPrize = standings[reward.places - 1]
       if (!lastPrize) return undefined
-      return `${plural(lastPrize.submitted - me.submitted + 1)} to reach ${ordinal(reward.places)} place.`
+      const gap = lastPrize.points - score
+      // Whole-number points: one more than the gap gets you past them (a tie goes to whoever got
+      // there first). With fractional points the smallest step varies, so give the gap itself.
+      return Object.values(stagePoints(reward)).every(Number.isInteger)
+        ? `${more(gap + 1)} to reach ${ordinal(reward.places)} place.`
+        : `${scoreText(reward, gap)} behind ${ordinal(reward.places)} place.`
     }
     case 'min_tasks':
       return me.qualifies
-        ? `You've made it with ${me.submitted.toLocaleString()} tasks! 🎉`
-        : `${plural((reward.threshold ?? 0) - me.submitted)} to go (${me.submitted.toLocaleString()} of ${reward.threshold}).`
+        ? `You've made it with ${scoreText(reward, score)}! 🎉`
+        : `${more((reward.threshold ?? 0) - score)} to go (${formatScore(score)} of ${reward.threshold}).`
     case 'every_week_on_target':
       return me.weeks_total === 0
         ? undefined

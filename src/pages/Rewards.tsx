@@ -1,7 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Award, CalendarDays, Check, ChevronDown, ChevronUp, Gift, Plus, Trash2, Trophy, Users, X } from 'lucide-react'
+import { Award, CalendarDays, Check, ChevronDown, ChevronUp, Gift, Layers, Plus, Trash2, Trophy, Users, X } from 'lucide-react'
 import { api, errorMessage } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useMessaging } from '../lib/messagingContext'
@@ -9,18 +9,26 @@ import { toISODate, formatRange } from '../lib/week'
 import { usePageTitle } from '../lib/usePageTitle'
 import {
   RULE_LABELS,
+  STAGES,
+  STAGE_LABELS,
   awardReward,
   cancelReward,
   createReward,
+  describeLevels,
   describePrize,
   describeRule,
   formatMoney,
+  formatScore,
+  levelBreakdown,
   myStandingLine,
   ordinal,
   countFullWeeks,
   presetRange,
   rewardPhase,
+  scoreText,
+  scoreUnit,
   setRewardPaid,
+  usesPoints,
   useRewardStandings,
   useRewardWinners,
   useRewards,
@@ -30,7 +38,7 @@ import {
   type RewardStanding,
   type RewardWinner,
 } from '../lib/rewards'
-import type { Project } from '../types'
+import type { Project, Stage } from '../types'
 import { Avatar } from '../components/Avatar'
 import { Modal } from '../components/Modal'
 import { Select } from '../components/Select'
@@ -191,6 +199,7 @@ function RewardCard({
   const style = PHASE_STYLES[phase]
   const audience = reward.team_lead_id ? `${usersById.get(reward.team_lead_id)?.name ?? 'A lead'}’s team` : 'Everyone'
   const mine = phase === 'live' ? myStandingLine(reward, standings, meId) : undefined
+  const levels = describeLevels(reward)
 
   const cancel = useMutation({
     mutationFn: () => cancelReward(reward.id),
@@ -216,6 +225,12 @@ function RewardCard({
               <CalendarDays className="h-3.5 w-3.5" />
               {formatRange(reward.starts_on, reward.ends_on)} · {whenLine(reward, phase, today)}
             </span>
+            {levels && (
+              <span className="flex items-center gap-1">
+                <Layers className="h-3.5 w-3.5" />
+                {levels}
+              </span>
+            )}
             {isManager && (
               <span className="flex items-center gap-1">
                 <Users className="h-3.5 w-3.5" />
@@ -285,7 +300,7 @@ function StandingsList({ reward, standings, meId }: { reward: Reward; standings:
   const [all, setAll] = useState(false)
   if (standings.length === 0) return null
   const shown = all ? standings : standings.slice(0, STANDINGS_SHOWN)
-  const goal = reward.rule === 'min_tasks' ? (reward.threshold ?? 1) : Math.max(1, standings[0]?.submitted ?? 1)
+  const goal = reward.rule === 'min_tasks' ? (reward.threshold ?? 1) : Math.max(1, standings[0]?.points ?? 1)
 
   return (
     <div className="mt-4 border-t border-gray-100 pt-3">
@@ -297,7 +312,7 @@ function StandingsList({ reward, standings, meId }: { reward: Reward; standings:
               ? s.weeks_total > 0
                 ? (s.weeks_hit / s.weeks_total) * 100
                 : 0
-              : Math.min(100, (s.submitted / goal) * 100)
+              : Math.min(100, (s.points / goal) * 100)
           return (
             <li key={s.user_id} className={`-mx-2 flex items-center gap-3 px-2 py-2 ${isMe ? 'rounded-lg bg-accent-bg/40' : ''}`}>
               <span className="w-7 shrink-0 text-center text-sm font-semibold text-gray-400">
@@ -310,6 +325,7 @@ function StandingsList({ reward, standings, meId }: { reward: Reward; standings:
                   {s.name}
                   {isMe && <span className="ml-2 text-xs font-semibold text-accent">You</span>}
                 </Link>
+                <div className="truncate text-xs text-gray-500">{levelBreakdown(reward, s)}</div>
                 <div className="mt-1 h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-gray-100">
                   <div className={`h-full rounded-full ${s.qualifies ? 'bg-emerald-500' : 'bg-accent'}`} style={{ width: `${pct}%` }} />
                 </div>
@@ -321,7 +337,7 @@ function StandingsList({ reward, standings, meId }: { reward: Reward; standings:
                   </>
                 ) : (
                   <>
-                    {s.submitted.toLocaleString()} <span className="font-normal text-gray-400">tasks</span>
+                    {formatScore(s.points)} <span className="font-normal text-gray-400">{scoreUnit(reward, s.points)}</span>
                   </>
                 )}
               </span>
@@ -460,7 +476,7 @@ function AwardModal({ reward, standings, onClose }: { reward: Reward; standings:
                       <input type="checkbox" checked={order >= 0} onChange={() => toggle(s.user_id)} />
                       <Avatar name={s.name} photoUrl={s.avatar_url} size={24} />
                       <span className="min-w-0 flex-1 truncate text-sm text-gray-900">{s.name}</span>
-                      <span className="text-xs text-gray-400">{s.submitted} tasks</span>
+                      <span className="text-xs text-gray-400">{scoreText(reward, s.points)}</span>
                       {order >= 0 && <span className="w-16 text-right text-xs font-semibold text-accent">{ordinal(order + 1)} · {formatMoney(amountFor(order), reward.currency)}</span>}
                     </label>
                   </li>
@@ -479,7 +495,7 @@ function AwardModal({ reward, standings, onClose }: { reward: Reward; standings:
                   <span className="w-8 text-sm font-semibold text-gray-400">{ordinal(s.place ?? i + 1)}</span>
                   <Avatar name={s.name} photoUrl={s.avatar_url} size={24} />
                   <span className="min-w-0 flex-1 truncate text-sm text-gray-900">{s.name}</span>
-                  <span className="text-xs text-gray-400">{s.submitted} tasks</span>
+                  <span className="text-xs text-gray-400">{scoreText(reward, s.points)}</span>
                   <span className="text-sm font-semibold text-gray-900">{formatMoney(amountFor(i, s), reward.currency)}</span>
                 </li>
               ))}
@@ -515,6 +531,12 @@ function AwardModal({ reward, standings, onClose }: { reward: Reward; standings:
   )
 }
 
+// What a level can be worth: more than 0, at most 100, up to two decimals (rewards.points_* is numeric(5, 2)).
+function validPoints(value: string): boolean {
+  const n = Number(value)
+  return /^\d+(\.\d{1,2})?$/.test(value.trim()) && n > 0 && n <= 100
+}
+
 type Preset = 'next_week' | 'this_week' | 'next_month' | 'this_month' | 'custom'
 
 const PRESETS: { value: Preset; label: string }[] = [
@@ -543,7 +565,20 @@ function NewRewardModal({ projects, onClose }: { projects: Project[]; onClose: (
   const [preset, setPreset] = useState<Preset>('next_week')
   const [range, setRange] = useState<[string, string]>(() => presetRange('next_week'))
   const [announce, setAnnounce] = useState(true)
+  // Points per level; an unticked level is sent as 0, which doesn't count.
+  const [levels, setLevels] = useState<Record<Stage, { on: boolean; points: string }>>({
+    attempt: { on: true, points: '1' },
+    l0: { on: true, points: '1' },
+    l1: { on: true, points: '1' },
+  })
   const [formError, setFormError] = useState<string | null>(null)
+
+  const levelPoints = (stage: Stage) => (levels[stage].on ? Number(levels[stage].points) || 0 : 0)
+  const pointsFields = { points_attempt: levelPoints('attempt'), points_l0: levelPoints('l0'), points_l1: levelPoints('l1') }
+
+  function setLevel(stage: Stage, change: Partial<{ on: boolean; points: string }>) {
+    setLevels((current) => ({ ...current, [stage]: { ...current[stage], ...change } }))
+  }
 
   const leads = useMemo(
     () => [...usersById.values()].filter((u) => u.role === 'lead' && !u.is_bot).sort((a, b) => a.name.localeCompare(b.name)),
@@ -583,6 +618,9 @@ function NewRewardModal({ projects, onClose }: { projects: Project[]; onClose: (
     const amounts = prizes.slice(0, prizeSlots).map((p) => Number(p))
     if (amounts.some((a) => !Number.isFinite(a) || a < 0) || amounts.length === 0) return setFormError('Enter a prize amount for each place.')
     if (rule === 'min_tasks' && !(Number(threshold) >= 1)) return setFormError('How many tasks does it take?')
+    if (STAGES.every((stage) => !levels[stage].on)) return setFormError('Pick at least one level to count.')
+    if (STAGES.some((stage) => levels[stage].on && !validPoints(levels[stage].points)))
+      return setFormError('Give each level you count between 0.01 and 100 points, with up to two decimals (e.g. 1.5).')
     if (range[1] < range[0]) return setFormError('The end date is before the start date.')
     if (rule === 'every_week_on_target' && countFullWeeks(range[0], range[1]) === 0)
       return setFormError('This date range contains no full Tuesday–Monday week, so "On target every week" can never be won. Extend the range to include at least one complete week.')
@@ -601,6 +639,7 @@ function NewRewardModal({ projects, onClose }: { projects: Project[]; onClose: (
       starts_on: range[0],
       ends_on: range[1],
       announce,
+      ...pointsFields,
     })
   }
 
@@ -613,7 +652,9 @@ function NewRewardModal({ projects, onClose }: { projects: Project[]; onClose: (
     prize_amounts: prizes.slice(0, prizeSlots).map((p) => Number(p) || 0),
     currency,
     prize_note: prizeNote.trim() || null,
+    ...pointsFields,
   }
+  const scoredInPoints = usesPoints(pointsFields)
 
   return (
     <Modal title="New reward" onClose={onClose} maxWidthClassName="max-w-xl">
@@ -655,7 +696,7 @@ function NewRewardModal({ projects, onClose }: { projects: Project[]; onClose: (
           )}
           {(rule === 'min_tasks' || rule === 'top_submitters') && (
             <div>
-              <label className={labelClass}>{rule === 'min_tasks' ? 'Tasks needed' : 'Minimum to qualify (optional)'}</label>
+              <label className={labelClass}>{rule === 'min_tasks' ? (scoredInPoints ? 'Points needed' : 'Tasks needed') : 'Minimum to qualify (optional)'}</label>
               <input
                 type="number"
                 min={1}
@@ -690,6 +731,37 @@ function NewRewardModal({ projects, onClose }: { projects: Project[]; onClose: (
             </div>
           )}
         </div>
+
+        <fieldset>
+          <legend className={labelClass}>Levels that count</legend>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            {STAGES.map((stage) => (
+              <div key={stage} className={`flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 ${levels[stage].on ? 'border-accent/50 bg-accent/5' : 'border-gray-200'}`}>
+                <label className="flex w-full cursor-pointer items-center gap-2 text-sm font-medium text-gray-800">
+                  <input type="checkbox" checked={levels[stage].on} onChange={(e) => setLevel(stage, { on: e.target.checked })} />
+                  {STAGE_LABELS[stage]}
+                </label>
+                <input
+                  type="number"
+                  min={0.01}
+                  max={100}
+                  step="any"
+                  inputMode="decimal"
+                  disabled={!levels[stage].on}
+                  value={levels[stage].on ? levels[stage].points : ''}
+                  onChange={(e) => setLevel(stage, { points: e.target.value })}
+                  aria-label={`Points for each ${STAGE_LABELS[stage]} task`}
+                  className="w-16 rounded-md border border-gray-200 bg-white px-2 py-1 text-right text-sm outline-none focus:border-accent disabled:bg-gray-50"
+                />
+                <span className="text-xs text-gray-500">pts</span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-1 text-xs text-gray-500">
+            Each submitted task scores its level’s points. Make the harder levels worth more, or untick a level to leave it out.
+            {rule === 'every_week_on_target' && ' Weekly targets still count tasks, at the ticked levels.'}
+          </p>
+        </fieldset>
 
         <div>
           <div className="mb-1 flex items-center justify-between">
@@ -804,6 +876,7 @@ function NewRewardModal({ projects, onClose }: { projects: Project[]; onClose: (
         <div className="rounded-lg bg-gray-50 px-3 py-2 text-sm">
           <div className="font-semibold text-gray-900">{describePrize(previewReward)}</div>
           <div className="text-gray-600">{describeRule(previewReward, projects.find((p) => String(p.id) === projectId)?.name)}</div>
+          {describeLevels(previewReward) && <div className="text-xs text-gray-500">Counts {describeLevels(previewReward)}</div>}
           <div className="text-xs text-gray-500">{range[0] && range[1] ? formatRange(range[0], range[1]) : ''}</div>
         </div>
 
