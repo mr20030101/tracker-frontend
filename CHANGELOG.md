@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 5.28.0 — 2026-10-23
+
 ### Changed
 
 - Bad-video reports can be sent any time again. Only extension and reclaim requests wait for the lead's shift.
