@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Camera, Check, Eye, EyeOff, Ghost, KeyRound, Lock, Mic, MicOff, Monitor, Moon, Palette, PhoneCall, Save, Sun, Undo2, UserRound, Volume2, type LucideIcon } from 'lucide-react'
 import { supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
@@ -13,6 +13,8 @@ import { useSeason } from '../lib/season'
 import { useTheme } from '../lib/theme'
 import { useAudioLevel } from '../lib/useAudioLevel'
 import { usePageTitle } from '../lib/usePageTitle'
+import { fetchLeadShift, setLeadShift } from '../lib/taskRequests'
+import { minutesToTimeInput, timeInputToMinutes } from '../lib/attendanceWindow'
 import { Avatar } from '../components/Avatar'
 import { MicMeter, SpeakerModeSwitch } from '../components/CallSettings'
 import { RemotasksIdField } from '../components/RemotasksIdField'
@@ -164,6 +166,27 @@ function ProfileSection() {
   const [remotasksId, setRemotasksId] = useState(user?.remotasks_id ?? '')
   const [shift, setShift] = useState(user?.shift ?? '')
   const [bio, setBio] = useState(user?.bio ?? '')
+  // A lead's shift is a start and end time instead of free text: their contributors can only send
+  // requests during it. What's typed, until it's saved.
+  const isLead = user?.role === 'lead'
+  const { data: leadShift = null, isLoading: leadShiftLoading } = useQuery({
+    queryKey: ['lead-shift', user?.id],
+    queryFn: () => fetchLeadShift(user!.id),
+    enabled: isLead,
+  })
+  const [shiftDraft, setShiftDraft] = useState<{ starts: string; ends: string } | null>(null)
+  const shiftStarts = shiftDraft?.starts ?? (leadShift ? minutesToTimeInput(leadShift.startsMin) : '')
+  const shiftEnds = shiftDraft?.ends ?? (leadShift ? minutesToTimeInput(leadShift.endsMin) : '')
+  const shiftStartsMin = timeInputToMinutes(shiftStarts)
+  const shiftEndsMin = timeInputToMinutes(shiftEnds)
+  const leadShiftChanged = shiftDraft !== null && (shiftStartsMin !== (leadShift?.startsMin ?? null) || shiftEndsMin !== (leadShift?.endsMin ?? null))
+  // Both times, or neither (no shift: requests can be sent any time).
+  const leadShiftError =
+    (shiftStartsMin === null) !== (shiftEndsMin === null)
+      ? 'Pick when your shift starts and ends.'
+      : shiftStartsMin !== null && shiftStartsMin === shiftEndsMin
+        ? 'Your shift has to end at a different time than it starts.'
+        : null
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [attempted, setAttempted] = useState(false)
@@ -181,7 +204,8 @@ function ProfileSection() {
     Boolean(photoFile) ||
     name.trim() !== (user?.name ?? '') ||
     remotasksId.trim() !== (user?.remotasks_id ?? '') ||
-    shift.trim() !== (user?.shift ?? '') ||
+    (!isLead && shift.trim() !== (user?.shift ?? '')) ||
+    leadShiftChanged ||
     bio.trim() !== (user?.bio ?? '')
 
   const save = useMutation({
@@ -198,6 +222,10 @@ function ProfileSection() {
       }
       // The old photo's file is no longer used once the profile points at the new one.
       if (avatarUrl !== previousAvatarUrl) await removeAvatarFile(previousAvatarUrl)
+      // Also sets the Shift shown on their profile to match.
+      if (leadShiftChanged) {
+        await setLeadShift(user.id, shiftStartsMin === null || shiftEndsMin === null ? null : { startsMin: shiftStartsMin, endsMin: shiftEndsMin })
+      }
     },
     onSuccess: async () => {
       await refreshUser()
@@ -206,6 +234,8 @@ function ProfileSection() {
       queryClient.invalidateQueries({ queryKey: ['directory'] })
       setPhotoFile(null)
       setPhotoPreview(null)
+      setShiftDraft(null)
+      queryClient.invalidateQueries({ queryKey: ['lead-shift'] })
       setSaved(true)
     },
     onError: (err: Error) => setError(err.message || 'Could not save your profile.'),
@@ -215,6 +245,7 @@ function ProfileSection() {
     e.preventDefault()
     setAttempted(true)
     if (remotasksIdError(remotasksId)) return
+    if (isLead && leadShiftError) return
     setError(null)
     save.mutate()
   }
@@ -290,11 +321,41 @@ function ProfileSection() {
             showError={attempted}
             hint="Prefills the Reclaim / Extend form when your lead approves an extension."
           />
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Shift</label>
-            <input value={shift} onChange={(e) => setShift(e.target.value)} placeholder="e.g. 9 AM – 5 PM PHT" className={fieldClass} />
-            <p className="mt-1 text-xs text-gray-400">Shown on your profile so your lead knows when you're online.</p>
-          </div>
+          {isLead ? (
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Shift</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="time"
+                  aria-label="Shift starts"
+                  value={shiftStarts}
+                  onChange={(e) => setShiftDraft({ starts: e.target.value, ends: shiftEnds })}
+                  disabled={leadShiftLoading}
+                  className={fieldClass}
+                />
+                <span className="text-sm text-gray-500">to</span>
+                <input
+                  type="time"
+                  aria-label="Shift ends"
+                  value={shiftEnds}
+                  onChange={(e) => setShiftDraft({ starts: shiftStarts, ends: e.target.value })}
+                  disabled={leadShiftLoading}
+                  className={fieldClass}
+                />
+              </div>
+              <p className={`mt-1 text-xs ${attempted && leadShiftError ? 'text-red-600' : 'text-gray-400'}`}>
+                {attempted && leadShiftError
+                  ? leadShiftError
+                  : 'Singapore time. Shown on your profile, and your team can only send requests during it. Leave both empty for any time.'}
+              </p>
+            </div>
+          ) : (
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Shift</label>
+              <input value={shift} onChange={(e) => setShift(e.target.value)} placeholder="e.g. 9 AM – 5 PM PHT" className={fieldClass} />
+              <p className="mt-1 text-xs text-gray-400">Shown on your profile so your lead knows when you're online.</p>
+            </div>
+          )}
         </div>
 
         <div>

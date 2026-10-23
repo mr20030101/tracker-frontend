@@ -18,7 +18,11 @@ import {
   OVERDUE_HOURS,
   isOverdue,
   waitingFor,
+  fetchRequestShift,
+  inShift,
+  shiftLabel,
 } from '../lib/taskRequests'
+import { attendanceTimeLabel } from '../lib/attendanceWindow'
 import { BadVideoReportModal } from '../components/BadVideoReportModal'
 import { Detail } from '../components/Detail'
 import { Modal } from '../components/Modal'
@@ -79,6 +83,8 @@ export function Requests() {
     queryFn: fetchTaskRequests,
     refetchInterval: 30_000,
   })
+  // A contributor can only send a request during their lead's shift (the database checks it too).
+  const { data: requestShift = null } = useQuery({ queryKey: ['request-shift'], queryFn: fetchRequestShift, enabled: !isManager })
 
   const reviewMutation = useMutation({
     mutationFn: ({ id, status }: { id: number; status: 'approved' | 'denied' }) => {
@@ -267,7 +273,9 @@ export function Requests() {
                 setRevisingRequest({ request, mode: 'resend' })
                 after?.()
               }}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground"
+              disabled={outsideShift}
+              title={outsideShiftHint}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground disabled:opacity-50"
             >
               <RotateCw className="h-3.5 w-3.5" aria-hidden />
               Resend
@@ -342,6 +350,8 @@ export function Requests() {
   // Re-read every minute, so a request crosses into Overdue without a reload.
   const now = useNow(60_000)
   const overdueCount = requests.filter((r) => isOverdue(r, now)).length
+  const outsideShift = !isManager && requestShift !== null && !inShift(requestShift, now)
+  const outsideShiftHint = outsideShift ? `Requests open during ${requestShift.leadName}'s shift, ${shiftLabel(requestShift)}.` : undefined
   const rows = requests.filter((r) => (statusFilter === 'all' || r.status === statusFilter) && (typeFilter === 'all' || r.type === typeFilter))
   const selected = rows.filter((r) => selectedIds.has(r.id))
   const allVisibleSelected = rows.length > 0 && rows.every((r) => selectedIds.has(r.id))
@@ -387,6 +397,14 @@ export function Requests() {
             <X className="h-4 w-4" aria-hidden />
           </button>
         </div>
+      )}
+
+      {requestShift && (
+        <p className={`mb-4 rounded-lg border px-4 py-2.5 text-sm ${outsideShift ? 'border-status-warning-text/30 bg-status-warning-bg text-status-warning-text' : 'border-gray-200 text-gray-600'}`}>
+          {outsideShift
+            ? `${requestShift.leadName} is off shift, so requests can't be sent right now. They open again at ${attendanceTimeLabel(requestShift.startsMin)}.`
+            : `You can send requests during ${requestShift.leadName}'s shift, ${shiftLabel(requestShift)}.`}
+        </p>
       )}
 
       {isManager && overdueCount > 0 && (
@@ -677,3 +695,4 @@ export function Requests() {
     </div>
   )
 }
+

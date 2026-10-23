@@ -19,6 +19,7 @@ import { useOnboardingStatus } from '../lib/onboarding'
 import { recordProfileView, useProfileViewCount } from '../lib/profileViews'
 import { useFeaturedBadges } from '../lib/achievements'
 import { usePageTitle } from '../lib/usePageTitle'
+import { fetchLeadShift, shiftLabel } from '../lib/taskRequests'
 
 const LEVEL_OPTIONS: ProjectLevel[] = ['contributor', 'l0', 'l1', 'l10']
 
@@ -147,6 +148,13 @@ export function CbProfile() {
   const contributorId = data?.user?.id ?? null
   const contributorLeadId = data?.user?.lead_id ?? null
 
+  // A lead's shift (when their contributors can send requests), shown on their profile, their own included.
+  const { data: leadShift = null } = useQuery({
+    queryKey: ['lead-shift', contributorId],
+    queryFn: () => fetchLeadShift(contributorId!),
+    enabled: Boolean(contributorId) && data?.user?.role === 'lead',
+  })
+
   // Opening someone else's profile counts as a view (the database keeps one per viewer per day).
   // The count is refetched afterwards so it includes this visit.
   const viewCount = useProfileViewCount(contributorId)
@@ -230,7 +238,8 @@ export function CbProfile() {
     return <div className="text-gray-400">Loading...</div>
   }
 
-  if (data.user && data.user.role !== 'contributor' && !isOwnProfile) {
+  // Everyone's profile is open to everyone, except the bot's: it has none to show.
+  if (data.user?.is_bot) {
     return <Navigate to="/" replace />
   }
 
@@ -330,10 +339,11 @@ export function CbProfile() {
         </div>
       )}
 
-      {!isOwnProfile && data.user?.shift && (
+      {(leadShift || (!isOwnProfile && data.user?.shift)) && (
         <div className="mb-6 rounded-xl border border-gray-200 bg-white px-5 py-4 text-sm text-gray-600">
-          <span className="font-medium text-gray-700">Shift:</span> {data.user.shift}
-          {data.user.meet_link && (
+          <span className="font-medium text-gray-700">Shift:</span> {leadShift ? shiftLabel(leadShift) : data.user?.shift}
+          {leadShift && <span className="ml-2 text-xs text-gray-400">Requests can be sent during this shift</span>}
+          {data.user?.meet_link && (
             <>
               <span className="mx-2 text-gray-300">|</span>
               <a href={data.user.meet_link} target="_blank" rel="noreferrer" className="text-sky-700 hover:underline">

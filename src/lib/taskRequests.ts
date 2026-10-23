@@ -1,5 +1,7 @@
 import { supabase } from './api'
 import type { RequestStatus, Stage, TaskRequest } from '../types'
+import { sgMinutesSinceMidnight } from './week'
+import { attendanceTimeLabel } from './attendanceWindow'
 
 // TaskRequest is a union (ExtensionTaskRequest | ReclaimTaskRequest | BadVideoTaskRequest) — an interface can't
 // `extends` a union (only object types/intersections), so this intersects instead. That still
@@ -79,6 +81,56 @@ export async function fetchOverdueRequestCount(): Promise<number> {
     .lte('requested_at', cutoff)
   if (error) throw error
   return count ?? 0
+}
+
+// A lead's shift, in minutes after midnight, Singapore time. One that ends before it starts runs
+// past midnight. A lead's contributors can only send requests during it; the database checks the
+// same (task_requests_within_lead_shift in supabase/migrations/20261023_lead_shifts.sql).
+export interface Shift {
+  startsMin: number
+  endsMin: number
+}
+
+export interface RequestShift extends Shift {
+  leadName: string
+}
+
+export function inShift(shift: Shift, now = Date.now()): boolean {
+  const minutes = sgMinutesSinceMidnight(new Date(now))
+  return shift.startsMin < shift.endsMin
+    ? minutes >= shift.startsMin && minutes < shift.endsMin
+    : minutes >= shift.startsMin || minutes < shift.endsMin
+}
+
+/** "6:00 AM – 2:00 PM". */
+export function shiftLabel(shift: Shift): string {
+  return `${attendanceTimeLabel(shift.startsMin)} – ${attendanceTimeLabel(shift.endsMin)}`
+}
+
+/** The caller's own lead's shift, or null when they have no lead or the lead hasn't set one. */
+export async function fetchRequestShift(): Promise<RequestShift | null> {
+  const { data, error } = await supabase.rpc('request_shift')
+  if (error) throw error
+  const row = ((data ?? []) as { lead_name: string; starts_min: number; ends_min: number }[])[0]
+  return row ? { leadName: row.lead_name, startsMin: row.starts_min, endsMin: row.ends_min } : null
+}
+
+/** One lead's shift, for their profile, or null when they haven't set one. */
+export async function fetchLeadShift(leadId: string): Promise<Shift | null> {
+  const { data, error } = await supabase.rpc('lead_shift', { p_lead_id: leadId })
+  if (error) throw error
+  const row = ((data ?? []) as { starts_min: number; ends_min: number }[])[0]
+  return row ? { startsMin: row.starts_min, endsMin: row.ends_min } : null
+}
+
+/** Sets a lead's shift; null clears it, so their contributors can send requests any time. */
+export async function setLeadShift(leadId: string, shift: Shift | null): Promise<void> {
+  const { error } = await supabase.rpc('set_lead_shift', {
+    p_lead_id: leadId,
+    p_starts_min: shift?.startsMin ?? null,
+    p_ends_min: shift?.endsMin ?? null,
+  })
+  if (error) throw error
 }
 
 /**

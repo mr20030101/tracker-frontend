@@ -33,6 +33,9 @@ import {
   requestExtension,
   reviewTaskRequest,
   deleteTaskRequest,
+  fetchRequestShift,
+  inShift,
+  shiftLabel,
 } from '../lib/taskRequests'
 import type { ContributorProfile, Project, TaskRequest, TaskSubmission } from '../types'
 import { ProgressRing } from './ProgressRing'
@@ -128,6 +131,10 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
   // `data` reloads with a same-content-but-new-reference all_submissions array.
   const submissionIds = (data?.all_submissions ?? []).map((s) => s.id)
   const submissionIdsKey = submissionIds.join(',')
+  // A contributor can only send a request during their lead's shift (the database checks it too).
+  const { data: requestShift = null } = useQuery({ queryKey: ['request-shift'], queryFn: fetchRequestShift, enabled: !isManager })
+  const outsideShift = !isManager && requestShift !== null && !inShift(requestShift, now)
+  const outsideShiftHint = outsideShift ? `Requests open during ${requestShift.leadName}'s shift, ${shiftLabel(requestShift)}.` : undefined
   const { data: taskRequests = [] } = useQuery({
     queryKey: ['task-requests', submissionIdsKey],
     queryFn: async () => {
@@ -721,6 +728,8 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                                   {
                                     label: `Resend ${noun} request`,
                                     icon: RotateCw,
+                                    disabled: outsideShift,
+                                    title: outsideShiftHint,
                                     onClick: () => setRequestingExtensionFor({ submission: row, type, mode: 'resend', request }),
                                   },
                                 ]
@@ -728,6 +737,8 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                                   {
                                     label: `Request ${noun}`,
                                     icon: type === 'extension' ? Clock : RotateCcw,
+                                    disabled: outsideShift,
+                                    title: outsideShiftHint,
                                     onClick: () => setRequestingExtensionFor({ submission: row, type, mode: 'new' }),
                                   },
                                 ]
@@ -865,7 +876,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                                   }
                                 : badVideoPending
                                   ? { label: 'Bad video report pending', icon: Flag, disabled: true, onClick: () => {} }
-                                  : { label: 'Report bad video', icon: Flag, onClick: () => setReportingBadVideoFor(row) },
+                                  : { label: 'Report bad video', icon: Flag, disabled: outsideShift, title: outsideShiftHint, onClick: () => setReportingBadVideoFor(row) },
                               {
                                 label: 'Delete',
                                 icon: Trash2,

@@ -30,6 +30,7 @@ import { useCelebrations } from '../lib/celebrations'
 import { rankWeek, standingFor, teamGoal, useTeamWeeks, weekStarts } from '../lib/teamWeeks'
 import { DashboardHero } from '../components/DashboardHero'
 import { usePageTitle } from '../lib/usePageTitle'
+import { fetchRequestShift, shiftLabel } from '../lib/taskRequests'
 
 const TREND_DAYS = 30
 
@@ -92,6 +93,8 @@ export function ContributorDashboard() {
 
   const contributorId = data?.user?.id ?? null
 
+  // The lead's shift: when they're around, and when requests can be sent.
+  const { data: leadShift = null } = useQuery({ queryKey: ['request-shift'], queryFn: fetchRequestShift })
   const { data: todaysAttendance } = useQuery({
     queryKey: ['attendance', 'own', user?.id, today],
     queryFn: () => fetchOwnAttendance(user!.id, today),
@@ -269,6 +272,17 @@ export function ContributorDashboard() {
                 >
                   <MessageCircle className="h-4 w-4" />
                   Chat with {bot.name}
+                </button>
+              )}
+              {lead && (
+                <button
+                  type="button"
+                  onClick={() => openChatWith(lead.id, lead.name)}
+                  className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  Message {lead.name}
+                  {leadShift && <span className="font-normal text-gray-400">· on shift {shiftLabel(leadShift)}</span>}
                 </button>
               )}
           </>

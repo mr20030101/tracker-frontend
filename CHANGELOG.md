@@ -14,6 +14,16 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Added
+
+- Leads have a shift. A lead sets theirs in Settings, under Profile, and their contributors can only send extension, reclaim and bad-video requests during it. Outside the shift those options are greyed out and the Requests page says when requests open again. A lead's shift shows on their profile and on their contributors' dashboards. Jay Anne's shift is 6:00 AM – 2:00 PM.
+- Anyone can open anyone's profile, leads' and admins' included, from search, a chat or a link.
+- The dashboard has a "Message your lead" button next to "Chat with Meera".
+
+### Changed
+
+- The default weekly target is now 125 tasks, which makes the daily target 25. Targets a lead already set for someone stay as they are.
+
 ## 5.26.0 — 2026-10-23
 
 ### Changed
