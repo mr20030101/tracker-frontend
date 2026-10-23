@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 5.25.0 — 2026-10-23
+
 ### Added
 
 - Rewards now count task levels. When creating a reward, choose which levels count (Attempter, L0, L1) and how many points a task at each level is worth (decimals like 1.5 work too), so the harder L0 and L1 reviews can score more. Places and minimums then go by points. Each person's standing shows how many Attempter, L0 and L1 tasks they've done. Existing rewards count every level as 1 point, the same as before.
