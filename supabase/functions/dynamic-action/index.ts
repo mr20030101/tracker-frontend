@@ -127,7 +127,7 @@ Deno.serve(async (request) => {
             if (missing.length > 0) missingSnip.push({ name: c.name, count: missing.length })
 
             const weekCount = (weekSubs ?? []).filter((r) => belongsTo(r, c)).length
-            const target = targetByUserId.get(c.id) ?? 50
+            const target = targetByUserId.get(c.id) ?? 125
             if (weekCount >= target) hitTarget.push(c.name)
         }
 

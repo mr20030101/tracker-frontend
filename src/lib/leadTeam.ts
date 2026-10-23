@@ -1,10 +1,7 @@
 import { supabase } from './api'
-import { WEEK_LENGTH_DAYS } from './week'
+import { DEFAULT_WEEKLY_TARGET, WEEK_LENGTH_DAYS } from './week'
 import type { User } from '../types'
 import { fetchAllPages } from './fetchAll'
-
-// Matches the default the dashboard and leaderboard use for a contributor with no target row.
-const DEFAULT_WEEKLY_TARGET = 50
 
 export interface TeamMember {
   user: User

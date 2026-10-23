@@ -1,6 +1,11 @@
 // The business week runs Tuesday through the following Monday (7 days).
 export const WEEK_LENGTH_DAYS = 7
 
+// A contributor's weekly target when no one has set one: 25 tasks a day over 5 working days. The
+// database falls back to the same number (supabase/migrations/20261023_lead_shifts.sql), and so do
+// the daily-digest, dynamic-action and lead-recommendation edge functions.
+export const DEFAULT_WEEKLY_TARGET = 125
+
 // Every "today"/"this week"/"this month" in the app is Asia/Singapore's calendar day, not
 // whatever timezone a visitor's device happens to be set to. That way a contributor's daily
 // goal, the leaderboard's "this week", and a lead's dashboard all agree on which day it is,

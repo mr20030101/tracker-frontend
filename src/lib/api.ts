@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { WEEK_LENGTH_DAYS } from './week'
+import { DEFAULT_WEEKLY_TARGET, WEEK_LENGTH_DAYS } from './week'
 import { DEFAULT_SUPABASE_ANON_KEY, DEFAULT_SUPABASE_URL } from './supabaseConfig'
 import type { ActivityEvent, ActivityLog, ContributorProfile, DashboardSummary, DailyReportRow, LeaderboardRow, Paginated, Project, ProjectBreakdown, ProjectLevel, ProjectReportRow, Resource, Stage, TaskSubmission, User } from '../types'
 import { fetchAllPages } from './fetchAll'
@@ -139,7 +139,7 @@ async function dashboard(params: Record<string, unknown>): Promise<DashboardSumm
         (!projectId || submission.project_id === projectId),
     )
     const submitted = entries.filter((entry) => entry.status === 'submitted').length
-    const baseTarget = (targets ?? []).find((item) => item.user_id === user.id)?.target ?? 50
+    const baseTarget = (targets ?? []).find((item) => item.user_id === user.id)?.target ?? DEFAULT_WEEKLY_TARGET
     const target = Math.round(baseTarget * multiplier)
     return { user_id: user.id, cb_email: user.email, name: user.name, lead_id: user.lead_id ?? null, is_active: user.is_active, tasks_submitted: submitted, weekly_target: target, progress: target ? submitted / target : 0 }
   })
@@ -244,7 +244,7 @@ async function contributor(params: Record<string, unknown>): Promise<Contributor
       cb_email: email,
       week_start: weekStart,
       week_end: weekEnd,
-      weekly_target: stats?.weekly_target ?? 50,
+      weekly_target: stats?.weekly_target ?? DEFAULT_WEEKLY_TARGET,
       submitted_this_week: Number(stats?.submitted_this_week ?? 0),
       total_submitted: 0,
       total_logged: 0,
@@ -276,7 +276,7 @@ async function contributor(params: Record<string, unknown>): Promise<Contributor
     const name = row.project?.name ?? 'Unassigned'
     return { ...counts, [name]: (counts[name] ?? 0) + 1 }
   }, {})
-  return { user: user as User | null, cb_email: email, week_start: weekStart, week_end: weekEnd, weekly_target: target?.target ?? 50, submitted_this_week: weekRows.filter((row) => row.status === 'submitted').length, total_submitted: submissions.filter((row) => row.status === 'submitted').length, total_logged: submissions.length, stage_breakdown: stageBreakdown, project_breakdown: Object.entries(projectBreakdown).map(([name, total]) => ({ name, total })), week_submissions: weekRows, recent_submissions: submissions.slice(0, 10), all_submissions: submissions, is_public_view: false }
+  return { user: user as User | null, cb_email: email, week_start: weekStart, week_end: weekEnd, weekly_target: target?.target ?? DEFAULT_WEEKLY_TARGET, submitted_this_week: weekRows.filter((row) => row.status === 'submitted').length, total_submitted: submissions.filter((row) => row.status === 'submitted').length, total_logged: submissions.length, stage_breakdown: stageBreakdown, project_breakdown: Object.entries(projectBreakdown).map(([name, total]) => ({ name, total })), week_submissions: weekRows, recent_submissions: submissions.slice(0, 10), all_submissions: submissions, is_public_view: false }
 }
 
 async function leaderboard(params: Record<string, unknown>): Promise<LeaderboardRow[]> {

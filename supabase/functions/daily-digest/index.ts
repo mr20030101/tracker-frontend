@@ -26,7 +26,7 @@ function localDateString(daysAgo: number): string {
 
 // The business week runs Tuesday to Monday, and weekly_targets are keyed by that Tuesday (see
 // startOfWeek in src/lib/week.ts). This used to start weeks on Monday, so the digest never found a
-// target someone had set and always compared against the default 50.
+// target someone had set and always compared against the default.
 function startOfBusinessWeek(dateStr: string): string {
     const d = new Date(`${dateStr}T00:00:00Z`)
     d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() - 2 + 7) % 7))
@@ -161,7 +161,7 @@ Deno.serve(async (request) => {
             if (missing.length > 0) missingSnip.push({ name: c.name, count: missing.length })
 
             const weekCount = (weekSubs ?? []).filter((r) => belongsTo(r, c)).length
-            const target = targetByUserId.get(c.id) ?? 50
+            const target = targetByUserId.get(c.id) ?? 125
             if (weekCount >= target) hitTarget.push(c.name)
         }
 
@@ -204,7 +204,7 @@ async function weeklyReport(admin: Admin, botId: string): Promise<Response> {
     const rows: Row[] = (contributors ?? []).map((c) => ({
         name: c.name,
         count: (weekSubs ?? []).filter((r) => belongsTo(r, c)).length,
-        target: targetByUserId.get(c.id) ?? 50,
+        target: targetByUserId.get(c.id) ?? 125,
         leadId: c.lead_id,
     }))
 

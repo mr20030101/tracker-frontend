@@ -92,7 +92,7 @@ async function handle(request: Request): Promise<Response> {
     ])
 
     const summary = contributors.map((contributor) => {
-        const target = targets?.find((t) => t.user_id === contributor.id)?.target ?? 50
+        const target = targets?.find((t) => t.user_id === contributor.id)?.target ?? 125
         const submittedThisWeek = (submissions ?? []).filter(
             (s) =>
                 s.status === 'submitted' &&
