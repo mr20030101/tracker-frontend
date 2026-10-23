@@ -155,8 +155,8 @@ function Palette({ pages, onClose }: { pages: SearchPage[]; onClose: () => void 
       .sort((a, b) => a.name.localeCompare(b.name))
       .slice(0, PER_GROUP)
     for (const person of people) {
-      // A contributor's profile is the useful page; leads, admins and the bot have none to show, so chat.
-      const toProfile = person.role === 'contributor'
+      // Everyone has a profile to show except the bot, so that opens a chat.
+      const toProfile = !person.is_bot
       out.push({
         key: `person-${person.id}`,
         group: 'People',

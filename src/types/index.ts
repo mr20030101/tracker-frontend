@@ -16,6 +16,8 @@ export interface User {
   remotasks_id: string | null
   // A short self-written line shown on the profile page, self-set from Edit Profile.
   bio: string | null
+  // The FAQ bot's own profile (Meera). Left out where a profile comes from the public-stats RPC.
+  is_bot?: boolean
 }
 
 export type ActivityEvent = 'login' | 'login_failed' | 'logout'
