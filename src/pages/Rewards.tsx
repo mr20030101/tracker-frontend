@@ -1,7 +1,7 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Award, CalendarDays, Check, ChevronDown, ChevronUp, Gift, Layers, Plus, Trash2, Trophy, Users, X } from 'lucide-react'
+import { Award, CalendarDays, Check, ChevronDown, ChevronUp, Gift, Plus, Trash2, Trophy, Users, X } from 'lucide-react'
 import { api, errorMessage } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useMessaging } from '../lib/messagingContext'
@@ -12,6 +12,7 @@ import {
   STAGES,
   STAGE_LABELS,
   awardReward,
+  countedStages,
   cancelReward,
   createReward,
   describeLevels,
@@ -28,6 +29,7 @@ import {
   scoreText,
   scoreUnit,
   setRewardPaid,
+  stagePoints,
   usesPoints,
   useRewardStandings,
   useRewardWinners,
@@ -40,6 +42,7 @@ import {
 } from '../lib/rewards'
 import type { Project, Stage } from '../types'
 import { Avatar } from '../components/Avatar'
+import { LEVEL_TIERS } from '../components/LevelPill'
 import { Modal } from '../components/Modal'
 import { Select } from '../components/Select'
 import { Reveal } from '../components/Reveal'
@@ -225,12 +228,7 @@ function RewardCard({
               <CalendarDays className="h-3.5 w-3.5" />
               {formatRange(reward.starts_on, reward.ends_on)} · {whenLine(reward, phase, today)}
             </span>
-            {levels && (
-              <span className="flex items-center gap-1">
-                <Layers className="h-3.5 w-3.5" />
-                {levels}
-              </span>
-            )}
+            {levels && <LevelPointPills reward={reward} label={levels} />}
             {isManager && (
               <span className="flex items-center gap-1">
                 <Users className="h-3.5 w-3.5" />
@@ -294,6 +292,42 @@ function RewardCard({
   )
 }
 
+// A task level's pill colours: the hues of the level badges on contributor profiles, as see-through
+// tints so they sit well on the light and the dark theme.
+const STAGE_PILL: Record<Stage, string> = {
+  attempt: 'border-orange-500/40 bg-orange-500/10 text-orange-500',
+  l0: 'border-sky-500/40 bg-sky-500/10 text-sky-500',
+  l1: 'border-violet-500/40 bg-violet-500/10 text-violet-500',
+}
+
+// A task level as a small pill with its icon, and a value beside the label: its points on a
+// reward, or someone's task count.
+function StagePill({ stage, faded, children }: { stage: Stage; faded?: boolean; children?: ReactNode }) {
+  const Icon = LEVEL_TIERS[stage === 'attempt' ? 'contributor' : stage].icon
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-semibold ${STAGE_PILL[stage]} ${faded ? 'opacity-40' : ''}`}>
+      <Icon className="h-3 w-3" aria-hidden />
+      {STAGE_LABELS[stage]}
+      {children !== undefined && <span className="font-normal">{children}</span>}
+    </span>
+  )
+}
+
+// The levels a reward counts, with their points when the levels are worth different amounts.
+function LevelPointPills({ reward, label }: { reward: Reward; label: string }) {
+  const points = stagePoints(reward)
+  const weighted = usesPoints(reward)
+  return (
+    <span className="flex flex-wrap items-center gap-1.5" aria-label={`Counts ${label}`}>
+      {countedStages(reward).map((stage) => (
+        <StagePill key={stage} stage={stage}>
+          {weighted ? `${formatScore(points[stage])} pt${points[stage] === 1 ? '' : 's'}` : undefined}
+        </StagePill>
+      ))}
+    </span>
+  )
+}
+
 const STANDINGS_SHOWN = 10
 
 function StandingsList({ reward, standings, meId }: { reward: Reward; standings: RewardStanding[]; meId: string | undefined }) {
@@ -325,7 +359,16 @@ function StandingsList({ reward, standings, meId }: { reward: Reward; standings:
                   {s.name}
                   {isMe && <span className="ml-2 text-xs font-semibold text-accent">You</span>}
                 </Link>
-                <div className="truncate text-xs text-gray-500">{levelBreakdown(reward, s)}</div>
+                <div className="mt-0.5 flex flex-wrap gap-1" aria-label={levelBreakdown(reward, s)}>
+                  {countedStages(reward).map((stage) => {
+                    const count = { attempt: s.attempt_tasks, l0: s.l0_tasks, l1: s.l1_tasks }[stage]
+                    return (
+                      <StagePill key={stage} stage={stage} faded={count === 0}>
+                        {count.toLocaleString()}
+                      </StagePill>
+                    )
+                  })}
+                </div>
                 <div className="mt-1 h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-gray-100">
                   <div className={`h-full rounded-full ${s.qualifies ? 'bg-emerald-500' : 'bg-accent'}`} style={{ width: `${pct}%` }} />
                 </div>
