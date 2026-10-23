@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 5.27.0 — 2026-10-23
+
 ### Added
 
 - Leads have a shift. A lead sets theirs in Settings, under Profile, and their contributors can only send extension, reclaim and bad-video requests during it. Outside the shift those options are greyed out and the Requests page says when requests open again. A lead's shift shows on their profile and on their contributors' dashboards. Jay Anne's shift is 6:00 AM – 2:00 PM.
