@@ -14,6 +14,10 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Added
+
+- Every task has a timer showing how long you've spent on it. It starts by itself when you log a task that's in progress, and you can pause and start it from the Time column in your Task Log. It stops when the task is submitted or otherwise finished, and only one runs at a time: starting one pauses the others.
+
 ## 5.28.0 — 2026-10-23
 
 ### Changed

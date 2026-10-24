@@ -144,13 +144,17 @@ export function TaskSubmissionForm({ submission, onClose }: Props) {
         return
       }
 
+      // A contributor's own task that's in progress starts its timer (any value starts it; the
+      // database sets the real time, so a queued task's timer starts once it's sent).
+      const newPayload = !isManager && form.status === 'in_progress' ? { ...payload, timer_started_at: new Date().toISOString() } : payload
+
       // A new task with the connection down is saved on this device and sent when it's back
       // (OfflineQueueBanner), rather than lost with the form. Only a plain new submission: one
       // that also creates a project already failed above without a connection.
       const queueIt = () => {
         if (!user) return false
         try {
-          queueSubmission(user.id, payload)
+          queueSubmission(user.id, newPayload)
           return true
         } catch {
           return false
@@ -158,7 +162,7 @@ export function TaskSubmissionForm({ submission, onClose }: Props) {
       }
       if (!navigator.onLine && queueIt()) return
       try {
-        await api.post('/task-submissions', payload)
+        await api.post('/task-submissions', newPayload)
       } catch (err) {
         if (isNetworkError(err) && queueIt()) return
         throw err

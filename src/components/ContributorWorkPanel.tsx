@@ -44,6 +44,7 @@ import { CountUp } from './CountUp'
 import { GrowBar } from './GrowBar'
 import { StatusPill } from './StatusPill'
 import { ActionsMenu } from './ActionsMenu'
+import { TaskTimer } from './TaskTimer'
 import { SortableHeader } from './SortableHeader'
 import { CtsFormModal } from './CtsFormModal'
 import { TaskSubmissionForm } from './TaskSubmissionForm'
@@ -689,6 +690,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                     <SortableHeader label="Project" active={sort.key === 'project'} dir={sort.dir} onClick={() => toggleSort('project')} />
                     <SortableHeader label="Stage" active={sort.key === 'stage'} dir={sort.dir} onClick={() => toggleSort('stage')} />
                     <SortableHeader label="Status" active={sort.key === 'status'} dir={sort.dir} onClick={() => toggleSort('status')} />
+                    <th className="px-5 py-3">Time</th>
                     <th className="px-5 py-3">CTS</th>
                     <th className="px-5 py-3">Extension / Reclaim</th>
                     <SortableHeader label="Date" active={sort.key === 'date'} dir={sort.dir} onClick={() => toggleSort('date')} />
@@ -698,7 +700,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                 <tbody className="divide-y divide-gray-100">
                   {pagedSubmissions.length === 0 && (
                     <tr>
-                      <td colSpan={8} className="px-5 py-6 text-center text-gray-400">
+                      <td colSpan={9} className="px-5 py-6 text-center text-gray-400">
                         No submissions for this {viewMode}.
                       </td>
                     </tr>
@@ -816,6 +818,9 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                       <td className="px-5 py-3 uppercase text-gray-600">{row.stage}</td>
                       <td className="px-5 py-3">
                         <StatusPill status={row.status} />
+                      </td>
+                      <td className="px-5 py-3">
+                        <TaskTimer task={row} canControl={canEdit} />
                       </td>
                       <td className="px-5 py-3">
                         {row.cts_submitted_at ? (

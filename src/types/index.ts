@@ -80,6 +80,9 @@ export interface TaskSubmission {
   submitted_at: string | null
   snipboard_url: string | null
   cts_submitted_at: string | null
+  // The task's timer: running while timer_started_at is set, plus the seconds banked from earlier runs.
+  timer_started_at?: string | null
+  timer_elapsed_seconds?: number
   created_at: string
   updated_at?: string
 }
