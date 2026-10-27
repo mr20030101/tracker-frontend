@@ -54,6 +54,25 @@ export async function fetchPendingRequestCount(): Promise<number> {
   return count ?? 0
 }
 
+export interface PendingRequestAlarmRow {
+  id: number
+  requested_by: string
+  type: 'extension' | 'reclaim' | 'bad_video'
+  requester: { name: string; email: string } | null
+}
+
+/** The pending requests a lead's alarm rings for: every one they can see but didn't send themselves. */
+export async function fetchPendingRequestsForAlarm(meId: string): Promise<PendingRequestAlarmRow[]> {
+  const { data, error } = await supabase
+    .from('task_requests')
+    .select('id, requested_by, type, requester:profiles!task_extension_requests_requested_by_fkey(name, email)')
+    .eq('status', 'pending')
+    .neq('requested_by', meId)
+    .order('requested_at', { ascending: false })
+  if (error) throw error
+  return (data ?? []) as unknown as PendingRequestAlarmRow[]
+}
+
 // A request still pending this long is overdue: leads are reminded (a red Requests badge, a
 // banner on the Requests page and a pill on the dashboard) until someone decides it.
 export const OVERDUE_HOURS = 4

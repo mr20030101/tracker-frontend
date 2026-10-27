@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useLocation } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { X } from 'lucide-react'
 import { supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
@@ -8,6 +9,7 @@ import { ALERT_NOTIFICATION_SOUND, loopSound } from '../lib/sound'
 import { Avatar } from './Avatar'
 import { RequestAlarm } from './RequestAlarm'
 import { contributorPath } from '../lib/urlRef'
+import { fetchPendingRequestsForAlarm } from '../lib/taskRequests'
 
 const MANAGER_ROLES = ['admin', 'lead']
 const MAX_SUBMISSION_ALERTS = 20
@@ -17,6 +19,31 @@ const EDGE_GAP = 8
 const PANEL_Z_INDEX = 60
 // How often the tab title flips while a new request is ringing.
 const TITLE_FLASH_MS = 1000
+// How often the alarm checks for pending requests, in case a live event was missed.
+const PENDING_POLL_MS = 30_000
+
+// The pending requests a lead has already looked at (opened the bell, the Requests page or the
+// alarm's buttons), kept in this browser so a reload doesn't ring for them again.
+function seenKey(userId: string) {
+  return `request-alarm-seen:${userId}`
+}
+
+function readSeen(userId: string | undefined): Set<number> {
+  if (!userId) return new Set()
+  try {
+    return new Set(JSON.parse(localStorage.getItem(seenKey(userId)) ?? '[]') as number[])
+  } catch {
+    return new Set()
+  }
+}
+
+function writeSeen(userId: string, ids: number[]) {
+  try {
+    localStorage.setItem(seenKey(userId), JSON.stringify(ids))
+  } catch {
+    // Not remembering only means it rings again after a reload.
+  }
+}
 
 interface SubmissionAlert {
   id: string
@@ -61,11 +88,31 @@ export function NotificationBell() {
   const buttonRef = useRef<HTMLButtonElement>(null)
   const isManager = Boolean(user && MANAGER_ROLES.includes(user.role))
   const { pathname } = useLocation()
-  // Leads only (admins keep the quiet bell): up from the moment a new request lands until they look,
-  // by opening the bell, the Requests page or the alarm's own buttons. `unseen` is how many came in meanwhile.
+  // Leads only (admins keep the quiet bell): rings, on whatever page they're on, while any pending
+  // request they haven't looked at yet is waiting, until they look by opening the bell, the
+  // Requests page or the alarm's own buttons. It goes by the pending requests themselves (checked
+  // every half minute, and at once on a live event) rather than by live events alone, so a missed
+  // event, a sleeping tab or a request sent before they signed in still sets it off.
   const isLead = user?.role === 'lead'
-  const [ringing, setRinging] = useState(false)
-  const [unseen, setUnseen] = useState(0)
+  const onRequestsPage = pathname.startsWith('/requests')
+  const { data: pendingRequests = [], refetch: refetchPending } = useQuery({
+    queryKey: ['task-requests', 'pending-alarm', user?.id],
+    queryFn: () => fetchPendingRequestsForAlarm(user!.id),
+    enabled: isLead,
+    refetchInterval: PENDING_POLL_MS,
+    refetchIntervalInBackground: true,
+  })
+  const [seen, setSeen] = useState<Set<number>>(() => readSeen(user?.id))
+  const unseenRequests = pendingRequests.filter((r) => !seen.has(r.id))
+  const ringing = isLead && unseenRequests.length > 0 && !open && !onRequestsPage
+
+  // Everything pending now counts as looked at; only requests that come in after this ring again.
+  function markSeen() {
+    if (!user) return
+    const ids = pendingRequests.map((r) => r.id)
+    setSeen(new Set(ids))
+    writeSeen(user.id, ids)
+  }
 
   // Fixed-position panel, measured against the button: never clipped by an ancestor's
   // overflow-hidden, and flips upward if there isn't room below.
@@ -88,9 +135,9 @@ export function NotificationBell() {
   const [projectNames, setProjectNames] = useState<Map<number, string>>()
   // Read through refs so the live subscriptions below don't restart when these load: restarting one
   // left it dead (see liveChannelName).
-  const lookups = useRef({ profileNames, profilesById, projectNames, isLead })
+  const lookups = useRef({ profileNames, profilesById, projectNames, refetchPending })
   useEffect(() => {
-    lookups.current = { profileNames, profilesById, projectNames, isLead }
+    lookups.current = { profileNames, profilesById, projectNames, refetchPending }
   })
 
   useEffect(() => {
@@ -150,16 +197,14 @@ export function NotificationBell() {
     if (!isManager) return
 
     function addRequestAlert(row: TaskRequestRow) {
-      const { profilesById, isLead } = lookups.current
+      const { profilesById, refetchPending } = lookups.current
       const profile = profilesById?.get(row.requested_by)
       const id = `${row.id}-${Date.now()}`
       setRequestAlerts((prev) =>
         [{ id, name: profile?.name ?? 'Someone', email: profile?.email ?? '', type: row.type }, ...prev].slice(0, MAX_SUBMISSION_ALERTS),
       )
-      if (isLead) {
-        setRinging(true)
-        setUnseen((n) => n + 1)
-      }
+      // Ring now rather than at the next check.
+      refetchPending()
     }
 
     const channel = supabase
@@ -182,15 +227,14 @@ export function NotificationBell() {
 
   // Deliberately hard to ignore: the alert sound plays on repeat, the bell shakes and the tab title
   // flashes, and none of it stops until the request has been seen.
+  const seenNow = open || onRequestsPage
   useEffect(() => {
-    if (open || pathname.startsWith('/requests')) setRinging(false)
-  }, [open, pathname])
+    if (seenNow) markSeen()
+    // Rerun when the pending requests change, so ones arriving while the lead is looking count as seen.
+  }, [seenNow, pendingRequests])
 
   useEffect(() => {
-    if (!ringing) {
-      setUnseen(0)
-      return
-    }
+    if (!ringing) return
     const stopSound = loopSound(ALERT_NOTIFICATION_SOUND)
     const title = document.title
     let flipped = false
@@ -243,7 +287,17 @@ export function NotificationBell() {
         )}
       </button>
 
-      {ringing && <RequestAlarm requests={requestAlerts.slice(0, unseen)} onDismiss={() => setRinging(false)} />}
+      {ringing && (
+        <RequestAlarm
+          requests={unseenRequests.map((r) => ({
+            id: String(r.id),
+            name: r.requester?.name ?? 'Someone',
+            email: r.requester?.email ?? '',
+            type: r.type,
+          }))}
+          onDismiss={markSeen}
+        />
+      )}
 
       {open &&
         pos &&
