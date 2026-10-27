@@ -288,6 +288,86 @@ as $$
   )
 $$;
 
+-- ============================================================================================
+-- Daily quotas: each project sets how many tasks a day it expects from a contributor at each CB
+-- level (null when it hasn't set one). A contributor's projects are their lead's projects, at
+-- their level on each (contributor when none is set). Their weekly target is those daily quotas
+-- added up, times five working days; someone with no quota on any of their projects keeps the
+-- target set for them that week, or 125.
+-- ============================================================================================
+alter table public.projects
+  add column if not exists daily_quota_contributor integer check (daily_quota_contributor >= 0),
+  add column if not exists daily_quota_l0 integer check (daily_quota_l0 >= 0),
+  add column if not exists daily_quota_l1 integer check (daily_quota_l1 >= 0),
+  add column if not exists daily_quota_l10 integer check (daily_quota_l10 >= 0);
+
+-- Every contributor in p_user_ids (all of them when null), unchecked: only for the security
+-- definer functions here, which decide who sees what themselves.
+create or replace function public.daily_quotas_unchecked(p_user_ids uuid[])
+returns table (user_id uuid, project_id bigint, level text, daily_quota integer)
+language sql stable security definer set search_path = public
+as $$
+  select x.user_id, x.project_id, x.level, x.daily_quota from (
+    select p.id as user_id, pr.id as project_id, coalesce(cpl.level, 'contributor') as level,
+      case coalesce(cpl.level, 'contributor')
+        when 'contributor' then pr.daily_quota_contributor
+        when 'l0' then pr.daily_quota_l0
+        when 'l1' then pr.daily_quota_l1
+        when 'l10' then pr.daily_quota_l10
+      end as daily_quota
+    from public.profiles p
+    join public.project_leads pl on pl.lead_id = p.lead_id
+    join public.projects pr on pr.id = pl.project_id
+    left join public.contributor_project_levels cpl on cpl.user_id = p.id and cpl.project_id = pr.id
+    where p.role = 'contributor' and (p_user_ids is null or p.id = any(p_user_ids))
+  ) x
+  where x.daily_quota is not null
+$$;
+revoke execute on function public.daily_quotas_unchecked(uuid[]) from public, anon, authenticated;
+
+create or replace function public.weekly_target_of(p_user_id uuid, p_week_start date)
+returns integer language sql stable security definer set search_path = public
+as $$
+  select coalesce(
+    (select sum(q.daily_quota)::integer * 5 from public.daily_quotas_unchecked(array[p_user_id]) q),
+    (select wt.target from public.weekly_targets wt where wt.user_id = p_user_id and wt.week_start = p_week_start),
+    125
+  )
+$$;
+revoke execute on function public.weekly_target_of(uuid, date) from public, anon, authenticated;
+
+-- Whether the caller may see this person's quotas and target: themselves, a lead's attached
+-- contributors, anyone for an admin, and everyone for the server (the digest edge functions).
+create or replace function public.can_see_target(p_user_id uuid)
+returns boolean language sql stable security definer set search_path = public
+as $$
+  select coalesce(auth.jwt() ->> 'role', '') = 'service_role' or public.is_admin() or public.is_own_or_attached(p_user_id)
+$$;
+revoke execute on function public.can_see_target(uuid) from public, anon, authenticated;
+
+-- The daily quota on each project, for these people (or everyone the caller may see when null).
+create or replace function public.project_daily_quotas(p_user_ids uuid[] default null)
+returns table (user_id uuid, project_id bigint, level text, daily_quota integer)
+language sql stable security definer set search_path = public
+as $$
+  select q.* from public.daily_quotas_unchecked(p_user_ids) q where public.can_see_target(q.user_id)
+$$;
+revoke execute on function public.project_daily_quotas(uuid[]) from public, anon;
+grant execute on function public.project_daily_quotas(uuid[]) to authenticated, service_role;
+
+-- The weekly target for the week starting p_week_start (a Tuesday), for these contributors (or
+-- every one the caller may see when null).
+create or replace function public.weekly_targets_for(p_week_start date, p_user_ids uuid[] default null)
+returns table (user_id uuid, target integer)
+language sql stable security definer set search_path = public
+as $$
+  select p.id, public.weekly_target_of(p.id, p_week_start)
+  from public.profiles p
+  where p.role = 'contributor' and (p_user_ids is null or p.id = any(p_user_ids)) and public.can_see_target(p.id)
+$$;
+revoke execute on function public.weekly_targets_for(date, uuid[]) from public, anon;
+grant execute on function public.weekly_targets_for(date, uuid[]) to authenticated, service_role;
+
 -- The caller's own login email, for policies that tie a row to it (task_submissions.cb_email).
 create or replace function public.own_email()
 returns text language sql stable security definer set search_path = public
@@ -468,7 +548,7 @@ as $$
     t.is_active,
     t.shift,
     t.bio,
-    coalesce((select wt.target from public.weekly_targets wt where wt.user_id = t.id and wt.week_start = p_week_start), 125) as weekly_target,
+    public.weekly_target_of(t.id, p_week_start) as weekly_target,
     (
       select count(*) from target_submissions ts
       where ts.status = 'submitted' and ts.date >= p_week_start and ts.date <= (p_week_start + 6)
@@ -1957,7 +2037,7 @@ grant execute on function public.onboarding_status(uuid[]) to authenticated;
 
 -- ============================================================================================
 -- Streaks & badges. A week is the business week (Tuesday to Monday, Asia/Singapore). A week is
--- "hit" when the contributor submitted at least their target for it (50 unless set) and at least
+-- "hit" when the contributor submitted at least their target for it (weekly_target_of) and at least
 -- one task. The current streak counts hit weeks back from the last finished week, plus this week
 -- once it's hit; an unfinished week never breaks a streak. Public like contributor_public_stats():
 -- only rollups, for contributors, to any active user. Also: personal_bests (weeks that beat every
@@ -1994,11 +2074,10 @@ as $$
   ),
   flags as (
     select w.user_id, w.week_start, coalesce(wk.n, 0) as n,
-      coalesce(wk.n, 0) > 0 and coalesce(wk.n, 0) >= coalesce(t.target, 125) as hit,
+      coalesce(wk.n, 0) > 0 and coalesce(wk.n, 0) >= public.weekly_target_of(w.user_id, w.week_start) as hit,
       w.week_start = (select ws from cw) as is_current
     from weeks w
     left join weekly wk on wk.user_id = w.user_id and wk.week_start = w.week_start
-    left join public.weekly_targets t on t.user_id = w.user_id and t.week_start = w.week_start
   ),
   counted as (
     select * from flags where not is_current or hit
@@ -2075,7 +2154,7 @@ as $$
       where s.status = 'submitted' and s.date >= w.week_start and s.date < w.week_start + 7
         and (s.user_id = t.id or lower(s.cb_email) = lower(t.email))
     )::integer,
-    coalesce((select wt.target from public.weekly_targets wt where wt.user_id = t.id and wt.week_start = w.week_start), 125)
+    public.weekly_target_of(t.id, w.week_start)
   from team t cross join weeks w
   order by w.week_start desc, t.name
 $$;
@@ -2836,7 +2915,7 @@ begin
   weekly as (
     select pe.id as uid, w.ws,
       (select count(*) from subs x where x.uid = pe.id and x.date >= w.ws and x.date < w.ws + 7) as n,
-      coalesce((select t.target from public.weekly_targets t where t.user_id = pe.id and t.week_start = w.ws), 125) as target
+      public.weekly_target_of(pe.id, w.ws) as target
     from people pe cross join weeks w
   ),
   hits as (

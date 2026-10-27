@@ -11,6 +11,7 @@ import { isUserId, messagePath, parseContributorRef } from '../lib/urlRef'
 import type { ContributorProfile, ContributorProjectLevel, Project, ProjectLevel } from '../types'
 import { Avatar } from '../components/Avatar'
 import { LevelPill, LEVEL_TIERS } from '../components/LevelPill'
+import { projectQuota } from '../lib/quotas'
 import { ContributorWorkPanel } from '../components/ContributorWorkPanel'
 import { Reveal } from '../components/Reveal'
 import { AchievementsCard, FeaturedBadgeChip } from '../components/Achievements'
@@ -212,7 +213,12 @@ export function CbProfile() {
         .upsert({ user_id: contributorId!, project_id: projectId, level }, { onConflict: 'user_id,project_id' })
       if (error) throw error
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['contributor-project-levels', contributorId] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contributor-project-levels', contributorId] })
+      // Their level sets their quota on the project, and so their target.
+      queryClient.invalidateQueries({ queryKey: ['contributor'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] })
+    },
   })
 
   const recommendationMutation = useMutation({
@@ -372,6 +378,9 @@ export function CbProfile() {
             {levelProjects.map(({ project, level }) => (
               <div key={project.id} className="flex items-center justify-between gap-3 py-3 text-sm first:pt-0 last:pb-0">
                 <span className="font-medium uppercase tracking-wide text-gray-700">{project.name}</span>
+                <span className="ml-auto text-xs text-gray-500">
+                  {projectQuota(project, level) !== null ? `${projectQuota(project, level)}/day quota` : 'No quota at this level'}
+                </span>
                 {canManageLevels ? (
                   <LevelBadgePicker
                     level={level}

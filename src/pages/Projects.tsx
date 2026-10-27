@@ -2,13 +2,76 @@ import { useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
-import type { Project, User } from '../types'
+import type { Project, ProjectLevel, User } from '../types'
 import { Modal } from '../components/Modal'
 import { Combobox } from '../components/Combobox'
 import { Pencil, Plus, Save, Trash2, UserPlus, X } from 'lucide-react'
 import { ActionsMenu } from '../components/ActionsMenu'
 import { confirmDialog } from '../lib/dialog'
 import { usePageTitle } from '../lib/usePageTitle'
+import { LEVEL_TIERS } from '../components/LevelPill'
+import { QUOTA_LEVELS, projectQuota } from '../lib/quotas'
+
+type QuotaInputs = Record<ProjectLevel, string>
+
+const NO_QUOTAS: QuotaInputs = { contributor: '', l0: '', l1: '', l10: '' }
+
+function quotaInputs(project: Project): QuotaInputs {
+  return Object.fromEntries(QUOTA_LEVELS.map((level) => [level, String(projectQuota(project, level) ?? '')])) as QuotaInputs
+}
+
+const QUOTA_ERROR = 'Each daily quota must be a whole number of tasks (0 or more), or blank.'
+
+function quotasValid(inputs: QuotaInputs) {
+  return QUOTA_LEVELS.every((level) => inputs[level].trim() === '' || /^\d+$/.test(inputs[level].trim()))
+}
+
+// The daily_quota_* columns to save; a blank field clears that level's quota.
+function quotaColumns(inputs: QuotaInputs) {
+  return Object.fromEntries(QUOTA_LEVELS.map((level) => [`daily_quota_${level}`, inputs[level].trim() === '' ? null : Number(inputs[level])]))
+}
+
+// A daily quota for each CB level: how many tasks a day the project expects at that level.
+function QuotaFields({ value, onChange }: { value: QuotaInputs; onChange: (next: QuotaInputs) => void }) {
+  return (
+    <div>
+      <label className="mb-1 block text-sm font-medium text-gray-700">Daily Quota by Level</label>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {QUOTA_LEVELS.map((level) => (
+          <label key={level} className="text-xs font-medium text-gray-500">
+            {LEVEL_TIERS[level].label}
+            <input
+              type="number"
+              min={0}
+              step={1}
+              value={value[level]}
+              onChange={(e) => onChange({ ...value, [level]: e.target.value })}
+              placeholder="—"
+              className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-accent"
+            />
+          </label>
+        ))}
+      </div>
+      <p className="mt-1 text-xs text-gray-400">
+        Tasks a day for a contributor at that level on this project. Their weekly target is the quotas on their projects times 5 working days. Leave a level blank for no quota.
+      </p>
+    </div>
+  )
+}
+
+function QuotaSummary({ project }: { project: Project }) {
+  const set = QUOTA_LEVELS.filter((level) => projectQuota(project, level) !== null)
+  if (set.length === 0) return <span className="text-gray-400">Not set</span>
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {set.map((level) => (
+        <span key={level} className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+          <span className="font-semibold">{LEVEL_TIERS[level].label}</span> {projectQuota(project, level)}/day
+        </span>
+      ))}
+    </div>
+  )
+}
 
 interface ProjectLead {
   project_id: number
@@ -23,9 +86,11 @@ export function Projects() {
   const [adding, setAdding] = useState(false)
   const [name, setName] = useState('')
   const [code, setCode] = useState('')
+  const [quotas, setQuotas] = useState<QuotaInputs>(NO_QUOTAS)
   const [editTarget, setEditTarget] = useState<Project | null>(null)
   const [editName, setEditName] = useState('')
   const [editCode, setEditCode] = useState('')
+  const [editQuotas, setEditQuotas] = useState<QuotaInputs>(NO_QUOTAS)
   const [assignTarget, setAssignTarget] = useState<Project | null>(null)
   const [selectedLeadId, setSelectedLeadId] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -60,21 +125,25 @@ export function Projects() {
   const leadNameById = new Map(leads.map((lead) => [lead.id, lead.name]))
 
   const createMutation = useMutation({
-    mutationFn: async () => api.post('/projects', { name, code: code.trim() || null }),
+    mutationFn: async () => api.post('/projects', { name, code: code.trim() || null, ...quotaColumns(quotas) }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] })
       setAdding(false)
       setName('')
       setCode('')
+      setQuotas(NO_QUOTAS)
       setError(null)
     },
     onError: () => setError('Could not create this project. The name may already be in use.'),
   })
 
   const updateMutation = useMutation({
-    mutationFn: async () => api.patch(`/projects/${editTarget!.id}`, { name: editName, code: editCode.trim() || null }),
+    mutationFn: async () => api.patch(`/projects/${editTarget!.id}`, { name: editName, code: editCode.trim() || null, ...quotaColumns(editQuotas) }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] })
+      // Targets come from the quotas, so everything showing one is out of date.
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] })
+      queryClient.invalidateQueries({ queryKey: ['daily-quotas'] })
       setEditTarget(null)
       setError(null)
     },
@@ -118,12 +187,14 @@ export function Projects() {
 
   function handleCreate(e: FormEvent) {
     e.preventDefault()
+    if (!quotasValid(quotas)) return setError(QUOTA_ERROR)
     setError(null)
     createMutation.mutate()
   }
 
   function handleUpdate(e: FormEvent) {
     e.preventDefault()
+    if (!quotasValid(editQuotas)) return setError(QUOTA_ERROR)
     setError(null)
     updateMutation.mutate()
   }
@@ -165,11 +236,12 @@ export function Projects() {
       )}
 
       <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
-        <table className="w-full min-w-[36rem] text-left text-sm">
+        <table className="w-full min-w-[44rem] text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
             <tr>
               <th className="px-5 py-3">Name</th>
               <th className="px-5 py-3">Project Code</th>
+              <th className="px-5 py-3">Daily Quota</th>
               {isAdmin && <th className="px-5 py-3">Leads</th>}
               <th className="px-5 py-3 text-right">Actions</th>
             </tr>
@@ -177,14 +249,14 @@ export function Projects() {
           <tbody className="divide-y divide-gray-100">
             {isLoading && (
               <tr>
-                <td colSpan={isAdmin ? 4 : 3} className="px-5 py-6 text-center text-gray-400">
+                <td colSpan={isAdmin ? 5 : 4} className="px-5 py-6 text-center text-gray-400">
                   Loading...
                 </td>
               </tr>
             )}
             {!isLoading && data?.length === 0 && (
               <tr>
-                <td colSpan={isAdmin ? 4 : 3} className="px-5 py-6 text-center text-gray-400">
+                <td colSpan={isAdmin ? 5 : 4} className="px-5 py-6 text-center text-gray-400">
                   No projects yet.
                 </td>
               </tr>
@@ -195,6 +267,9 @@ export function Projects() {
                 <tr key={project.id} className="hover:bg-gray-50">
                   <td className="px-5 py-3 font-medium text-gray-900">{project.name}</td>
                   <td className="px-5 py-3 font-mono text-xs text-gray-600">{project.code ?? '—'}</td>
+                  <td className="px-5 py-3">
+                    <QuotaSummary project={project} />
+                  </td>
                   {isAdmin && (
                     <td className="px-5 py-3">
                       {assignedLeadIds.length > 0 && (
@@ -245,6 +320,7 @@ export function Projects() {
                                 setEditTarget(project)
                                 setEditName(project.name)
                                 setEditCode(project.code ?? '')
+                                setEditQuotas(quotaInputs(project))
                                 setError(null)
                               },
                             },
@@ -297,6 +373,7 @@ export function Projects() {
               />
               <p className="mt-1 text-xs text-gray-400">Exactly as it's listed under Tracking Project in the CTS Tracker.</p>
             </div>
+            <QuotaFields value={quotas} onChange={setQuotas} />
             {error && <div className="text-sm text-status-danger-text">{error}</div>}
             <div className="mt-2 flex justify-end gap-2">
               <button
@@ -342,6 +419,7 @@ export function Projects() {
               />
               <p className="mt-1 text-xs text-gray-400">Exactly as it's listed under Tracking Project in the CTS Tracker.</p>
             </div>
+            <QuotaFields value={editQuotas} onChange={setEditQuotas} />
             {error && <div className="text-sm text-status-danger-text">{error}</div>}
             <div className="mt-2 flex justify-end gap-2">
               <button

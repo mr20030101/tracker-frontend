@@ -50,6 +50,11 @@ export interface Project {
   name: string
   // The project's option in the CTS Tracker form's "Tracking Project" question.
   code: string | null
+  // Tasks a day the project expects from a contributor at each CB level; null when not set.
+  daily_quota_contributor?: number | null
+  daily_quota_l0?: number | null
+  daily_quota_l1?: number | null
+  daily_quota_l10?: number | null
 }
 
 export type Stage = 'attempt' | 'l0' | 'l1'

@@ -4,6 +4,7 @@ import { DEFAULT_SUPABASE_ANON_KEY, DEFAULT_SUPABASE_URL } from './supabaseConfi
 import type { ActivityEvent, ActivityLog, ContributorProfile, DashboardSummary, DailyReportRow, LeaderboardRow, Paginated, Project, ProjectBreakdown, ProjectLevel, ProjectReportRow, Resource, Stage, TaskSubmission, User } from '../types'
 import { fetchAllPages } from './fetchAll'
 import { sanitiseOrTerm } from './sanitiseOrTerm'
+import { WORKING_DAYS, fetchDailyQuotas, fetchWeeklyTargets } from './quotas'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim() || DEFAULT_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() || DEFAULT_SUPABASE_ANON_KEY
@@ -93,7 +94,7 @@ async function submissions(params: Record<string, unknown> = {}): Promise<Pagina
   return { data: rows, current_page: page, last_page: Math.max(1, Math.ceil(total / 25)), total, from: total ? from + 1 : null, to: total ? Math.min(to + 1, total) : null }
 }
 
-// Daily target assumes 5 working days per week, independent of the 7-day week span.
+// The weekly target is daily quotas times 5 working days, independent of the 7-day week span.
 const TARGET_MULTIPLIER: Record<string, number> = { day: 1 / 5, week: 1, month: 4 }
 
 async function dashboard(params: Record<string, unknown>): Promise<DashboardSummary> {
@@ -114,7 +115,7 @@ async function dashboard(params: Record<string, unknown>): Promise<DashboardSumm
   targetWeekStart.setUTCDate(targetWeekStart.getUTCDate() - ((targetWeekStart.getUTCDay() - 2 + 7) % 7))
   const targetWeekStartIso = targetWeekStart.toISOString().slice(0, 10)
 
-  const [{ data: users }, { data: submissions }, { data: targets }, projectList] = await Promise.all([
+  const [{ data: users }, { data: submissions }, targetByUser, projectList] = await Promise.all([
     supabase.from('profiles').select('*').eq('role', 'contributor').order('name'),
     // Paged: a month of submissions is well over the 1,000 rows one request returns (see fetchAll).
     fetchAllPages<{ user_id: string | null; cb_email: string | null; project_id: number | null; status: string; date: string | null }>(
@@ -127,10 +128,14 @@ async function dashboard(params: Record<string, unknown>): Promise<DashboardSumm
           .order('id')
           .range(from, to),
     ).then((data) => ({ data })),
-    supabase.from('weekly_targets').select('*').eq('week_start', targetWeekStartIso),
+    fetchWeeklyTargets(targetWeekStartIso),
     projects(),
   ])
   const projectId = params.project_id ? Number(params.project_id) : null
+  // On one project, the target is that project's daily quota for each person's level there.
+  const projectQuotaByUser = projectId
+    ? new Map((await fetchDailyQuotas()).filter((q) => q.project_id === projectId).map((q) => [q.user_id, q.daily_quota * WORKING_DAYS]))
+    : null
   const filteredSubmissions = (submissions ?? []).filter((submission) => !projectId || submission.project_id === projectId)
   const rows = (users ?? []).map((user) => {
     const entries = filteredSubmissions.filter(
@@ -139,7 +144,7 @@ async function dashboard(params: Record<string, unknown>): Promise<DashboardSumm
         (!projectId || submission.project_id === projectId),
     )
     const submitted = entries.filter((entry) => entry.status === 'submitted').length
-    const baseTarget = (targets ?? []).find((item) => item.user_id === user.id)?.target ?? DEFAULT_WEEKLY_TARGET
+    const baseTarget = projectQuotaByUser?.get(user.id) ?? targetByUser.get(user.id) ?? DEFAULT_WEEKLY_TARGET
     const target = Math.round(baseTarget * multiplier)
     return { user_id: user.id, cb_email: user.email, name: user.name, lead_id: user.lead_id ?? null, is_active: user.is_active, tasks_submitted: submitted, weekly_target: target, progress: target ? submitted / target : 0 }
   })
@@ -262,12 +267,12 @@ async function contributor(params: Record<string, unknown>): Promise<Contributor
   // Case-insensitive, like the dashboard, leaderboard and rewards: a row logged as "Jane.Doe@…" for
   // jane.doe@… counts there, so it has to count here too. ilike needs LIKE's _ and % escaped.
   const emailPattern = email.replace(/[\\%_]/g, (char) => `\\${char}`)
-  const [{ data: rows }, { data: target }] = await Promise.all([
+  const [{ data: rows }, targetByUser] = await Promise.all([
     // Paged: one contributor's whole history can pass 1,000 rows.
     fetchAllPages<TaskSubmission>((from, to) =>
       supabase.from('task_submissions').select('*').ilike('cb_email', emailPattern).order('date', { ascending: false }).order('id').range(from, to),
     ).then((data) => ({ data })),
-    supabase.from('weekly_targets').select('target').eq('user_id', user?.id ?? '').eq('week_start', weekStart).maybeSingle(),
+    user ? fetchWeeklyTargets(weekStart, [user.id]) : new Map<string, number>(),
   ])
   const submissions = withProject((rows ?? []) as TaskSubmission[], await projects())
   const weekRows = submissions.filter((row) => row.date && row.date >= weekStart && row.date <= weekEnd)
@@ -276,7 +281,7 @@ async function contributor(params: Record<string, unknown>): Promise<Contributor
     const name = row.project?.name ?? 'Unassigned'
     return { ...counts, [name]: (counts[name] ?? 0) + 1 }
   }, {})
-  return { user: user as User | null, cb_email: email, week_start: weekStart, week_end: weekEnd, weekly_target: target?.target ?? DEFAULT_WEEKLY_TARGET, submitted_this_week: weekRows.filter((row) => row.status === 'submitted').length, total_submitted: submissions.filter((row) => row.status === 'submitted').length, total_logged: submissions.length, stage_breakdown: stageBreakdown, project_breakdown: Object.entries(projectBreakdown).map(([name, total]) => ({ name, total })), week_submissions: weekRows, recent_submissions: submissions.slice(0, 10), all_submissions: submissions, is_public_view: false }
+  return { user: user as User | null, cb_email: email, week_start: weekStart, week_end: weekEnd, weekly_target: (user && targetByUser.get(user.id)) ?? DEFAULT_WEEKLY_TARGET, submitted_this_week: weekRows.filter((row) => row.status === 'submitted').length, total_submitted: submissions.filter((row) => row.status === 'submitted').length, total_logged: submissions.length, stage_breakdown: stageBreakdown, project_breakdown: Object.entries(projectBreakdown).map(([name, total]) => ({ name, total })), week_submissions: weekRows, recent_submissions: submissions.slice(0, 10), all_submissions: submissions, is_public_view: false }
 }
 
 async function leaderboard(params: Record<string, unknown>): Promise<LeaderboardRow[]> {

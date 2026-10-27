@@ -14,6 +14,10 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Changed
+
+- Daily quotas now depend on your CB level on each project. Admins and project leads set a daily quota for Attempt, L0, L1 and L10 on the Projects page, and a contributor's weekly target is the quotas on their projects times 5 working days, so it's no longer typed in by hand on the Leaderboard. Contributors see today's progress against each project's quota under Project Levels on their Dashboard, and a contributor's profile shows the quota beside their level. A contributor with no quota set on any of their projects keeps the target they had.
+
 ## 5.30.0 — 2026-10-27
 
 ### Changed

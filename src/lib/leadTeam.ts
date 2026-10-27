@@ -2,6 +2,7 @@ import { supabase } from './api'
 import { DEFAULT_WEEKLY_TARGET, WEEK_LENGTH_DAYS } from './week'
 import type { User } from '../types'
 import { fetchAllPages } from './fetchAll'
+import { fetchWeeklyTargets } from './quotas'
 
 export interface TeamMember {
   user: User
@@ -66,15 +67,13 @@ export async function fetchLeadTeam(leadId: string, weekStart: string): Promise<
 
   // A submission a lead logs for someone carries that contributor's cb_email but the
   // logger's user_id, so match on either, like the dashboard does.
-  const [byUser, byEmail, targetsResult] = await Promise.all([
+  const [byUser, byEmail, targetByUser] = await Promise.all([
     fetchAllPages<SubmissionRow>((from, to) => inWeek().in('user_id', ids).order('id').range(from, to)),
     fetchAllPages<SubmissionRow>((from, to) => inWeek().in('cb_email', emails).order('id').range(from, to)),
-    supabase.from('weekly_targets').select('user_id, target').eq('week_start', weekStart).in('user_id', ids),
+    fetchWeeklyTargets(weekStart, ids),
   ])
-  if (targetsResult.error) throw targetsResult.error
 
   const submissions = [...new Map([...byUser, ...byEmail].map((row) => [row.id, row])).values()]
-  const targetByUser = new Map((targetsResult.data ?? []).map((t) => [t.user_id as string, Number(t.target)]))
 
   const members = users.map((user): TeamMember => {
     const email = user.email.toLowerCase()

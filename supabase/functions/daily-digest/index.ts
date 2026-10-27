@@ -131,7 +131,8 @@ Deno.serve(async (request) => {
         admin.from('profiles').select('id, name, email, lead_id').eq('role', 'contributor').eq('is_active', true),
         admin.from('task_submissions').select('user_id, cb_email, status, snipboard_url').eq('date', yesterday),
         admin.from('task_submissions').select('user_id, cb_email, status').eq('status', 'submitted').gte('date', weekStart).lte('date', yesterday),
-        admin.from('weekly_targets').select('user_id, target').eq('week_start', weekStart),
+        // From the daily quotas on each contributor's projects (see weekly_target_of in the schema).
+        admin.rpc('weekly_targets_for', { p_week_start: weekStart }),
     ])
 
     const targetByUserId = new Map((targets ?? []).map((t) => [t.user_id as string, t.target as number]))
@@ -196,7 +197,8 @@ async function weeklyReport(admin: Admin, botId: string): Promise<Response> {
         admin.from('profiles').select('id').eq('role', 'admin').eq('is_active', true),
         admin.from('profiles').select('id, name, email, lead_id').eq('role', 'contributor').eq('is_active', true),
         admin.from('task_submissions').select('user_id, cb_email').eq('status', 'submitted').gte('date', weekStart).lte('date', weekEnd),
-        admin.from('weekly_targets').select('user_id, target').eq('week_start', weekStart),
+        // From the daily quotas on each contributor's projects (see weekly_target_of in the schema).
+        admin.rpc('weekly_targets_for', { p_week_start: weekStart }),
     ])
 
     const targetByUserId = new Map((targets ?? []).map((t) => [t.user_id as string, t.target as number]))

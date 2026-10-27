@@ -87,7 +87,8 @@ async function handle(request: Request): Promise<Response> {
     const contributorIds = contributors.map((c) => c.id)
 
     const [{ data: targets }, { data: submissions }] = await Promise.all([
-        admin.from('weekly_targets').select('user_id, target').in('user_id', contributorIds).eq('week_start', weekStart),
+        // From the daily quotas on each contributor's projects (see weekly_target_of in the schema).
+        admin.rpc('weekly_targets_for', { p_week_start: weekStart, p_user_ids: contributorIds }),
         admin.from('task_submissions').select('user_id, cb_email, status, date').gte('date', weekStart),
     ])
 

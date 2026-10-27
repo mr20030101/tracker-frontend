@@ -19,6 +19,7 @@ import { useAttendanceClosesMin } from '../lib/useAttendanceClosesMin'
 import { TaskSubmissionForm } from '../components/TaskSubmissionForm'
 import { NoSubmissionNudge } from '../components/NoSubmissionNudge'
 import { LevelPill } from '../components/LevelPill'
+import { WORKING_DAYS, projectQuota } from '../lib/quotas'
 import { Modal } from '../components/Modal'
 import { OnboardingChecklist } from '../components/OnboardingChecklist'
 import { AchievementsCard } from '../components/Achievements'
@@ -117,7 +118,7 @@ export function ContributorDashboard() {
   }
 
   const submittedToday = (data?.all_submissions ?? []).filter((r) => r.date?.slice(0, 10) === today && r.status === 'submitted').length
-  const dayTarget = Math.round((data?.weekly_target ?? 0) / 5)
+  const dayTarget = Math.round((data?.weekly_target ?? 0) / WORKING_DAYS)
   const celebration = useCelebrations({
     userId: user?.id ?? '',
     loaded: Boolean(data),
@@ -466,12 +467,33 @@ export function ContributorDashboard() {
             Project Levels
           </div>
           <div className="divide-y divide-gray-100">
-            {levelProjects.map(({ project, level }) => (
-              <div key={project.id} className="flex items-center justify-between gap-3 py-3 text-sm first:pt-0 last:pb-0">
-                <span className="font-medium uppercase tracking-wide text-gray-700">{project.name}</span>
-                <LevelPill level={level} />
-              </div>
-            ))}
+            {levelProjects.map(({ project, level }) => {
+              // Each project's quota is tracked on its own: today's submitted tasks on it against the
+              // quota it sets for their level.
+              const quota = projectQuota(project, level)
+              const done = data.all_submissions.filter((r) => r.project_id === project.id && r.date?.slice(0, 10) === today && r.status === 'submitted').length
+              return (
+                <div key={project.id} className="py-3 text-sm first:pt-0 last:pb-0">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-medium uppercase tracking-wide text-gray-700">{project.name}</span>
+                    <LevelPill level={level} />
+                  </div>
+                  {quota !== null && (
+                    <div className="mt-2 flex items-center gap-3">
+                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-100">
+                        <div
+                          className={`h-full rounded-full ${done >= quota ? 'bg-emerald-500' : 'bg-accent'}`}
+                          style={{ width: `${quota > 0 ? Math.min(100, (done / quota) * 100) : 100}%` }}
+                        />
+                      </div>
+                      <span className="shrink-0 text-xs text-gray-500">
+                        <span className="font-semibold text-gray-900">{done}</span> / {quota} today
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         </div>
       )}

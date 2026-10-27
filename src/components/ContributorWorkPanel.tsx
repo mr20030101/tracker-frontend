@@ -53,6 +53,7 @@ import { BadVideoReportModal } from './BadVideoReportModal'
 import { FileTimeRequestModal, type TimeRequestFormFields } from './FileTimeRequestModal'
 import { TIME_REQUEST_LABELS, TimeRequestReasonModal, type TimeRequestMode, type TimeRequestType } from './TimeRequestReasonModal'
 import { confirmDialog } from '../lib/dialog'
+import { WORKING_DAYS } from '../lib/quotas'
 
 const TREND_DAYS = 30
 const MANAGER_ROLES = ['admin', 'lead']
@@ -362,7 +363,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
 
   const rangeTarget =
     viewMode === 'day'
-      ? Math.round(data.weekly_target / 5)
+      ? Math.round(data.weekly_target / WORKING_DAYS)
       : viewMode === 'week'
         ? data.weekly_target
         : data.weekly_target * 4
