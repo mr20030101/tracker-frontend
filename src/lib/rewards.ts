@@ -305,7 +305,8 @@ export function myStandingLine(reward: Reward, standings: RewardStanding[], meId
   const score = me.points
   switch (reward.rule) {
     case 'top_submitters': {
-      if (me.qualifies && me.place) return `You're in ${ordinal(me.place)} place: ${formatMoney(reward.prize_amounts[me.place - 1], reward.currency)}! Hold on to it.`
+      // Not which place: the order stays a secret until the winners are announced.
+      if (me.qualifies && me.place) return `You're in the prize zone! Hold on to it.`
       const minimum = reward.threshold ?? 1
       if (score < minimum) return `${more(minimum - score)} to qualify.`
       const lastPrize = standings[reward.places - 1]

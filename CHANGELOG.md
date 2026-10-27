@@ -14,6 +14,10 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Changed
+
+- Rewards keep you guessing: while a reward is running, contributors no longer see who's leading. The leaderboard stays sealed (you still see your own progress, and whether you're in the prize zone) until the winners are announced. Leads and admins still see the full standings.
+
 ## 5.29.1 — 2026-10-27
 
 ### Fixed

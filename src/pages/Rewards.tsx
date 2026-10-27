@@ -1,7 +1,7 @@
 import { useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Award, CalendarDays, Check, ChevronDown, ChevronUp, Gift, Plus, Trash2, Trophy, Users, X } from 'lucide-react'
+import { Award, CalendarDays, Check, ChevronDown, ChevronUp, Gift, Lock, Plus, Trash2, Trophy, Users, X } from 'lucide-react'
 import { api, errorMessage } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useMessaging } from '../lib/messagingContext'
@@ -49,7 +49,8 @@ import { Reveal } from '../components/Reveal'
 import { contributorPathById } from '../lib/urlRef'
 
 // Rewards: prizes a lead offers their team (or an admin offers anyone) for a rule over a date
-// range. Everyone sees what's running and how they're doing; managers create, award and mark paid.
+// range. Everyone sees what's running and how they're doing, but only managers see who's ahead
+// until the winners are announced; managers create, award and mark paid.
 
 const MANAGER_ROLES = ['admin', 'lead']
 
@@ -261,8 +262,9 @@ function RewardCard({
 
       {mine && <div className="mt-4 rounded-lg bg-accent/10 px-3 py-2 text-sm font-semibold text-gray-900">{mine}</div>}
 
-      {showStandings && reward.rule !== 'custom' && <StandingsList reward={reward} standings={standings} meId={meId} />}
-      {showStandings && reward.rule === 'custom' && isManager && <StandingsList reward={reward} standings={standings} meId={meId} />}
+      {/* Managers see the board to award from it; contributors only learn the order when the winners are announced. */}
+      {showStandings && isManager && <StandingsList reward={reward} standings={standings} meId={meId} />}
+      {showStandings && !isManager && reward.rule !== 'custom' && <SealedStandings phase={phase} standings={standings} />}
 
       {phase === 'awarded' && <WinnersList reward={reward} winners={winners} standings={standings} canManage={canManage} />}
 
@@ -329,6 +331,38 @@ function LevelPointPills({ reward, label }: { reward: Reward; label: string }) {
 }
 
 const STANDINGS_SHOWN = 10
+const SEALED_ROWS = 3
+
+// What a contributor sees instead of the standings while a reward is running: how many are in the
+// race, but not who's ahead.
+function SealedStandings({ phase, standings }: { phase: RewardPhase; standings: RewardStanding[] }) {
+  const racing = standings.filter((s) => s.points > 0 || s.weeks_hit > 0).length
+  return (
+    <div className="mt-4 border-t border-gray-100 pt-3">
+      <ul className="pointer-events-none select-none divide-y divide-gray-100 opacity-60" aria-hidden>
+        {Array.from({ length: SEALED_ROWS }, (_, i) => (
+          <li key={i} className="flex items-center gap-3 py-2">
+            <span className="w-7 shrink-0 text-center text-sm font-semibold text-gray-300">?</span>
+            <div className="h-7 w-7 shrink-0 animate-pulse rounded-full bg-gray-200" />
+            <div className="min-w-0 flex-1">
+              <div className="h-3 w-28 animate-pulse rounded bg-gray-200" />
+              <div className="mt-2 h-1.5 w-full max-w-xs animate-pulse rounded-full bg-gray-100" />
+            </div>
+            <span className="shrink-0 text-sm font-semibold text-gray-300">???</span>
+          </li>
+        ))}
+      </ul>
+      <div className="mt-2 flex items-start gap-2 rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-600">
+        <Lock className="mt-0.5 h-4 w-4 shrink-0 text-accent" aria-hidden />
+        <span>
+          {phase === 'live'
+            ? `The leaderboard is a secret until the winners are announced.${racing > 0 ? ` ${racing} ${racing === 1 ? 'person is' : 'people are'} in the race. Keep going!` : ' Be the first on the board!'}`
+            : 'The race is over and the results are sealed. Winners are announced soon.'}
+        </span>
+      </div>
+    </div>
+  )
+}
 
 function StandingsList({ reward, standings, meId }: { reward: Reward; standings: RewardStanding[]; meId: string | undefined }) {
   const [all, setAll] = useState(false)
