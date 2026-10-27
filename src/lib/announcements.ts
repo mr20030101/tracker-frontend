@@ -65,6 +65,9 @@ export async function setAnnouncementPinned(id: number, pinned: boolean): Promis
 }
 
 export async function deleteAnnouncement(id: number): Promise<void> {
-  const { error } = await supabase.from('announcements').delete().eq('id', id)
+  // A delete the database's policy refuses doesn't error, it just matches no rows, so ask for
+  // the deleted row back and treat none as a failure.
+  const { data, error } = await supabase.from('announcements').delete().eq('id', id).select('id')
   if (error) throw error
+  if (!data?.length) throw new Error("This announcement couldn't be deleted. It may already be gone, or you no longer have permission to delete it.")
 }

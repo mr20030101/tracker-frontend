@@ -23,7 +23,7 @@ import { ProgressRing } from '../components/ProgressRing'
 import { Reveal } from '../components/Reveal'
 import { Select } from '../components/Select'
 import { loadRichTextFonts, renderRichText, richTextToPlain } from '../lib/richText'
-import { confirmDialog } from '../lib/dialog'
+import { alertDialog, confirmDialog } from '../lib/dialog'
 import { usePageTitle } from '../lib/usePageTitle'
 
 const MANAGER_ROLES = ['admin', 'lead']
@@ -93,6 +93,10 @@ export function Announcements() {
   const deleteMutation = useMutation({
     mutationFn: deleteAnnouncement,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['announcements'] }),
+    onError: (err) => {
+      queryClient.invalidateQueries({ queryKey: ['announcements'] })
+      alertDialog(errorMessage(err, 'Could not delete the announcement.'))
+    },
   })
 
   return (

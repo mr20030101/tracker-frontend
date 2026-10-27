@@ -14,6 +14,10 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Fixed
+
+- Deleting an announcement that can't be deleted now tells you why, instead of looking like nothing happened.
+
 ## 5.29.0 — 2026-10-24
 
 ### Added
