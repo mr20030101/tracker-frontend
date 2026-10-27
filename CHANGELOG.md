@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 6.0.1 — 2026-10-27
+
 ### Fixed
 
 - Leads get the new-request alarm reliably, on whatever page they're on: it now rings whenever a pending request is waiting that they haven't looked at yet, including ones sent while the tab was asleep or before they signed in, and stops when they open the bell, the Requests page or press Later.
