@@ -9,7 +9,7 @@ import { ALERT_NOTIFICATION_SOUND, loopSound } from '../lib/sound'
 import { Avatar } from './Avatar'
 import { RequestAlarm } from './RequestAlarm'
 import { contributorPath } from '../lib/urlRef'
-import { fetchPendingRequestsForAlarm } from '../lib/taskRequests'
+import { fetchPendingRequestsForAlarm, type PendingRequestAlarmRow } from '../lib/taskRequests'
 
 const MANAGER_ROLES = ['admin', 'lead']
 const MAX_SUBMISSION_ALERTS = 20
@@ -21,6 +21,9 @@ const PANEL_Z_INDEX = 60
 const TITLE_FLASH_MS = 1000
 // How often the alarm checks for pending requests, in case a live event was missed.
 const PENDING_POLL_MS = 30_000
+// One shared empty list, so having no pending requests yet doesn't hand the effects below a new
+// array every render (which re-marked them seen on every render on the Requests page, forever).
+const NO_PENDING: PendingRequestAlarmRow[] = []
 
 // The pending requests a lead has already looked at (opened the bell, the Requests page or the
 // alarm's buttons), kept in this browser so a reload doesn't ring for them again.
@@ -95,7 +98,7 @@ export function NotificationBell() {
   // event, a sleeping tab or a request sent before they signed in still sets it off.
   const isLead = user?.role === 'lead'
   const onRequestsPage = pathname.startsWith('/requests')
-  const { data: pendingRequests = [], refetch: refetchPending } = useQuery({
+  const { data: pendingRequests = NO_PENDING, refetch: refetchPending } = useQuery({
     queryKey: ['task-requests', 'pending-alarm', user?.id],
     queryFn: () => fetchPendingRequestsForAlarm(user!.id),
     enabled: isLead,
