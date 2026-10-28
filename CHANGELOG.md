@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 6.0.2 — 2026-10-28
+
 ### Fixed
 
 - Leaving the Requests page works again: clicking another page from it no longer does nothing.
