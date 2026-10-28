@@ -307,7 +307,7 @@ export function BulkImportModal({ projects, onClose, contributorEmail, contribut
                     const excluded = !row.cb_email
                     return (
                       <tr key={index} className={excluded ? 'bg-gray-50 opacity-50' : ''}>
-                        <td className="max-w-32 truncate px-3 py-2 font-mono text-gray-500">{row.task_id ?? '—'}</td>
+                        <td className="whitespace-nowrap px-3 py-2 font-mono text-gray-500">{row.task_id ?? '—'}</td>
                         {!contributorEmail && (
                           <td className="px-3 py-2 text-gray-700">{row.cb_email || <span className="text-status-danger-text">missing</span>}</td>
                         )}

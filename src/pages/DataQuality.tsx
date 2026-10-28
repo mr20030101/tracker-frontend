@@ -173,7 +173,7 @@ export function DataQuality() {
         id: 'task_id',
         accessorFn: (r) => r.task_id ?? '',
         header: 'Task ID',
-        cell: ({ row }) => <span className="block max-w-40 truncate font-mono text-xs text-gray-500">{row.original.task_id}</span>,
+        cell: ({ row }) => <span className="block whitespace-nowrap font-mono text-xs text-gray-500">{row.original.task_id}</span>,
       },
       {
         id: 'cb_email',
@@ -231,7 +231,7 @@ export function DataQuality() {
               href={remotasksDiffViewerUrl(row.original.task_id)}
               target="_blank"
               rel="noreferrer"
-              className="block max-w-40 truncate font-mono text-xs text-sky-700 hover:underline"
+              className="block whitespace-nowrap font-mono text-xs text-sky-700 hover:underline"
             >
               {row.original.task_id}
             </a>

@@ -799,7 +799,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                     const canReportBadVideo = row.date?.slice(0, 10) === toISODate(new Date())
                     return (
                     <tr key={row.id} className="hover:bg-gray-50">
-                      <td className="max-w-40 truncate px-5 py-3 font-mono text-xs text-gray-500">
+                      <td className="whitespace-nowrap px-5 py-3 font-mono text-xs text-gray-500">
                         <span className="inline-flex items-center gap-1.5">
                           {row.task_id ? (
                             <a href={remotasksDiffViewerUrl(row.task_id)} target="_blank" rel="noreferrer" className="text-sky-700 hover:underline">

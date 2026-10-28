@@ -14,6 +14,11 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Fixed
+
+- Leaving the Requests page works again: clicking another page from it no longer does nothing.
+- Task IDs show in full in the Submissions table, the Bulk Import preview and on the Data Quality page, instead of being cut off.
+
 ## 6.0.1 — 2026-10-27
 
 ### Fixed
