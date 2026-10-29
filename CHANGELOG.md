@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 6.2.0 — 2026-10-29
+
 ### Added
 
 - The browser extension has a Screenshot link field on the task card. Paste your screenshot link and press Save, or press Submitted to save it with the task. It's the same Screenshot link as on the tracker's Add Submission form.
