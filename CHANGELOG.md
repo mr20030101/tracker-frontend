@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 6.1.0 — 2026-10-29
+
 ### Added
 
 - A Grey Owls Tracker browser extension for Brave, Chrome and Edge, downloadable from the top of the Resources page with install steps. Sign in with your tracker account, paste a task ID and press Start to log it as In Progress with its timer running, then press Submitted when you're done. It rings at 30 minutes, 1 hour, and 10 minutes before a task expires (1 hour 30 minutes for Attempt and L1, 2 hours for L0), and you can send extension and reclaim requests from it.
