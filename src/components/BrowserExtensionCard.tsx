@@ -13,9 +13,18 @@ const INSTALL_STEPS = [
   'Pin it from the puzzle-piece icon in the toolbar, sign in with your tracker account, and pick your project and stage.',
 ]
 
+const USAGE_STEPS = [
+  'Pick your project and stage, paste a task ID (or task link) and press Start. It’s logged as In Progress with its timer running.',
+  'Paste your screenshot link (Snipboard, Lightshot, etc.) on the task card and press Save. It’s the same Screenshot link as on Add Submission.',
+  'Press Submitted when you’re done. It stops the timer and saves the screenshot link too, if you haven’t pressed Save.',
+  'Pause and Resume stop and restart the timer. Reset clears a wrong task ID, and Reload brings everything up to date from the tracker.',
+  'On the Requests tab, send your lead an extension or reclaim request with a reason, during their shift.',
+]
+
 /** Download and install steps for the Grey Owls Tracker browser extension (extension/). */
 export function BrowserExtensionCard() {
   const [showSteps, setShowSteps] = useState(false)
+  const [showUsage, setShowUsage] = useState(false)
 
   return (
     <section className="mb-6 overflow-hidden rounded-xl border border-gray-200 bg-white">
@@ -59,6 +68,23 @@ export function BrowserExtensionCard() {
           <li className="list-none text-gray-500">
             To update, download the new version, unzip it over the old folder, and press the reload button on the extension’s card.
           </li>
+        </ol>
+      )}
+
+      <button
+        type="button"
+        onClick={() => setShowUsage((v) => !v)}
+        aria-expanded={showUsage}
+        className="flex w-full items-center justify-between border-t border-gray-100 px-5 py-2.5 text-left text-sm font-medium text-sky-700 hover:bg-gray-50"
+      >
+        How to use
+        <ChevronDown className={`h-4 w-4 transition-transform ${showUsage ? 'rotate-180' : ''}`} aria-hidden />
+      </button>
+      {showUsage && (
+        <ol className="list-decimal space-y-1.5 border-t border-gray-100 px-5 py-4 pl-10 text-sm text-gray-600">
+          {USAGE_STEPS.map((step) => (
+            <li key={step}>{step}</li>
+          ))}
         </ol>
       )}
     </section>
