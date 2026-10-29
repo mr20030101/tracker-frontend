@@ -8,6 +8,9 @@ profile.
   logged as **In Progress** under the project and stage you picked, with its timer running. A task
   you logged before picks its timer back up instead. Starting a task pauses any other timer you
   have running.
+- **Screenshot link:** paste the link to your screenshot (Snipboard, Lightshot, etc.) on the
+  task card and press Save, or just press Submitted, which saves it too. It's the same Screenshot
+  link as on the tracker's form; clear the field and Save to remove it.
 - **Submitted** marks it Submitted, which stops the timer. **Pause** and **Resume** stop and
   restart the timer without changing the task.
 - **Alarms:** every task in progress rings (a notification and the tracker's alert sound) at

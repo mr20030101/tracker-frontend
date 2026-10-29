@@ -595,6 +595,30 @@ textarea {
   color: #f87171;
 }
 
+.hero-field {
+  display: grid;
+  gap: 5px;
+  margin-top: 12px;
+}
+
+.hero-field > label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--hero-muted);
+}
+
+.hero-field input {
+  border-color: var(--hero-line);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--hero-text);
+}
+
+.hero-field input::placeholder {
+  color: var(--hero-muted);
+}
+
 .hero-actions {
   display: flex;
   align-items: center;

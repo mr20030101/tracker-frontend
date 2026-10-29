@@ -116,6 +116,13 @@ function renderTask() {
     $('expiry-text').textContent = left > 0 ? `Expires in ${formatLeft(left)}` : 'Past its expiry time'
   }
 
+  // The saved link, unless one is being typed: the field follows the tracker until it's edited.
+  const screenshot = $('screenshot')
+  const saved = row.snipboard_url ?? ''
+  if (screenshot.dataset.row !== String(row.id) || screenshot.value === screenshot.dataset.saved) screenshot.value = saved
+  screenshot.dataset.row = String(row.id)
+  screenshot.dataset.saved = saved
+
   $('mark-submitted').hidden = !inProgress
   $('pause').hidden = !inProgress || !running
   $('resume').hidden = !inProgress || running
@@ -259,7 +266,15 @@ $('copy-task').addEventListener('click', async () => {
   }, 1000)
 })
 
-$('mark-submitted').addEventListener('click', (event) => act(event.currentTarget, () => call({ type: 'mark-submitted' })))
+$('screenshot-form').addEventListener('submit', (event) => {
+  event.preventDefault()
+  act($('screenshot-save'), () => call({ type: 'set-screenshot', screenshot: $('screenshot').value }))
+})
+
+// Submitted also saves the screenshot link typed in.
+$('mark-submitted').addEventListener('click', (event) =>
+  act(event.currentTarget, () => call({ type: 'mark-submitted', screenshot: $('screenshot').value })),
+)
 $('pause').addEventListener('click', (event) => act(event.currentTarget, () => call({ type: 'pause' })))
 $('resume').addEventListener('click', (event) => act(event.currentTarget, () => call({ type: 'resume' })))
 

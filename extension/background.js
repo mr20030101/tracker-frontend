@@ -8,7 +8,7 @@ const SUPABASE_URL = 'https://ieovepkcseytccagzedg.supabase.co'
 const SUPABASE_ANON_KEY =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imllb3ZlcGtjc2V5dGNjYWd6ZWRnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxNjU1NDUsImV4cCI6MjEwNDc0MTU0NX0.OMZEAONl3XoSwjb_RhYo70fYXThONXVBGQLlGF-OQ7s'
 
-const SUBMISSION_FIELDS = 'id,task_id,user_id,stage,status,created_at,timer_started_at,timer_elapsed_seconds'
+const SUBMISSION_FIELDS = 'id,task_id,user_id,stage,status,snipboard_url,created_at,timer_started_at,timer_elapsed_seconds'
 // Refresh the sign-in this long before it runs out.
 const REFRESH_MARGIN_S = 60
 // How long a task has before it expires, by stage, counted from when it was started here.
@@ -222,13 +222,40 @@ async function pauseOrResume(running) {
   await updateBadge()
 }
 
-// Marks it Submitted, which stops its timer.
-async function markSubmitted() {
+/** The screenshot link as the tracker stores it: an http(s) link, or null for none. */
+function parseScreenshotUrl(input) {
+  const text = String(input ?? '').trim()
+  if (!text) return null
+  try {
+    const url = new URL(text)
+    if (url.protocol === 'http:' || url.protocol === 'https:') return text
+  } catch {
+    // Not a link.
+  }
+  throw new Error('The screenshot link should start with https://.')
+}
+
+// Saves the screenshot link on the current task (the Screenshot link on the tracker's form).
+async function setScreenshot(input) {
   const current = await load('current')
   if (!current?.row) return
+  const [row] = await rest(`task_submissions?id=eq.${current.row.id}&select=${SUBMISSION_FIELDS}`, {
+    method: 'PATCH',
+    body: { snipboard_url: parseScreenshotUrl(input) },
+  })
+  if (!row) throw new Error('This task isn’t in the tracker any more.')
+  await save({ current: { ...current, row } })
+}
+
+// Marks it Submitted, which stops its timer, with the screenshot link if one was given.
+async function markSubmitted(screenshot) {
+  const current = await load('current')
+  if (!current?.row) return
+  const body = { status: 'submitted', submitted_at: todaySG() }
+  if (screenshot !== undefined) body.snipboard_url = parseScreenshotUrl(screenshot)
   const [row] = await rest(`task_submissions?id=eq.${current.row.id}&status=eq.in_progress&select=${SUBMISSION_FIELDS}`, {
     method: 'PATCH',
-    body: { status: 'submitted', submitted_at: todaySG() },
+    body,
   })
   // Nothing comes back when it wasn't in progress any more (submitted or changed in the tracker).
   if (!row) throw new Error('This task isn’t in progress in the tracker any more.')
@@ -432,7 +459,9 @@ async function handle(message) {
     case 'resume':
       return pauseOrResume(true)
     case 'mark-submitted':
-      return markSubmitted()
+      return markSubmitted(message.screenshot)
+    case 'set-screenshot':
+      return setScreenshot(message.screenshot)
     case 'reload':
       return reload()
     case 'reset':
