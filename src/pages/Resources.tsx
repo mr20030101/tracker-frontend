@@ -8,6 +8,7 @@ import type { Project, Resource } from '../types'
 import { Modal } from '../components/Modal'
 import { ActionsMenu } from '../components/ActionsMenu'
 import { Select } from '../components/Select'
+import { BrowserExtensionCard } from '../components/BrowserExtensionCard'
 import { confirmDialog, alertDialog } from '../lib/dialog'
 import { usePageTitle } from '../lib/usePageTitle'
 
@@ -180,6 +181,8 @@ export function Resources() {
           </button>
         )}
       </div>
+
+      <BrowserExtensionCard />
 
       {isLoading && <div className="text-gray-400">Loading...</div>}
 
