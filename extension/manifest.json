@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "Grey Owls Tracker",
+  "description": "Logs your Remotasks tasks in Grey Owls Tracker and times them: paste a task ID to start its timer, and mark it submitted when you are done.",
+  "version": "1.1.0",
+  "icons": {
+    "16": "icon-16.png",
+    "32": "icon-32.png",
+    "48": "icon-48.png",
+    "128": "icon-128.png"
+  },
+  "action": {
+    "default_title": "Grey Owls Tracker",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icon-16.png",
+      "32": "icon-32.png",
+      "48": "icon-48.png",
+      "128": "icon-128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "permissions": [
+    "storage",
+    "alarms",
+    "notifications",
+    "offscreen"
+  ],
+  "host_permissions": [
+    "https://ieovepkcseytccagzedg.supabase.co/*"
+  ]
+}

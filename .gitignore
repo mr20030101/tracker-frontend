@@ -38,3 +38,6 @@ supabase/import/*.xlsx
 # Claude Code loop state (see .claude/hooks/loop-gate.mjs)
 .claude/loop/
 .claude/settings.local.json
+
+# Packed browser extension zips (npm run pack:extension)
+extension-build/

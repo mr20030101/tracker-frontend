@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Grey Owls Tracker</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <!-- Signed out -->
+    <section id="sign-in-view" class="sign-in" hidden>
+      <picture class="sign-in-mark">
+        <source srcset="mark-inverse.svg" media="(prefers-color-scheme: dark)" />
+        <img src="mark.svg" alt="" width="64" height="64" />
+      </picture>
+      <h1>Grey Owls Tracker</h1>
+      <p class="muted">Sign in with your tracker account to time your Remotasks tasks and send requests.</p>
+      <form id="sign-in" class="stack">
+        <label class="field">
+          <span>Email</span>
+          <input id="email" type="email" autocomplete="username" required />
+        </label>
+        <label class="field">
+          <span>Password</span>
+          <input id="password" type="password" autocomplete="current-password" required />
+        </label>
+        <button class="btn btn-primary btn-block" type="submit">Sign in</button>
+      </form>
+    </section>
+
+    <!-- Signed in -->
+    <section id="app-view" hidden>
+      <header class="topbar">
+        <picture class="topbar-mark">
+          <source srcset="mark-inverse.svg" media="(prefers-color-scheme: dark)" />
+          <img src="mark.svg" alt="" width="28" height="28" />
+        </picture>
+        <div class="topbar-title">
+          <strong>Grey Owls</strong>
+          <span>Tracker</span>
+        </div>
+        <button id="reload" class="icon-btn" type="button" title="Reload from the tracker and clear a finished task">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+            <path d="M21 3v6h-6" />
+          </svg>
+          <span>Reload</span>
+        </button>
+        <button id="sign-out" class="btn-link" type="button">Sign out</button>
+      </header>
+
+      <div class="profile">
+        <div id="avatar" class="avatar" aria-hidden="true"></div>
+        <div class="profile-text">
+          <div id="name" class="profile-name truncate"></div>
+          <div id="cb-email" class="muted truncate"></div>
+        </div>
+        <div class="profile-id" title="Your Remotasks ID">
+          <span class="label">Remotasks ID</span>
+          <span id="remotasks-id" class="mono"></span>
+        </div>
+      </div>
+      <p id="no-remotasks-id" class="notice notice-warning" hidden>Add your Remotasks ID on your tracker profile before sending requests.</p>
+
+      <nav class="tabs" role="tablist">
+        <button class="tab" role="tab" data-tab="timer" aria-selected="true" type="button">Timer</button>
+        <button class="tab" role="tab" data-tab="requests" aria-selected="false" type="button">Requests</button>
+      </nav>
+
+      <!-- Timer -->
+      <main id="tab-timer" class="panel stack">
+        <section id="task" class="hero" hidden>
+          <div class="hero-top">
+            <span id="task-status" class="pill"></span>
+            <button id="copy-task" class="hero-id mono" type="button" title="Copy task ID"></button>
+          </div>
+          <div id="timer" class="hero-timer mono">0:00</div>
+          <div id="task-meta" class="hero-meta"></div>
+          <div id="expiry" class="hero-expiry" hidden>
+            <div class="expiry-bar"><div id="expiry-fill" class="expiry-fill"></div></div>
+            <span id="expiry-text"></span>
+          </div>
+          <div class="hero-actions">
+            <button id="mark-submitted" class="btn btn-primary" type="button">Submitted</button>
+            <button id="pause" class="btn btn-ghost-dark" type="button">Pause</button>
+            <button id="resume" class="btn btn-ghost-dark" type="button">Resume</button>
+            <button id="reset" class="btn-link btn-link-dark" type="button">Reset</button>
+          </div>
+          <div id="reset-confirm" class="hero-confirm" hidden>
+            <p id="reset-message"></p>
+            <div class="row row-wrap">
+              <button id="reset-remove" class="btn btn-danger" type="button">Remove from tracker</button>
+              <button id="reset-clear" class="btn btn-ghost-dark" type="button">Just clear here</button>
+              <button id="reset-no" class="btn-link btn-link-dark" type="button">Cancel</button>
+            </div>
+          </div>
+        </section>
+
+        <section id="empty" class="empty">
+          <div class="empty-dot"></div>
+          <div>
+            <strong>No task running</strong>
+            <p class="muted">Paste a task ID below to start its timer.</p>
+          </div>
+        </section>
+
+        <form id="start" class="card stack">
+          <div class="card-title">Start a task</div>
+          <label class="field">
+            <span>Project</span>
+            <select id="project"></select>
+          </label>
+          <div class="field">
+            <span>Stage</span>
+            <div class="chips" role="radiogroup">
+              <label class="chip"><input type="radio" name="stage" value="attempt" /> Attempt</label>
+              <label class="chip"><input type="radio" name="stage" value="l0" /> L0</label>
+              <label class="chip"><input type="radio" name="stage" value="l1" /> L1</label>
+            </div>
+          </div>
+          <div class="field">
+            <label for="task-input">Task ID</label>
+            <div class="input-group">
+              <input id="task-input" class="mono" placeholder="Paste a task ID or link" autocomplete="off" spellcheck="false" required />
+              <button id="start-button" class="btn btn-primary" type="submit">Start</button>
+            </div>
+          </div>
+          <p class="muted small">Alarms at 30 min, 1 hour and 10 min before it expires (1h 30m for Attempt and L1, 2h for L0).</p>
+        </form>
+      </main>
+
+      <!-- Requests -->
+      <main id="tab-requests" class="panel stack" hidden>
+        <form id="request" class="card stack">
+          <div class="card-title">Ask your lead</div>
+          <div class="chips chips-wide" role="radiogroup">
+            <label class="chip"><input type="radio" name="request-type" value="extension" checked /> Extension</label>
+            <label class="chip"><input type="radio" name="request-type" value="reclaim" /> Reclaim</label>
+          </div>
+          <p id="request-help" class="muted small"></p>
+          <label class="field">
+            <span>Task ID</span>
+            <input id="request-task" class="mono" autocomplete="off" spellcheck="false" />
+          </label>
+          <label class="field">
+            <span>Reason</span>
+            <textarea id="request-reason" rows="3" required></textarea>
+          </label>
+          <button class="btn btn-primary btn-block" type="submit">Send request</button>
+          <p id="request-sent" class="notice notice-success" hidden>Request sent to your lead.</p>
+        </form>
+
+        <section class="stack-sm">
+          <div class="section-title">Requests for this task</div>
+          <ul id="requests" class="list"></ul>
+        </section>
+      </main>
+    </section>
+
+    <div id="error" class="toast" role="alert" hidden>
+      <span id="error-text"></span>
+      <button id="error-close" type="button" aria-label="Dismiss">×</button>
+    </div>
+    <script src="popup.js"></script>
+  </body>
+</html>
