@@ -14,6 +14,10 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Added
+
+- Leads have an Audits page, under Logs, for spot-checking the tasks their CBs logged. Press Add entry, find the task by its task ID or the CB's name or email (with nothing typed it lists your team's latest submitted tasks), give it a quality score from the bootcamp rubric (5 perfect to 1 spam) and write down the errors you found. The CB and project come from the task, and each task can be audited once. Open in Remotasks, on the chosen task and on each audit, opens the CB's work in a new tab so you can check it before scoring. The page lists your audits with the team's average score, a filter for each CB, and tabs for audits with errors and scores of 3 or lower. You can edit or delete an entry later. Only the CB's lead and admins see audits, and admins can switch between teams.
+
 ## 6.2.0 — 2026-10-29
 
 ### Added

@@ -10,7 +10,7 @@ import { StatusPill } from './StatusPill'
 
 const formatDateTime = (iso: string) => new Date(iso).toLocaleString()
 
-function CopyButton({ text }: { text: string }) {
+export function CopyButton({ text, label = 'Copy' }: { text: string; label?: string }) {
   const [copied, setCopied] = useState(false)
   return (
     <button
@@ -27,7 +27,7 @@ function CopyButton({ text }: { text: string }) {
       className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-gray-200 px-2 py-0.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
     >
       <Copy className="h-3.5 w-3.5" aria-hidden />
-      {copied ? 'Copied' : 'Copy'}
+      {copied ? 'Copied' : label}
     </button>
   )
 }
