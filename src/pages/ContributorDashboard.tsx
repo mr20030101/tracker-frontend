@@ -16,6 +16,7 @@ import { CtsFormModal } from '../components/CtsFormModal'
 import { AttendanceFormModal } from '../components/AttendanceFormModal'
 import { attendanceWindow, fetchOwnAttendance } from '../lib/attendance'
 import { useAttendanceClosesMin } from '../lib/useAttendanceClosesMin'
+import { useTeamFeatures } from '../lib/teamFeatures'
 import { TaskSubmissionForm } from '../components/TaskSubmissionForm'
 import { NoSubmissionNudge } from '../components/NoSubmissionNudge'
 import { LevelPill } from '../components/LevelPill'
@@ -56,6 +57,8 @@ export function ContributorDashboard() {
   const { usersById, openChatWith } = useMessaging()
   const bot = useMemo(() => [...usersById.values()].find((u) => u.is_bot), [usersById])
   const [showCtsModal, setShowCtsModal] = useState(false)
+  // A lead can switch the CTS Form and Attendance off for their team.
+  const { ctsEnabled, attendanceEnabled } = useTeamFeatures(user?.id)
   const [submitting, setSubmitting] = useState(false)
   // Shown at most once per browser session: once dismissed, a reload won't bring it back.
   const [showWarning, setShowWarning] = useState(() => {
@@ -243,6 +246,7 @@ export function ContributorDashboard() {
                 <Plus className="h-4 w-4" aria-hidden />
                 Submit a Task
               </button>
+              {ctsEnabled && (
               <button
                 type="button"
                 onClick={() => setShowCtsModal(true)}
@@ -251,6 +255,8 @@ export function ContributorDashboard() {
                 <ClipboardCheck className="h-4 w-4" aria-hidden />
                 CTS Form
               </button>
+              )}
+              {attendanceEnabled && (
               <button
                 type="button"
                 onClick={handleAttendanceClick}
@@ -265,6 +271,7 @@ export function ContributorDashboard() {
                 <ClipboardList className="h-4 w-4" aria-hidden />
                 {todaysAttendance ? 'Attendance filed ✓' : 'Attendance Form'}
               </button>
+              )}
               {bot && (
                 <button
                   type="button"

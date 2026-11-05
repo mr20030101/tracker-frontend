@@ -44,12 +44,15 @@ import { fetchUnreadAnnouncementCount } from '../lib/announcements'
 import { fetchPendingFeedbackCount } from '../lib/taskFeedback'
 import { AppFooter } from './AppFooter'
 import { OfflineQueueBanner } from './OfflineQueueBanner'
+import { useTeamFeatures } from '../lib/teamFeatures'
 
 const MANAGER_ROLES = ['admin', 'lead']
 
 function navSections(
   isManager: boolean,
   isAdmin: boolean,
+  // Off when the person's team doesn't take attendance in the Tracker (never for an admin).
+  attendanceEnabled: boolean,
   pendingRequests: number,
   overdueRequests: number,
   pendingFeedback: number,
@@ -85,7 +88,7 @@ function navSections(
                 : `${pendingRequests} pending`,
           },
           { to: '/feedback', label: 'Feedback', icon: MessageSquareText, badge: pendingFeedback, badgeTitle: `${pendingFeedback} to check` },
-          { to: '/attendance', label: 'Attendance', icon: CalendarCheck },
+          ...(attendanceEnabled ? [{ to: '/attendance', label: 'Attendance', icon: CalendarCheck }] : []),
           { to: '/audits', label: 'Audits', icon: ClipboardCheck },
           { to: '/data-quality', label: 'Data Quality', icon: ShieldCheck },
           { to: '/team-reports', label: 'Team Reports', icon: LineChartIcon },
@@ -95,7 +98,7 @@ function navSections(
           { to: '/task-log', label: 'Task Log', icon: ClipboardList },
           { to: '/requests', label: 'Requests', icon: Hourglass },
           { to: '/feedback', label: 'Feedback', icon: MessageSquareText },
-          { to: '/attendance', label: 'Attendance', icon: CalendarCheck },
+          ...(attendanceEnabled ? [{ to: '/attendance', label: 'Attendance', icon: CalendarCheck }] : []),
         ],
     },
     {
@@ -232,7 +235,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [location.pathname])
 
   const ownProfilePath = user ? contributorPath(user.email) : '/'
-  const sections = navSections(isManager, isAdmin, pendingRequests, overdueRequests, pendingFeedback, unreadAnnouncements)
+  const { attendanceEnabled } = useTeamFeatures(user?.id)
+  const sections = navSections(isManager, isAdmin, attendanceEnabled, pendingRequests, overdueRequests, pendingFeedback, unreadAnnouncements)
   const searchPages = [
     ...sections.flatMap((section) => section.items.map(({ to, label, icon }) => ({ to, label, icon }))),
     { to: ownProfilePath, label: 'My profile', icon: UserRound },

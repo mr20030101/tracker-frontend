@@ -47,6 +47,7 @@ import { ActionsMenu } from './ActionsMenu'
 import { TaskTimer } from './TaskTimer'
 import { SortableHeader } from './SortableHeader'
 import { CtsFormModal } from './CtsFormModal'
+import { useTeamFeatures } from '../lib/teamFeatures'
 import { TaskSubmissionForm } from './TaskSubmissionForm'
 import { BulkImportModal } from './BulkImportModal'
 import { BadVideoReportModal } from './BadVideoReportModal'
@@ -123,6 +124,8 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
       ).data,
     enabled: Boolean(email),
   })
+  // The CTS Form and column only for a team that still sends its tasks to CTS.
+  const { ctsEnabled } = useTeamFeatures(data?.user?.id)
 
   const { data: allProjects = [] } = useQuery({
     queryKey: ['projects'],
@@ -656,6 +659,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
               </button>
             )}
 
+            {ctsEnabled && (
             <button
               onClick={() => setShowCtsModal(true)}
               className="ml-auto inline-flex animate-heartbeat-soft items-center gap-1.5 rounded-lg bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600"
@@ -663,9 +667,10 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
               <ClipboardCheck className="h-4 w-4" aria-hidden />
               CTS Form
             </button>
+            )}
             <button
               onClick={() => setBulkImporting(true)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+              className={`${ctsEnabled ? '' : 'ml-auto '}inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50`}
             >
               <FileUp className="h-4 w-4" aria-hidden />
               Bulk Import
@@ -692,7 +697,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                     <SortableHeader label="Stage" active={sort.key === 'stage'} dir={sort.dir} onClick={() => toggleSort('stage')} />
                     <SortableHeader label="Status" active={sort.key === 'status'} dir={sort.dir} onClick={() => toggleSort('status')} />
                     <th className="px-5 py-3">Time</th>
-                    <th className="px-5 py-3">CTS</th>
+                    {ctsEnabled && <th className="px-5 py-3">CTS</th>}
                     <th className="px-5 py-3">Extension / Reclaim</th>
                     <SortableHeader label="Date" active={sort.key === 'date'} dir={sort.dir} onClick={() => toggleSort('date')} />
                     <th className="px-5 py-3 text-right">Actions</th>
@@ -701,7 +706,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                 <tbody className="divide-y divide-gray-100">
                   {pagedSubmissions.length === 0 && (
                     <tr>
-                      <td colSpan={9} className="px-5 py-6 text-center text-gray-400">
+                      <td colSpan={ctsEnabled ? 9 : 8} className="px-5 py-6 text-center text-gray-400">
                         No submissions for this {viewMode}.
                       </td>
                     </tr>
@@ -823,6 +828,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                       <td className="px-5 py-3">
                         <TaskTimer task={row} canControl={canEdit} />
                       </td>
+                      {ctsEnabled && (
                       <td className="px-5 py-3">
                         {row.cts_submitted_at ? (
                           <span className="inline-flex items-center rounded-full bg-status-success-bg px-2.5 py-0.5 text-xs font-medium text-status-success-text">
@@ -834,6 +840,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                           </span>
                         )}
                       </td>
+                      )}
                       <td className="px-5 py-3">
                         {extension || reclaim ? (
                           <div className="flex flex-wrap gap-1">

@@ -40,6 +40,7 @@ import { formatTime, fromISODate, todayIso } from '../lib/week'
 import { useNow } from '../lib/useNow'
 import { useAttendanceClosesMin } from '../lib/useAttendanceClosesMin'
 import { usePageTitle } from '../lib/usePageTitle'
+import { fetchTeamFeaturesList, useTeamFeatures } from '../lib/teamFeatures'
 import type { Attendance as AttendanceEntry, AttendanceHours } from '../types'
 
 const MANAGER_ROLES = ['admin', 'lead']
@@ -61,7 +62,33 @@ export function Attendance() {
   usePageTitle('Attendance')
   const { user } = useAuth()
   const isManager = Boolean(user && MANAGER_ROLES.includes(user.role))
+  // Until we know, nothing; a team with attendance switched off (Settings → Team) just gets a note.
+  const { attendanceEnabled, loaded } = useTeamFeatures(user?.id)
+  if (!loaded) return null
+  if (!attendanceEnabled) return <AttendanceOff isManager={isManager} />
   return isManager ? <TeamAttendance /> : <MyAttendance />
+}
+
+function AttendanceOff({ isManager }: { isManager: boolean }) {
+  return (
+    <div>
+      <h1 className="mb-2 text-2xl font-bold text-gray-900">Attendance</h1>
+      <div className="rounded-xl border border-gray-200 bg-white px-5 py-6 text-sm text-gray-600">
+        {isManager ? (
+          <>
+            Attendance is switched off for your team, so your contributors don't file it in the Tracker. You can turn it back on
+            in{' '}
+            <Link to="/settings?tab=team" className="font-medium text-sky-700 hover:underline">
+              Settings → Team
+            </Link>
+            .
+          </>
+        ) : (
+          "Your team doesn't take attendance in the Tracker, so there's nothing to file here."
+        )}
+      </div>
+    </div>
+  )
 }
 
 interface Person {
@@ -190,10 +217,20 @@ function TeamAttendance() {
   const { data: closeTimes } = useQuery({ queryKey: ['attendance-close-times'], queryFn: fetchAttendanceCloseTimes })
   const closesMin = closeTimes && ((closeTimeLead ? closeTimes.teams.get(closeTimeLead) : undefined) ?? closeTimes.defaultMin)
 
-  const { data: roster, isLoading: rosterLoading } = useQuery({
+  const { data: rosterAll, isLoading: rosterLoading } = useQuery({
     queryKey: ['attendance', 'roster'],
     queryFn: fetchAttendanceRoster,
   })
+  // Teams with attendance switched off aren't expected to file, so they're left out here.
+  const { data: teamFeatures } = useQuery({ queryKey: ['team-features-list'], queryFn: fetchTeamFeaturesList })
+  const roster = useMemo(() => {
+    if (!rosterAll) return undefined
+    const off = (leadId: string | null) => Boolean(leadId && teamFeatures?.get(leadId)?.attendanceEnabled === false)
+    return {
+      contributors: rosterAll.contributors.filter((c) => !off(c.lead_id)),
+      leads: rosterAll.leads.filter((l) => !off(l.id)),
+    }
+  }, [rosterAll, teamFeatures])
   const { data: entries = [], isLoading: entriesLoading } = useQuery({
     queryKey: ['attendance', 'date', date],
     queryFn: () => fetchAttendanceForDate(date),

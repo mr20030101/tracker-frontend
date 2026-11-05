@@ -6,6 +6,7 @@ import { useAuth } from '../lib/auth'
 import { bombSoundBlocked, playBombSound, playExplosion, prepareBombSound, subscribeBombSound, unlockBombSound, type BombSound } from '../lib/bombSound'
 import { runExplosion } from '../lib/explosion'
 import { useAttendanceClosesMin } from '../lib/useAttendanceClosesMin'
+import { useTeamFeatures } from '../lib/teamFeatures'
 import { sgMinutesSinceMidnight, todayIso } from '../lib/week'
 import { useNow } from '../lib/useNow'
 import { AttendanceFormModal } from './AttendanceFormModal'
@@ -75,7 +76,9 @@ export function AttendanceBomb() {
   const { user } = useAuth()
   const now = useNow(1000)
   const today = todayIso(now)
-  const isContributor = user?.role === 'contributor'
+  // Not for a team that doesn't take attendance in the Tracker.
+  const { attendanceEnabled } = useTeamFeatures(user?.id)
+  const isContributor = user?.role === 'contributor' && attendanceEnabled
   const { closesMin } = useAttendanceClosesMin()
   // The same query as the Dashboard's button, so filing from either hides the bomb.
   const { data: todaysAttendance } = useQuery({

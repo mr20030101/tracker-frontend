@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Camera, Check, Eye, EyeOff, KeyRound, Lock, Mic, MicOff, Monitor, Moon, Palette, PhoneCall, Save, Sun, Undo2, UserRound, Volume2, type LucideIcon } from 'lucide-react'
-import { supabase } from '../lib/api'
+import { Camera, Check, Eye, EyeOff, KeyRound, Lock, Mic, MicOff, Monitor, Moon, Palette, PhoneCall, Save, Sun, Undo2, UserRound, UsersRound, Volume2, type LucideIcon } from 'lucide-react'
+import { errorMessage, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useCall } from '../lib/call'
 import { canChooseOutput, routeCallAudio, useMediaDevices } from '../lib/callDevices'
@@ -19,13 +19,19 @@ import { MicMeter, SpeakerModeSwitch } from '../components/CallSettings'
 import { RemotasksIdField } from '../components/RemotasksIdField'
 import { Reveal } from '../components/Reveal'
 import { Select } from '../components/Select'
+import { Switch } from '../components/Switch'
+import { ALL_FEATURES_ON, fetchTeamFeaturesList, setTeamFeatures, type TeamFeatures } from '../lib/teamFeatures'
+import type { User } from '../types'
 
 const SECTIONS: { id: string; label: string; icon: LucideIcon }[] = [
   { id: 'profile', label: 'Profile', icon: UserRound },
   { id: 'password', label: 'Password', icon: KeyRound },
   { id: 'appearance', label: 'Appearance', icon: Palette },
   { id: 'calls', label: 'Calls', icon: PhoneCall },
+  // Leads and admins only: what their team uses.
+  { id: 'team', label: 'Team', icon: UsersRound },
 ]
+const MANAGER_ONLY_SECTIONS = ['team']
 
 const fieldClass = 'w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent'
 
@@ -34,6 +40,7 @@ const PANELS: Record<string, () => ReactNode> = {
   password: () => <PasswordSection />,
   appearance: () => <AppearanceSection />,
   calls: () => <CallsSection />,
+  team: () => <TeamSection />,
 }
 
 // Your own account in one place: what others see on your profile, your password, how the app
@@ -42,7 +49,10 @@ const PANELS: Record<string, () => ReactNode> = {
 export function Settings() {
   usePageTitle('Settings')
   const [params, setParams] = useSearchParams()
-  const active = SECTIONS.some((s) => s.id === params.get('tab')) ? params.get('tab')! : SECTIONS[0].id
+  const { user } = useAuth()
+  const isManager = user?.role === 'lead' || user?.role === 'admin'
+  const sections = SECTIONS.filter((s) => isManager || !MANAGER_ONLY_SECTIONS.includes(s.id))
+  const active = sections.some((s) => s.id === params.get('tab')) ? params.get('tab')! : sections[0].id
   const select = (id: string) => setParams(id === SECTIONS[0].id ? {} : { tab: id }, { replace: true })
 
   // Arrow keys move between tabs, as in any tab list.
@@ -50,9 +60,9 @@ export function Settings() {
     const step = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0
     if (!step) return
     e.preventDefault()
-    const index = (SECTIONS.findIndex((s) => s.id === active) + step + SECTIONS.length) % SECTIONS.length
-    select(SECTIONS[index].id)
-    document.getElementById(`tab-${SECTIONS[index].id}`)?.focus()
+    const index = (sections.findIndex((s) => s.id === active) + step + sections.length) % sections.length
+    select(sections[index].id)
+    document.getElementById(`tab-${sections[index].id}`)?.focus()
   }
 
   return (
@@ -68,7 +78,7 @@ export function Settings() {
         onKeyDown={handleKeyDown}
         className="scrollbar-none mb-6 flex gap-1 overflow-x-auto border-b border-gray-200"
       >
-        {SECTIONS.map(({ id, label, icon: Icon }) => {
+        {sections.map(({ id, label, icon: Icon }) => {
           const on = active === id
           return (
             <button
@@ -697,5 +707,92 @@ function CallsSection() {
         </div>
       </div>
     </Section>
+  )
+}
+
+// Leads and admins: switching the CTS Form and Attendance on or off for a team (a lead's own; every
+// lead's for an admin). Each switch saves straight away.
+function TeamSection() {
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'admin'
+  const { data: leads = [] } = useQuery({
+    queryKey: ['settings-team-leads'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('profiles').select('id, name').eq('role', 'lead').eq('is_active', true).order('name')
+      if (error) throw error
+      return data as Pick<User, 'id' | 'name'>[]
+    },
+    enabled: isAdmin,
+  })
+  const { data: features, isLoading } = useQuery({ queryKey: ['team-features-list'], queryFn: fetchTeamFeaturesList })
+  const teams = isAdmin ? leads : user ? [{ id: user.id, name: user.name }] : []
+
+  return (
+    <Section
+      id="team"
+      icon={UsersRound}
+      title="Team"
+      description={
+        isAdmin
+          ? "What each lead's team uses in the Tracker. Switching something off hides it from that team's contributors."
+          : 'What your team uses in the Tracker. Switching something off hides it from your contributors.'
+      }
+    >
+      {teams.length === 0 ? (
+        <p className="text-sm text-gray-500">{isLoading ? 'Loading...' : 'No leads yet.'}</p>
+      ) : (
+        <div className="divide-y divide-gray-100">
+          {teams.map((team) => (
+            <TeamFeatureRow
+              key={team.id}
+              leadId={team.id}
+              title={isAdmin ? `${team.name}\u2019s team` : 'Your team'}
+              features={features?.get(team.id) ?? ALL_FEATURES_ON}
+              disabled={isLoading}
+            />
+          ))}
+        </div>
+      )}
+    </Section>
+  )
+}
+
+function TeamFeatureRow({ leadId, title, features, disabled }: { leadId: string; title: string; features: TeamFeatures; disabled: boolean }) {
+  const queryClient = useQueryClient()
+  const save = useMutation({
+    mutationFn: (next: TeamFeatures) => setTeamFeatures(leadId, next),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['team-features-list'] })
+      queryClient.invalidateQueries({ queryKey: ['team-features'] })
+    },
+  })
+  const shown = save.isPending && save.variables ? save.variables : features
+  const toggles: { key: keyof TeamFeatures; label: string; hint: string }[] = [
+    { key: 'ctsEnabled', label: 'CTS Form', hint: 'The CTS Form button and CTS column on the Dashboard, Task Log and profile.' },
+    { key: 'attendanceEnabled', label: 'Attendance', hint: 'The Attendance page, form and countdown. Off, contributors can\u2019t file it themselves.' },
+  ]
+  return (
+    <div className="py-4 first:pt-0 last:pb-0">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
+        {save.error && <span className="text-xs text-status-danger-text">{errorMessage(save.error, "Couldn't save.")}</span>}
+      </div>
+      <div className="space-y-3">
+        {toggles.map(({ key, label, hint }) => (
+          <div key={key} className="flex items-start justify-between gap-4">
+            <div>
+              <div className="text-sm font-medium text-gray-800">{label}</div>
+              <div className="text-xs text-gray-500">{hint}</div>
+            </div>
+            <Switch
+              checked={shown[key]}
+              onChange={(next) => save.mutate({ ...shown, [key]: next })}
+              disabled={disabled || save.isPending}
+              label={`${label} for ${title}`}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
   )
 }
