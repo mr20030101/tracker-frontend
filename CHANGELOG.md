@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 7.1.0 — 2026-11-06
+
 ### Added
 
 - Leads can switch the CTS Form and Attendance off for their own team, in **Settings → Team** (admins can do it for any lead's team). With the CTS Form off, the team's contributors no longer see the CTS Form button or the CTS column. With Attendance off, the Attendance page, form and countdown are hidden from the team, contributors can't file it themselves, and the team is left out of the Attendance page. Jay Anne's team starts with both switched off; Ina's team keeps both.
