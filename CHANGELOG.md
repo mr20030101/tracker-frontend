@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 7.0.0 — 2026-11-05
+
 ### Removed
 
 - The Halloween theme is gone, along with its switch in **Settings → Appearance**.
