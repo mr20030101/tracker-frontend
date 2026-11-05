@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useAuth } from '../lib/auth'
-import { useSeason } from '../lib/season'
 import { useNightSky } from '../lib/theme'
 import { LoginOwl, type OwlMood } from './LoginOwl'
 import TextLoop from './TextLoop'
@@ -29,9 +28,8 @@ function greeting(name: string | undefined, date: Date): string {
   return `Good evening${who}!`
 }
 
-// The greeting rides a ribbon in the accent colour (orange for Halloween) that flows across the
-// banner. Dark ink on it reads the same against the day and the night sky.
-const RIBBON = { colour: '#d4a017', halloween: '#ea580c', ink: '#1a1500' }
+// The greeting rides a gold ribbon that flows across the banner. Dark ink on it reads the same against the day and the night sky.
+const RIBBON = { colour: '#d4a017', ink: '#1a1500' }
 
 function dateLine(date: Date): string {
   return date.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })
@@ -113,7 +111,6 @@ function PeekingOwl({ night }: { night: boolean }) {
 
 export function DashboardHero({ subtitle, actions }: { subtitle: ReactNode; actions?: ReactNode }) {
   const { user } = useAuth()
-  const { halloween } = useSeason()
   // Recomputed on render; the dashboards re-render often enough for the greeting to stay current.
   const now = new Date()
   const title = greeting(user?.name, now)
@@ -143,7 +140,7 @@ export function DashboardHero({ subtitle, actions }: { subtitle: ReactNode; acti
           speed={70}
           fontSize={40}
           ribbonWidth={72}
-          ribbonColor={halloween ? RIBBON.halloween : RIBBON.colour}
+          ribbonColor={RIBBON.colour}
           color={RIBBON.ink}
           separator="✦"
           draggable

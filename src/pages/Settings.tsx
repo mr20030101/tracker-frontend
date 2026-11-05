@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Camera, Check, Eye, EyeOff, Ghost, KeyRound, Lock, Mic, MicOff, Monitor, Moon, Palette, PhoneCall, Save, Sun, Undo2, UserRound, Volume2, type LucideIcon } from 'lucide-react'
+import { Camera, Check, Eye, EyeOff, KeyRound, Lock, Mic, MicOff, Monitor, Moon, Palette, PhoneCall, Save, Sun, Undo2, UserRound, Volume2, type LucideIcon } from 'lucide-react'
 import { supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useCall } from '../lib/call'
@@ -9,7 +9,6 @@ import { canChooseOutput, routeCallAudio, useMediaDevices } from '../lib/callDev
 import { clearMustChangePassword, removeAvatarFile, updateOwnProfile, uploadAvatar } from '../lib/profile'
 import { normalizeRemotasksId, remotasksIdError } from '../lib/remotasks'
 import { MESSAGE_NOTIFICATION_SOUND } from '../lib/sound'
-import { useSeason } from '../lib/season'
 import { useTheme } from '../lib/theme'
 import { useAudioLevel } from '../lib/useAudioLevel'
 import { usePageTitle } from '../lib/usePageTitle'
@@ -20,7 +19,6 @@ import { MicMeter, SpeakerModeSwitch } from '../components/CallSettings'
 import { RemotasksIdField } from '../components/RemotasksIdField'
 import { Reveal } from '../components/Reveal'
 import { Select } from '../components/Select'
-import { Switch } from '../components/Switch'
 
 const SECTIONS: { id: string; label: string; icon: LucideIcon }[] = [
   { id: 'profile', label: 'Profile', icon: UserRound },
@@ -515,7 +513,6 @@ function ThemePicture({ palette }: { palette: ThemePalette }) {
 
 function AppearanceSection() {
   const { theme, manual, chooseTheme } = useTheme()
-  const { inSeason, halloween, toggleHalloween } = useSeason()
   const choice = manual ? theme : 'system'
   const options = [
     { value: 'system' as const, label: 'System', hint: 'Matches your device', icon: Monitor },
@@ -581,44 +578,6 @@ function AppearanceSection() {
             })}
           </div>
         </div>
-
-        {inSeason && (
-          <div>
-            <h3 className="mb-3 text-sm font-semibold text-gray-900">Seasonal</h3>
-            <div
-              className={`flex flex-col overflow-hidden rounded-xl border transition-colors sm:flex-row ${
-                halloween ? 'border-[#ea580c]' : 'border-gray-200'
-              }`}
-            >
-              {/* A night sky over a pumpkin patch; drained of colour while the theme is off. */}
-              <div
-                aria-hidden
-                className={`relative h-24 shrink-0 overflow-hidden transition-[filter] duration-500 sm:h-auto sm:w-56 ${halloween ? '' : 'grayscale'}`}
-                style={{ background: 'linear-gradient(160deg, #1a0f24 0%, #3b1d4a 55%, #ea580c 140%)' }}
-              >
-                <span className="absolute right-5 top-3 h-6 w-6 rounded-full bg-[#fde68a] shadow-[0_0_18px_#fde68a]" />
-                <span className={`absolute left-6 top-4 text-sm ${halloween ? 'nudge-bob' : ''}`}>🦇</span>
-                <span className={`absolute left-16 top-8 text-xs ${halloween ? 'nudge-bob' : ''}`} style={{ animationDelay: '0.6s' }}>
-                  🦇
-                </span>
-                <span className="absolute bottom-2 left-5 text-3xl">🎃</span>
-                <span className="absolute bottom-2 left-16 text-xl">🎃</span>
-              </div>
-              <div className={`flex flex-1 items-center gap-4 p-4 ${halloween ? 'bg-[#ea580c]/5' : ''}`}>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-900">
-                    <Ghost className={`h-4 w-4 ${halloween ? 'text-[#ea580c]' : 'text-gray-400'}`} />
-                    Halloween theme
-                  </div>
-                  <p className="mt-0.5 text-xs text-gray-500">
-                    Orange accents, bats and a spooky scene behind every page, through October. Works with any theme above.
-                  </p>
-                </div>
-                <Switch checked={halloween} onChange={toggleHalloween} label="Halloween theme" />
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </Section>
   )

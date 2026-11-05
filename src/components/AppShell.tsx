@@ -35,9 +35,6 @@ import { AccountMenu } from './AccountMenu'
 import { Logo } from './Logo'
 import { NotificationBell } from './NotificationBell'
 import { MessagesButton } from './MessagesButton'
-import { HalloweenScene } from './Halloween'
-import { useTheme } from '../lib/theme'
-import { useSeason } from '../lib/season'
 import { OnlineUsers } from './OnlineUsers'
 import { AttendanceBomb } from './AttendanceBomb'
 import { GlobalSearch } from './GlobalSearch'
@@ -155,8 +152,6 @@ function writeNavCollapsed(collapsed: boolean) {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { user } = useAuth()
-  const { halloween } = useSeason()
-  const { theme } = useTheme()
   const location = useLocation()
   const isManager = Boolean(user && MANAGER_ROLES.includes(user.role))
   const isAdmin = user?.role === 'admin'
@@ -288,12 +283,6 @@ export function AppShell({ children }: { children: ReactNode }) {
       <CallProvider>
         <CallBar />
         <div className="relative isolate flex h-screen overflow-hidden bg-gray-50">
-          {/* October: the Halloween scene in place of the plain page background, behind everything. */}
-          {halloween && (
-            <div className="absolute inset-0 -z-10">
-              <HalloweenScene night={theme === 'dark'} />
-            </div>
-          )}
           {user && !onMessages && <OnlineUsers />}
           {/* Contributors: the countdown to today's attendance closing, until they've filed. */}
           {user && <AttendanceBomb />}
