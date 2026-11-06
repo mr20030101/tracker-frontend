@@ -177,3 +177,21 @@ export async function setAttendanceClosesMin(leadId: string | null, closesMin: n
   const { error } = await supabase.rpc('set_attendance_closes_min', { p_lead_id: leadId, p_closes_min: closesMin })
   if (error) throw error
 }
+
+/** A teammate's day on a team whose attendance is public (team_attendance_for_date). */
+export interface TeammateAttendance {
+  user_id: string
+  name: string
+  avatar_url: string | null
+  hours: AttendanceHours | null
+  tasking_status: string | null
+  photo_ref: string | null
+  filed_at: string | null
+}
+
+/** Contributors on a public team: everyone on it for a day, filed or not. Empty when it isn't public. */
+export async function fetchTeamAttendanceForDate(date: string): Promise<TeammateAttendance[]> {
+  const { data, error } = await supabase.rpc('team_attendance_for_date', { p_date: date })
+  if (error) throw error
+  return (data ?? []) as TeammateAttendance[]
+}

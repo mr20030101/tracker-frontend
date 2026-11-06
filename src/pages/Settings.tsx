@@ -770,6 +770,11 @@ function TeamFeatureRow({ leadId, title, features, disabled }: { leadId: string;
   const toggles: { key: keyof TeamFeatures; label: string; hint: string }[] = [
     { key: 'ctsEnabled', label: 'CTS Form', hint: 'The CTS Form button and CTS column on the Dashboard, Task Log and profile.' },
     { key: 'attendanceEnabled', label: 'Attendance', hint: 'The Attendance page, form and countdown. Off, contributors can\u2019t file it themselves.' },
+    {
+      key: 'attendancePublic',
+      label: 'Public attendance',
+      hint: 'Contributors see who on the team has filed today, with each person\u2019s attendance photo. Emails, Task IDs and screenshots stay private.',
+    },
   ]
   return (
     <div className="py-4 first:pt-0 last:pb-0">
@@ -787,7 +792,7 @@ function TeamFeatureRow({ leadId, title, features, disabled }: { leadId: string;
             <Switch
               checked={shown[key]}
               onChange={(next) => save.mutate({ ...shown, [key]: next })}
-              disabled={disabled || save.isPending}
+              disabled={disabled || save.isPending || (key === 'attendancePublic' && !shown.attendanceEnabled)}
               label={`${label} for ${title}`}
             />
           </div>

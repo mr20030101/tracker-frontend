@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../lib/auth'
@@ -12,6 +12,7 @@ import {
   fetchAttendanceForDate,
   fetchAttendanceHistory,
   fetchAttendanceRoster,
+  fetchTeamAttendanceForDate,
   minutesToTimeInput,
   sentToGoogleForm,
   setAttendanceClosesMin,
@@ -20,12 +21,11 @@ import {
 } from '../lib/attendance'
 import { AttendanceFormModal } from '../components/AttendanceFormModal'
 import { SearchInput, SegmentedTabs, TableToolbar, toolbarControlClass } from '../components/TableToolbar'
-import { Avatar } from '../components/Avatar'
+import { AttendanceAvatar } from '../components/AttendanceAvatar'
 import { Modal } from '../components/Modal'
 import { Camera, Check, Download, FilePlus, Pencil, RotateCcw, RotateCw, Save, X, type LucideIcon } from 'lucide-react'
 import { errorMessage } from '../lib/api'
 import {
-  fetchAttendancePhoto,
   fetchAttendancePhotoRequired,
   fetchGoogleFormEnabled,
   sendAttendanceToGoogleForm,
@@ -40,6 +40,7 @@ import { formatTime, fromISODate, todayIso } from '../lib/week'
 import { useNow } from '../lib/useNow'
 import { useAttendanceClosesMin } from '../lib/useAttendanceClosesMin'
 import { usePageTitle } from '../lib/usePageTitle'
+import { useAttendancePhoto } from '../lib/useAttendancePhoto'
 import { fetchTeamFeaturesList, useTeamFeatures } from '../lib/teamFeatures'
 import type { Attendance as AttendanceEntry, AttendanceHours } from '../types'
 
@@ -63,10 +64,10 @@ export function Attendance() {
   const { user } = useAuth()
   const isManager = Boolean(user && MANAGER_ROLES.includes(user.role))
   // Until we know, nothing; a team with attendance switched off (Settings → Team) just gets a note.
-  const { attendanceEnabled, loaded } = useTeamFeatures(user?.id)
+  const { attendanceEnabled, attendancePublic, loaded } = useTeamFeatures(user?.id)
   if (!loaded) return null
   if (!attendanceEnabled) return <AttendanceOff isManager={isManager} />
-  return isManager ? <TeamAttendance /> : <MyAttendance />
+  return isManager ? <TeamAttendance /> : <MyAttendance teamPublic={attendancePublic} />
 }
 
 function AttendanceOff({ isManager }: { isManager: boolean }) {
@@ -360,7 +361,7 @@ function TeamAttendance() {
                 }`}
               >
                 <div className="flex items-start gap-3">
-                  <Avatar name={person.name} photoUrl={person.avatar_url} size={40} />
+                  <AttendanceAvatar name={person.name} avatarUrl={person.avatar_url} photoRef={entry?.photo_ref} />
                   <div className="min-w-0 flex-1">
                     <Link
                       to={contributorPath(person.email)}
@@ -511,30 +512,17 @@ function PhotoButton({ onClick }: { onClick: () => void }) {
 
 /** An attendance photo, loaded from Google Drive (through api/attendance-photo) only when opened. */
 function PhotoModal({ photoRef, name, onClose }: { photoRef: string; name: string; onClose: () => void }) {
-  const [url, setUrl] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    let objectUrl: string | null = null
-    let cancelled = false
-    fetchAttendancePhoto(photoRef).then(
-      (loaded) => {
-        objectUrl = loaded
-        if (cancelled) URL.revokeObjectURL(loaded)
-        else setUrl(loaded)
-      },
-      (err) => !cancelled && setError(errorMessage(err, "This photo couldn't be loaded.")),
-    )
-    return () => {
-      cancelled = true
-      if (objectUrl) URL.revokeObjectURL(objectUrl)
-    }
-  }, [photoRef])
-
+  const { url, error } = useAttendancePhoto(photoRef)
   return (
     <Modal title={`${name}'s attendance photo`} onClose={onClose}>
       <div className="flex aspect-[4/3] items-center justify-center overflow-hidden rounded-lg bg-gray-100 text-sm text-gray-400">
-        {url ? <img src={url} alt={`${name}'s attendance photo`} className="h-full w-full object-cover" /> : (error ?? 'Loading...')}
+        {url ? (
+          <img src={url} alt={`${name}'s attendance photo`} className="h-full w-full object-cover" />
+        ) : error ? (
+          errorMessage(error, "This photo couldn't be loaded.")
+        ) : (
+          'Loading...'
+        )}
       </div>
     </Modal>
   )
@@ -544,8 +532,10 @@ function EmptyCard({ children }: { children: ReactNode }) {
   return <div className="rounded-xl border border-gray-200 bg-white px-5 py-10 text-center text-sm text-gray-400">{children}</div>
 }
 
-/** Contributors: today's filing and their own history. */
-function MyAttendance() {
+type ContributorTab = 'mine' | 'team'
+
+/** Contributors: today's filing and their own history, and the team's day when the team's attendance is public. */
+function MyAttendance({ teamPublic }: { teamPublic: boolean }) {
   const { user } = useAuth()
   const now = useNow(60_000)
   const today = todayIso(now)
@@ -553,6 +543,8 @@ function MyAttendance() {
   const windowState = attendanceWindow(new Date(now), closesMin)
   const [filing, setFiling] = useState(false)
   const [viewingPhoto, setViewingPhoto] = useState<string | null>(null)
+  const [tab, setTab] = useState<ContributorTab>('mine')
+  const showTeam = teamPublic && tab === 'team'
 
   const { data: history = [], isLoading } = useQuery({
     queryKey: ['attendance', 'history', user?.id],
@@ -581,7 +573,23 @@ function MyAttendance() {
         </button>
       </div>
 
-      {isLoading ? (
+      {teamPublic && (
+        <div className="mb-3">
+          <SegmentedTabs
+            aria-label="Whose attendance"
+            value={tab}
+            onChange={setTab}
+            options={[
+              { value: 'mine', label: 'Mine' },
+              { value: 'team', label: 'Team' },
+            ]}
+          />
+        </div>
+      )}
+
+      {showTeam ? (
+        <TeammatesAttendance today={today} />
+      ) : isLoading ? (
         <EmptyCard>Loading...</EmptyCard>
       ) : history.length === 0 ? (
         <EmptyCard>No attendance filed yet.</EmptyCard>
@@ -611,5 +619,90 @@ function MyAttendance() {
       )}
       {viewingPhoto && user && <PhotoModal photoRef={viewingPhoto} name={user.name} onClose={() => setViewingPhoto(null)} />}
     </div>
+  )
+}
+
+/** A public team's day, as its contributors see it: who filed, their hours and status, and their photo. */
+function TeammatesAttendance({ today }: { today: string }) {
+  const { user } = useAuth()
+  const [date, setDate] = useState(today)
+  const [filter, setFilter] = useState<FilterTab>('all')
+  const [viewingPhoto, setViewingPhoto] = useState<{ ref: string; name: string } | null>(null)
+  const { data: team = [], isLoading } = useQuery({
+    queryKey: ['attendance', 'team', date],
+    queryFn: () => fetchTeamAttendanceForDate(date),
+    refetchInterval: date === today ? 60_000 : false,
+  })
+
+  const filed = team.filter((t) => t.hours)
+  const countOf = (t: FilterTab) => (t === 'all' ? team.length : t === 'filed' ? filed.length : team.length - filed.length)
+  const visible = team.filter((t) => (filter === 'all' ? true : filter === 'filed' ? t.hours : !t.hours))
+
+  return (
+    <>
+      <TableToolbar standalone>
+        <input
+          type="date"
+          value={date}
+          max={today}
+          onChange={(e) => setDate(e.target.value || today)}
+          aria-label="Day"
+          className={toolbarControlClass}
+        />
+        <SegmentedTabs
+          aria-label="Filter by filed"
+          value={filter}
+          onChange={setFilter}
+          options={(['all', 'filed', 'missing'] as FilterTab[]).map((t) => ({ value: t, label: TAB_LABELS[t], count: countOf(t) }))}
+        />
+      </TableToolbar>
+
+      {isLoading ? (
+        <EmptyCard>Loading...</EmptyCard>
+      ) : visible.length === 0 ? (
+        <EmptyCard>{filter === 'missing' ? 'Everyone has filed.' : filter === 'filed' ? 'Nobody has filed yet.' : 'No teammates.'}</EmptyCard>
+      ) : (
+        <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {visible.map((mate) => (
+            <li
+              key={mate.user_id}
+              className={`flex items-start gap-3 rounded-xl border p-4 text-sm ${
+                mate.hours ? 'border-gray-200 bg-white' : 'border-status-danger-text/40 bg-status-danger-bg'
+              }`}
+            >
+              {mate.photo_ref ? (
+                <button
+                  type="button"
+                  onClick={() => setViewingPhoto({ ref: mate.photo_ref!, name: mate.name })}
+                  aria-label={`See ${mate.name}'s attendance photo`}
+                  className="shrink-0 rounded-full"
+                >
+                  <AttendanceAvatar name={mate.name} avatarUrl={mate.avatar_url} photoRef={mate.photo_ref} size={48} />
+                </button>
+              ) : (
+                <AttendanceAvatar name={mate.name} avatarUrl={mate.avatar_url} photoRef={null} size={48} />
+              )}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="truncate font-semibold text-gray-900">
+                    {mate.name}
+                    {mate.user_id === user?.id && <span className="ml-1 font-normal text-gray-400">(you)</span>}
+                  </div>
+                  {mate.hours ? (
+                    hoursPill(mate.hours)
+                  ) : (
+                    <span className={`${pillClass} shrink-0 border-status-danger-text/40 text-status-danger-text`}>Not filed</span>
+                  )}
+                </div>
+                {mate.tasking_status && <div className="mt-1 text-gray-700">{mate.tasking_status}</div>}
+                {mate.filed_at && <div className="mt-1 text-xs text-gray-400">Filed {formatTime(mate.filed_at)}</div>}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {viewingPhoto && <PhotoModal photoRef={viewingPhoto.ref} name={viewingPhoto.name} onClose={() => setViewingPhoto(null)} />}
+    </>
   )
 }

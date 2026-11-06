@@ -31,7 +31,7 @@ function upload(body: Uint8Array<ArrayBuffer>, token: string | null = 'user-toke
 }
 
 // Answers Supabase auth/profile/count/insert, Google's token and Drive calls; records every call.
-function fakeFetch({ user = true, active = true, uploadsToday = 0, visibleEntries = 1, closesMin = 810 } = {}) {
+function fakeFetch({ user = true, active = true, uploadsToday = 0, canView = true, closesMin = 810 } = {}) {
   return vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
     const url = String(input)
     if (url.endsWith('/auth/v1/user')) return user ? Response.json({ id: 'user-1', email: 'cb@example.com' }) : new Response(null, { status: 401 })
@@ -41,7 +41,7 @@ function fakeFetch({ user = true, active = true, uploadsToday = 0, visibleEntrie
       return new Response(null, { headers: { 'content-range': `*/${uploadsToday}` } })
     }
     if (url.includes('/rest/v1/attendance_photo_uploads')) return new Response(null, { status: 201 })
-    if (url.includes('/rest/v1/attendance')) return Response.json(Array.from({ length: visibleEntries }, (_, i) => ({ id: i })))
+    if (url.endsWith('/rest/v1/rpc/can_view_attendance_photo')) return Response.json(canView)
     if (url.includes('oauth2.googleapis.com')) return Response.json({ access_token: 'google-token', expires_in: 3600 })
     if (url.includes('/upload/drive/v3/files')) return Response.json({ id: 'drive-file-123' })
     if (url.includes('/drive/v3/files/')) return new Response(jpeg(), { headers: { 'Content-Type': 'image/jpeg' } })
@@ -110,7 +110,7 @@ describe('handleViewAttendancePhoto', () => {
   })
 
   it("refuses when the caller can't see the entry, without asking Drive", async () => {
-    const fetchImpl = fakeFetch({ visibleEntries: 0 })
+    const fetchImpl = fakeFetch({ canView: false })
     expect((await handleViewAttendancePhoto(view('drive-file-123'), ENV, fetchImpl)).status).toBe(404)
     expect(fetchImpl.mock.calls.some(([url]) => String(url).includes('googleapis.com'))).toBe(false)
   })
@@ -118,7 +118,8 @@ describe('handleViewAttendancePhoto', () => {
   it('checks visibility with the caller’s own token, not the service key', async () => {
     const fetchImpl = fakeFetch()
     await handleViewAttendancePhoto(view('drive-file-123'), ENV, fetchImpl)
-    const check = fetchImpl.mock.calls.find(([url]) => String(url).includes('/rest/v1/attendance?'))
+    const check = fetchImpl.mock.calls.find(([url]) => String(url).endsWith('/rpc/can_view_attendance_photo'))
+    expect(JSON.parse(String(check?.[1]?.body))).toEqual({ p_ref: 'drive-file-123' })
     expect((check?.[1]?.headers as Record<string, string>).Authorization).toBe('Bearer user-token')
   })
 

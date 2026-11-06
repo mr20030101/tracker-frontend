@@ -3,8 +3,8 @@
 //   POST  the camera's JPEG, from a signed-in contributor during the attendance window. Uploaded to
 //         Drive and recorded in attendance_photo_uploads, which file_attendance() checks. Returns
 //         { ref }, the Drive file id the form then files with.
-//   GET   ?ref=<id>, the photo on an attendance entry, for whoever can read that entry (themselves,
-//         their lead, an admin): the check is a read of the entry with the caller's own access.
+//   GET   ?ref=<id>, the photo on an attendance entry, for whoever can see that entry (themselves,
+//         their lead, an admin, or a teammate on a public team): can_view_attendance_photo().
 // Kept free of Vercel and browser APIs so it can be tested with a fake fetch (hence the .js imports).
 
 import { serverSupabaseConfig as config, signedInCaller, type ServerSupabaseEnv } from './serverAuth.js'
@@ -104,13 +104,16 @@ export async function handleViewAttendancePhoto(request: Request, env: Attendanc
   const caller = await signedInCaller(request, env, fetchImpl)
   if (!caller) return refuse(401, 'Sign in again to see this photo.')
 
-  // Read with the caller's own access: attendance's RLS decides, so this matches who can see the entry.
+  // Asked with the caller's own token, so the database decides: whoever can read the entry, or a
+  // teammate when the team's attendance is public.
   const { url, anonKey } = config(env)
-  const entryResponse = await fetchImpl(`${url}/rest/v1/attendance?photo_ref=eq.${encodeURIComponent(ref)}&select=id&limit=1`, {
-    headers: { apikey: anonKey, Authorization: `Bearer ${caller.token}` },
+  const checkResponse = await fetchImpl(`${url}/rest/v1/rpc/can_view_attendance_photo`, {
+    method: 'POST',
+    headers: { apikey: anonKey, Authorization: `Bearer ${caller.token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ p_ref: ref }),
   })
-  const entries = entryResponse.ok ? ((await entryResponse.json()) as unknown[]) : []
-  if (entries.length === 0) return refuse(404, 'Photo not found.')
+  const allowed = checkResponse.ok ? (await checkResponse.json()) === true : false
+  if (!allowed) return refuse(404, 'Photo not found.')
 
   let photo: Response | null
   try {

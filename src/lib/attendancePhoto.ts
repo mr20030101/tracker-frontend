@@ -27,11 +27,11 @@ export async function uploadAttendancePhoto(photo: Blob): Promise<string> {
   return ((await response.json()) as { ref: string }).ref
 }
 
-/** An attendance entry's photo as an object URL; revoke it when done. */
-export async function fetchAttendancePhoto(ref: string): Promise<string> {
+/** An attendance entry's photo. */
+export async function fetchAttendancePhoto(ref: string): Promise<Blob> {
   const response = await fetch(`${ENDPOINT}?ref=${encodeURIComponent(ref)}`, { headers: await authHeader() })
   if (!response.ok) throw await failure(response, "This photo couldn't be loaded.")
-  return URL.createObjectURL(await response.blob())
+  return response.blob()
 }
 
 /**
