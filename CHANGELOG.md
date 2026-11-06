@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 7.2.0 — 2026-11-06
+
 ### Added
 
 - **Public attendance** for a team, in **Settings → Team**. When it's on, the team's contributors get a **Team** tab on the Attendance page showing who on the team has filed for the day (and who hasn't), with their hours, tasking status and attendance photo. Emails, Task IDs and screenshot links stay private. Ina's team starts with it on; every other team stays private until its lead turns it on.
