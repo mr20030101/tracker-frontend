@@ -11,9 +11,6 @@ import { StatusPill } from './StatusPill'
 const CTS_FORM_URL =
   'https://docs.google.com/forms/d/e/1FAIpQLSfXDNf6MntiYIlJHWBlEz2uKFe7I5aNzcPQHm007bUs2qBe9w/viewform'
 
-// Every CB here is under the same trainer, so it's always preselected in "Under Trainer Team".
-const CTS_TRAINER = 'tan, jay-anne ratunil'
-
 // The CTS form's "Tasker Level" options for each of our project levels / task stages.
 const TASKER_LEVEL_BY_PROJECT_LEVEL: Record<ProjectLevel, string> = {
   contributor: 'Attempter',
@@ -30,16 +27,18 @@ interface CtsFormFields {
   taskerLevel: string | null
   taskIds: string[]
   snipboardUrls: string[]
+  trainer: string | null
 }
 
-function buildCtsFormUrl({ email, projectCode, taskerLevel, taskIds, snipboardUrls }: CtsFormFields) {
+function buildCtsFormUrl({ email, projectCode, taskerLevel, taskIds, snipboardUrls, trainer }: CtsFormFields) {
   const params = new URLSearchParams()
   if (email) params.set('entry.544080514', email)
   if (projectCode) params.set('entry.525573583', projectCode)
   if (taskIds.length) params.set('entry.1598956863', taskIds.join(', '))
   if (taskerLevel) params.set('entry.520410062', taskerLevel)
   if (snipboardUrls.length) params.set('entry.354206748', snipboardUrls.join(','))
-  params.set('entry.1877212952', CTS_TRAINER)
+  // "Under Trainer Team": the team's trainer, set by its lead in Settings → Team.
+  if (trainer) params.set('entry.1877212952', trainer)
   return `${CTS_FORM_URL}?${params.toString()}`
 }
 
@@ -65,10 +64,12 @@ function groupByProject(submissions: TaskSubmission[]): ProjectGroup[] {
 interface Props {
   email: string
   submissions: TaskSubmission[]
+  // The team's trainer (TeamFeatures.ctsTrainer); null leaves "Under Trainer Team" for the CB to pick.
+  trainer: string | null
   onClose: () => void
 }
 
-export function CtsFormModal({ email, submissions, onClose }: Props) {
+export function CtsFormModal({ email, submissions, trainer, onClose }: Props) {
   const queryClient = useQueryClient()
   const todayIso = toISODate(new Date())
   // Today's tasks are the common case and come pre-selected; anything from an earlier day is
@@ -149,6 +150,7 @@ export function CtsFormModal({ email, submissions, onClose }: Props) {
       taskerLevel: taskerLevelFor(group, chosen),
       taskIds: chosen.map((s) => s.task_id ?? ''),
       snipboardUrls: chosen.map((s) => s.snipboard_url ?? ''),
+      trainer,
     })
     setOpenForm({ url, ids: chosen.map((s) => s.id) })
     markSubmittedMutation.reset()

@@ -20,7 +20,7 @@ import { RemotasksIdField } from '../components/RemotasksIdField'
 import { Reveal } from '../components/Reveal'
 import { Select } from '../components/Select'
 import { Switch } from '../components/Switch'
-import { ALL_FEATURES_ON, fetchTeamFeaturesList, setTeamFeatures, type TeamFeatures } from '../lib/teamFeatures'
+import { ALL_FEATURES_ON, fetchTeamFeaturesList, setTeamCtsTrainer, setTeamFeatures, type TeamFeatures } from '../lib/teamFeatures'
 import type { User } from '../types'
 
 const SECTIONS: { id: string; label: string; icon: LucideIcon }[] = [
@@ -767,7 +767,7 @@ function TeamFeatureRow({ leadId, title, features, disabled }: { leadId: string;
     },
   })
   const shown = save.isPending && save.variables ? save.variables : features
-  const toggles: { key: keyof TeamFeatures; label: string; hint: string }[] = [
+  const toggles: { key: 'ctsEnabled' | 'attendanceEnabled' | 'attendancePublic'; label: string; hint: string }[] = [
     { key: 'ctsEnabled', label: 'CTS Form', hint: 'The CTS Form button and CTS column on the Dashboard, Task Log and profile.' },
     { key: 'attendanceEnabled', label: 'Attendance', hint: 'The Attendance page, form and countdown. Off, contributors can\u2019t file it themselves.' },
     {
@@ -797,7 +797,69 @@ function TeamFeatureRow({ leadId, title, features, disabled }: { leadId: string;
             />
           </div>
         ))}
+        <CtsTrainerField leadId={leadId} title={title} trainer={features.ctsTrainer} disabled={disabled} />
       </div>
     </div>
+  )
+}
+
+/** The CTS Form's "Under Trainer Team" answer prefilled for this team's contributors. */
+function CtsTrainerField({ leadId, title, trainer, disabled }: { leadId: string; title: string; trainer: string | null; disabled: boolean }) {
+  const queryClient = useQueryClient()
+  const [draft, setDraft] = useState<string | null>(null)
+  const save = useMutation({
+    mutationFn: (next: string) => setTeamCtsTrainer(leadId, next),
+    onSuccess: () => setDraft(null),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['team-features-list'] })
+      queryClient.invalidateQueries({ queryKey: ['team-features'] })
+    },
+  })
+  const value = draft ?? trainer ?? ''
+  const changed = draft !== null && draft.trim().toLowerCase() !== (trainer ?? '')
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault()
+        if (changed) save.mutate(draft!)
+      }}
+      className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2"
+    >
+      <label htmlFor={`cts-trainer-${leadId}`} className="min-w-0 flex-1">
+        <div className="text-sm font-medium text-gray-800">CTS trainer</div>
+        <div className="text-xs text-gray-500">
+          Prefilled as “Under Trainer Team” in the CTS Form. Type it exactly as it reads there, e.g. “garcia, ina dimaano”.
+          Blank leaves it for the contributor to pick.
+        </div>
+        {save.error && <div className="mt-1 text-xs text-status-danger-text">{errorMessage(save.error, "Couldn't save the trainer.")}</div>}
+      </label>
+      <div className="flex items-center gap-2">
+        <input
+          id={`cts-trainer-${leadId}`}
+          value={value}
+          onChange={(e) => setDraft(e.target.value)}
+          maxLength={200}
+          placeholder="last, first middle"
+          disabled={disabled || save.isPending}
+          aria-label={`CTS trainer for ${title}`}
+          className="h-9 w-60 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-800"
+        />
+        {changed && (
+          <>
+            <button
+              type="submit"
+              disabled={save.isPending}
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-accent px-3 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+            >
+              <Save className="h-4 w-4" aria-hidden />
+              {save.isPending ? 'Saving...' : 'Save'}
+            </button>
+            <button type="button" onClick={() => setDraft(null)} className="text-xs text-gray-500 hover:underline">
+              Cancel
+            </button>
+          </>
+        )}
+      </div>
+    </form>
   )
 }

@@ -8,21 +8,25 @@ export interface TeamFeatures {
   attendanceEnabled: boolean
   // Contributors see the whole team's attendance for the day (20261106_team_attendance_public.sql).
   attendancePublic: boolean
+  // The CTS Form's "Under Trainer Team" answer for the team's contributors; null leaves it blank.
+  ctsTrainer: string | null
 }
 
 interface TeamFeaturesRow {
   cts_enabled: boolean
   attendance_enabled: boolean
   attendance_public: boolean
+  cts_trainer: string | null
 }
 
 const fromRow = (r: TeamFeaturesRow): TeamFeatures => ({
   ctsEnabled: r.cts_enabled,
   attendanceEnabled: r.attendance_enabled,
   attendancePublic: r.attendance_public,
+  ctsTrainer: r.cts_trainer,
 })
 
-export const ALL_FEATURES_ON: TeamFeatures = { ctsEnabled: true, attendanceEnabled: true, attendancePublic: false }
+export const ALL_FEATURES_ON: TeamFeatures = { ctsEnabled: true, attendanceEnabled: true, attendancePublic: false, ctsTrainer: null }
 
 /** The features of one person's team: a contributor's lead's, or a lead's own. All on for an admin. */
 export async function fetchTeamFeaturesFor(userId: string): Promise<TeamFeatures> {
@@ -51,7 +55,13 @@ export async function setTeamFeatures(leadId: string, features: TeamFeatures): P
   if (error) throw error
 }
 
-const ALL_FEATURES_OFF: TeamFeatures = { ctsEnabled: false, attendanceEnabled: false, attendancePublic: false }
+/** Sets (or, blank, clears) a team's CTS trainer, as the option reads in the CTS form. */
+export async function setTeamCtsTrainer(leadId: string, trainer: string): Promise<void> {
+  const { error } = await supabase.rpc('set_team_cts_trainer', { p_lead_id: leadId, p_trainer: trainer })
+  if (error) throw error
+}
+
+const ALL_FEATURES_OFF: TeamFeatures = { ctsEnabled: false, attendanceEnabled: false, attendancePublic: false, ctsTrainer: null }
 
 /**
  * The features of `userId`'s team. Until it loads, everything is hidden, so a team that has

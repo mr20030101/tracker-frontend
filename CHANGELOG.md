@@ -14,6 +14,10 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Fixed
+
+- The CTS Form no longer puts every contributor under Jay Anne's team. "Under Trainer Team" is now prefilled with the contributor's own team's trainer, set per team in **Settings → Team → CTS trainer**. Ina's team is set to "garcia, ina dimaano" and Jay Anne's to "tan, jay-anne ratunil". A team with no trainer set leaves the field for the contributor to pick.
+
 ## 7.2.0 — 2026-11-06
 
 ### Added

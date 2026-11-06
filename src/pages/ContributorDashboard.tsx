@@ -58,7 +58,7 @@ export function ContributorDashboard() {
   const bot = useMemo(() => [...usersById.values()].find((u) => u.is_bot), [usersById])
   const [showCtsModal, setShowCtsModal] = useState(false)
   // A lead can switch the CTS Form and Attendance off for their team.
-  const { ctsEnabled, attendanceEnabled } = useTeamFeatures(user?.id)
+  const { ctsEnabled, ctsTrainer, attendanceEnabled } = useTeamFeatures(user?.id)
   const [submitting, setSubmitting] = useState(false)
   // Shown at most once per browser session: once dismissed, a reload won't bring it back.
   const [showWarning, setShowWarning] = useState(() => {
@@ -387,7 +387,7 @@ export function ContributorDashboard() {
         />
       )}
 
-      {showCtsModal && <CtsFormModal email={email} submissions={todaysSubmissions} onClose={() => setShowCtsModal(false)} />}
+      {showCtsModal && <CtsFormModal email={email} submissions={todaysSubmissions} trainer={ctsTrainer} onClose={() => setShowCtsModal(false)} />}
 
       {ranked.length > 0 && <TeamPulseCard standing={standing} team={teamGoal(ranked)} />}
 

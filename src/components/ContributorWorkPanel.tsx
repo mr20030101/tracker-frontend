@@ -125,7 +125,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
     enabled: Boolean(email),
   })
   // The CTS Form and column only for a team that still sends its tasks to CTS.
-  const { ctsEnabled } = useTeamFeatures(data?.user?.id)
+  const { ctsEnabled, ctsTrainer } = useTeamFeatures(data?.user?.id)
 
   const { data: allProjects = [] } = useQuery({
     queryKey: ['projects'],
@@ -939,7 +939,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
         </>
       )}
 
-      {showCtsModal && <CtsFormModal email={email} submissions={ctsEligibleSubmissions} onClose={() => setShowCtsModal(false)} />}
+      {showCtsModal && <CtsFormModal email={email} submissions={ctsEligibleSubmissions} trainer={ctsTrainer} onClose={() => setShowCtsModal(false)} />}
 
       {formTarget && (
         <TaskSubmissionForm submission={formTarget === 'new' ? undefined : formTarget} onClose={() => setFormTarget(null)} />
