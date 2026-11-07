@@ -143,6 +143,35 @@ function writeNavCollapsed(collapsed: boolean) {
   }
 }
 
+// The breadcrumb's page name. Anything not listed is an address the app doesn't have.
+const CRUMBS: Record<string, string> = {
+  '/': 'Dashboard',
+  '/leaderboard': 'Leaderboard',
+  '/rewards': 'Rewards',
+  '/attendance': 'Attendance',
+  '/task-log': 'Task Log',
+  '/requests': 'Requests',
+  '/feedback': 'Feedback',
+  '/audits': 'Audits',
+  '/data-quality': 'Data Quality',
+  '/team-reports': 'Team Reports',
+  '/activity-log': 'Activity Log',
+  '/resources': 'Resources',
+  '/announcements': 'Announcements',
+  '/users': 'Users',
+  '/projects': 'Projects',
+  '/hiring': 'Hiring',
+  '/settings': 'Settings',
+}
+
+function crumbFor(pathname: string, isManager: boolean): string {
+  if (CRUMBS[pathname]) return CRUMBS[pathname]
+  if (pathname.startsWith('/messages')) return 'Messages'
+  if (pathname.startsWith('/leads/')) return 'Lead Team'
+  if (pathname.startsWith('/contributors/')) return isManager ? 'CB Profile' : 'My Profile'
+  return 'Page not found'
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
   const { user } = useAuth()
   const location = useLocation()
@@ -268,44 +297,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     { to: '/settings', label: 'Settings', icon: SettingsIcon },
   ]
 
-  const crumb =
-    location.pathname === '/settings'
-      ? 'Settings'
-      : location.pathname === '/leaderboard'
-      ? 'Leaderboard'
-      : location.pathname === '/task-log'
-        ? 'Task Log'
-        : location.pathname === '/resources'
-          ? 'Resources'
-          : location.pathname.startsWith('/messages')
-            ? 'Messages'
-            : location.pathname === '/users'
-              ? 'Users'
-              : location.pathname === '/projects'
-                ? 'Projects'
-                : location.pathname === '/data-quality'
-                  ? 'Data Quality'
-                  : location.pathname === '/team-reports'
-                  ? 'Team Reports'
-                  : location.pathname === '/activity-log'
-                    ? 'Activity Log'
-                    : location.pathname.startsWith('/leads/')
-                      ? 'Lead Team'
-                      : location.pathname.startsWith('/contributors/')
-                        ? isManager
-                          ? 'CB Profile'
-                          : 'My Profile'
-                        : location.pathname === '/hiring'
-                          ? 'Hiring'
-                          : location.pathname === '/announcements'
-                            ? 'Announcements'
-                            : location.pathname === '/requests'
-                              ? 'Requests'
-                              : location.pathname === '/feedback'
-                                ? 'Feedback'
-                                : location.pathname === '/attendance'
-                                  ? 'Attendance'
-                                  : 'Dashboard'
+  const crumb = crumbFor(location.pathname, isManager)
 
   return (
     <MessagingProvider>
