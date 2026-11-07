@@ -435,7 +435,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div
               role="tooltip"
               style={{ top: railTip.top, left: railTip.left }}
-              className="nav-tip pointer-events-none fixed z-50 -translate-y-1/2 whitespace-nowrap rounded-full bg-gray-900 px-3.5 py-1.5 text-sm font-medium text-gray-50 shadow-card"
+              className="nav-tip pointer-events-none fixed z-50 -translate-y-1/2 whitespace-nowrap rounded-full bg-ink px-3.5 py-1.5 text-sm font-medium text-ink-foreground shadow-card"
             >
               {railTip.label}
             </div>

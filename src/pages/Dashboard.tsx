@@ -221,7 +221,7 @@ export function Dashboard() {
                 <Link
                   to="/requests"
                   title={`Pending for more than ${OVERDUE_HOURS} hours`}
-                  className="flex items-center gap-2 rounded-full bg-gray-900 px-5 py-2.5 text-sm font-semibold text-gray-50 hover:bg-gray-800"
+                  className="flex items-center gap-2 rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-ink-foreground hover:bg-ink/90"
                 >
                   <span className="h-2 w-2 rounded-full bg-current" />
                   {overdueRequests} overdue request{overdueRequests === 1 ? '' : 's'}

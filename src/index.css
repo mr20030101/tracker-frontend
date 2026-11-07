@@ -46,6 +46,10 @@
   --color-sky-700: #74520a;
   --color-sky-800: #5a4306;
 
+  /* Strong neutral fill (dark buttons, selected tabs, the hero's dark meter): near-black on light, soft cream on dark. */
+  --color-ink: #1d1d1b;
+  --color-ink-foreground: #f5f3ee;
+
   --color-night: #252523;
   --color-night-2: #34332f;
   --color-night-ink: #f4f2ec;
@@ -65,7 +69,7 @@
   --color-status-neutral-bg: #efece4;
   --color-status-neutral-text: #5c5a54;
 
-  --shadow-card: 0 1px 0 #ffffffcc inset, 0 18px 40px -26px #3c321459;
+  --shadow-card: 0 1px 2px #3c32140f, 0 10px 22px -12px #3c321438;
 }
 
 :root {
@@ -92,12 +96,12 @@ body {
 }
 
 :root[data-theme='dark'] {
-  --app-glow: #2a230f;
+  --app-glow: transparent;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --app-glow: #2a230f;
+    --app-glow: transparent;
   }
 }
 
@@ -119,10 +123,10 @@ main h1 {
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
     color-scheme: dark;
-    --color-white: #252523;
-    --color-gray-50: #1b1b19;
-    --color-gray-100: #2c2b28;
-    --color-gray-200: #36352f;
+    --color-white: #1f1f1d;
+    --color-gray-50: #141413;
+    --color-gray-100: #2a2926;
+    --color-gray-200: #34332f;
     --color-gray-300: #4a4842;
     --color-gray-400: #8f8c83;
     --color-gray-500: #a9a69c;
@@ -137,6 +141,8 @@ main h1 {
     --color-sky-800: #fbe29a;
 
     --color-night: #121211;
+    --color-ink: #d9d4c7;
+    --color-ink-foreground: #1d1d1b;
     --color-night-2: #2c2b28;
 
     --color-accent: #f6c343;
@@ -152,16 +158,16 @@ main h1 {
     --color-status-neutral-bg: #2c2b28;
     --color-status-neutral-text: #c4c1b8;
 
-    --shadow-card: 0 1px 0 #ffffff0d inset, 0 18px 40px -26px #00000099;
+    --shadow-card: 0 1px 2px #00000040, 0 12px 24px -12px #000000a6;
   }
 }
 
 :root[data-theme='dark'] {
   color-scheme: dark;
-  --color-white: #252523;
-  --color-gray-50: #1b1b19;
-  --color-gray-100: #2c2b28;
-  --color-gray-200: #36352f;
+  --color-white: #1f1f1d;
+  --color-gray-50: #141413;
+  --color-gray-100: #2a2926;
+  --color-gray-200: #34332f;
   --color-gray-300: #4a4842;
   --color-gray-400: #8f8c83;
   --color-gray-500: #a9a69c;
@@ -176,6 +182,8 @@ main h1 {
   --color-sky-800: #fbe29a;
 
   --color-night: #121211;
+  --color-ink: #d9d4c7;
+  --color-ink-foreground: #1d1d1b;
   --color-night-2: #2c2b28;
 
   --color-accent: #f6c343;
@@ -191,7 +199,7 @@ main h1 {
   --color-status-neutral-bg: #2c2b28;
   --color-status-neutral-text: #c4c1b8;
 
-  --shadow-card: 0 1px 0 #ffffff0d inset, 0 18px 40px -26px #00000099;
+  --shadow-card: 0 1px 2px #00000040, 0 12px 24px -12px #000000a6;
 }
 
 @keyframes heartbeat {
@@ -763,12 +771,12 @@ main h1 {
 }
 
 :root[data-theme='dark'] {
-  --card-edge: #ffffff0d;
+  --card-edge: #ffffff14;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --card-edge: #ffffff0d;
+    --card-edge: #ffffff14;
   }
 }
 
