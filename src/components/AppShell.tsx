@@ -473,7 +473,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               {/* Tasks saved on this device while offline, until they're sent. */}
               <OfflineQueueBanner />
               <LogTabs />
-              <div ref={pageRef}>{children}</div>
+              <div ref={pageRef} className={onMessages ? 'h-full' : undefined}>{children}</div>
               {/* Under the page's content, not pinned to the window: it scrolls into view at the
                   end. Left off Messages, which fills the screen with the conversation. */}
               {!onMessages && <AppFooter className="mt-10 pb-2" releaseNotes />}
