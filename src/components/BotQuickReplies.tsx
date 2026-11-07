@@ -3,7 +3,6 @@ import { ChevronDown, ChevronUp, SpellCheck } from 'lucide-react'
 
 // Messenger's own send-bubble blue, matching MessageBubble.tsx — kept local rather than
 // repointing the app's global --color-accent, which drives buttons everywhere else.
-const BUBBLE_BLUE = '#0084ff'
 
 const HIDDEN_KEY = 'botQuickRepliesHidden'
 
@@ -42,8 +41,7 @@ export function GrammarCheckButton({ onClick, disabled, compact = false }: { onC
       disabled={disabled}
       title="Have Meera check the grammar and spelling of your text"
       aria-label="Check grammar"
-      style={{ borderColor: BUBBLE_BLUE, color: BUBBLE_BLUE }}
-      className={`flex shrink-0 items-center gap-1.5 rounded-full border bg-transparent font-medium hover:bg-sky-500/10 disabled:opacity-50 ${
+      className={`flex shrink-0 items-center gap-1.5 rounded-full border border-gray-300 bg-transparent font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50 ${
         compact ? 'h-8 w-8 justify-center' : 'px-3 py-1.5 text-xs'
       }`}
     >
@@ -95,8 +93,7 @@ export function BotQuickReplies({
               type="button"
               disabled={disabled}
               onClick={() => onPick(text)}
-              style={{ borderColor: BUBBLE_BLUE, color: BUBBLE_BLUE }}
-              className="rounded-full border bg-transparent px-3 py-1 text-xs font-medium hover:bg-sky-500/10 disabled:opacity-50"
+              className="rounded-full border border-gray-300 bg-transparent px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50"
             >
               {text}
             </button>

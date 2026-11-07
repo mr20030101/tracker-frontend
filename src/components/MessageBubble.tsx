@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { linkify } from '../lib/linkify'
 import { Check, Phone, PhoneMissed, Trash2 } from 'lucide-react'
 import { callLogTitle, formatCallDuration, parseCallLog, type CallLog } from '../lib/callLog'
 import { convertEmoticons } from '../lib/emoticons'
@@ -10,7 +11,6 @@ import type { Message } from '../types'
 // Messenger's own send-bubble blue — kept local to this component (an arbitrary value, not a
 // theme token) rather than repointing the app's global --color-accent, since that accent drives
 // buttons everywhere else in the app and this "Messenger look" was asked for on the chat only.
-const BUBBLE_BLUE = '#0084ff'
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
@@ -62,12 +62,11 @@ export function MessageBubble({
           ) : (
             <div
               onClick={selectable ? onToggleSelect : undefined}
-              style={mine ? { backgroundColor: BUBBLE_BLUE } : undefined}
-              className={`max-w-lg rounded-3xl px-3.5 py-2 text-sm ${mine ? 'text-white' : 'bg-gray-100 text-gray-800'
+              className={`max-w-lg rounded-3xl px-3.5 py-2 text-sm ${mine ? 'bg-accent text-accent-foreground' : 'bg-gray-100 text-gray-800'
                 } ${selectable ? 'cursor-pointer' : ''} ${selected ? 'ring-2 ring-accent ring-offset-1' : ''}`}
             >
               <div className="whitespace-pre-wrap wrap-break-word">
-                {isBot ? formatBotMessage(message.body) : convertEmoticons(message.body)}
+                {isBot ? formatBotMessage(message.body) : linkify(convertEmoticons(message.body))}
               </div>
             </div>
           )}

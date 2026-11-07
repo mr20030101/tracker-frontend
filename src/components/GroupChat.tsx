@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { linkify } from '../lib/linkify'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, Check, ChevronUp, LogOut, Pencil, Plus, Send, Settings, Trash2, UserMinus, UserPlus, Users, X } from 'lucide-react'
 import { api, errorMessage, supabase } from '../lib/api'
@@ -27,7 +28,6 @@ import { groupTypingKey, useTypingIndicator } from '../lib/useTypingIndicator'
 import { TypingIndicator } from './TypingIndicator'
 
 // Messenger's send-bubble blue, as in MessageBubble.tsx.
-const BUBBLE_BLUE = '#0084ff'
 
 // A group's messages, a page at a time, under the ['group-chats', myId] prefix so the realtime
 // insert and every group mutation refresh it (same shape as useThread for direct messages).
@@ -175,10 +175,9 @@ export function GroupChatPane({ group, onBack, onGone }: { group: ChatGroupSumma
                     )}
                     <div
                       title={formatTime(m.created_at)}
-                      style={mine ? { backgroundColor: BUBBLE_BLUE } : undefined}
-                      className={`rounded-3xl px-3.5 py-2 text-sm ${mine ? 'text-white' : 'bg-gray-100 text-gray-800'}`}
+                      className={`rounded-3xl px-3.5 py-2 text-sm ${mine ? 'bg-accent text-accent-foreground' : 'bg-gray-100 text-gray-800'}`}
                     >
-                      <div className="whitespace-pre-wrap wrap-break-word">{convertEmoticons(m.body)}</div>
+                      <div className="whitespace-pre-wrap wrap-break-word">{linkify(convertEmoticons(m.body))}</div>
                     </div>
                     {seenStatus?.messageId === m.id && (
                       <span className="mt-0.5 px-1 text-[11px] text-gray-400">{seenStatus.label}</span>
@@ -215,8 +214,7 @@ export function GroupChatPane({ group, onBack, onGone }: { group: ChatGroupSumma
         <button
           type="submit"
           disabled={!draft.trim() || sendMutation.isPending}
-          style={{ backgroundColor: BUBBLE_BLUE }}
-          className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground transition-colors duration-100 hover:bg-accent-bg disabled:opacity-50"
         >
           <Send className="h-4 w-4" aria-hidden />
           Send
