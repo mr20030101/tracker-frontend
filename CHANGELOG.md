@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.3.0 — 2026-11-07
+
 ### Changed
 
 - **Fewer menu items under Logs.** For leads and admins, the eight Logs pages are now three, each with tabs across the top: **To do** (Requests, Feedback), **Tasks** (Task Log, Audits, Data Quality) and **Reports** (Team Reports, Activity Log). Contributors get **Task Log** and **To do** (Requests, Feedback). The **To do** badge counts pending requests and feedback together, turning red when a request is overdue, and the Requests and Feedback tabs show their own counts. Old links and bookmarks still open the right tab.
