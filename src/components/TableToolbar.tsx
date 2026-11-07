@@ -3,7 +3,7 @@ import { Search } from 'lucide-react'
 
 /** Classes for a select or input sitting in a table toolbar, so every control lines up at the same height. */
 export const toolbarControlClass =
-  'h-9 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700 outline-none focus:border-accent'
+  'h-9 pointer-coarse:h-11 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700 outline-none focus:border-accent'
 
 /**
  * The strip of filters at the top of a table card. Give the first right-hand item `ml-auto`.
@@ -66,7 +66,7 @@ interface DateRangeInputProps {
 export function DateRangeInput({ from, to, onFromChange, onToChange }: DateRangeInputProps) {
   const dateClass = 'h-full bg-transparent px-2 text-sm text-gray-700 outline-none'
   return (
-    <div className="flex h-9 items-center rounded-lg border border-gray-200 bg-white px-1 focus-within:border-accent">
+    <div className="flex h-9 pointer-coarse:h-11 items-center rounded-lg border border-gray-200 bg-white px-1 focus-within:border-accent">
       <input type="date" value={from} max={to || undefined} onChange={(e) => onFromChange(e.target.value)} aria-label="From date" className={dateClass} />
       <span className="text-xs text-gray-400">→</span>
       <input type="date" value={to} min={from || undefined} onChange={(e) => onToChange(e.target.value)} aria-label="To date" className={dateClass} />
@@ -87,7 +87,7 @@ export function SegmentedTabs<T extends string>({
   'aria-label': string
 }) {
   return (
-    <div role="tablist" aria-label={ariaLabel} className="inline-flex h-9 items-center rounded-lg border border-gray-200 bg-white p-0.5">
+    <div role="tablist" aria-label={ariaLabel} className="inline-flex h-9 pointer-coarse:h-11 items-center rounded-lg border border-gray-200 bg-white p-0.5">
       {options.map((option) => {
         const active = option.value === value
         return (

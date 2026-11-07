@@ -788,6 +788,9 @@ function TeamFeatureRow({ leadId, title, features, disabled }: { leadId: string;
             <div>
               <div className="text-sm font-medium text-gray-800">{label}</div>
               <div className="text-xs text-gray-500">{hint}</div>
+              {key === 'attendancePublic' && !shown.attendanceEnabled && (
+                <div className="mt-0.5 text-xs font-medium text-gray-700">Turn on Attendance first to make it public.</div>
+              )}
             </div>
             <Switch
               checked={shown[key]}
@@ -821,7 +824,7 @@ function CtsTrainerField({ leadId, title, trainer, disabled }: { leadId: string;
     <form
       onSubmit={(e) => {
         e.preventDefault()
-        if (changed) save.mutate(draft!)
+        if (changed && !save.isPending) save.mutate(draft!)
       }}
       className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2"
     >
@@ -842,19 +845,19 @@ function CtsTrainerField({ leadId, title, trainer, disabled }: { leadId: string;
           placeholder="last, first middle"
           disabled={disabled || save.isPending}
           aria-label={`CTS trainer for ${title}`}
-          className="h-9 w-60 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-800"
+          className="h-9 w-60 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-800 pointer-coarse:h-11"
         />
         {changed && (
           <>
             <button
               type="submit"
-              disabled={save.isPending}
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-accent px-3 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+              aria-busy={save.isPending}
+              className="inline-flex h-9 pointer-coarse:h-11 items-center gap-1.5 rounded-lg bg-accent px-3 text-sm font-semibold text-accent-foreground"
             >
               <Save className="h-4 w-4" aria-hidden />
               {save.isPending ? 'Saving...' : 'Save'}
             </button>
-            <button type="button" onClick={() => setDraft(null)} className="text-xs text-gray-500 hover:underline">
+            <button type="button" onClick={() => setDraft(null)} className="text-xs text-gray-500 hover:underline pointer-coarse:min-h-11">
               Cancel
             </button>
           </>

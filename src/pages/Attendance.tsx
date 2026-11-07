@@ -23,7 +23,7 @@ import { AttendanceFormModal } from '../components/AttendanceFormModal'
 import { SearchInput, SegmentedTabs, TableToolbar, toolbarControlClass } from '../components/TableToolbar'
 import { AttendanceAvatar } from '../components/AttendanceAvatar'
 import { Modal } from '../components/Modal'
-import { Camera, Check, Download, FilePlus, Pencil, RotateCcw, RotateCw, Save, X, type LucideIcon } from 'lucide-react'
+import { Camera, Check, CircleSlash, Clock, Download, FilePlus, Pencil, RotateCcw, RotateCw, Save, TriangleAlert, X, type LucideIcon } from 'lucide-react'
 import { errorMessage } from '../lib/api'
 import {
   fetchAttendancePhotoRequired,
@@ -46,13 +46,29 @@ import type { Attendance as AttendanceEntry, AttendanceHours } from '../types'
 
 const MANAGER_ROLES = ['admin', 'lead']
 
-const pillClass = 'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium'
+const statusClass = 'inline-flex shrink-0 items-center gap-1.5 text-xs'
 
-function hoursPill(hours: AttendanceHours) {
-  const style = SUPPORT_HOURS.includes(hours)
-    ? 'border-status-danger-text/30 bg-status-danger-bg text-status-danger-text'
-    : 'border-status-success-text/30 bg-status-success-bg text-status-success-text'
-  return <span className={`${pillClass} ${style}`}>{HOURS_LABELS[hours]}</span>
+function hoursStatus(hours: AttendanceHours) {
+  return SUPPORT_HOURS.includes(hours) ? (
+    <span className={`${statusClass} font-semibold text-gray-900`}>
+      <TriangleAlert className="h-4 w-4 text-gray-500" aria-hidden />
+      {HOURS_LABELS[hours]}
+    </span>
+  ) : (
+    <span className={`${statusClass} font-medium text-gray-700`}>
+      <Clock className="h-4 w-4 text-gray-400" aria-hidden />
+      {HOURS_LABELS[hours]}
+    </span>
+  )
+}
+
+function NotFiled() {
+  return (
+    <span className={`${statusClass} font-semibold text-gray-900`}>
+      <CircleSlash className="h-4 w-4 text-gray-500" aria-hidden />
+      Not filed
+    </span>
+  )
 }
 
 function formatDay(iso: string) {
@@ -151,7 +167,7 @@ function CloseTimeSetting({ leadId }: { leadId: string | null }) {
     <form
       onSubmit={(e) => {
         e.preventDefault()
-        if (changed && valid) save.mutate(draftMin)
+        if (changed && valid && !save.isPending) save.mutate(draftMin)
       }}
       className="flex items-center gap-2 text-sm text-gray-700"
       title={error ?? (leadId ? 'When this team can no longer file their own attendance' : 'When attendance closes for teams without their own time')}
@@ -172,13 +188,13 @@ function CloseTimeSetting({ leadId }: { leadId: string | null }) {
         <>
           <button
             type="submit"
-            disabled={!valid || save.isPending}
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-accent px-3 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+            aria-busy={save.isPending}
+            className="inline-flex h-9 pointer-coarse:h-11 items-center gap-1.5 rounded-lg bg-accent px-3 text-sm font-semibold text-accent-foreground"
           >
             <Save className="h-4 w-4" aria-hidden />
             {save.isPending ? 'Saving...' : 'Save'}
           </button>
-          <button type="button" onClick={() => setDraft(null)} className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:underline">
+          <button type="button" onClick={() => setDraft(null)} className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:underline pointer-coarse:min-h-11">
             <X className="h-3.5 w-3.5" aria-hidden />
             Cancel
           </button>
@@ -189,7 +205,12 @@ function CloseTimeSetting({ leadId }: { leadId: string | null }) {
         (teamMin === undefined ? (
           <span className="text-xs text-gray-400">Default</span>
         ) : (
-          <button type="button" onClick={() => save.mutate(null)} disabled={save.isPending} className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:underline">
+          <button
+            type="button"
+            onClick={() => !save.isPending && save.mutate(null)}
+            aria-busy={save.isPending}
+            className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:underline pointer-coarse:min-h-11"
+          >
             <RotateCcw className="h-3.5 w-3.5" aria-hidden />
             Use default ({attendanceTimeLabel(times.defaultMin)})
           </button>
@@ -356,9 +377,7 @@ function TeamAttendance() {
               {/* The whole card opens the form for a mouse; the footer button is the keyboard way in. */}
               <div
                 onClick={() => setEditing({ person, entry })}
-                className={`flex h-full cursor-pointer flex-col gap-3 rounded-xl border p-4 text-sm transition-shadow hover:shadow-md ${
-                  entry ? 'border-gray-200 bg-white hover:border-gray-300' : 'border-status-danger-text/60 bg-status-danger-bg hover:border-status-danger-text'
-                }`}
+                className="flex h-full cursor-pointer flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 text-sm transition-colors duration-75 hover:bg-gray-50"
               >
                 <div className="flex items-start gap-3">
                   <AttendanceAvatar name={person.name} avatarUrl={person.avatar_url} photoRef={entry?.photo_ref} />
@@ -374,9 +393,9 @@ function TeamAttendance() {
                     {isAdmin && person.lead_id && <div className="truncate text-xs text-gray-400">Lead: {leadNames.get(person.lead_id) ?? '—'}</div>}
                   </div>
                   {entry ? (
-                    hoursPill(entry.hours)
+                    hoursStatus(entry.hours)
                   ) : (
-                    <span className={`${pillClass} shrink-0 border-status-danger-text bg-status-danger-text text-white`}>Not filed</span>
+                    <NotFiled />
                   )}
                 </div>
 
@@ -395,9 +414,9 @@ function TeamAttendance() {
                     </div>
                   </>
                 ) : (
-                  <div className="mt-auto flex items-center justify-between border-t border-status-danger-text/20 pt-2 text-xs font-medium text-status-danger-text">
+                  <div className="mt-auto flex items-center justify-between border-t border-gray-100 pt-2 text-xs text-gray-500">
                     <span>No attendance yet</span>
-                    <CardAction icon={FilePlus} danger>
+                    <CardAction icon={FilePlus} primary>
                       File for them
                     </CardAction>
                   </div>
@@ -464,35 +483,35 @@ function GoogleFormStatus({ entry }: { entry: AttendanceWithFiler }) {
     )
   }
   return (
-    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-status-warning-text" onClick={(e) => e.stopPropagation()}>
-      <span title={entry.google_form_error ?? undefined}>
-        {retry.isError ? errorMessage(retry.error, 'Not sent to the Google Form') : 'Not sent to the Google Form yet'}
-      </span>
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-900" onClick={(e) => e.stopPropagation()}>
+      <TriangleAlert className="h-4 w-4 text-gray-500" aria-hidden />
+      <span className="font-semibold">{retry.isError ? errorMessage(retry.error, 'Not sent to the Google Form') : 'Not sent to the Google Form yet'}</span>
       <button
         type="button"
-        onClick={() => retry.mutate()}
-        disabled={retry.isPending}
-        className="inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 font-semibold underline hover:bg-status-warning-bg disabled:opacity-50"
+        onClick={() => !retry.isPending && retry.mutate()}
+        aria-busy={retry.isPending}
+        className="inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 font-semibold underline hover:bg-gray-100 pointer-coarse:min-h-11 pointer-coarse:px-3"
       >
         <RotateCw className="h-3.5 w-3.5" aria-hidden />
         {retry.isPending ? 'Sending...' : 'Retry'}
       </button>
+      {!retry.isError && entry.google_form_error && <span className="w-full break-words text-gray-500">{entry.google_form_error}</span>}
     </div>
   )
 }
 
 // Bubbles up to the card's own click, which opens the form.
-function CardAction({ children, icon: Icon, danger = false }: { children: ReactNode; icon: LucideIcon; danger?: boolean }) {
-  const tone = danger ? 'border-status-danger-text bg-status-danger-text text-white hover:opacity-90' : cardButtonTone
+function CardAction({ children, icon: Icon, primary = false }: { children: ReactNode; icon: LucideIcon; primary?: boolean }) {
+  const tone = primary ? 'border-accent bg-accent text-accent-foreground hover:opacity-90' : cardButtonTone
   return (
-    <button type="button" className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] font-semibold transition-colors ${tone}`}>
+    <button type="button" className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] font-semibold transition-colors pointer-coarse:min-h-11 pointer-coarse:px-3 ${tone}`}>
       <Icon className="h-3.5 w-3.5" aria-hidden />
       {children}
     </button>
   )
 }
 
-const cardButtonTone = 'border-accent bg-white text-status-warning-text hover:bg-accent/10'
+const cardButtonTone = 'border-gray-200 bg-white text-gray-700 hover:bg-gray-100'
 
 function PhotoButton({ onClick }: { onClick: () => void }) {
   return (
@@ -502,7 +521,7 @@ function PhotoButton({ onClick }: { onClick: () => void }) {
         e.stopPropagation()
         onClick()
       }}
-      className={`flex items-center gap-1 rounded-md border px-2.5 py-1 text-[11px] font-semibold transition-colors ${cardButtonTone}`}
+      className={`flex items-center gap-1 rounded-md border px-2.5 py-1 text-[11px] font-semibold transition-colors pointer-coarse:min-h-11 pointer-coarse:px-3 ${cardButtonTone}`}
     >
       <Camera className="h-3.5 w-3.5" />
       Photo
@@ -562,15 +581,24 @@ function MyAttendance({ teamPublic }: { teamPublic: boolean }) {
             File your attendance once a day, between 6:00 AM and {closesLabel}. If you can't, your lead files it for you.
           </p>
         </div>
-        <button
-          onClick={() => setFiling(true)}
-          disabled={windowState !== 'open'}
-          title={windowState === 'not-open' ? 'Opens at 6:00 AM' : windowState === 'closed' ? `Closed at ${closesLabel}` : undefined}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {todays ? <Pencil className="h-4 w-4" aria-hidden /> : <FilePlus className="h-4 w-4" aria-hidden />}
-          {todays ? "Edit today's attendance" : "File today's attendance"}
-        </button>
+        <div className="flex flex-col items-end gap-1">
+          <button
+            onClick={() => windowState === 'open' && setFiling(true)}
+            aria-disabled={windowState !== 'open'}
+            aria-describedby={windowState === 'open' ? undefined : 'attendance-window-note'}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold pointer-coarse:min-h-11 ${
+              windowState === 'open' ? 'bg-accent text-accent-foreground' : 'cursor-not-allowed border border-gray-300 bg-gray-100 text-gray-700'
+            }`}
+          >
+            {todays ? <Pencil className="h-4 w-4" aria-hidden /> : <FilePlus className="h-4 w-4" aria-hidden />}
+            {todays ? "Edit today's attendance" : "File today's attendance"}
+          </button>
+          {windowState !== 'open' && (
+            <p id="attendance-window-note" className="text-xs text-gray-600">
+              {windowState === 'not-open' ? 'Opens at 6:00 AM.' : `Closed at ${closesLabel}. Your lead can file it for you.`}
+            </p>
+          )}
+        </div>
       </div>
 
       {teamPublic && (
@@ -599,7 +627,7 @@ function MyAttendance({ teamPublic }: { teamPublic: boolean }) {
             <li key={entry.id} className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 text-sm">
               <div className="flex items-start justify-between gap-3">
                 <div className="font-semibold text-gray-900">{formatDay(entry.date)}</div>
-                {hoursPill(entry.hours)}
+                {hoursStatus(entry.hours)}
               </div>
               <EntryDetails entry={entry} />
               <div className="mt-auto flex items-center justify-between border-t border-gray-100 pt-2 text-xs text-gray-400">
@@ -666,9 +694,7 @@ function TeammatesAttendance({ today }: { today: string }) {
           {visible.map((mate) => (
             <li
               key={mate.user_id}
-              className={`flex items-start gap-3 rounded-xl border p-4 text-sm ${
-                mate.hours ? 'border-gray-200 bg-white' : 'border-status-danger-text/40 bg-status-danger-bg'
-              }`}
+              className="flex items-start gap-3 rounded-xl border border-gray-200 bg-white p-4 text-sm"
             >
               {mate.photo_ref ? (
                 <button
@@ -689,9 +715,9 @@ function TeammatesAttendance({ today }: { today: string }) {
                     {mate.user_id === user?.id && <span className="ml-1 font-normal text-gray-400">(you)</span>}
                   </div>
                   {mate.hours ? (
-                    hoursPill(mate.hours)
+                    hoursStatus(mate.hours)
                   ) : (
-                    <span className={`${pillClass} shrink-0 border-status-danger-text/40 text-status-danger-text`}>Not filed</span>
+                    <NotFiled />
                   )}
                 </div>
                 {mate.tasking_status && <div className="mt-1 text-gray-700">{mate.tasking_status}</div>}

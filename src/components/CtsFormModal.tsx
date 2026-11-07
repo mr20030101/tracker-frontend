@@ -82,6 +82,8 @@ export function CtsFormModal({ email, submissions, trainer, onClose }: Props) {
   const [openForm, setOpenForm] = useState<{ url: string; ids: number[] } | null>(null)
   // Every task here has gone to CTS, so closing the form closes this too.
   const [allSubmitted, setAllSubmitted] = useState(false)
+  // The project whose "Open CTS Form" was pressed with no task ticked.
+  const [needsPick, setNeedsPick] = useState<string | null>(null)
   const groups = groupByProject(submissions)
 
   const userId = submissions.find((s) => s.user_id)?.user_id ?? null
@@ -122,6 +124,7 @@ export function CtsFormModal({ email, submissions, trainer, onClose }: Props) {
   })
 
   function toggle(id: number) {
+    setNeedsPick(null)
     setSelected((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
@@ -131,6 +134,7 @@ export function CtsFormModal({ email, submissions, trainer, onClose }: Props) {
   }
 
   function toggleGroup(group: ProjectGroup) {
+    setNeedsPick(null)
     setSelected((prev) => {
       const next = new Set(prev)
       const allSelected = group.rows.every((row) => next.has(row.id))
@@ -144,6 +148,10 @@ export function CtsFormModal({ email, submissions, trainer, onClose }: Props) {
 
   function openCtsForm(group: ProjectGroup) {
     const chosen = group.rows.filter((row) => selected.has(row.id))
+    if (chosen.length === 0) {
+      setNeedsPick(group.key)
+      return
+    }
     const url = buildCtsFormUrl({
       email,
       projectCode: group.project?.code ?? null,
@@ -189,13 +197,18 @@ export function CtsFormModal({ email, submissions, trainer, onClose }: Props) {
                   <button
                     type="button"
                     onClick={() => openCtsForm(group)}
-                    disabled={chosen.length === 0}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-green-500 px-3 py-1.5 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-50"
+                    aria-describedby={needsPick === group.key ? `cts-pick-${group.key}` : undefined}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground hover:opacity-90 pointer-coarse:min-h-11"
                   >
                     <ClipboardCheck className="h-4 w-4" aria-hidden />
                     Open CTS Form ({chosen.length})
                   </button>
                 </div>
+                {needsPick === group.key && (
+                  <p id={`cts-pick-${group.key}`} role="alert" className="border-b border-gray-200 px-4 py-2 text-xs font-medium text-gray-700">
+                    Tick at least one task below to open its CTS Form.
+                  </p>
+                )}
 
                 <table className="w-full text-left text-sm">
                   <thead className="border-b border-gray-200 text-xs uppercase tracking-wider text-gray-500">

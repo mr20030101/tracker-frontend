@@ -14,6 +14,21 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Changed
+
+- Task and attendance statuses are now a grey icon with a label instead of coloured pills, in the Task Log, profiles, the CTS Form, search, the task picker and the Attendance page. The ones that need attention (Empty, Claimed by Another Person, Not filed, support hours) are bold with a warning icon.
+- Attendance cards no longer turn red when someone hasn't filed; use the **Missing** tab to see who's left. Hovering a card shades it instead of lifting it, and **File for them** is the card's main button.
+- **Open CTS Form** now uses the same colour as the tracker's other main buttons.
+
+### Fixed
+
+- **File today's attendance** now says why it can't be used yet ("Opens at 6:00 AM" or "Closed at …, your lead can file it for you") under the button, instead of only in a tooltip.
+- **Open CTS Form** with no task ticked now tells you to tick one, instead of being greyed out.
+- Save, Retry and Use default buttons stay readable while saving instead of fading out, and a second click doesn't save twice.
+- A Google Form send that failed now shows the reason on the card, so it's readable on phones too.
+- **Public attendance** in Settings → Team now says to turn on Attendance first, instead of just being greyed out.
+- On phones and tablets, toolbar filters, tabs, switches and card buttons are bigger and easier to tap.
+
 ## 7.2.1 — 2026-11-06
 
 ### Fixed
