@@ -14,6 +14,10 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Changed
+
+- The tracker checks the server for updates less often in the background, to stay within the database plan's limits. Messages, group chats and request alerts still arrive straight away. Badge counts, the online list and page lists such as Requests, Users and Attendance now refresh every two to five minutes instead of every 15 to 60 seconds, and still refresh as soon as you act on them.
+
 ## 8.5.0 — 2026-11-07
 
 ### Added

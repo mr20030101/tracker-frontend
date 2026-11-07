@@ -38,7 +38,7 @@ function useGroupThread(myId: string | null, groupId: number | null) {
     initialPageParam: undefined as number | undefined,
     getNextPageParam: (lastPage) => (lastPage.length < GROUP_PAGE_SIZE ? undefined : lastPage[lastPage.length - 1].id),
     enabled: Boolean(myId && groupId),
-    refetchInterval: 15000,
+    refetchInterval: 5 * 60_000,
   })
   const messages = useMemo<GroupMessage[]>(() => (query.data ? query.data.pages.flat().reverse() : []), [query.data])
 

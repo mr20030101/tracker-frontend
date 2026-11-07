@@ -63,7 +63,7 @@ function AuditTrail() {
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['audit-logs'],
     queryFn: fetchAuditLogs,
-    refetchInterval: 30_000,
+    refetchInterval: 2 * 60_000,
   })
 
   const rows = useMemo(() => {
@@ -165,7 +165,7 @@ function SignInLog() {
   const { data, isLoading } = useQuery({
     queryKey: ['activity-logs'],
     queryFn: async () => (await api.get<ActivityLog[]>('/activity-logs')).data,
-    refetchInterval: 30_000,
+    refetchInterval: 2 * 60_000,
   })
 
   const rows = useMemo(() => (data ?? []).filter((row) => eventFilter === 'all' || row.event === eventFilter), [data, eventFilter])

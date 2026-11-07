@@ -49,7 +49,7 @@ export function Announcements() {
   const { data: announcements = [], isLoading, isError, error } = useQuery({
     queryKey: ['announcements'],
     queryFn: fetchAnnouncements,
-    refetchInterval: 60_000,
+    refetchInterval: 5 * 60_000,
   })
 
   // Read once when the page opens, before everything is marked seen, so what was new on arrival

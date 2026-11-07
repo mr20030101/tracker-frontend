@@ -15,7 +15,7 @@ export function useThread(myId: string | null, otherUserId: string | null) {
     initialPageParam: undefined as number | undefined,
     getNextPageParam: (lastPage) => (lastPage.length < THREAD_PAGE_SIZE ? undefined : lastPage[lastPage.length - 1].id),
     enabled: Boolean(myId && otherUserId),
-    refetchInterval: 15000,
+    refetchInterval: 5 * 60_000,
   })
 
   // Pages arrive newest-first, each older than the one before; the chat reads oldest-first.

@@ -235,7 +235,7 @@ export function Hiring() {
   const { data: applications = [], isLoading, error: loadError } = useQuery({
     queryKey: ['hiring-applications'],
     queryFn: fetchApplications,
-    refetchInterval: 30_000,
+    refetchInterval: 2 * 60_000,
   })
 
   // Same key as the Users page. Only an admin can read other people's profiles,

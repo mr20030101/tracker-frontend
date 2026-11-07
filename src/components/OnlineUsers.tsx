@@ -19,7 +19,7 @@ export function OnlineUsers() {
   const { data } = useQuery({
     queryKey: ['directory'],
     queryFn: fetchDirectory,
-    refetchInterval: 30_000,
+    refetchInterval: 2 * 60_000,
   })
   // Bubbles put away with x (or "Close all bubbles"), for this visit; they're back after a reload.
   const [dismissed, setDismissed] = useState<Set<string>>(new Set())

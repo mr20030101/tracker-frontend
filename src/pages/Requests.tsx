@@ -82,7 +82,7 @@ export function Requests() {
   const { data: requests = [], isLoading } = useQuery({
     queryKey: ['task-requests', 'all'],
     queryFn: fetchTaskRequests,
-    refetchInterval: 30_000,
+    refetchInterval: 2 * 60_000,
   })
   // A contributor can only send a request during their lead's shift (the database checks it too).
   const { data: requestShift = null } = useQuery({ queryKey: ['request-shift'], queryFn: fetchRequestShift, enabled: !isManager })
