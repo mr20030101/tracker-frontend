@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.0.0 — 2026-11-07
+
 ### Changed
 
 - **A new look across the tracker.** Warm cream pages with a honey-yellow accent, softer rounded cards, pill-shaped buttons and tabs, and new type (Inter for text, Outfit for titles and big numbers). Dark mode gets the same warm palette.
