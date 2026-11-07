@@ -6,6 +6,7 @@ import { useAuth } from '../lib/auth'
 import { downloadCsv } from '../lib/csv'
 import { TEAM_METRICS, fetchTeamReports, type TeamMetric } from '../lib/teamReports'
 import { TeamTrendChart } from '../components/TeamTrendChart'
+import { SegmentedTabs, toolbarControlClass } from '../components/TableToolbar'
 import { usePageTitle } from '../lib/usePageTitle'
 
 // Team Reports: each lead's team compared week by week. An admin sees every team; a lead sees
@@ -70,28 +71,18 @@ export function TeamReports() {
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <div role="tablist" aria-label="Measure" className="inline-flex rounded-lg border border-gray-200 bg-white p-0.5">
-          {TEAM_METRICS.map((m) => (
-            <button
-              key={m.metric}
-              role="tab"
-              aria-selected={metric === m.metric}
-              title={m.description}
-              onClick={() => setMetric(m.metric)}
-              className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-                metric === m.metric ? 'bg-accent-bg text-accent-foreground' : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
+        <SegmentedTabs
+          aria-label="Measure"
+          value={metric}
+          onChange={setMetric}
+          options={TEAM_METRICS.map((m) => ({ value: m.metric, label: m.label, title: m.description }))}
+        />
         <label className="flex items-center gap-2 text-sm text-gray-600">
           Weeks
           <select
             value={weekCount}
             onChange={(e) => setWeekCount(Number(e.target.value))}
-            className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm"
+            className={toolbarControlClass}
           >
             {WEEK_OPTIONS.map((n) => (
               <option key={n} value={n}>

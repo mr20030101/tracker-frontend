@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
+import { SegmentedTabs } from './TableToolbar'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Ban,
@@ -612,20 +613,15 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
       {canEdit && (
         <>
           <div className="mb-4 flex flex-wrap items-center gap-3">
-            <div className="flex rounded-lg border border-gray-200 bg-white p-1">
-              {(['day', 'week', 'month'] as const).map((mode) => (
-                <button
-                  key={mode}
-                  onClick={() => {
-                    setViewMode(mode)
-                    setPage(1)
-                  }}
-                  className={`rounded-md px-3 py-1 text-sm font-medium capitalize ${viewMode === mode ? 'bg-accent text-accent-foreground' : 'text-gray-600'}`}
-                >
-                  {mode}
-                </button>
-              ))}
-            </div>
+            <SegmentedTabs
+              aria-label="Period"
+              value={viewMode}
+              onChange={(mode) => {
+                setViewMode(mode)
+                setPage(1)
+              }}
+              options={(['day', 'week', 'month'] as const).map((mode) => ({ value: mode, label: mode[0].toUpperCase() + mode.slice(1) }))}
+            />
 
             <button
               onClick={() => shiftRange(-1)}

@@ -96,16 +96,16 @@ function ContributorLeaderboard() {
         </div>
       )}
 
-      <div className="mb-4 flex w-fit max-w-full flex-wrap rounded-lg border border-gray-200 bg-white p-1">
-        {(['week', 'month', 'all', 'improved'] as const).map((p) => (
-          <button
-            key={p}
-            onClick={() => setPeriod(p)}
-            className={`rounded-md px-4 py-1.5 text-sm font-medium ${period === p ? 'bg-accent text-accent-foreground' : 'text-gray-600'}`}
-          >
-            {p === 'week' ? 'This Week' : p === 'month' ? 'This Month' : p === 'all' ? 'All Time' : 'Most Improved'}
-          </button>
-        ))}
+      <div className="mb-4 max-w-full overflow-x-auto scrollbar-none">
+        <SegmentedTabs
+          aria-label="Period"
+          value={period}
+          onChange={setPeriod}
+          options={(['week', 'month', 'all', 'improved'] as const).map((p) => ({
+            value: p,
+            label: p === 'week' ? 'This Week' : p === 'month' ? 'This Month' : p === 'all' ? 'All Time' : 'Most Improved',
+          }))}
+        />
       </div>
 
       {period === 'improved' ? (

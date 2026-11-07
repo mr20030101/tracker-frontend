@@ -14,6 +14,14 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.3.0 — 2026-11-07
+
+### Changed
+
+- **Fewer menu items under Logs.** For leads and admins, the eight Logs pages are now three, each with tabs across the top: **To do** (Requests, Feedback), **Tasks** (Task Log, Audits, Data Quality) and **Reports** (Team Reports, Activity Log). Contributors get **Task Log** and **To do** (Requests, Feedback). The **To do** badge counts pending requests and feedback together, turning red when a request is overdue, and the Requests and Feedback tabs show their own counts. Old links and bookmarks still open the right tab.
+- **Attendance** moves up to its own item under **Overview**.
+- The last few tab bars that still had the old look now match the rest: Team Reports' measures and **Weeks** menu, the Leaderboard periods, Activity Log, the Day / Week / Month switch on a contributor's profile, and the filter on Announcements.
+
 ## 8.2.0 — 2026-11-07
 
 ### Changed

@@ -1,24 +1,18 @@
-import { NavLink, useLocation } from 'react-router-dom'
+import { Link, NavLink, useLocation } from 'react-router-dom'
+import { logHubs } from '../lib/logHubs'
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { animate } from 'animejs'
 import { useQuery } from '@tanstack/react-query'
 import {
   LayoutDashboard,
+  CalendarCheck,
   MessageCircle,
-  ClipboardList,
-  ShieldCheck,
-  ClipboardCheck,
-  LineChart as LineChartIcon,
-  History,
   BookOpen,
   Users as UsersIcon,
   FolderKanban,
   Trophy,
   Gift,
   UserPlus,
-  Hourglass,
-  MessageSquareText,
-  CalendarCheck,
   Megaphone,
   UserRound,
   Settings as SettingsIcon,
@@ -46,6 +40,7 @@ import { OVERDUE_HOURS, fetchOverdueRequestCount, fetchPendingRequestCount } fro
 import { fetchUnreadAnnouncementCount } from '../lib/announcements'
 import { fetchPendingFeedbackCount } from '../lib/taskFeedback'
 import { AppFooter } from './AppFooter'
+import { LogTabs } from './LogTabs'
 import { OfflineQueueBanner } from './OfflineQueueBanner'
 import { useTeamFeatures } from '../lib/teamFeatures'
 
@@ -63,46 +58,38 @@ function navSections(
 ): {
   label: string
   // `urgent`: the badge turns red with `badgeTitle` explaining why (overdue requests).
-  items: { to: string; label: string; icon: LucideIcon; badge?: number; urgent?: boolean; badgeTitle?: string }[]
+  // `match`: every address that counts as this item (a Logs group's tabs).
+  items: { to: string; label: string; icon: LucideIcon; match?: string[]; badge?: number; urgent?: boolean; badgeTitle?: string }[]
 }[] {
   return [
     {
       label: 'Overview',
       items: [
         { to: '/', label: 'Dashboard', icon: LayoutDashboard },
+        ...(attendanceEnabled ? [{ to: '/attendance', label: 'Attendance', icon: CalendarCheck }] : []),
         { to: '/leaderboard', label: 'Leaderboard', icon: Trophy },
         { to: '/rewards', label: 'Rewards', icon: Gift },
       ],
     },
     {
       label: 'Logs',
-      items: isManager
-        ? [
-          { to: '/task-log', label: 'Task Log', icon: ClipboardList },
-          {
-            to: '/requests',
-            label: 'Requests',
-            icon: Hourglass,
-            badge: pendingRequests,
-            urgent: overdueRequests > 0,
-            badgeTitle:
-              overdueRequests > 0
-                ? `${overdueRequests} waiting over ${OVERDUE_HOURS} hours`
-                : `${pendingRequests} pending`,
-          },
-          { to: '/feedback', label: 'Feedback', icon: MessageSquareText, badge: pendingFeedback, badgeTitle: `${pendingFeedback} to check` },
-          ...(attendanceEnabled ? [{ to: '/attendance', label: 'Attendance', icon: CalendarCheck }] : []),
-          { to: '/audits', label: 'Audits', icon: ClipboardCheck },
-          { to: '/data-quality', label: 'Data Quality', icon: ShieldCheck },
-          { to: '/team-reports', label: 'Team Reports', icon: LineChartIcon },
-          ...(isAdmin ? [{ to: '/activity-log', label: 'Activity Log', icon: History }] : []),
-        ]
-        : [
-          { to: '/task-log', label: 'Task Log', icon: ClipboardList },
-          { to: '/requests', label: 'Requests', icon: Hourglass },
-          { to: '/feedback', label: 'Feedback', icon: MessageSquareText },
-          ...(attendanceEnabled ? [{ to: '/attendance', label: 'Attendance', icon: CalendarCheck }] : []),
-        ],
+      items: logHubs(isManager, isAdmin).map((hub) => {
+        const match = hub.tabs.map((tab) => tab.to)
+        if (hub.key !== 'todo' || !isManager) return { to: hub.tabs[0].to, label: hub.label, icon: hub.icon, match }
+        const waiting = pendingRequests + pendingFeedback
+        return {
+          to: hub.tabs[0].to,
+          label: hub.label,
+          icon: hub.icon,
+          match,
+          badge: waiting,
+          urgent: overdueRequests > 0,
+          badgeTitle:
+            overdueRequests > 0
+              ? `${overdueRequests} request${overdueRequests === 1 ? '' : 's'} waiting over ${OVERDUE_HOURS} hours`
+              : `${pendingRequests} pending request${pendingRequests === 1 ? '' : 's'}, ${pendingFeedback} feedback to check`,
+        }
+      }),
     },
     {
       label: 'Library',
@@ -161,7 +148,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const location = useLocation()
   const isManager = Boolean(user && MANAGER_ROLES.includes(user.role))
   const isAdmin = user?.role === 'admin'
-  const mainRef = useRef<HTMLElement>(null)
+  // The page under the Logs tabs: what fades in on each route change, so the tabs stay put.
+  const pageRef = useRef<HTMLDivElement>(null)
   const onMessages = location.pathname.startsWith('/messages')
   // On desktop the sidebar sits beside the page, and the menu button switches it between full width
   // and a narrow rail of icons (remembered). On smaller screens, and on Messages, it's a slide-out
@@ -251,7 +239,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   // Fade the page area in on each route change. Opacity only: a transform here
   // would become the containing block for the page's position: fixed modals.
   useLayoutEffect(() => {
-    const main = mainRef.current
+    const main = pageRef.current
     if (!main || prefersReducedMotion()) return
     const animation = animate(main, { opacity: [0, 1], duration: 220, ease: 'outQuad', onComplete: (a) => a.revert() })
     return () => {
@@ -265,8 +253,17 @@ export function AppShell({ children }: { children: ReactNode }) {
   const ownProfilePath = user ? contributorPath(user.email) : '/'
   const { attendanceEnabled } = useTeamFeatures(user?.id)
   const sections = navSections(isManager, isAdmin, attendanceEnabled, pendingRequests, overdueRequests, pendingFeedback, unreadAnnouncements)
+  const isCurrent = (item: { to: string; match?: string[] }) => (item.match ?? [item.to]).includes(location.pathname)
   const searchPages = [
-    ...sections.flatMap((section) => section.items.map(({ to, label, icon }) => ({ to, label, icon }))),
+    ...sections.flatMap((section) =>
+      section.items.flatMap(({ to, label, icon, match }) =>
+        match && match.length > 1
+          ? logHubs(isManager, isAdmin)
+              .find((hub) => hub.tabs[0].to === to)!
+              .tabs.map((tab) => ({ to: tab.to, label: tab.label, icon }))
+          : [{ to, label, icon }],
+      ),
+    ),
     { to: ownProfilePath, label: 'My profile', icon: UserRound },
     { to: '/settings', label: 'Settings', icon: SettingsIcon },
   ]
@@ -389,16 +386,16 @@ export function AppShell({ children }: { children: ReactNode }) {
                       {section.label}
                     </div>
                     {section.items.map((item) => (
-                      <NavLink
+                      <Link
                         key={item.to}
                         to={item.to}
-                        end
+                        aria-current={isCurrent(item) ? 'page' : undefined}
                         // On the rail the icon is all that shows, so its name pops up beside it on hover or focus.
                         {...railTipProps(item.badge ? `${item.label} · ${item.badge > 99 ? '99+' : item.badge}` : item.label)}
-                        className={({ isActive }) =>
+                        className={
                           `relative flex items-center rounded-full text-sm font-medium transition-colors duration-300 ${
                             rail ? 'mx-auto h-11 w-11 justify-center' : 'gap-2.5 px-3.5 py-2.5'
-                          } ${isActive ? 'text-accent-foreground' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`
+                          } ${isCurrent(item) ? 'text-accent-foreground' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`
                         }
                       >
                         <item.icon className={`${rail ? 'h-5 w-5' : 'h-4 w-4'} shrink-0`} strokeWidth={2} />
@@ -422,7 +419,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                             </span>
                           </span>
                         ) : null}
-                      </NavLink>
+                      </Link>
                     ))}
                   </div>
                 ))}
@@ -479,12 +476,12 @@ export function AppShell({ children }: { children: ReactNode }) {
             </header>
 
             <main
-              ref={mainRef}
               className={`relative flex-1 overflow-y-auto px-3 py-4 [scrollbar-width:none] sm:px-6 sm:py-6 [&::-webkit-scrollbar]:hidden ${user && !onMessages ? 'lg:pr-20' : ''}`}
             >
               {/* Tasks saved on this device while offline, until they're sent. */}
               <OfflineQueueBanner />
-              {children}
+              <LogTabs />
+              <div ref={pageRef}>{children}</div>
               {/* Under the page's content, not pinned to the window: it scrolls into view at the
                   end. Left off Messages, which fills the screen with the conversation. */}
               {!onMessages && <AppFooter className="mt-10 pb-2" releaseNotes />}
