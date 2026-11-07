@@ -14,6 +14,18 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.1.0 — 2026-11-07
+
+### Changed
+
+- The sign-in page and the application form now match the rest of the tracker: the cream background with the Grey Owls logo in the corner, the same soft card, pill-shaped fields and a flat honey **Sign in** button. The owl still perches on the card, now in the new colours (near-black with honey eyes and beak), and the sky and clouds are gone.
+- Dark mode is calmer: no brown glow in the corner, clearer steps between the page, cards and buttons, and the dark pills and meters are a soft cream instead of bright white.
+- Cards and round buttons cast their shadow below them instead of showing a bright line along the top.
+
+### Fixed
+
+- A small honey meter fill (e.g. 10%) no longer covers its percentage; the number sits beside it.
+
 ## 8.0.0 — 2026-11-07
 
 ### Changed

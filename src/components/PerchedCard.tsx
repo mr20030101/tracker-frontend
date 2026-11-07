@@ -1,13 +1,13 @@
 import type { ReactNode, Ref } from 'react'
 import { FoldText } from './FoldText'
-import { useNightSky } from '../lib/theme'
+import { useTheme } from '../lib/theme'
 import { LoginOwl, type OwlMood } from './LoginOwl'
-import { SkyBackdrop } from './SkyBackdrop'
+import { Logo } from './Logo'
 import { AppFooter } from './AppFooter'
 
-// The playful full-page layout shared by the login page and the application form: the day/night
-// sky, and a centred card with the owl mascot perched on its top edge (the bottom of the owl
-// tucks behind the card, the talons grip it in front).
+// The full-page layout shared by the login page and the application form: the app's cream
+// backdrop with the logo in a pill at the top, and a centred card with the owl mascot perched on
+// its top edge (the bottom of the owl tucks behind the card, the talons grip it in front).
 export function PerchedCard({
   lookX = 0,
   lookY = 0,
@@ -28,11 +28,13 @@ export function PerchedCard({
   maxWidthClassName?: string
   children: ReactNode
 }) {
-  const night = useNightSky()
+  const night = useTheme().theme === 'dark'
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gray-50 px-4 py-16">
-      <SkyBackdrop />
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 pb-16 pt-24">
+      <div className="absolute left-4 top-4 rounded-full bg-white/70 px-4 py-2.5 shadow-card sm:left-8 sm:top-6">
+        <Logo className="h-7" />
+      </div>
       <div className={`relative w-full ${maxWidthClassName} pt-20`}>
         <div className="absolute left-1/2 top-0 w-28 -translate-x-1/2">
           <LoginOwl lookX={lookX} lookY={lookY} mood={mood} night={night} />
@@ -41,10 +43,10 @@ export function PerchedCard({
           className={`relative ${shaking ? 'login-shake' : ''}`}
           onAnimationEnd={(e) => e.animationName === 'login-shake' && onShakeEnd?.()}
         >
-          <div ref={cardRef} className="relative rounded-3xl border border-gray-200 bg-white px-7 pb-7 pt-8 shadow-xl shadow-black/5">
+          <div ref={cardRef} className="card relative px-6 pb-8 pt-9 sm:px-8">
             <div className="absolute -top-1.5 left-1/2 flex -translate-x-1/2 gap-7" aria-hidden="true">
-              <span className="h-3 w-5 rounded-full bg-[#f5b301]" />
-              <span className="h-3 w-5 rounded-full bg-[#f5b301]" />
+              <span className="h-3 w-5 rounded-full bg-accent" />
+              <span className="h-3 w-5 rounded-full bg-accent" />
             </div>
             {children}
           </div>
@@ -58,9 +60,9 @@ export function PerchedCard({
 /** The centred title and subtitle at the top of a perched card. */
 export function CardHeading({ title, subtitle }: { title: ReactNode; subtitle?: ReactNode }) {
   return (
-    <div className="mb-6 text-center">
-      <h1 className="text-3xl font-medium sm:text-4xl text-gray-900"><FoldText text={title} /></h1>
-      {subtitle && <p className="mt-1 text-sm text-gray-500">{subtitle}</p>}
+    <div className="mb-7 text-center">
+      <h1 className="text-4xl font-normal text-gray-900 sm:text-5xl"><FoldText text={title} /></h1>
+      {subtitle && <p className="mt-2 text-base text-gray-600">{subtitle}</p>}
     </div>
   )
 }

@@ -46,6 +46,10 @@
   --color-sky-700: #74520a;
   --color-sky-800: #5a4306;
 
+  /* Strong neutral fill (dark buttons, selected tabs, the hero's dark meter): near-black on light, soft cream on dark. */
+  --color-ink: #1d1d1b;
+  --color-ink-foreground: #f5f3ee;
+
   --color-night: #252523;
   --color-night-2: #34332f;
   --color-night-ink: #f4f2ec;
@@ -65,7 +69,7 @@
   --color-status-neutral-bg: #efece4;
   --color-status-neutral-text: #5c5a54;
 
-  --shadow-card: 0 1px 0 #ffffffcc inset, 0 18px 40px -26px #3c321459;
+  --shadow-card: 0 1px 2px #3c32140f, 0 10px 22px -12px #3c321438;
 }
 
 :root {
@@ -92,12 +96,12 @@ body {
 }
 
 :root[data-theme='dark'] {
-  --app-glow: #2a230f;
+  --app-glow: transparent;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --app-glow: #2a230f;
+    --app-glow: transparent;
   }
 }
 
@@ -119,10 +123,10 @@ main h1 {
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
     color-scheme: dark;
-    --color-white: #252523;
-    --color-gray-50: #1b1b19;
-    --color-gray-100: #2c2b28;
-    --color-gray-200: #36352f;
+    --color-white: #1f1f1d;
+    --color-gray-50: #141413;
+    --color-gray-100: #2a2926;
+    --color-gray-200: #34332f;
     --color-gray-300: #4a4842;
     --color-gray-400: #8f8c83;
     --color-gray-500: #a9a69c;
@@ -137,6 +141,8 @@ main h1 {
     --color-sky-800: #fbe29a;
 
     --color-night: #121211;
+    --color-ink: #d9d4c7;
+    --color-ink-foreground: #1d1d1b;
     --color-night-2: #2c2b28;
 
     --color-accent: #f6c343;
@@ -152,16 +158,16 @@ main h1 {
     --color-status-neutral-bg: #2c2b28;
     --color-status-neutral-text: #c4c1b8;
 
-    --shadow-card: 0 1px 0 #ffffff0d inset, 0 18px 40px -26px #00000099;
+    --shadow-card: 0 1px 2px #00000040, 0 12px 24px -12px #000000a6;
   }
 }
 
 :root[data-theme='dark'] {
   color-scheme: dark;
-  --color-white: #252523;
-  --color-gray-50: #1b1b19;
-  --color-gray-100: #2c2b28;
-  --color-gray-200: #36352f;
+  --color-white: #1f1f1d;
+  --color-gray-50: #141413;
+  --color-gray-100: #2a2926;
+  --color-gray-200: #34332f;
   --color-gray-300: #4a4842;
   --color-gray-400: #8f8c83;
   --color-gray-500: #a9a69c;
@@ -176,6 +182,8 @@ main h1 {
   --color-sky-800: #fbe29a;
 
   --color-night: #121211;
+  --color-ink: #d9d4c7;
+  --color-ink-foreground: #1d1d1b;
   --color-night-2: #2c2b28;
 
   --color-accent: #f6c343;
@@ -191,7 +199,7 @@ main h1 {
   --color-status-neutral-bg: #2c2b28;
   --color-status-neutral-text: #c4c1b8;
 
-  --shadow-card: 0 1px 0 #ffffff0d inset, 0 18px 40px -26px #00000099;
+  --shadow-card: 0 1px 2px #00000040, 0 12px 24px -12px #000000a6;
 }
 
 @keyframes heartbeat {
@@ -295,25 +303,6 @@ main h1 {
   display: block;
 }
 
-/* Owl pattern texture for hero-style backgrounds (login). The tiles are
-   transparent, so the element's own background-color shows through. Same
-   two dark-mode selectors as the rules above. */
-.pattern-owls {
-  background-image: url('/images/greyowls/pattern/owls-tile-light.svg');
-  background-repeat: repeat;
-  background-size: 120px 120px;
-}
-
-:root[data-theme='dark'] .pattern-owls {
-  background-image: url('/images/greyowls/pattern/owls-tile-dark.svg');
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) .pattern-owls {
-    background-image: url('/images/greyowls/pattern/owls-tile-dark.svg');
-  }
-}
-
 /* Animated owl background (<OwlField />). Ink matches the static tiles: Owl
    Grey on light, white on dark, both at 7%. Sparks are the owls that wake up. */
 .owl-field {
@@ -360,72 +349,40 @@ main h1 {
 }
 
 /* Playful sky (<SkyBackdrop />: login page, dashboard banner) and owl mascot (<LoginOwl />). */
-.login-sky-day {
-  background: linear-gradient(170deg, #fff8e7 0%, #fdeccc 45%, #fbdcd0 100%);
+
+/* Mascot (<LoginOwl />) in the app palette: night-ink feathers, honey eyes and beak, cream whites.
+   On the dark theme (.login-owl-night) the feathers lift a step so the owl shows on the dark card. */
+.login-owl {
+  --owl-body: #252523;
+  --owl-wing: #3d3c37;
+  --owl-iris: #f6c343;
+  --owl-white: #fffdf8;
+  --owl-ink: #1d1d1b;
 }
 
-.login-sky-night {
-  background: linear-gradient(170deg, #0b1230 0%, #171c45 55%, #2a1f50 100%);
+.login-owl-night {
+  --owl-body: #4a4842;
+  --owl-wing: #5c5a54;
 }
 
-.login-sky-eye {
-  fill: #f5b301;
-  filter: drop-shadow(0 0 6px rgba(245, 179, 1, 0.9));
-}
-
-@keyframes login-sky-blob {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(40px, -30px) scale(1.08); }
-  66% { transform: translate(-30px, 25px) scale(0.95); }
-}
-
-.login-sky-blob {
-  animation: login-sky-blob 18s ease-in-out infinite;
-}
-
-@keyframes login-sky-cloud {
-  from { transform: translateX(-260px); }
-  to { transform: translateX(calc(100vw + 40px)); }
-}
-
-.login-sky-cloud {
-  left: 0;
-  animation: login-sky-cloud linear infinite;
-}
-
-@keyframes login-sky-bob {
-  0%, 100% { transform: translateY(0) rotate(var(--tilt, 0deg)); }
-  50% { transform: translateY(-14px) rotate(calc(var(--tilt, 0deg) * -1)); }
-}
-
-.login-sky-bob {
-  animation: login-sky-bob 5s ease-in-out infinite;
-}
-
-@keyframes login-sky-twinkle {
-  0%, 100% { opacity: 0.25; transform: scale(0.8); }
-  50% { opacity: 1; transform: scale(1.2); }
-}
-
-.login-sky-twinkle {
-  animation: login-sky-twinkle 3s ease-in-out infinite;
-}
-
-/* Mascot: Owl Grey by day; lighter at night (.login-owl-night) so it shows against the night sky. */
 .login-owl-body {
-  fill: #32373f;
+  fill: var(--owl-body);
 }
 
 .login-owl-wing {
-  fill: #4a515c;
+  fill: var(--owl-wing);
 }
 
-.login-owl-night .login-owl-body {
-  fill: #5d6573;
+.login-owl-iris {
+  fill: var(--owl-iris);
 }
 
-.login-owl-night .login-owl-wing {
-  fill: #747d8c;
+.login-owl-white {
+  fill: var(--owl-white);
+}
+
+.login-owl-ink {
+  fill: var(--owl-ink);
 }
 
 .login-owl-pupil {
@@ -748,17 +705,9 @@ main h1 {
     animation: none;
   }
 
-  .login-sky-blob,
-  .login-sky-cloud,
-  .login-sky-bob,
-  .login-sky-twinkle,
   .login-shake,
   .apply-error-in {
     animation: none;
-  }
-
-  .login-sky-cloud {
-    display: none;
   }
 
   .login-owl-lid {
@@ -822,12 +771,12 @@ main h1 {
 }
 
 :root[data-theme='dark'] {
-  --card-edge: #ffffff0d;
+  --card-edge: #ffffff14;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --card-edge: #ffffff0d;
+    --card-edge: #ffffff14;
   }
 }
 

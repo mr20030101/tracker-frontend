@@ -42,7 +42,7 @@ export function OnlineUsers() {
           onClick={() => setMenuOpen((open) => !open)}
           aria-label="Chat bubble options"
           aria-expanded={menuOpen}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-700 text-white shadow-md transition-transform hover:scale-105"
+          className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-gray-700 shadow-card transition-colors duration-100 hover:bg-gray-100"
         >
           <MoreHorizontal className="h-5 w-5" />
         </button>
@@ -120,7 +120,7 @@ export function OnlineUsers() {
           type="button"
           onClick={openInbox}
           aria-label={`${overflow} more online`}
-          className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-700 text-sm font-semibold text-white shadow-md transition-transform hover:scale-105"
+          className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-sm font-semibold text-gray-700 shadow-card transition-colors duration-100 hover:bg-gray-100"
         >
           +{overflow}
         </button>

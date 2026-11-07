@@ -91,7 +91,7 @@ export function SegmentedTabs<T extends string>({
   const pill = useStretchyPill(listRef, '[aria-selected="true"]', 'x', [value, options.length])
   return (
     <div ref={listRef} role="tablist" aria-label={ariaLabel} className="relative inline-flex h-10 pointer-coarse:h-11 items-center rounded-full border border-gray-200 bg-white p-1">
-      <span aria-hidden className="pointer-events-none rounded-full bg-gray-900" style={pill} />
+      <span aria-hidden className="pointer-events-none rounded-full bg-ink" style={pill} />
       {options.map((option) => {
         const active = option.value === value
         return (
@@ -103,7 +103,7 @@ export function SegmentedTabs<T extends string>({
             title={option.title}
             onClick={() => onChange(option.value)}
             className={`relative h-full rounded-full px-4 text-sm font-medium transition-colors duration-300 ${
-              active ? 'text-gray-50' : 'text-gray-600 hover:text-gray-900'
+              active ? 'text-ink-foreground' : 'text-gray-600 hover:text-gray-900'
             }`}
           >
             {option.label}

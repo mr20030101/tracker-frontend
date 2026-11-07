@@ -34,10 +34,10 @@ export interface HeroMeter {
 }
 
 const METER_FILL: Record<HeroMeter['tone'], string> = {
-  night: 'bg-gray-900 text-gray-50',
+  night: 'bg-ink text-ink-foreground',
   honey: 'bg-accent text-accent-foreground',
   striped: 'meter-stripes text-gray-800',
-  outline: 'border border-gray-900/70 text-gray-800',
+  outline: 'border border-ink/70 text-gray-800',
 }
 
 function Meter({ label, pct, tone, text }: HeroMeter) {
@@ -57,7 +57,11 @@ function Meter({ label, pct, tone, text }: HeroMeter) {
         }`}
       >
         {filled && <span className={`absolute inset-y-0 left-0 rounded-full transition-[width] duration-700 ease-soft ${METER_FILL[tone]}`} style={{ width: `${width}%`, minWidth: width > 0 ? '2.25rem' : 0 }} />}
-        <span className={`relative px-4 tabular-nums ${filled && width > 18 ? (tone === 'night' ? 'text-gray-50' : 'text-accent-foreground') : 'text-gray-800'}`}>
+        <span
+          className={`relative tabular-nums ${filled && width <= 18 ? 'pl-12 pr-4' : 'px-4'} ${
+            filled && width > 18 ? (tone === 'night' ? 'text-ink-foreground' : 'text-accent-foreground') : 'text-gray-800'
+          }`}
+        >
           {text ?? `${Math.round(width)}%`}
         </span>
       </div>

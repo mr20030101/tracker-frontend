@@ -34,19 +34,17 @@ export function PlayfulInput({
         {optional && <span className="font-normal text-gray-400"> (optional)</span>}
       </label>
       <div className="group relative">
-        <Icon className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-accent-text" />
+        <Icon className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-gray-900" />
         <input
           id={id}
-          className={`w-full rounded-xl border-2 bg-gray-50 py-2.5 pl-10 pr-10 text-sm outline-none transition-all placeholder:text-gray-400 focus:bg-white ${
-            invalid
-              ? 'border-status-danger-text focus:border-status-danger-text focus:shadow-[0_0_0_4px_rgba(220,38,38,0.15)]'
-              : 'border-gray-200 focus:border-accent focus:shadow-[0_0_0_4px_rgba(212,160,23,0.15)]'
+          className={`h-12 w-full rounded-full border bg-gray-50 pl-11 pr-11 text-sm outline-none transition-colors duration-150 placeholder:text-gray-400 focus:bg-white ${
+            invalid ? 'border-status-danger-text' : 'border-gray-200 focus:border-gray-900'
           }`}
           aria-invalid={invalid || undefined}
           {...(optional ? {} : { required: true })}
           {...input}
         />
-        {trailing && <div className="absolute right-2 top-1/2 -translate-y-1/2">{trailing}</div>}
+        {trailing && <div className="absolute right-1.5 top-1/2 -translate-y-1/2">{trailing}</div>}
       </div>
       {hint &&
         (highlightHint ? (
@@ -85,7 +83,7 @@ export function YesNoPills({
               onChange={onChange}
               className="peer absolute inset-0 h-full w-full cursor-pointer opacity-0"
             />
-            <span className="flex items-center justify-center rounded-xl border-2 border-gray-200 bg-gray-50 py-2.5 text-sm font-semibold text-gray-600 transition-all peer-checked:border-accent peer-checked:bg-accent-bg peer-checked:text-accent-foreground peer-focus-visible:shadow-[0_0_0_4px_rgba(212,160,23,0.25)] peer-hover:border-gray-300">
+            <span className="flex items-center justify-center h-12 rounded-full border border-gray-200 bg-gray-50 text-sm font-semibold text-gray-600 transition-colors duration-150 peer-checked:border-ink peer-checked:bg-ink peer-checked:text-ink-foreground peer-focus-visible:shadow-[0_0_0_4px_rgba(212,160,23,0.25)] peer-hover:border-gray-300">
               {answer === 'yes' ? 'Yes' : 'No'}
             </span>
           </label>
@@ -105,7 +103,7 @@ export function RevealToggle({ shown, onToggle }: { shown: boolean; onToggle: ()
       onClick={onToggle}
       aria-label={shown ? 'Hide password' : 'Show password'}
       aria-pressed={shown}
-      className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+      className="flex h-9 w-9 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-900 pointer-coarse:h-11 pointer-coarse:w-11"
     >
       <Icon className="h-4 w-4" />
     </button>
@@ -126,8 +124,9 @@ export function SubmitButton({
   return (
     <button
       type="submit"
-      disabled={pending}
-      className="mt-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-accent px-4 py-3 text-sm font-bold text-accent-foreground shadow-[0_4px_0_0_#a87c0c] transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_0_0_#a87c0c] active:translate-y-1 active:shadow-[0_0_0_0_#a87c0c] disabled:translate-y-0 disabled:opacity-60 disabled:shadow-[0_4px_0_0_#a87c0c]"
+      aria-busy={pending}
+      onClick={(e) => pending && e.preventDefault()}
+      className="mt-2 inline-flex h-12 items-center justify-center gap-1.5 rounded-full bg-accent px-5 text-sm font-semibold text-accent-foreground transition-colors duration-150 hover:bg-accent-bg"
     >
       {Icon && <Icon className="h-4 w-4" aria-hidden />}
       {pending ? pendingLabel : label}
@@ -173,12 +172,12 @@ export function PlayfulSwitch({
   onChange: (checked: boolean) => void
 }) {
   return (
-    <label htmlFor={id} className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border-2 border-gray-200 bg-gray-50 px-3.5 py-2.5">
+    <label htmlFor={id} className="flex min-h-12 cursor-pointer items-center justify-between gap-3 rounded-full border border-gray-200 bg-gray-50 px-5 py-2">
       <span className="text-sm font-medium text-gray-700">{label}</span>
       <span className="relative inline-flex shrink-0">
         <input id={id} type="checkbox" role="switch" checked={checked} onChange={(e) => onChange(e.target.checked)} className="peer sr-only" />
-        <span className="h-6 w-11 rounded-full bg-gray-300 transition-colors peer-checked:bg-accent peer-focus-visible:shadow-[0_0_0_4px_rgba(212,160,23,0.25)]" />
-        <span className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-[#ffffff] shadow transition-transform peer-checked:translate-x-5" />
+        <span className="h-6 w-11 rounded-full bg-gray-300 transition-colors peer-checked:bg-accent peer-focus-visible:ring-4 peer-focus-visible:ring-accent/30" />
+        <span className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
       </span>
     </label>
   )

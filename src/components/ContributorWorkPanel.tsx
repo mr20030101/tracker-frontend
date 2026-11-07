@@ -662,7 +662,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
             {ctsEnabled && (
             <button
               onClick={() => setShowCtsModal(true)}
-              className="ml-auto inline-flex animate-heartbeat-soft items-center gap-1.5 rounded-full bg-gray-900 px-4 py-2 text-sm font-semibold text-gray-50 hover:bg-gray-800"
+              className="ml-auto inline-flex animate-heartbeat-soft items-center gap-1.5 rounded-full bg-ink px-4 py-2 text-sm font-semibold text-ink-foreground hover:bg-ink/90"
             >
               <ClipboardCheck className="h-4 w-4" aria-hidden />
               CTS Form

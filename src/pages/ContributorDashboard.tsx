@@ -266,7 +266,7 @@ export function ContributorDashboard() {
               <button
                 type="button"
                 onClick={() => setShowCtsModal(true)}
-                className="inline-flex h-11 animate-heartbeat-soft items-center gap-1.5 rounded-full bg-gray-900 px-5 text-sm font-semibold text-gray-50 transition-colors duration-100 hover:bg-gray-800"
+                className="inline-flex h-11 animate-heartbeat-soft items-center gap-1.5 rounded-full bg-ink px-5 text-sm font-semibold text-ink-foreground transition-colors duration-100 hover:bg-ink/90"
               >
                 <ClipboardCheck className="h-4 w-4" aria-hidden />
                 CTS Form
@@ -468,7 +468,7 @@ export function ContributorDashboard() {
                 </span>
                 <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-100">
                   <GrowBar
-                    className="h-full rounded-full bg-gray-900"
+                    className="h-full rounded-full bg-ink"
                     pct={Math.max(4, (p.total / maxProjectTotal) * 100)}
                     delay={400 + index * 80}
                   />
@@ -502,7 +502,7 @@ export function ContributorDashboard() {
                     <div className="mt-2 flex items-center gap-3">
                       <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-100">
                         <div
-                          className={`h-full rounded-full ${done >= quota ? 'bg-gray-900' : 'bg-accent'}`}
+                          className={`h-full rounded-full ${done >= quota ? 'bg-ink' : 'bg-accent'}`}
                           style={{ width: `${quota > 0 ? Math.min(100, (done / quota) * 100) : 100}%` }}
                         />
                       </div>
