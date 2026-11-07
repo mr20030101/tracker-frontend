@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.5.0 — 2026-11-07
+
 ### Added
 
 - Web addresses in messages (direct, group and Meera's replies) are now links that open in a new tab, including bare **www.** addresses. Only http and https addresses become links.
