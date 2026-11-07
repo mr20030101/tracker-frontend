@@ -14,6 +14,10 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Changed
+
+- On the Attendance page, people who haven't filed stand out in red again: their card is tinted red, and "Not filed" and "No attendance yet" are in red. The same goes for the team's day on the **Team** tab.
+
 ## 8.1.0 — 2026-11-07
 
 ### Changed

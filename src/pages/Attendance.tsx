@@ -65,8 +65,8 @@ function hoursStatus(hours: AttendanceHours) {
 
 function NotFiled() {
   return (
-    <span className={`${statusClass} font-semibold text-gray-900`}>
-      <CircleSlash className="h-4 w-4 text-gray-500" aria-hidden />
+    <span className={`${statusClass} font-semibold text-status-danger-text`}>
+      <CircleSlash className="h-4 w-4" aria-hidden />
       Not filed
     </span>
   )
@@ -378,7 +378,9 @@ function TeamAttendance() {
               {/* The whole card opens the form for a mouse; the footer button is the keyboard way in. */}
               <div
                 onClick={() => setEditing({ person, entry })}
-                className="flex h-full cursor-pointer flex-col gap-3 card p-4 text-sm transition-colors duration-75 hover:bg-gray-50"
+                className={`flex h-full cursor-pointer flex-col gap-3 card p-4 text-sm transition-colors duration-75 ${
+                  entry ? 'hover:bg-gray-50' : 'border-status-danger-text/50 bg-status-danger-bg hover:border-status-danger-text'
+                }`}
               >
                 <div className="flex items-start gap-3">
                   <AttendanceAvatar name={person.name} avatarUrl={person.avatar_url} photoRef={entry?.photo_ref} />
@@ -415,7 +417,7 @@ function TeamAttendance() {
                     </div>
                   </>
                 ) : (
-                  <div className="mt-auto flex items-center justify-between border-t border-gray-100 pt-2 text-xs text-gray-500">
+                  <div className="mt-auto flex items-center justify-between border-t border-status-danger-text/20 pt-2 text-xs font-medium text-status-danger-text">
                     <span>No attendance yet</span>
                     <CardAction icon={FilePlus} primary>
                       File for them
@@ -695,7 +697,7 @@ function TeammatesAttendance({ today }: { today: string }) {
           {visible.map((mate) => (
             <li
               key={mate.user_id}
-              className="flex items-start gap-3 card p-4 text-sm"
+              className={`flex items-start gap-3 card p-4 text-sm ${mate.hours ? '' : 'border-status-danger-text/50 bg-status-danger-bg'}`}
             >
               {mate.photo_ref ? (
                 <button
