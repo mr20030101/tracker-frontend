@@ -75,7 +75,7 @@ export function Users() {
   const { data, isLoading } = useQuery({
     queryKey: ['users'],
     queryFn: async () => (await api.get<User[]>('/users')).data,
-    refetchInterval: 30_000,
+    refetchInterval: 2 * 60_000,
   })
 
   const people = useMemo(() => (data ?? []).filter((u) => u.id !== currentUser?.id), [data, currentUser?.id])

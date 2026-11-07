@@ -257,7 +257,7 @@ function TeamAttendance() {
   const { data: entries = [], isLoading: entriesLoading } = useQuery({
     queryKey: ['attendance', 'date', date],
     queryFn: () => fetchAttendanceForDate(date),
-    refetchInterval: date === today ? 30_000 : false,
+    refetchInterval: date === today ? 2 * 60_000 : false,
   })
   const isLoading = rosterLoading || entriesLoading
 
@@ -662,7 +662,7 @@ function TeammatesAttendance({ today }: { today: string }) {
   const { data: team = [], isLoading } = useQuery({
     queryKey: ['attendance', 'team', date],
     queryFn: () => fetchTeamAttendanceForDate(date),
-    refetchInterval: date === today ? 60_000 : false,
+    refetchInterval: date === today ? 5 * 60_000 : false,
   })
 
   const filed = team.filter((t) => t.hours)

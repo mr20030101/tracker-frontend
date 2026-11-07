@@ -50,7 +50,7 @@ export function Feedback() {
   const { data: reports = [], isLoading } = useQuery({
     queryKey: ['task-feedback', 'all'],
     queryFn: fetchTaskFeedback,
-    refetchInterval: 30_000,
+    refetchInterval: 2 * 60_000,
   })
 
   const term = search.trim().toLowerCase()

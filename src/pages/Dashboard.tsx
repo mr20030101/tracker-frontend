@@ -77,7 +77,7 @@ export function Dashboard() {
   const { data: overdueRequests = 0 } = useQuery({
     queryKey: ['task-requests', 'overdue-count'],
     queryFn: fetchOverdueRequestCount,
-    refetchInterval: 60_000,
+    refetchInterval: 5 * 60_000,
   })
   const { data, isLoading } = useQuery({
     queryKey: ['dashboard-summary', rangeStart, rangeEnd, viewMode],

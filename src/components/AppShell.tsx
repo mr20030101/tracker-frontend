@@ -232,37 +232,37 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   // The number on the Requests link, for the people who decide them. Refreshed after every review
-  // on the Requests page (same ['task-requests'] key prefix) and every half minute in between.
+  // on the Requests page (same ['task-requests'] key prefix) and every two minutes in between.
   const { data: pendingRequests = 0 } = useQuery({
     queryKey: ['task-requests', 'pending-count'],
     queryFn: fetchPendingRequestCount,
     enabled: isManager,
-    refetchInterval: 30_000,
+    refetchInterval: 2 * 60_000,
   })
   // Of those, the ones waiting past OVERDUE_HOURS — what turns the badge red as a reminder.
   const { data: overdueRequests = 0 } = useQuery({
     queryKey: ['task-requests', 'overdue-count'],
     queryFn: fetchOverdueRequestCount,
     enabled: isManager,
-    refetchInterval: 60_000,
+    refetchInterval: 5 * 60_000,
   })
 
   // Feedback reports waiting for a lead to check them. Refreshed after every check on the Feedback
-  // page (same ['task-feedback'] key prefix) and every half minute in between.
+  // page (same ['task-feedback'] key prefix) and every two minutes in between.
   const { data: pendingFeedback = 0 } = useQuery({
     queryKey: ['task-feedback', 'pending-count'],
     queryFn: fetchPendingFeedbackCount,
     enabled: isManager,
-    refetchInterval: 30_000,
+    refetchInterval: 2 * 60_000,
   })
 
   // New announcements addressed to you. Cleared when the Announcements page marks them seen (it
-  // invalidates this key), otherwise checked every minute.
+  // invalidates this key), otherwise checked every five minutes.
   const { data: unreadAnnouncements = 0 } = useQuery({
     queryKey: ['announcements', 'unread-count'],
     queryFn: fetchUnreadAnnouncementCount,
     enabled: Boolean(user),
-    refetchInterval: 60_000,
+    refetchInterval: 5 * 60_000,
   })
 
   // Fade the page area in on each route change. Opacity only: a transform here

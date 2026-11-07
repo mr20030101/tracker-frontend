@@ -20,7 +20,7 @@ const PANEL_Z_INDEX = 60
 // How often the tab title flips while a new request is ringing.
 const TITLE_FLASH_MS = 1000
 // How often the alarm checks for pending requests, in case a live event was missed.
-const PENDING_POLL_MS = 30_000
+const PENDING_POLL_MS = 2 * 60_000
 // One shared empty list, so having no pending requests yet doesn't hand the effects below a new
 // array every render (which re-marked them seen on every render on the Requests page, forever).
 const NO_PENDING: PendingRequestAlarmRow[] = []
@@ -94,7 +94,7 @@ export function NotificationBell() {
   // Leads only (admins keep the quiet bell): rings, on whatever page they're on, while any pending
   // request they haven't looked at yet is waiting, until they look by opening the bell, the
   // Requests page or the alarm's own buttons. It goes by the pending requests themselves (checked
-  // every half minute, and at once on a live event) rather than by live events alone, so a missed
+  // every two minutes, and at once on a live event) rather than by live events alone, so a missed
   // event, a sleeping tab or a request sent before they signed in still sets it off.
   const isLead = user?.role === 'lead'
   const onRequestsPage = pathname.startsWith('/requests')

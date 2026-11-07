@@ -55,7 +55,7 @@ export function MessagingProvider({ children }: { children: ReactNode }) {
     queryKey: ['messages', myId, 'summary'],
     queryFn: fetchConversationSummaries,
     enabled: Boolean(myId),
-    refetchInterval: 15000,
+    refetchInterval: 5 * 60_000,
   })
   const recentMessages = useMemo(() => summaries.flatMap((s) => s.recent), [summaries])
 
@@ -114,7 +114,7 @@ export function MessagingProvider({ children }: { children: ReactNode }) {
     queryKey: ['group-chats', myId],
     queryFn: fetchGroupSummaries,
     enabled: Boolean(myId),
-    refetchInterval: 15000,
+    refetchInterval: 5 * 60_000,
   })
 
   const totalUnread =

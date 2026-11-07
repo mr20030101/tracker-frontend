@@ -24,13 +24,13 @@ export function LogTabs() {
     queryKey: ['task-requests', 'pending-count'],
     queryFn: fetchPendingRequestCount,
     enabled: isManager,
-    refetchInterval: 30_000,
+    refetchInterval: 2 * 60_000,
   })
   const { data: pendingFeedback = 0 } = useQuery({
     queryKey: ['task-feedback', 'pending-count'],
     queryFn: fetchPendingFeedbackCount,
     enabled: isManager,
-    refetchInterval: 30_000,
+    refetchInterval: 2 * 60_000,
   })
   const countFor = (to: string) => (!isManager ? undefined : to === '/requests' ? pendingRequests : to === '/feedback' ? pendingFeedback : undefined)
 

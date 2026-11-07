@@ -40,7 +40,7 @@ export function LeadTeam() {
   const { data: team, isLoading, error } = useQuery({
     queryKey: ['lead-team', leadId, weekStart],
     queryFn: () => fetchLeadTeam(leadId, weekStart),
-    refetchInterval: 60_000,
+    refetchInterval: 5 * 60_000,
   })
   usePageTitle(team?.lead.name ?? 'Lead')
 
