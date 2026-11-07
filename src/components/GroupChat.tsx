@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { linkify } from '../lib/linkify'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, Check, ChevronUp, LogOut, Pencil, Plus, Send, Settings, Trash2, UserMinus, UserPlus, Users, X } from 'lucide-react'
 import { api, errorMessage, supabase } from '../lib/api'
@@ -178,7 +179,7 @@ export function GroupChatPane({ group, onBack, onGone }: { group: ChatGroupSumma
                       style={mine ? { backgroundColor: BUBBLE_BLUE } : undefined}
                       className={`rounded-3xl px-3.5 py-2 text-sm ${mine ? 'text-white' : 'bg-gray-100 text-gray-800'}`}
                     >
-                      <div className="whitespace-pre-wrap wrap-break-word">{convertEmoticons(m.body)}</div>
+                      <div className="whitespace-pre-wrap wrap-break-word">{linkify(convertEmoticons(m.body))}</div>
                     </div>
                     {seenStatus?.messageId === m.id && (
                       <span className="mt-0.5 px-1 text-[11px] text-gray-400">{seenStatus.label}</span>

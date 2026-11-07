@@ -1,4 +1,5 @@
 import { Fragment, type ReactNode } from 'react'
+import { linkify } from './linkify'
 import { convertEmoticons } from './emoticons'
 
 // Not a full markdown parser — just the handful of patterns the bot's system prompt asks it to use
@@ -11,7 +12,7 @@ function renderInline(text: string, keyPrefix: string): ReactNode[] {
     part.startsWith('**') && part.endsWith('**') && part.length > 4 ? (
       <strong key={`${keyPrefix}-${i}`}>{part.slice(2, -2)}</strong>
     ) : (
-      <Fragment key={`${keyPrefix}-${i}`}>{part}</Fragment>
+      <Fragment key={`${keyPrefix}-${i}`}>{linkify(part, `${keyPrefix}-${i}`)}</Fragment>
     ),
   )
 }

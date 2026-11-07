@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { linkify } from '../lib/linkify'
 import { Check, Phone, PhoneMissed, Trash2 } from 'lucide-react'
 import { callLogTitle, formatCallDuration, parseCallLog, type CallLog } from '../lib/callLog'
 import { convertEmoticons } from '../lib/emoticons'
@@ -67,7 +68,7 @@ export function MessageBubble({
                 } ${selectable ? 'cursor-pointer' : ''} ${selected ? 'ring-2 ring-accent ring-offset-1' : ''}`}
             >
               <div className="whitespace-pre-wrap wrap-break-word">
-                {isBot ? formatBotMessage(message.body) : convertEmoticons(message.body)}
+                {isBot ? formatBotMessage(message.body) : linkify(convertEmoticons(message.body))}
               </div>
             </div>
           )}
