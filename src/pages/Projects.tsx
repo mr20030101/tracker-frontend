@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { FoldText } from '../components/FoldText'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
@@ -213,8 +214,8 @@ export function Projects() {
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
-            Projects
+          <h1 className="flex items-center gap-2 text-3xl font-medium sm:text-4xl text-gray-900">
+            <FoldText text="Projects" />
           </h1>
           <p className="text-sm text-gray-500">
             Manage the list of projects contributors can log task submissions against.
@@ -223,7 +224,7 @@ export function Projects() {
         {isAdmin && (
           <button
             onClick={() => setAdding(true)}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
+            className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
           >
             <Plus className="h-4 w-4" aria-hidden />
             Add Project
@@ -235,7 +236,7 @@ export function Projects() {
         <div className="mb-4 rounded-lg bg-status-danger-text px-3 py-2 text-sm text-status-danger-bg">{leadError}</div>
       )}
 
-      <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+      <div className="overflow-x-auto card">
         <table className="w-full min-w-[44rem] text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
             <tr>
@@ -387,7 +388,7 @@ export function Projects() {
               <button
                 type="submit"
                 disabled={createMutation.isPending}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
               >
                 <Plus className="h-4 w-4" aria-hidden />
                 {createMutation.isPending ? 'Saving...' : 'Add Project'}
@@ -433,7 +434,7 @@ export function Projects() {
               <button
                 type="submit"
                 disabled={updateMutation.isPending}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
               >
                 <Save className="h-4 w-4" aria-hidden />
                 {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
@@ -470,7 +471,7 @@ export function Projects() {
               <button
                 type="submit"
                 disabled={!selectedLeadId || addProjectLeadMutation.isPending}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
               >
                 <UserPlus className="h-4 w-4" aria-hidden />
                 {addProjectLeadMutation.isPending ? 'Saving...' : 'Add Lead'}

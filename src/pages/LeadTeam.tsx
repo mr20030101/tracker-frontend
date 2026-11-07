@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
+import { FoldText } from '../components/FoldText'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { ArrowRight, CalendarDays, ChevronLeft, ChevronRight, MessageSquare, User as UserIcon } from 'lucide-react'
@@ -21,7 +22,7 @@ const percent = (n: number) => `${Math.round(n)}%`
 
 function StatTile({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5">
+    <div className="card p-5">
       <div className="text-xs font-semibold uppercase tracking-wider text-gray-400">{label}</div>
       <div className="mt-1 text-3xl font-bold text-gray-900">{children}</div>
       {hint && <div className="mt-1 text-xs text-gray-500">{hint}</div>}
@@ -159,7 +160,7 @@ export function LeadTeam() {
     return (
       <div>
         {backLink}
-        <h1 className="text-2xl font-bold text-gray-900">Lead not found</h1>
+        <h1 className="text-3xl font-medium sm:text-4xl text-gray-900"><FoldText text="Lead not found" /></h1>
         <p className="text-sm text-gray-500">No account matches this link. It may have been deleted.</p>
       </div>
     )
@@ -177,8 +178,8 @@ export function LeadTeam() {
           <Avatar name={lead.name} photoUrl={lead.avatar_url} size={56} />
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
-                {lead.name}
+              <h1 className="flex items-center gap-2 text-3xl font-medium sm:text-4xl text-gray-900">
+                <FoldText text={lead.name} />
               </h1>
               <span className="rounded-full bg-accent-bg px-2.5 py-0.5 text-xs font-semibold capitalize text-accent-foreground">
                 {lead.role}
@@ -208,14 +209,14 @@ export function LeadTeam() {
           )}
           <Link
             to={messagePath(lead.id)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+            className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50"
           >
             <MessageSquare className="h-4 w-4" aria-hidden />
             Message
           </Link>
           <Link
             to={contributorPath(lead.email)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+            className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50"
           >
             <UserIcon className="h-4 w-4" aria-hidden />
             Profile
@@ -226,7 +227,7 @@ export function LeadTeam() {
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <button
           onClick={() => shiftWeek(-1)}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+          className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
         >
           <ChevronLeft className="h-4 w-4" aria-hidden />
           Prev
@@ -236,7 +237,7 @@ export function LeadTeam() {
         </div>
         <button
           onClick={() => shiftWeek(1)}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+          className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
         >
           <ChevronRight className="h-4 w-4" aria-hidden />
           Next
@@ -255,7 +256,7 @@ export function LeadTeam() {
           <p className="mt-1 text-sm text-gray-500">Assign contributors to this lead from the Users page.</p>
           <Link
             to="/users"
-            className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
+            className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
           >
             <ArrowRight className="h-4 w-4" aria-hidden />
             Go to Users
@@ -280,12 +281,12 @@ export function LeadTeam() {
             </StatTile>
           </div>
 
-          <div className="mb-4 rounded-lg border border-gray-200 bg-white p-4">
+          <div className="mb-4 card p-5">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-gray-700">Team submissions by day</h3>
               <span className="text-xs text-gray-400">tasks</span>
             </div>
-            <LineChart data={team.daily} color="#d4a017" unitLabel="submitted tasks" />
+            <LineChart data={team.daily} color="#e0a91f" unitLabel="submitted tasks" />
           </div>
 
           <DataTable

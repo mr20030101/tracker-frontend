@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { FoldText } from '../components/FoldText'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ColumnDef } from '@tanstack/react-table'
 import { Trash2, X } from 'lucide-react'
@@ -125,7 +126,7 @@ function AuditTrail() {
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">Admin Actions</h1>
+          <h1 className="flex items-center gap-2 text-3xl font-medium sm:text-4xl text-gray-900"><FoldText text="Admin Actions" /></h1>
           <p className="text-sm text-gray-500">
             What leads and admins changed: accounts, teams, requests, levels, targets, projects and hiring. Kept permanently.
           </p>
@@ -227,8 +228,8 @@ function SignInLog() {
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
-            Activity Log
+          <h1 className="flex items-center gap-2 text-3xl font-medium sm:text-4xl text-gray-900">
+            <FoldText text="Activity Log" />
           </h1>
           <p className="text-sm text-gray-500">Sign-in and sign-out activity across all logins.</p>
         </div>
@@ -293,7 +294,7 @@ function SignInLog() {
                 type="button"
                 onClick={() => clearMutation.mutate()}
                 disabled={clearMutation.isPending}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-status-danger-text px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-full bg-status-danger-text px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
               >
                 <Trash2 className="h-4 w-4" aria-hidden />
                 {clearMutation.isPending ? 'Clearing...' : 'Clear Log'}

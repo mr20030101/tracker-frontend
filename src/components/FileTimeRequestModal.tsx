@@ -83,7 +83,7 @@ export function FileTimeRequestModal({
             <X className="h-4 w-4" aria-hidden />
             Cancel
           </button>
-          <button type="submit" className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground">
+          <button type="submit" className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground">
             <ExternalLink className="h-4 w-4" aria-hidden />
             Open form
           </button>

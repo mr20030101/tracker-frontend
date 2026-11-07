@@ -410,7 +410,7 @@ export function NewGroupModal({ onClose, onCreated }: { onClose: () => void; onC
           <button
             type="submit"
             disabled={!name.trim() || selected.size === 0 || createMutation.isPending}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
           >
             <Plus className="h-4 w-4" aria-hidden />
             {createMutation.isPending ? 'Creating...' : 'Create group'}
@@ -517,7 +517,7 @@ function GroupSettingsModal({ group, onClose, onGone }: { group: ChatGroupSummar
                   type="button"
                   onClick={() => addMutation.mutate([...adding])}
                   disabled={adding.size === 0 || addMutation.isPending}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground disabled:opacity-50"
                 >
                   <UserPlus className="h-4 w-4" aria-hidden />
                   Add {adding.size || ''}
@@ -571,7 +571,7 @@ function GroupSettingsModal({ group, onClose, onGone }: { group: ChatGroupSummar
               onClick={async () => {
                 if (await confirmDialog(`Delete ${group.name} and all its messages for everyone? This cannot be undone.`, { confirmLabel: 'Delete', danger: true })) deleteMutation.mutate()
               }}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-status-danger-text px-4 py-2 text-sm font-semibold text-white"
+              className="inline-flex items-center gap-1.5 rounded-full bg-status-danger-text px-4 py-2 text-sm font-semibold text-white"
             >
               <Trash2 className="h-4 w-4" aria-hidden />
               Delete group

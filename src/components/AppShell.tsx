@@ -22,12 +22,15 @@ import {
   Megaphone,
   UserRound,
   Settings as SettingsIcon,
+  ChevronLeft,
+  ChevronRight,
   Menu,
   X,
   type LucideIcon,
 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { prefersReducedMotion } from '../lib/motion'
+import { useStretchyPill } from '../lib/useStretchyPill'
 import { MessagingProvider } from '../lib/messagingContext'
 import { CallProvider } from '../lib/call'
 import { CallBar } from './CallBar'
@@ -179,6 +182,28 @@ export function AppShell({ children }: { children: ReactNode }) {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [menuOpen])
+  // The collapsed rail's name popup. Drawn outside the nav, which scrolls and would clip it.
+  const [railTip, setRailTip] = useState<{ label: string; top: number; left: number } | null>(null)
+  const showRailTip = (el: HTMLElement, label: string) => {
+    const box = el.getBoundingClientRect()
+    setRailTip({ label, top: box.top + box.height / 2, left: box.right + 12 })
+  }
+  const tipHandlers = (label: string) => ({
+    onPointerEnter: (e: React.PointerEvent<HTMLElement>) => e.pointerType === 'mouse' && showRailTip(e.currentTarget, label),
+    onPointerLeave: () => setRailTip(null),
+    onFocus: (e: React.FocusEvent<HTMLElement>) => showRailTip(e.currentTarget, label),
+    onBlur: () => setRailTip(null),
+  })
+  const edgeTipProps = (label: string) => (docked || rail ? tipHandlers(label) : {})
+  const railTipProps = (label: string) =>
+    rail
+      ? {
+          onPointerEnter: (e: React.PointerEvent<HTMLElement>) => e.pointerType === 'mouse' && showRailTip(e.currentTarget, label),
+          onPointerLeave: () => setRailTip(null),
+          onFocus: (e: React.FocusEvent<HTMLElement>) => showRailTip(e.currentTarget, label),
+          onBlur: () => setRailTip(null),
+        }
+      : {}
   const navOpen = docked || menuOpen
   const setNavOpen = (open: boolean) => {
     if (isDesktop && !onMessages) {
@@ -234,6 +259,9 @@ export function AppShell({ children }: { children: ReactNode }) {
     }
   }, [location.pathname])
 
+  const navListRef = useRef<HTMLDivElement>(null)
+  const activePill = useStretchyPill(navListRef, 'a[aria-current="page"]', 'y', [location.pathname, rail, docked, menuOpen])
+
   const ownProfilePath = user ? contributorPath(user.email) : '/'
   const { attendanceEnabled } = useTeamFeatures(user?.id)
   const sections = navSections(isManager, isAdmin, attendanceEnabled, pendingRequests, overdueRequests, pendingFeedback, unreadAnnouncements)
@@ -286,7 +314,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <MessagingProvider>
       <CallProvider>
         <CallBar />
-        <div className="relative isolate flex h-screen overflow-hidden bg-gray-50">
+        <div className="relative isolate flex h-screen overflow-hidden">
           {user && !onMessages && <OnlineUsers />}
           {/* Contributors: the countdown to today's attendance closing, until they've filed. */}
           {user && <AttendanceBomb />}
@@ -299,12 +327,10 @@ export function AppShell({ children }: { children: ReactNode }) {
             onClick={(e) => {
               if ((e.target as HTMLElement).closest('a')) setMenuOpen(false)
             }}
-            className={`nav-dark flex flex-col border-r border-gray-200 bg-white ${
-              docked
-                ? 'w-64 shrink-0'
-                : rail
-                  ? 'w-16 shrink-0'
-                  : `fixed inset-y-0 left-0 z-50 w-64 max-w-[85vw] transition-transform duration-200 ${menuOpen ? 'translate-x-0 shadow-xl' : '-translate-x-full'}`
+            className={`nav-dark flex flex-col bg-white ${
+              docked || rail
+                ? `relative my-3 ml-3 shrink-0 rounded-3xl transition-[width] duration-200 ease-soft ${docked ? 'w-64' : 'w-18'}`
+                : `fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] rounded-r-3xl transition-transform duration-200 ease-soft ${menuOpen ? 'translate-x-0 shadow-xl' : '-translate-x-full'}`
             }`}
           >
             {rail ? (
@@ -312,24 +338,46 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <Logo mark className="h-9" />
               </div>
             ) : (
-              <div className="flex items-center justify-between px-5 py-5">
+              <div className="flex items-center justify-between gap-2 py-5 pl-5 pr-3">
                 <Logo />
-                <button
-                  type="button"
-                  onClick={() => setNavOpen(false)}
-                  aria-label={docked ? 'Collapse navigation' : 'Hide navigation'}
-                  title={docked ? 'Collapse navigation' : 'Hide navigation'}
-                  className="rounded-md p-1 text-gray-500 hover:bg-gray-100"
-                >
-                  <X className="h-5 w-5" />
-                </button>
+                {!docked && (
+                  <button
+                    type="button"
+                    onClick={() => setNavOpen(false)}
+                    aria-label="Close menu"
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-700 transition-colors duration-100 hover:bg-gray-200 hover:text-gray-900"
+                  >
+                    <X className="h-5 w-5" aria-hidden />
+                  </button>
+                )}
               </div>
+            )}
+
+            {/* The tab on the panel's edge that retracts it to icons and back. */}
+            {(docked || rail) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setRailTip(null)
+                  setNavOpen(rail)
+                }}
+                aria-label={rail ? 'Expand menu' : 'Collapse menu'}
+                aria-expanded={docked}
+                aria-controls="app-menu"
+                {...edgeTipProps(rail ? 'Expand menu' : 'Collapse menu')}
+                className="absolute -right-3.5 top-7 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-card ring-4 ring-gray-50 transition-colors duration-100 after:absolute after:-inset-2 hover:bg-accent-bg"
+              >
+                {rail ? <ChevronRight className="h-4 w-4" aria-hidden /> : <ChevronLeft className="h-4 w-4" aria-hidden />}
+              </button>
             )}
 
               {/* Still scrolls when the links don't fit, just without a scrollbar alongside them. */}
               <nav
+                onScroll={() => setRailTip(null)}
                 className={`flex-1 overflow-y-auto py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${rail ? 'px-2' : 'px-3'}`}
               >
+                <div ref={navListRef} className="relative">
+                <span aria-hidden className="pointer-events-none rounded-full bg-accent" style={activePill} />
                 {sections.map((section) => (
                   <div key={section.label} className={rail ? 'mb-2 border-b border-gray-100 pb-2 last:border-0' : 'mb-4'}>
                     {/* On the rail a thin divider stands in for the section's name. */}
@@ -345,12 +393,12 @@ export function AppShell({ children }: { children: ReactNode }) {
                         key={item.to}
                         to={item.to}
                         end
-                        // On the rail the icon is all that shows, so the name comes from the tooltip.
-                        title={rail ? item.label : undefined}
+                        // On the rail the icon is all that shows, so its name pops up beside it on hover or focus.
+                        {...railTipProps(item.badge ? `${item.label} · ${item.badge > 99 ? '99+' : item.badge}` : item.label)}
                         className={({ isActive }) =>
-                          `relative flex items-center rounded-lg text-sm font-medium ${
-                            rail ? 'justify-center px-0 py-2.5' : 'gap-2.5 px-3 py-2'
-                          } ${isActive ? 'bg-accent-bg text-accent-foreground' : 'text-gray-600 hover:bg-gray-100'}`
+                          `relative flex items-center rounded-full text-sm font-medium transition-colors duration-300 ${
+                            rail ? 'mx-auto h-11 w-11 justify-center' : 'gap-2.5 px-3.5 py-2.5'
+                          } ${isActive ? 'text-accent-foreground' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`
                         }
                       >
                         <item.icon className={`${rail ? 'h-5 w-5' : 'h-4 w-4'} shrink-0`} strokeWidth={2} />
@@ -363,9 +411,9 @@ export function AppShell({ children }: { children: ReactNode }) {
                             className={`flex items-center justify-center rounded-full font-bold ${
                               rail ? 'absolute right-1 top-0.5 h-4 min-w-4 px-1 text-[10px]' : 'ml-auto h-5 min-w-5 px-1.5 text-[11px]'
                             } ${
-                              item.to === '/requests' && !item.urgent
-                                ? 'bg-accent text-accent-foreground'
-                                : 'bg-status-danger-text text-white'
+                              item.urgent
+                                ? 'bg-status-danger-text text-white'
+                                : 'bg-gray-900 text-gray-50'
                             }`}
                           >
                             {item.badge > 99 ? '99+' : item.badge}
@@ -378,13 +426,25 @@ export function AppShell({ children }: { children: ReactNode }) {
                     ))}
                   </div>
                 ))}
+                </div>
               </nav>
 
           </aside>
 
+          {railTip && (
+            <div
+              role="tooltip"
+              style={{ top: railTip.top, left: railTip.left }}
+              className="nav-tip pointer-events-none fixed z-50 -translate-y-1/2 whitespace-nowrap rounded-full bg-gray-900 px-3.5 py-1.5 text-sm font-medium text-gray-50 shadow-card"
+            >
+              {railTip.label}
+            </div>
+          )}
+
           <div className="flex min-w-0 flex-1 flex-col">
-            <header className="flex items-center justify-between gap-2 border-b border-gray-200 bg-white px-3 py-2.5 sm:px-6 sm:py-3">
+            <header className="flex items-center justify-between gap-2 px-3 pt-3 pb-1 sm:px-6 sm:pt-4">
               <div className="flex min-w-0 items-center gap-2 sm:gap-4">
+                {!(isDesktop && !onMessages) && (
                 <button
                   type="button"
                   onClick={() => setNavOpen(!navOpen)}
@@ -392,16 +452,17 @@ export function AppShell({ children }: { children: ReactNode }) {
                   title={rail ? 'Expand navigation' : navOpen ? (docked ? 'Collapse navigation' : 'Hide navigation') : 'Show navigation'}
                   aria-expanded={navOpen}
                   aria-controls="app-menu"
-                  className="-ml-1 shrink-0 rounded-md p-1.5 text-gray-600 hover:bg-gray-100"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-gray-700 shadow-card transition-colors duration-100 hover:bg-gray-100"
                 >
                   <Menu className="h-5 w-5" />
                 </button>
+                )}
                 {onMessages && (
                   <NavLink to="/" className="hidden shrink-0 sm:block" aria-label="Home">
                     <Logo className="h-6" />
                   </NavLink>
                 )}
-                <div className="min-w-0 truncate text-sm text-gray-500">
+                <div className="hidden min-w-0 truncate rounded-full bg-white/60 px-4 py-2.5 text-sm text-gray-500 sm:block">
                   <NavLink to="/" className="hidden font-medium text-gray-700 hover:underline sm:inline">
                     Home
                   </NavLink>

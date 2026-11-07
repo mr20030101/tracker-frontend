@@ -25,8 +25,8 @@ export function TeamPulseCard({ standing, team }: { standing: Standing | undefin
   return (
     <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2">
       {standing && (
-        <Link to="/leaderboard" className="group flex items-center gap-4 rounded-xl border border-gray-200 bg-white p-5 hover:border-accent">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent">
+        <Link to="/leaderboard" className="group flex items-center gap-4 card p-5 hover:border-accent">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent-text">
             <Trophy className="h-6 w-6" />
           </div>
           <div className="min-w-0">
@@ -36,11 +36,11 @@ export function TeamPulseCard({ standing, team }: { standing: Standing | undefin
             </div>
             <div className="text-sm text-gray-600">{standingLine(standing)}</div>
           </div>
-          <span className="ml-auto hidden shrink-0 text-xs font-semibold text-accent group-hover:underline sm:block">Leaderboard →</span>
+          <span className="ml-auto hidden shrink-0 text-xs font-semibold text-accent-text group-hover:underline sm:block">Leaderboard →</span>
         </Link>
       )}
       {team.target > 0 && (
-        <div className="flex items-center gap-4 rounded-xl border border-gray-200 bg-white p-5">
+        <div className="flex items-center gap-4 card p-5">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-sky-100 text-sky-600">
             <Users className="h-6 w-6" />
           </div>

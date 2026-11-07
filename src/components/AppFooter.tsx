@@ -45,7 +45,7 @@ function WhatsNew({ onClose }: { onClose: () => void }) {
             <div className="mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-gray-200 pb-1">
               <h3 className="text-base font-semibold text-gray-900">v{release.version}</h3>
               {release.date && <span className="text-xs text-gray-500">{release.date}</span>}
-              {release.version === APP_VERSION && <span className="text-xs font-semibold text-accent">This version</span>}
+              {release.version === APP_VERSION && <span className="text-xs font-semibold text-accent-text">This version</span>}
             </div>
 
             {release.notes.map((note) => (

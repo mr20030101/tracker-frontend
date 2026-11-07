@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from 'react'
+import { FoldText } from '../components/FoldText'
 import { useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Camera, Check, Eye, EyeOff, KeyRound, Lock, Mic, MicOff, Monitor, Moon, Palette, PhoneCall, Save, Sun, Undo2, UserRound, UsersRound, Volume2, type LucideIcon } from 'lucide-react'
@@ -68,7 +69,7 @@ export function Settings() {
   return (
     <div>
       <div className="mb-5">
-        <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
+        <h1 className="text-3xl font-medium sm:text-4xl text-gray-900"><FoldText text="Settings" /></h1>
         <p className="text-sm text-gray-500">Your profile, password, and how the tracker looks and sounds for you.</p>
       </div>
 
@@ -94,7 +95,7 @@ export function Settings() {
                 on ? 'text-gray-900' : 'text-gray-500 hover:text-gray-800'
               }`}
             >
-              <Icon className={`h-4 w-4 ${on ? 'text-accent' : ''}`} />
+              <Icon className={`h-4 w-4 ${on ? 'text-accent-text' : ''}`} />
               {label}
               {/* The underline that marks the open tab. */}
               <span
@@ -118,7 +119,7 @@ export function Settings() {
 
 function Section({ id, icon: Icon, title, description, children }: { id: string; icon: LucideIcon; title: string; description: string; children: ReactNode }) {
   return (
-    <section id={id} className="scroll-mt-4 rounded-xl border border-gray-200 bg-white">
+    <section id={id} className="scroll-mt-4 card">
       <header className="flex items-start gap-3 border-b border-gray-100 px-5 py-4">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent-bg text-accent-foreground">
           <Icon className="h-4 w-4" />
@@ -147,7 +148,7 @@ function SaveRow({ label, icon: Icon = Save, pending, disabled, saved, error }: 
       <button
         type="submit"
         disabled={pending || disabled}
-        className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+        className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
       >
         <Icon className="h-4 w-4" aria-hidden />
         {pending ? 'Saving...' : label}
@@ -581,7 +582,7 @@ function AppearanceSection() {
                       <div className="text-sm font-semibold text-gray-900">{label}</div>
                       <div className="text-xs text-gray-500">{hint}</div>
                     </div>
-                    <Icon className={`h-4 w-4 shrink-0 transition-colors ${on ? 'text-accent' : 'text-gray-400'}`} />
+                    <Icon className={`h-4 w-4 shrink-0 transition-colors ${on ? 'text-accent-text' : 'text-gray-400'}`} />
                   </div>
                 </button>
               )
@@ -852,7 +853,7 @@ function CtsTrainerField({ leadId, title, trainer, disabled }: { leadId: string;
             <button
               type="submit"
               aria-busy={save.isPending}
-              className="inline-flex h-9 pointer-coarse:h-11 items-center gap-1.5 rounded-lg bg-accent px-3 text-sm font-semibold text-accent-foreground"
+              className="inline-flex h-9 pointer-coarse:h-11 items-center gap-1.5 rounded-full bg-accent px-3 text-sm font-semibold text-accent-foreground"
             >
               <Save className="h-4 w-4" aria-hidden />
               {save.isPending ? 'Saving...' : 'Save'}

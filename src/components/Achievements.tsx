@@ -63,7 +63,7 @@ export function AchievementsCard({
   const next = nextBadge(a)
 
   return (
-    <div className="mb-6 rounded-xl border border-gray-200 bg-white p-5">
+    <div className="mb-6 card p-5">
       <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-3">
         <div className="text-sm font-semibold text-gray-700">{title}</div>
         <div className="flex items-center gap-2">
@@ -89,7 +89,7 @@ export function AchievementsCard({
       </div>
       {next && (
         <div className="mb-4 flex items-center gap-3 rounded-lg border border-dashed border-gray-200 px-3 py-2.5">
-          <next.badge.icon className="h-5 w-5 shrink-0 text-accent" />
+          <next.badge.icon className="h-5 w-5 shrink-0 text-accent-text" />
           <div className="min-w-0 flex-1">
             <div className="flex items-baseline justify-between gap-2 text-sm">
               <span className="truncate">

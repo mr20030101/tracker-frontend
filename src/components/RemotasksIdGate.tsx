@@ -58,7 +58,7 @@ export function RemotasksIdGate() {
           <button
             type="submit"
             disabled={submitting}
-            className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
           >
             <Save className="h-4 w-4" aria-hidden />
             {submitting ? 'Saving...' : 'Save and continue'}

@@ -176,7 +176,7 @@ export function Messages() {
   }
 
   return (
-    <div className="relative flex h-full min-h-0 overflow-hidden rounded-xl border border-gray-200 bg-white">
+    <div className="relative flex h-full min-h-0 overflow-hidden card">
       {/* Phones show one pane at a time: the list, or the open conversation (with a back button). */}
       <div className={`${paneOpen ? 'hidden md:flex' : 'flex'} w-full shrink-0 flex-col border-gray-200 md:w-80 md:border-r`}>
         <div className="border-b border-gray-100 p-3">
@@ -473,7 +473,7 @@ export function Messages() {
                   type="button"
                   onClick={handleBulkDelete}
                   disabled={selectedIds.size === 0 || bulkDeleteMutation.isPending}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-status-danger-text px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-status-danger-text px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
                 >
                   <Trash2 className="h-4 w-4" aria-hidden />
                   Delete

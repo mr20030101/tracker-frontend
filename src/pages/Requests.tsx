@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { FoldText } from '../components/FoldText'
 import { Link } from 'react-router-dom'
 import { Ban, ExternalLink, Eye, Filter, Pencil, Plus, RotateCcw, RotateCw, Trash2, Undo2, X } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -219,7 +220,7 @@ export function Requests() {
                   ? 'Opens the Bad Video Validation/Removal form, prefilled, and marks this approved'
                   : 'Check the details, then open the Reclaim / Extend form and mark this approved'
               }
-              className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-full bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground disabled:opacity-50"
             >
               <ExternalLink className="h-3.5 w-3.5" aria-hidden />
               Request
@@ -275,7 +276,7 @@ export function Requests() {
               }}
               disabled={outsideShift}
               title={outsideShiftHint}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-full bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground disabled:opacity-50"
             >
               <RotateCw className="h-3.5 w-3.5" aria-hidden />
               Resend
@@ -363,8 +364,8 @@ export function Requests() {
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
-            Requests
+          <h1 className="flex items-center gap-2 text-3xl font-medium sm:text-4xl text-gray-900">
+            <FoldText text="Requests" />
           </h1>
           <p className="text-sm text-gray-500">
             {isManager
@@ -375,7 +376,7 @@ export function Requests() {
         {isManager && (
           <button
             onClick={() => setNewReport(true)}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
+            className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
           >
             <Plus className="h-4 w-4" aria-hidden />
             New report
@@ -463,7 +464,7 @@ export function Requests() {
                   }
                 }}
                 disabled={bulkDeleteMutation.isPending}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
               >
                 <Undo2 className="h-4 w-4" aria-hidden />
                 {bulkDeleteMutation.isPending ? 'Withdrawing...' : 'Withdraw selected'}
@@ -477,7 +478,7 @@ export function Requests() {
                 }
               }}
               disabled={bulkDeleteMutation.isPending}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
             >
               <Trash2 className="h-4 w-4" aria-hidden />
               {bulkDeleteMutation.isPending ? 'Deleting...' : 'Delete selected'}
@@ -503,7 +504,7 @@ export function Requests() {
                     if (el) el.indeterminate = selected.length > 0 && !allVisibleSelected
                   }}
                   onChange={toggleAllVisible}
-                  className="h-4 w-4 rounded border-gray-300 text-accent focus:ring-accent"
+                  className="h-4 w-4 rounded border-gray-300 text-accent-text focus:ring-accent"
                 />
               </th>
               {isManager && <th className="px-5 py-3">Contributor</th>}
@@ -536,7 +537,7 @@ export function Requests() {
                     aria-label={`Select request ${request.id}`}
                     checked={selectedIds.has(request.id)}
                     onChange={() => toggleOne(request.id)}
-                    className="h-4 w-4 rounded border-gray-300 text-accent focus:ring-accent"
+                    className="h-4 w-4 rounded border-gray-300 text-accent-text focus:ring-accent"
                   />
                 </td>
                 {isManager && (

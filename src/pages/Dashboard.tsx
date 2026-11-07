@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { CalendarDays, ChevronLeft, ChevronRight, MessageCircle, Send } from 'lucide-react'
+import { CalendarDays, ChevronLeft, ChevronRight, ClipboardCheck, MessageCircle, Send, UserRoundX, Users } from 'lucide-react'
 import { api, functionErrorMessage, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { downloadCsv } from '../lib/csv'
 import { Select } from '../components/Select'
-import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, yearMonth, toISODate, fromISODate, formatRange } from '../lib/week'
+import { SegmentedTabs } from '../components/TableToolbar'
+import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, yearMonth, toISODate, formatRange } from '../lib/week'
 import { useMessaging } from '../lib/messagingContext'
 import type { DashboardSummary } from '../types'
 import { LineChart } from '../components/LineChart'
@@ -93,6 +94,11 @@ export function Dashboard() {
   const disabledCount = allRows.filter((r) => !r.is_active).length
   const noProgressCount = allRows.filter((r) => r.is_active && r.tasks_submitted === 0).length
   const dailyReport = data?.daily_report ?? []
+  const activeRows = allRows.filter((r) => r.is_active)
+  const tasksSubmitted = activeRows.reduce((sum, r) => sum + r.tasks_submitted, 0)
+  const weeklyTarget = activeRows.reduce((sum, r) => sum + r.weekly_target, 0)
+  const tasksLogged = dailyReport.reduce((sum, d) => sum + d.tasks_logged, 0)
+  const share = (part: number, whole: number) => (whole > 0 ? (part / whole) * 100 : 0)
   const periodPhrase = viewMode === 'day' ? 'today' : viewMode === 'week' ? 'this week' : 'this month'
 
   function exportCsv(kind: ExportKind) {
@@ -166,6 +172,19 @@ export function Dashboard() {
   return (
     <div>
       <DashboardHero
+        stats={[
+          { value: tasksSubmitted, label: 'Tasks', icon: ClipboardCheck },
+          { value: activeRows.length, label: 'Active', icon: Users },
+          { value: noProgressCount, label: 'No progress', icon: UserRoundX },
+        ]}
+        meters={[
+          { label: 'Submitted', pct: share(submittedCount, activeRows.length), tone: 'night', text: `${submittedCount} / ${activeRows.length}` },
+          ...(viewMode === 'week'
+            ? [{ label: 'Team target', pct: share(tasksSubmitted, weeklyTarget), tone: 'honey' as const }]
+            : []),
+          { label: 'Logged, then submitted', pct: share(tasksSubmitted, Math.max(tasksLogged, tasksSubmitted)), tone: 'striped' },
+          { label: 'No progress', pct: share(noProgressCount, activeRows.length), tone: 'outline' },
+        ]}
         subtitle={
           <>
                 {formatRange(rangeStart, rangeEnd)} · {submittedCount} contributors submitted {periodPhrase}
@@ -185,33 +204,24 @@ export function Dashboard() {
                   { value: 'projects', label: 'By project' },
                   ...(isAdmin ? [{ value: 'leads', label: 'By team (lead)' }] : []),
                 ]}
-                className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                className="rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-gray-800 shadow-card hover:bg-gray-100"
               />
               {isAdmin && (
                 <button
                   onClick={() => weeklyReportMutation.mutate()}
                   disabled={weeklyReportMutation.isPending}
                   title="Messages every lead a summary of last week (Tuesday–Monday), and every admin an all-teams overview."
-                  className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-gray-800 shadow-card hover:bg-gray-100 disabled:opacity-50"
                 >
                   <Send className="h-4 w-4" aria-hidden />
                   {weeklyReportMutation.isPending ? 'Sending...' : 'Send weekly report'}
                 </button>
               )}
-              {noProgressCount > 0 && (
-                <Link
-                  to="/leaderboard"
-                  className="flex items-center gap-2 rounded-full border border-status-danger-text/30 bg-status-danger-bg px-4 py-2 text-sm font-semibold text-status-danger-text hover:border-status-danger-text"
-                >
-                  <span className="h-2 w-2 rounded-full bg-current" />
-                  {noProgressCount} with no progress
-                </Link>
-              )}
               {overdueRequests > 0 && (
                 <Link
                   to="/requests"
                   title={`Pending for more than ${OVERDUE_HOURS} hours`}
-                  className="flex items-center gap-2 rounded-full border border-status-danger-text/30 bg-status-danger-bg px-4 py-2 text-sm font-semibold text-status-danger-text hover:border-status-danger-text"
+                  className="flex items-center gap-2 rounded-full bg-gray-900 px-5 py-2.5 text-sm font-semibold text-gray-50 hover:bg-gray-800"
                 >
                   <span className="h-2 w-2 rounded-full bg-current" />
                   {overdueRequests} overdue request{overdueRequests === 1 ? '' : 's'}
@@ -220,7 +230,7 @@ export function Dashboard() {
               {admin && (
                 <button
                   onClick={() => openChatWith(admin.id, admin.name)}
-                  className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                  className="flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-gray-800 shadow-card hover:bg-gray-100"
                 >
                   <MessageCircle className="h-4 w-4" />
                   Message {admin.name}
@@ -243,31 +253,26 @@ export function Dashboard() {
       )}
 
       <div className="mb-6 flex flex-wrap items-center gap-3">
-        <div className="flex rounded-lg border border-gray-200 bg-white p-1">
-          {(['day', 'week', 'month'] as const).map((mode) => (
-            <button
-              key={mode}
-              onClick={() => setViewMode(mode)}
-              className={`rounded-md px-3 py-1 text-sm font-medium capitalize ${viewMode === mode ? 'bg-accent text-accent-foreground' : 'text-gray-600'}`}
-            >
-              {mode}
-            </button>
-          ))}
-        </div>
+        <SegmentedTabs
+          aria-label="Period"
+          value={viewMode}
+          onChange={setViewMode}
+          options={(['day', 'week', 'month'] as const).map((mode) => ({ value: mode, label: mode[0].toUpperCase() + mode.slice(1) }))}
+        />
 
         <button
           onClick={() => shiftRange(-1)}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+          className="inline-flex h-10 items-center gap-1.5 rounded-full border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 hover:bg-gray-100 pointer-coarse:h-11"
         >
           <ChevronLeft className="h-4 w-4" aria-hidden />
           Prev
         </button>
-        <div className="min-w-48 rounded-lg border border-gray-200 bg-white px-4 py-2 text-center text-sm font-medium text-gray-700">
+        <div className="min-w-48 px-2 text-center font-display text-lg text-gray-900">
           {rangeLabel()}
         </div>
         <button
           onClick={() => shiftRange(1)}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+          className="inline-flex h-10 items-center gap-1.5 rounded-full border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 hover:bg-gray-100 pointer-coarse:h-11"
         >
           Next
           <ChevronRight className="h-4 w-4" aria-hidden />
@@ -281,14 +286,6 @@ export function Dashboard() {
             Back to {periodPhrase}
           </button>
         )}
-        <input
-          type="date"
-          value={toISODate(anchorDate)}
-          onChange={(e) => {
-            if (e.target.value) setAnchorDate(fromISODate(e.target.value))
-          }}
-          className="ml-auto rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
-        />
       </div>
 
       {isLoading && <div className="text-gray-400">Loading...</div>}
@@ -297,35 +294,35 @@ export function Dashboard() {
         <>
           {viewMode !== 'day' && (
             <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <div className="rounded-lg border border-gray-200 bg-white p-4">
+              <div className="card p-5">
                 <div className="mb-4 flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-gray-700">Submitted Tasks by Day</h3>
+                  <h3 className="font-display text-lg text-gray-900">Submitted tasks by day</h3>
                   <span className="text-xs text-gray-400">tasks</span>
                 </div>
                 <LineChart
                   data={dailyReport.map((day) => ({ date: day.date, value: day.tasks_submitted }))}
-                  color="#d4a017"
+                  color="#e0a91f"
                   unitLabel="submitted tasks"
                 />
               </div>
 
-              <div className="rounded-lg border border-gray-200 bg-white p-4">
+              <div className="card p-5">
                 <div className="mb-4 flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-gray-700">Contributors Active by Day</h3>
+                  <h3 className="font-display text-lg text-gray-900">Contributors active by day</h3>
                   <span className="text-xs text-gray-400">contributors</span>
                 </div>
                 <LineChart
                   data={dailyReport.map((day) => ({ date: day.date, value: day.contributors_submitted }))}
-                  color="#0284c7"
+                  color="ink"
                   unitLabel="contributors submitted"
                 />
               </div>
             </div>
           )}
 
-          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+          <div className="overflow-hidden card">
             <div className="border-b border-gray-200 px-5 py-4">
-              <h2 className="text-sm font-semibold text-gray-900">Daily Submission Report</h2>
+              <h2 className="font-display text-lg text-gray-900">Daily submission report</h2>
               <p className="mt-1 text-xs text-gray-500">Team activity for the selected {viewMode}.</p>
             </div>
             <div className="max-h-[50vh] overflow-auto">

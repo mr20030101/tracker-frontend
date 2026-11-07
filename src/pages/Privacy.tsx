@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { FoldText } from '../components/FoldText'
 import { Link } from 'react-router-dom'
 import { AppFooter } from '../components/AppFooter'
 import { Logo } from '../components/Logo'
@@ -27,9 +28,9 @@ export function Privacy() {
         <Link to="/" className="self-start">
           <Logo />
         </Link>
-        <article className="flex flex-col gap-6 rounded-xl border border-gray-200 bg-white p-6 sm:p-8">
+        <article className="flex flex-col gap-6 card p-6 sm:p-8">
           <header>
-            <h1 className="text-2xl font-bold text-gray-900">Privacy Policy</h1>
+            <h1 className="text-3xl font-medium sm:text-4xl text-gray-900"><FoldText text="Privacy Policy" /></h1>
             <p className="mt-1 text-sm text-gray-500">Last updated {UPDATED}</p>
           </header>
 

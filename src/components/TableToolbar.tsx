@@ -1,9 +1,10 @@
-import type { ReactNode } from 'react'
+import { useRef, type ReactNode } from 'react'
+import { useStretchyPill } from '../lib/useStretchyPill'
 import { Search } from 'lucide-react'
 
 /** Classes for a select or input sitting in a table toolbar, so every control lines up at the same height. */
 export const toolbarControlClass =
-  'h-9 pointer-coarse:h-11 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700 outline-none focus:border-accent'
+  'h-10 pointer-coarse:h-11 rounded-full border border-gray-200 bg-white px-4 text-sm text-gray-700 outline-none transition-colors duration-100 focus:border-gray-900'
 
 /**
  * The strip of filters at the top of a table card. Give the first right-hand item `ml-auto`.
@@ -13,7 +14,7 @@ export function TableToolbar({ children, standalone = false }: { children: React
   return (
     <div
       className={`flex flex-wrap items-center gap-2 px-4 py-3 ${
-        standalone ? 'mb-4 rounded-xl border border-gray-200 bg-white' : 'border-b border-gray-200'
+        standalone ? 'mb-4 card' : 'border-b border-gray-200'
       }`}
     >
       {children}
@@ -24,7 +25,7 @@ export function TableToolbar({ children, standalone = false }: { children: React
 /** A rounded card holding an optional toolbar and a table that scrolls sideways on narrow screens. */
 export function TableCard({ toolbar, footer, children }: { toolbar?: ReactNode; footer?: ReactNode; children: ReactNode }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white">
+    <div className="card">
       {toolbar}
       <div className="overflow-x-auto">{children}</div>
       {footer}
@@ -42,14 +43,14 @@ interface SearchInputProps {
 export function SearchInput({ value, onChange, placeholder = 'Search...', 'aria-label': ariaLabel }: SearchInputProps) {
   return (
     <div className="relative w-full sm:w-64">
-      <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden />
+      <Search size={15} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden />
       <input
         type="search"
         placeholder={placeholder}
         aria-label={ariaLabel ?? placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={`${toolbarControlClass} w-full pl-9`}
+        className={`${toolbarControlClass} w-full pl-10`}
       />
     </div>
   )
@@ -66,7 +67,7 @@ interface DateRangeInputProps {
 export function DateRangeInput({ from, to, onFromChange, onToChange }: DateRangeInputProps) {
   const dateClass = 'h-full bg-transparent px-2 text-sm text-gray-700 outline-none'
   return (
-    <div className="flex h-9 pointer-coarse:h-11 items-center rounded-lg border border-gray-200 bg-white px-1 focus-within:border-accent">
+    <div className="flex h-10 pointer-coarse:h-11 items-center rounded-full border border-gray-200 bg-white px-2 focus-within:border-gray-900">
       <input type="date" value={from} max={to || undefined} onChange={(e) => onFromChange(e.target.value)} aria-label="From date" className={dateClass} />
       <span className="text-xs text-gray-400">→</span>
       <input type="date" value={to} min={from || undefined} onChange={(e) => onToChange(e.target.value)} aria-label="To date" className={dateClass} />
@@ -86,8 +87,11 @@ export function SegmentedTabs<T extends string>({
   options: { value: T; label: ReactNode; count?: number; title?: string }[]
   'aria-label': string
 }) {
+  const listRef = useRef<HTMLDivElement>(null)
+  const pill = useStretchyPill(listRef, '[aria-selected="true"]', 'x', [value, options.length])
   return (
-    <div role="tablist" aria-label={ariaLabel} className="inline-flex h-9 pointer-coarse:h-11 items-center rounded-lg border border-gray-200 bg-white p-0.5">
+    <div ref={listRef} role="tablist" aria-label={ariaLabel} className="relative inline-flex h-10 pointer-coarse:h-11 items-center rounded-full border border-gray-200 bg-white p-1">
+      <span aria-hidden className="pointer-events-none rounded-full bg-gray-900" style={pill} />
       {options.map((option) => {
         const active = option.value === value
         return (
@@ -98,12 +102,12 @@ export function SegmentedTabs<T extends string>({
             aria-selected={active}
             title={option.title}
             onClick={() => onChange(option.value)}
-            className={`h-full rounded-md px-3 text-sm font-medium ${
-              active ? 'bg-accent-bg text-accent-foreground' : 'text-gray-600 hover:bg-gray-100'
+            className={`relative h-full rounded-full px-4 text-sm font-medium transition-colors duration-300 ${
+              active ? 'text-gray-50' : 'text-gray-600 hover:text-gray-900'
             }`}
           >
             {option.label}
-            {option.count !== undefined && <span className={`ml-1.5 text-xs ${active ? 'opacity-70' : 'text-gray-400'}`}>{option.count}</span>}
+            {option.count !== undefined && <span className="ml-1.5 text-xs text-gray-400">{option.count}</span>}
           </button>
         )
       })}

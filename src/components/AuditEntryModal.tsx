@@ -137,7 +137,7 @@ export function AuditEntryModal({
           <button
             type="submit"
             disabled={isPending || !complete}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
           >
             <Save className="h-4 w-4" aria-hidden />
             {isPending ? 'Saving...' : existing ? 'Save' : 'Add audit'}

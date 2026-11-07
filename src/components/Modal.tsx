@@ -41,12 +41,12 @@ export function Modal({
     // The overlay scrolls (not the card) so a tall form on a short screen stays
     // reachable, while dropdowns inside the card aren't clipped by an inner
     // scroll area. min-h-full keeps short modals vertically centred.
-    <div ref={overlayRef} className="fixed inset-0 z-50 overflow-y-auto bg-black/30">
+    <div ref={overlayRef} className="fixed inset-0 z-50 overflow-y-auto bg-black/35 backdrop-blur-xs">
       <div className="flex min-h-full items-center justify-center px-3 py-6 sm:px-4">
-        <div ref={cardRef} className={`w-full ${maxWidthClassName} rounded-2xl bg-white p-4 shadow-xl sm:p-6`}>
+        <div ref={cardRef} className={`w-full ${maxWidthClassName} rounded-3xl bg-white p-5 shadow-xl sm:p-7`}>
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-700" aria-label="Close">
+            <h2 className="font-display text-xl font-medium text-gray-900">{title}</h2>
+            <button onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-600 transition-colors duration-100 hover:bg-gray-200 hover:text-gray-900 pointer-coarse:h-11 pointer-coarse:w-11" aria-label="Close">
               <X className="h-4 w-4" aria-hidden />
             </button>
           </div>

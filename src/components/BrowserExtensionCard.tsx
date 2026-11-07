@@ -27,7 +27,7 @@ export function BrowserExtensionCard() {
   const [showUsage, setShowUsage] = useState(false)
 
   return (
-    <section className="mb-6 overflow-hidden rounded-xl border border-gray-200 bg-white">
+    <section className="mb-6 overflow-hidden card">
       <div className="flex flex-wrap items-center gap-4 px-5 py-4">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent-bg text-accent-foreground">
           <Puzzle className="h-5 w-5" aria-hidden />
@@ -44,7 +44,7 @@ export function BrowserExtensionCard() {
         <a
           href={DOWNLOAD_URL}
           download
-          className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
+          className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
         >
           <Download className="h-4 w-4" aria-hidden />
           Download

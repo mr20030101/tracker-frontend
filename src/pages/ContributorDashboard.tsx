@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowRight, Check, ClipboardCheck, ClipboardList, MessageCircle, MessageSquare, Plus, Trophy } from 'lucide-react'
+import { ArrowRight, CalendarDays, Check, ClipboardCheck, ClipboardList, Flame, MessageCircle, MessageSquare, Plus, Trophy } from 'lucide-react'
 import { api, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useMessaging } from '../lib/messagingContext'
@@ -235,13 +235,29 @@ export function ContributorDashboard() {
   return (
     <Reveal>
       <DashboardHero
+        stats={[
+          { value: submittedToday, label: 'Today', icon: ClipboardCheck },
+          { value: data.submitted_this_week, label: 'This week', icon: CalendarDays },
+          { value: achievements?.current_streak ?? 0, label: 'Day streak', icon: Flame },
+        ]}
+        meters={[
+          { label: 'Day goal', pct: dayProgress * 100, tone: 'night', text: `${submittedToday} / ${dayTarget}` },
+          {
+            label: 'Week goal',
+            pct: data.weekly_target > 0 ? (data.submitted_this_week / data.weekly_target) * 100 : 0,
+            tone: 'honey',
+            text: `${data.submitted_this_week} / ${data.weekly_target}`,
+          },
+          { label: 'Logged today, submitted', pct: loggedToday > 0 ? (submittedToday / loggedToday) * 100 : 0, tone: 'striped' },
+          { label: 'Week gone', pct: ((7 - daysLeft) / 7) * 100, tone: 'outline' },
+        ]}
         subtitle="Ready to make today count? Here's how your week is going."
         actions={
           <>
               <button
                 type="button"
                 onClick={() => setSubmitting(true)}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
+                className="inline-flex h-11 items-center gap-1.5 rounded-full bg-accent px-5 text-sm font-semibold text-accent-foreground transition-colors duration-100 hover:bg-accent-bg"
               >
                 <Plus className="h-4 w-4" aria-hidden />
                 Submit a Task
@@ -250,7 +266,7 @@ export function ContributorDashboard() {
               <button
                 type="button"
                 onClick={() => setShowCtsModal(true)}
-                className="inline-flex animate-heartbeat-soft items-center gap-1.5 rounded-lg bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600"
+                className="inline-flex h-11 animate-heartbeat-soft items-center gap-1.5 rounded-full bg-gray-900 px-5 text-sm font-semibold text-gray-50 transition-colors duration-100 hover:bg-gray-800"
               >
                 <ClipboardCheck className="h-4 w-4" aria-hidden />
                 CTS Form
@@ -259,24 +275,21 @@ export function ContributorDashboard() {
               {attendanceEnabled && (
               <button
                 type="button"
-                onClick={handleAttendanceClick}
-                disabled={attendanceNotYetOpen}
-                title={attendanceNotYetOpen ? 'Opens at 6:00 AM' : undefined}
-                className={`inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold ${
-                  attendanceNotYetOpen
-                    ? 'cursor-not-allowed bg-gray-100 text-gray-400'
-                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                onClick={() => !attendanceNotYetOpen && handleAttendanceClick()}
+                aria-disabled={attendanceNotYetOpen}
+                className={`inline-flex h-11 items-center gap-1.5 rounded-full px-5 text-sm font-semibold shadow-card transition-colors duration-100 ${
+                  attendanceNotYetOpen ? 'cursor-not-allowed bg-gray-100 text-gray-600' : 'bg-white text-gray-800 hover:bg-gray-100'
                 }`}
               >
                 <ClipboardList className="h-4 w-4" aria-hidden />
-                {todaysAttendance ? 'Attendance filed ✓' : 'Attendance Form'}
+                {attendanceNotYetOpen ? 'Attendance opens at 6:00 AM' : todaysAttendance ? 'Attendance filed ✓' : 'Attendance Form'}
               </button>
               )}
               {bot && (
                 <button
                   type="button"
                   onClick={() => openChatWith(bot.id, bot.name)}
-                  className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                  className="flex h-11 items-center gap-2 rounded-full bg-white px-5 text-sm font-semibold text-gray-800 shadow-card transition-colors duration-100 hover:bg-gray-100"
                 >
                   <MessageCircle className="h-4 w-4" />
                   Chat with {bot.name}
@@ -286,7 +299,7 @@ export function ContributorDashboard() {
                 <button
                   type="button"
                   onClick={() => openChatWith(lead.id, lead.name)}
-                  className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                  className="flex h-11 items-center gap-2 rounded-full bg-white px-5 text-sm font-semibold text-gray-800 shadow-card transition-colors duration-100 hover:bg-gray-100"
                 >
                   <MessageSquare className="h-4 w-4" />
                   Message {lead.name}
@@ -316,7 +329,7 @@ export function ContributorDashboard() {
               <button
                 type="button"
                 onClick={() => setShowAttendanceEnded(false)}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
+                className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
               >
                 <Check className="h-4 w-4" aria-hidden />
                 OK
@@ -394,7 +407,7 @@ export function ContributorDashboard() {
       {contributorId && <RewardsSpotlight meId={contributorId} />}
 
       <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="flex items-center gap-5 rounded-xl border border-gray-200 bg-white p-5 lg:col-span-1">
+        <div className="flex items-center gap-5 card p-5 lg:col-span-1">
           <ProgressRing value={dayProgress} label="Day Goal" sublabel={`${submittedToday} / ${dayTarget}`} />
           <div className="flex flex-col gap-3">
             <div>
@@ -413,20 +426,20 @@ export function ContributorDashboard() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-gray-200 bg-white p-5 lg:col-span-2">
+        <div className="card p-5 lg:col-span-2">
           <div className="mb-3 flex items-center justify-between">
-            <div className="text-sm font-semibold text-gray-700">Submission Trend</div>
+            <div className="font-display text-lg text-gray-900">Submission trend</div>
             <span className="text-xs text-gray-400">last {TREND_DAYS} days</span>
           </div>
-          <LineChart data={trendData} color="#d4a017" unitLabel="submitted" />
+          <LineChart data={trendData} color="#e0a91f" unitLabel="submitted" />
         </div>
       </div>
 
       {contributorId && <AchievementsCard userId={contributorId} title="Your streak & badges" canFeature />}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <div className="mb-3 text-sm font-semibold text-gray-700">By Stage (all-time)</div>
+        <div className="card p-5">
+          <div className="mb-4 font-display text-lg text-gray-900">By stage <span className="text-sm text-gray-500">all-time</span></div>
           <div className="flex flex-col gap-3">
             {stages.length === 0 && <div className="text-sm text-gray-400">No submissions yet.</div>}
             {stages.map(([stage, total], index) => (
@@ -444,8 +457,8 @@ export function ContributorDashboard() {
             ))}
           </div>
         </div>
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <div className="mb-3 text-sm font-semibold text-gray-700">By Project (all-time)</div>
+        <div className="card p-5">
+          <div className="mb-4 font-display text-lg text-gray-900">By project <span className="text-sm text-gray-500">all-time</span></div>
           <div className="flex flex-col gap-3">
             {data.project_breakdown.length === 0 && <div className="text-sm text-gray-400">No submissions yet.</div>}
             {data.project_breakdown.map((p, index) => (
@@ -455,7 +468,7 @@ export function ContributorDashboard() {
                 </span>
                 <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-100">
                   <GrowBar
-                    className="h-full rounded-full bg-sky-600"
+                    className="h-full rounded-full bg-gray-900"
                     pct={Math.max(4, (p.total / maxProjectTotal) * 100)}
                     delay={400 + index * 80}
                   />
@@ -468,9 +481,9 @@ export function ContributorDashboard() {
       </div>
 
       {levelProjects.length > 0 && (
-        <div className="mt-6 rounded-xl border border-gray-200 bg-white p-5">
+        <div className="mt-6 card p-5">
           <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-700">
-            <Trophy className="h-4 w-4 text-amber-500" />
+            <Trophy className="h-4 w-4 text-gray-500" />
             Project Levels
           </div>
           <div className="divide-y divide-gray-100">
@@ -489,7 +502,7 @@ export function ContributorDashboard() {
                     <div className="mt-2 flex items-center gap-3">
                       <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-100">
                         <div
-                          className={`h-full rounded-full ${done >= quota ? 'bg-emerald-500' : 'bg-accent'}`}
+                          className={`h-full rounded-full ${done >= quota ? 'bg-gray-900' : 'bg-accent'}`}
                           style={{ width: `${quota > 0 ? Math.min(100, (done / quota) * 100) : 100}%` }}
                         />
                       </div>

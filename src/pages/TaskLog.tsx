@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { FoldText } from '../components/FoldText'
 import { Link } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, Download, Eye, FileUp, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -56,8 +57,8 @@ function ContributorTaskLog() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
-          Task Log
+        <h1 className="flex items-center gap-2 text-3xl font-medium sm:text-4xl text-gray-900">
+          <FoldText text="Task Log" />
         </h1>
         <p className="text-sm text-gray-500">Your submissions, goals and CTS status.</p>
       </div>
@@ -178,8 +179,8 @@ function ManagerTaskLog() {
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
-            Task Log
+          <h1 className="flex items-center gap-2 text-3xl font-medium sm:text-4xl text-gray-900">
+            <FoldText text="Task Log" />
           </h1>
           <p className="text-sm text-gray-500">
             {data ? `${data.total} ${isManager ? 'total' : 'of your'} submissions` : 'Loading...'}
@@ -188,14 +189,14 @@ function ManagerTaskLog() {
         <div className="flex gap-2">
           <button
             onClick={() => setBulkImportOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
           >
             <FileUp className="h-4 w-4" aria-hidden />
             Bulk Import
           </button>
           <button
             onClick={() => setFormTarget('new')}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
+            className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
           >
             <Plus className="h-4 w-4" aria-hidden />
             Add Submission
@@ -257,7 +258,7 @@ function ManagerTaskLog() {
               <button
                 onClick={handleExport}
                 disabled={exporting}
-                className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
               >
                 <Download className="h-4 w-4" aria-hidden />
                 {exporting ? 'Exporting...' : 'Export CSV'}

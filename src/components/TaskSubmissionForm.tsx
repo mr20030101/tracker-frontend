@@ -305,7 +305,7 @@ export function TaskSubmissionForm({ submission, onClose }: Props) {
           <button
             type="submit"
             disabled={mutation.isPending}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
           >
             {submission ? <Save className="h-4 w-4" aria-hidden /> : <Plus className="h-4 w-4" aria-hidden />}
             {mutation.isPending ? 'Saving...' : submission ? 'Save Changes' : 'Add Submission'}

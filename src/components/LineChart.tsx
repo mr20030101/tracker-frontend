@@ -20,14 +20,16 @@ interface Point {
 
 interface Props {
   data: Point[]
+  // A hex colour, or 'ink' for the theme's text colour (near-black, or near-white on dark).
   color: string
   unitLabel: string
 }
 
-export function LineChart({ data, color, unitLabel }: Props) {
+export function LineChart({ data, color: colorProp, unitLabel }: Props) {
   const { theme } = useTheme()
-  const tickColor = theme === 'dark' ? '#7a8190' : '#9ca3af'
-  const gridColor = theme === 'dark' ? '#2b2f39' : '#f3f4f6'
+  const color = colorProp === 'ink' ? (theme === 'dark' ? '#f4f2ec' : '#1d1d1b') : colorProp
+  const tickColor = theme === 'dark' ? '#8f8c83' : '#858177'
+  const gridColor = theme === 'dark' ? '#36352f' : '#efece4'
   const labels = data.map((p) => p.date.slice(5))
 
   const chartData = {
@@ -41,7 +43,7 @@ export function LineChart({ data, color, unitLabel }: Props) {
         pointRadius: 0,
         pointHoverRadius: 4,
         pointHoverBackgroundColor: color,
-        pointHoverBorderColor: '#fff',
+        pointHoverBorderColor: theme === 'dark' ? '#252523' : '#fffdf8',
         pointHoverBorderWidth: 1.5,
         borderWidth: 2,
       },

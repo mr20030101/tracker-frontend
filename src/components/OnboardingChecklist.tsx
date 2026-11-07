@@ -40,7 +40,7 @@ export function OnboardingChecklist({
   return (
     <div className="mb-6 rounded-xl border border-accent bg-white p-5">
       <div className="mb-1 flex items-center gap-2">
-        <ListChecks className="h-5 w-5 text-accent" />
+        <ListChecks className="h-5 w-5 text-accent-text" />
         <h2 className="text-sm font-semibold text-gray-900">Getting started</h2>
         <span className="text-xs text-gray-400">
           {status.done} of {status.total} done
@@ -107,9 +107,9 @@ export function OnboardingChecklist({
 // Read-only progress for a lead or admin looking at a contributor.
 export function OnboardingProgress({ status, hasLead }: { status: OnboardingStatus; hasLead: boolean }) {
   return (
-    <div className="mb-6 rounded-xl border border-gray-200 bg-white p-5">
+    <div className="mb-6 card p-5">
       <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-700">
-        <ListChecks className="h-4 w-4 text-accent" />
+        <ListChecks className="h-4 w-4 text-accent-text" />
         Onboarding checklist
         <span className="font-normal text-gray-400">
           {status.done} of {status.total} done{status.dismissed && status.done < status.total ? ' · hidden by them' : ''}

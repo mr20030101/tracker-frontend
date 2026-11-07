@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { FoldText } from '../components/FoldText'
 import { useQuery } from '@tanstack/react-query'
 import { Download } from 'lucide-react'
 import { useAuth } from '../lib/auth'
@@ -53,7 +54,7 @@ export function TeamReports() {
     <div>
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Team Reports</h1>
+          <h1 className="text-3xl font-medium sm:text-4xl text-gray-900"><FoldText text="Team Reports" /></h1>
           <p className="text-sm text-gray-500">
             {isAdmin ? 'Every team' : 'Your team'}, week by week (Tuesday to Monday). The current week is still in progress.
           </p>
@@ -61,7 +62,7 @@ export function TeamReports() {
         <button
           onClick={exportCsv}
           disabled={!data || teams.length === 0}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
         >
           <Download className="h-4 w-4" aria-hidden />
           Export CSV
@@ -113,7 +114,7 @@ export function TeamReports() {
         <p className="text-sm text-gray-500">No teams to show yet.</p>
       ) : (
         <>
-          <div className="mb-6 rounded-xl border border-gray-200 bg-white p-5">
+          <div className="mb-6 card p-5">
             <p className="mb-1 text-sm font-semibold text-gray-700">{metricInfo.label}</p>
             <p className="mb-4 text-xs text-gray-400">{metricInfo.description}</p>
             <TeamTrendChart
@@ -123,7 +124,7 @@ export function TeamReports() {
             />
           </div>
 
-          <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+          <div className="overflow-x-auto card">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-left text-xs uppercase tracking-wider text-gray-500">
                 <tr>
