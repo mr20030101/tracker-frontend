@@ -14,6 +14,19 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Added
+
+- Web addresses in messages (direct, group and Meera's replies) are now links that open in a new tab, including bare **www.** addresses. Only http and https addresses become links.
+
+### Changed
+
+- Your own message bubbles and the **Send** buttons are honey instead of Messenger blue, and Meera's suggestion chips are plain outline pills, to match the rest of the tracker.
+
+### Fixed
+
+- The Messages page grew taller than the window, so the conversation scrolled with the page and the message box ended up out of view. It fits the screen again.
+- In dark mode, the text in your own message bubbles turned dark on the blue and was hard to read.
+
 ## 8.4.0 — 2026-11-07
 
 ### Added
