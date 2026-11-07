@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.4.0 — 2026-11-07
+
 ### Added
 
 - **A "page not found" screen.** An address the tracker doesn't have, or a page your account can't open, now says so, with a big shaky "404" and the address you tried,, offering **Go to the dashboard** and, when you came from another page, **Go back**. Before, it quietly dropped you on the dashboard.
