@@ -39,5 +39,8 @@ supabase/import/*.xlsx
 .claude/loop/
 .claude/settings.local.json
 
+# Database backups: personal data and password hashes (npm run backup)
+backups/
+
 # Packed browser extension zips (npm run pack:extension)
 extension-build/
