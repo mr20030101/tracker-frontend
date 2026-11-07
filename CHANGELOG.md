@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.7.0 — 2026-11-07
+
 ### Added
 
 - **Full backup for moving the database.** `npm run backup` saves every table, user account and uploaded file to a private folder, and `npm run restore` rebuilds it in a new Supabase project and checks every row arrived. Steps are in `docs/moving-supabase.md`. Nothing changes in the app itself.
