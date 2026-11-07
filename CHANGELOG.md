@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.1.0 — 2026-11-07
+
 ### Changed
 
 - The sign-in page and the application form now match the rest of the tracker: the cream background with the Grey Owls logo in the corner, the same soft card, pill-shaped fields and a flat honey **Sign in** button. The owl still perches on the card, now in the new colours (near-black with honey eyes and beak), and the sky and clouds are gone.
