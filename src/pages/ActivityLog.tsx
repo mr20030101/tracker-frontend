@@ -8,7 +8,7 @@ import { AUDIT_CATEGORIES, auditCategory, fetchAuditLogs } from '../lib/auditLog
 import type { ActivityEvent, ActivityLog, AuditLog } from '../types'
 import { Avatar } from '../components/Avatar'
 import { Select } from '../components/Select'
-import { SearchInput, TableToolbar, toolbarControlClass } from '../components/TableToolbar'
+import { SearchInput, SegmentedTabs, TableToolbar, toolbarControlClass } from '../components/TableToolbar'
 import { DataTable } from '../components/DataTable'
 import { Modal } from '../components/Modal'
 import { usePageTitle } from '../lib/usePageTitle'
@@ -40,21 +40,16 @@ export function ActivityLog() {
 
   return (
     <div>
-      <div className="mb-4 flex rounded-lg border border-gray-200 bg-white p-1 w-fit">
-        {(
-          [
-            ['sign-ins', 'Sign-ins'],
-            ['actions', 'Admin actions'],
-          ] as const
-        ).map(([value, label]) => (
-          <button
-            key={value}
-            onClick={() => setTab(value)}
-            className={`rounded-md px-4 py-1.5 text-sm font-medium ${tab === value ? 'bg-accent text-accent-foreground' : 'text-gray-600'}`}
-          >
-            {label}
-          </button>
-        ))}
+      <div className="mb-4">
+        <SegmentedTabs
+          aria-label="Log"
+          value={tab}
+          onChange={setTab}
+          options={[
+            { value: 'sign-ins' as const, label: 'Sign-ins' },
+            { value: 'actions' as const, label: 'Admin actions' },
+          ]}
+        />
       </div>
       {tab === 'sign-ins' ? <SignInLog /> : <AuditTrail />}
     </div>

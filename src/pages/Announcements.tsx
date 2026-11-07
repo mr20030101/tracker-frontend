@@ -521,10 +521,10 @@ function ReadersModal({ announcement, onClose }: { announcement: Announcement; o
             </div>
           </div>
 
-          <div role="tablist" aria-label="Show" className="relative grid grid-cols-3 rounded-lg bg-gray-100 p-1">
+          <div role="tablist" aria-label="Show" className="relative grid grid-cols-3 rounded-full border border-gray-200 bg-white p-1">
             <span
               aria-hidden
-              className="absolute inset-y-1 left-1 w-[calc((100%-0.5rem)/3)] rounded-md bg-white shadow-sm transition-transform duration-300 ease-out"
+              className="absolute inset-y-1 left-1 w-[calc((100%-0.5rem)/3)] rounded-full bg-ink transition-transform duration-300 ease-soft"
               style={{ transform: `translateX(${tabIndex * 100}%)` }}
             />
             {tabs.map((t) => (
@@ -534,8 +534,8 @@ function ReadersModal({ announcement, onClose }: { announcement: Announcement; o
                 role="tab"
                 aria-selected={filter === t.value}
                 onClick={() => setFilter(t.value)}
-                className={`relative flex items-center justify-center gap-1.5 py-1.5 text-xs font-medium transition-colors ${
-                  filter === t.value ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'
+                className={`relative flex h-9 items-center justify-center gap-1.5 text-xs font-medium transition-colors duration-300 ${
+                  filter === t.value ? 'text-ink-foreground' : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
                 {t.label}
