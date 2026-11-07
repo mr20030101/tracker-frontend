@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 7.3.0 — 2026-11-07
+
 ### Changed
 
 - Task and attendance statuses are now a grey icon with a label instead of coloured pills, in the Task Log, profiles, the CTS Form, search, the task picker and the Attendance page. The ones that need attention (Empty, Claimed by Another Person, Not filed, support hours) are bold with a warning icon.
