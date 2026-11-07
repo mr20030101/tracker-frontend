@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
+import { FoldText } from '../components/FoldText'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../lib/auth'
@@ -89,8 +90,8 @@ export function Attendance() {
 function AttendanceOff({ isManager }: { isManager: boolean }) {
   return (
     <div>
-      <h1 className="mb-2 text-2xl font-bold text-gray-900">Attendance</h1>
-      <div className="rounded-xl border border-gray-200 bg-white px-5 py-6 text-sm text-gray-600">
+      <h1 className="mb-2 text-3xl font-medium sm:text-4xl text-gray-900"><FoldText text="Attendance" /></h1>
+      <div className="card px-5 py-6 text-sm text-gray-600">
         {isManager ? (
           <>
             Attendance is switched off for your team, so your contributors don't file it in the Tracker. You can turn it back on
@@ -189,7 +190,7 @@ function CloseTimeSetting({ leadId }: { leadId: string | null }) {
           <button
             type="submit"
             aria-busy={save.isPending}
-            className="inline-flex h-9 pointer-coarse:h-11 items-center gap-1.5 rounded-lg bg-accent px-3 text-sm font-semibold text-accent-foreground"
+            className="inline-flex h-9 pointer-coarse:h-11 items-center gap-1.5 rounded-full bg-accent px-3 text-sm font-semibold text-accent-foreground"
           >
             <Save className="h-4 w-4" aria-hidden />
             {save.isPending ? 'Saving...' : 'Save'}
@@ -316,7 +317,7 @@ function TeamAttendance() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Attendance</h1>
+        <h1 className="text-3xl font-medium sm:text-4xl text-gray-900"><FoldText text="Attendance" /></h1>
         <p className="text-sm text-gray-500">
           Who filed their daily attendance, and who hasn't yet. Contributors file theirs from the Dashboard until{' '}
           {closesMin !== undefined ? attendanceTimeLabel(closesMin) : 'their closing time'}
@@ -359,7 +360,7 @@ function TeamAttendance() {
         <button
           onClick={exportRows}
           disabled={visible.length === 0}
-          className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
         >
           <Download className="h-4 w-4" aria-hidden />
           Export
@@ -377,7 +378,7 @@ function TeamAttendance() {
               {/* The whole card opens the form for a mouse; the footer button is the keyboard way in. */}
               <div
                 onClick={() => setEditing({ person, entry })}
-                className="flex h-full cursor-pointer flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 text-sm transition-colors duration-75 hover:bg-gray-50"
+                className="flex h-full cursor-pointer flex-col gap-3 card p-4 text-sm transition-colors duration-75 hover:bg-gray-50"
               >
                 <div className="flex items-start gap-3">
                   <AttendanceAvatar name={person.name} avatarUrl={person.avatar_url} photoRef={entry?.photo_ref} />
@@ -548,7 +549,7 @@ function PhotoModal({ photoRef, name, onClose }: { photoRef: string; name: strin
 }
 
 function EmptyCard({ children }: { children: ReactNode }) {
-  return <div className="rounded-xl border border-gray-200 bg-white px-5 py-10 text-center text-sm text-gray-400">{children}</div>
+  return <div className="card px-5 py-10 text-center text-sm text-gray-400">{children}</div>
 }
 
 type ContributorTab = 'mine' | 'team'
@@ -576,7 +577,7 @@ function MyAttendance({ teamPublic }: { teamPublic: boolean }) {
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Attendance</h1>
+          <h1 className="text-3xl font-medium sm:text-4xl text-gray-900"><FoldText text="Attendance" /></h1>
           <p className="text-sm text-gray-500">
             File your attendance once a day, between 6:00 AM and {closesLabel}. If you can't, your lead files it for you.
           </p>
@@ -624,7 +625,7 @@ function MyAttendance({ teamPublic }: { teamPublic: boolean }) {
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {history.map((entry) => (
-            <li key={entry.id} className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 text-sm">
+            <li key={entry.id} className="flex flex-col gap-3 card p-4 text-sm">
               <div className="flex items-start justify-between gap-3">
                 <div className="font-semibold text-gray-900">{formatDay(entry.date)}</div>
                 {hoursStatus(entry.hours)}
@@ -694,7 +695,7 @@ function TeammatesAttendance({ today }: { today: string }) {
           {visible.map((mate) => (
             <li
               key={mate.user_id}
-              className="flex items-start gap-3 rounded-xl border border-gray-200 bg-white p-4 text-sm"
+              className="flex items-start gap-3 card p-4 text-sm"
             >
               {mate.photo_ref ? (
                 <button

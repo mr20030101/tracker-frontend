@@ -270,7 +270,7 @@ export function BulkImportModal({ projects, onClose, contributorEmail, contribut
               <button
                 onClick={handleParse}
                 disabled={!rawText.trim()}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
               >
                 <Eye className="h-4 w-4" aria-hidden />
                 Preview
@@ -375,7 +375,7 @@ export function BulkImportModal({ projects, onClose, contributorEmail, contribut
               <button
                 onClick={handleImport}
                 disabled={importing || includedRows.length === 0}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
               >
                 <Upload className="h-4 w-4" aria-hidden />
                 {importing ? 'Importing...' : `Import ${includedRows.length} Rows`}
@@ -398,7 +398,7 @@ export function BulkImportModal({ projects, onClose, contributorEmail, contribut
             <div className="flex justify-end">
               <button
                 onClick={onClose}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
+                className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
               >
                 <Check className="h-4 w-4" aria-hidden />
                 Done

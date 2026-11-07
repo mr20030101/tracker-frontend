@@ -1,4 +1,5 @@
 import { useMemo, useState, type FormEvent } from 'react'
+import { FoldText } from '../components/FoldText'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Pencil, Plus, Save, Trash2, X } from 'lucide-react'
 import { api, errorMessage, supabase } from '../lib/api'
@@ -166,15 +167,15 @@ export function Resources() {
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
-            Resources
+          <h1 className="flex items-center gap-2 text-3xl font-medium sm:text-4xl text-gray-900">
+            <FoldText text="Resources" />
           </h1>
           <p className="text-sm text-gray-500">Guidelines, recordings, and reference links.</p>
         </div>
         {isManager && (
           <button
             onClick={openAdd}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
+            className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
           >
             <Plus className="h-4 w-4" aria-hidden />
             Add Resource
@@ -188,7 +189,7 @@ export function Resources() {
 
       <div className="flex flex-col gap-6">
         {[...groups.entries()].map(([category, items]) => (
-          <div key={category} className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+          <div key={category} className="overflow-hidden card">
             <div className="border-b border-gray-200 bg-gray-50 px-5 py-3 text-sm font-semibold text-gray-700">
               {category}
             </div>
@@ -336,7 +337,7 @@ export function Resources() {
               <button
                 type="submit"
                 disabled={saveMutation.isPending || uploading || (!isAdmin && projectOptions.length === 0)}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
               >
                 {formTarget === 'new' ? <Plus className="h-4 w-4" aria-hidden /> : <Save className="h-4 w-4" aria-hidden />}
                 {saveMutation.isPending ? 'Saving...' : formTarget === 'new' ? 'Add Resource' : 'Save Changes'}

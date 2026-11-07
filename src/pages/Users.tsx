@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { FoldText } from '../components/FoldText'
 import { Link, useSearchParams } from 'react-router-dom'
 import { FileUp, KeyRound, Trash2, UserCheck, UserMinus, UserPlus, X } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -314,7 +315,7 @@ export function Users() {
               if (el) el.indeterminate = table.getIsSomeRowsSelected()
             }}
             onChange={table.getToggleAllRowsSelectedHandler()}
-            className="h-4 w-4 rounded border-gray-300 text-accent focus:ring-accent"
+            className="h-4 w-4 rounded border-gray-300 text-accent-text focus:ring-accent"
           />
         ),
         cell: ({ row }) => (
@@ -323,7 +324,7 @@ export function Users() {
             aria-label={`Select ${row.original.name}`}
             checked={row.getIsSelected()}
             onChange={row.getToggleSelectedHandler()}
-            className="h-4 w-4 rounded border-gray-300 text-accent focus:ring-accent"
+            className="h-4 w-4 rounded border-gray-300 text-accent-text focus:ring-accent"
           />
         ),
         enableSorting: false,
@@ -473,8 +474,8 @@ export function Users() {
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
-            Users
+          <h1 className="flex items-center gap-2 text-3xl font-medium sm:text-4xl text-gray-900">
+            <FoldText text="Users" />
           </h1>
           <p className="text-sm text-gray-500">
             {isAdmin ? 'Manage CB logins, roles, and passwords.' : "Manage your team's logins and passwords."}
@@ -484,12 +485,12 @@ export function Users() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setBulkImporting(true)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+            className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50"
           >
             <FileUp className="h-4 w-4" aria-hidden />
             Bulk Import
           </button>
-          <button onClick={openAdd} className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground">
+          <button onClick={openAdd} className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground">
             <UserPlus className="h-4 w-4" aria-hidden />
             Add Login
           </button>
@@ -697,7 +698,7 @@ export function Users() {
               <button
                 type="submit"
                 disabled={createMutation.isPending}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
               >
                 <UserPlus className="h-4 w-4" aria-hidden />
                 {createMutation.isPending ? 'Saving...' : 'Add Login'}
@@ -734,7 +735,7 @@ export function Users() {
               <button
                 type="submit"
                 disabled={resetMutation.isPending}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
               >
                 <KeyRound className="h-4 w-4" aria-hidden />
                 {resetMutation.isPending ? 'Saving...' : 'Set Password'}
@@ -764,7 +765,7 @@ export function Users() {
               <button
                 type="submit"
                 disabled={deleteMutation.isPending}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-status-danger-text px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-full bg-status-danger-text px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
               >
                 <Trash2 className="h-4 w-4" aria-hidden />
                 {deleteMutation.isPending ? 'Deleting...' : 'Delete Login'}
@@ -794,7 +795,7 @@ export function Users() {
               <button
                 type="submit"
                 disabled={bulkMutation.isPending}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-status-danger-text px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-full bg-status-danger-text px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
               >
                 <Trash2 className="h-4 w-4" aria-hidden />
                 {bulkMutation.isPending ? 'Deleting...' : `Delete ${selectedIds.length} Login${selectedIds.length === 1 ? '' : 's'}`}

@@ -47,7 +47,7 @@ export function UpdateBanner() {
       <button
         type="button"
         onClick={() => window.location.reload()}
-        className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 font-semibold text-accent-foreground hover:opacity-90"
+        className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-accent px-3 py-1.5 font-semibold text-accent-foreground hover:opacity-90"
       >
         <RefreshCw className="h-4 w-4" aria-hidden />
         Reload

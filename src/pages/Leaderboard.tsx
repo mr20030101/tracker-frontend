@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { FoldText } from '../components/FoldText'
 import { CalendarDays, ChevronLeft, ChevronRight, Download, UserCheck, UserMinus, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -68,8 +69,8 @@ function ContributorLeaderboard() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
-          Leaderboard
+        <h1 className="flex items-center gap-2 text-3xl font-medium sm:text-4xl text-gray-900">
+          <FoldText text="Leaderboard" />
         </h1>
         <p className="text-sm text-gray-500">
           {period === 'improved'
@@ -79,7 +80,7 @@ function ContributorLeaderboard() {
       </div>
 
       {period === 'week' && team.target > 0 && (
-        <div className="mb-4 rounded-xl border border-gray-200 bg-white px-5 py-4">
+        <div className="mb-4 card px-5 py-4">
           <div className="flex items-baseline justify-between gap-2 text-sm">
             <span className="font-semibold text-gray-700">Team goal this week</span>
             <span className="font-semibold text-gray-900">
@@ -110,7 +111,7 @@ function ContributorLeaderboard() {
       {period === 'improved' ? (
         <MostImprovedList rows={teamRows} meId={user?.id} />
       ) : (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+        <div className="overflow-hidden card">
           {isLoading && <div className="px-5 py-6 text-center text-gray-400">Loading...</div>}
           {!isLoading && rows.length === 0 && (
             <div className="px-5 py-6 text-center text-gray-400">No submissions {periodLabel} yet.</div>
@@ -137,7 +138,7 @@ function ContributorLeaderboard() {
                           <span className="mr-0.5 truncate">{row.name}</span>
                           <StreakChip streak={achievements?.get(row.user_id)?.current_streak} />
                           <FeaturedBadgeChip badgeId={featuredBadges?.get(row.user_id)} />
-                          {isMe && <span className="ml-0.5 shrink-0 text-xs font-semibold text-accent">You</span>}
+                          {isMe && <span className="ml-0.5 shrink-0 text-xs font-semibold text-accent-text">You</span>}
                         </div>
                         <div className="mt-1 h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-gray-100">
                           <GrowBar className="h-full rounded-full bg-accent" pct={barPct} delay={300 + index * 45} />
@@ -161,10 +162,10 @@ function ContributorLeaderboard() {
 function MostImprovedList({ rows, meId }: { rows: TeamWeekRow[]; meId: string | undefined }) {
   const list = mostImproved(rows)
   if (list.length === 0) {
-    return <div className="rounded-xl border border-gray-200 bg-white px-5 py-6 text-center text-gray-400">Not enough weeks yet to compare.</div>
+    return <div className="card px-5 py-6 text-center text-gray-400">Not enough weeks yet to compare.</div>
   }
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+    <div className="overflow-hidden card">
       <Reveal as="ul" className="divide-y divide-gray-100" step={45}>
         {list.map(({ row, average, change }, index) => {
           const isMe = row.user_id === meId
@@ -180,7 +181,7 @@ function MostImprovedList({ rows, meId }: { rows: TeamWeekRow[]; meId: string | 
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-medium text-gray-900">
                     {row.name}
-                    {isMe && <span className="ml-2 text-xs font-semibold text-accent">You</span>}
+                    {isMe && <span className="ml-2 text-xs font-semibold text-accent-text">You</span>}
                   </div>
                   <div className="text-xs text-gray-400">
                     {row.submitted.toLocaleString()} last week · usually {Math.round(average).toLocaleString()}
@@ -306,8 +307,8 @@ function ManagerLeaderboard() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
-          Leaderboard
+        <h1 className="flex items-center gap-2 text-3xl font-medium sm:text-4xl text-gray-900">
+          <FoldText text="Leaderboard" />
         </h1>
         <p className="text-sm text-gray-500">Filter, sort, and manage contributor progress.</p>
       </div>
@@ -417,7 +418,7 @@ function ManagerLeaderboard() {
                 )
               }
               disabled={rows.length === 0}
-              className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
             >
               <Download className="h-4 w-4" aria-hidden />
               Export CSV

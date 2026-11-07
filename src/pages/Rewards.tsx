@@ -1,4 +1,5 @@
 import { useMemo, useState, type FormEvent, type ReactNode } from 'react'
+import { FoldText } from '../components/FoldText'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Award, CalendarDays, Check, ChevronDown, ChevronUp, Gift, Lock, Plus, Trash2, Trophy, Users, X } from 'lucide-react'
@@ -109,9 +110,9 @@ export function Rewards() {
     <div>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
-            <Gift className="h-6 w-6 text-accent" />
-            Rewards
+          <h1 className="flex items-center gap-2 text-3xl font-medium sm:text-4xl text-gray-900">
+            <Gift className="h-6 w-6 text-accent-text" />
+            <FoldText text="Rewards" />
           </h1>
           <p className="text-sm text-gray-500">
             {isManager ? 'Offer your team a prize for hitting a goal, and pay out the winners.' : 'Prizes up for grabs, and how close you are to winning them.'}
@@ -121,7 +122,7 @@ export function Rewards() {
           <button
             type="button"
             onClick={() => setCreating(true)}
-            className="flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
+            className="flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
           >
             <Plus className="h-4 w-4" />
             New reward
@@ -133,7 +134,7 @@ export function Rewards() {
 
       {isLoading && <div className="text-gray-400">Loading...</div>}
       {isError && (
-        <div className="rounded-xl border border-gray-200 bg-white px-5 py-6 text-center text-gray-500">
+        <div className="card px-5 py-6 text-center text-gray-500">
           Rewards aren’t set up yet. The database needs the rewards update first.
         </div>
       )}
@@ -211,9 +212,9 @@ function RewardCard({
   })
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5">
+    <div className="card p-5">
       <div className="flex flex-wrap items-start gap-3">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent-text">
           <Trophy className="h-5 w-5" />
         </div>
         <div className="min-w-0 flex-1">
@@ -221,7 +222,7 @@ function RewardCard({
             <h3 className="text-base font-bold text-gray-900">{reward.title}</h3>
             <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${style.className}`}>{style.label}</span>
           </div>
-          <div className="mt-0.5 text-lg font-bold text-accent">{describePrize(reward)}</div>
+          <div className="mt-0.5 text-lg font-bold text-accent-text">{describePrize(reward)}</div>
           <p className="mt-1 text-sm text-gray-700">{describeRule(reward, projectName)}</p>
           {reward.description && <p className="mt-1 whitespace-pre-line text-sm text-gray-500">{reward.description}</p>}
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
@@ -241,7 +242,7 @@ function RewardCard({
         {canManage && (
           <div className="flex shrink-0 gap-2">
             {phase === 'ended' && (
-              <button type="button" onClick={() => setAwarding(true)} className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground">
+              <button type="button" onClick={() => setAwarding(true)} className="inline-flex items-center gap-1.5 rounded-full bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground">
                 <Award className="h-4 w-4" aria-hidden />
                 Award winners
               </button>
@@ -260,7 +261,7 @@ function RewardCard({
         )}
       </div>
 
-      {mine && <div className="mt-4 rounded-lg bg-accent/10 px-3 py-2 text-sm font-semibold text-gray-900">{mine}</div>}
+      {mine && <div className="mt-4 rounded-full bg-accent/10 px-3 py-2 text-sm font-semibold text-gray-900">{mine}</div>}
 
       {/* Managers see the board to award from it; contributors only learn the order when the winners are announced. */}
       {showStandings && isManager && <StandingsList reward={reward} standings={standings} meId={meId} />}
@@ -282,7 +283,7 @@ function RewardCard({
               type="button"
               disabled={cancel.isPending}
               onClick={() => cancel.mutate()}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-status-danger-text px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-full bg-status-danger-text px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
             >
               <Trash2 className="h-4 w-4" aria-hidden />
               {cancel.isPending ? 'Cancelling...' : 'Cancel reward'}
@@ -353,7 +354,7 @@ function SealedStandings({ phase, standings }: { phase: RewardPhase; standings: 
         ))}
       </ul>
       <div className="mt-2 flex items-start gap-2 rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-600">
-        <Lock className="mt-0.5 h-4 w-4 shrink-0 text-accent" aria-hidden />
+        <Lock className="mt-0.5 h-4 w-4 shrink-0 text-accent-text" aria-hidden />
         <span>
           {phase === 'live'
             ? `The leaderboard is a secret until the winners are announced.${racing > 0 ? ` ${racing} ${racing === 1 ? 'person is' : 'people are'} in the race. Keep going!` : ' Be the first on the board!'}`
@@ -391,7 +392,7 @@ function StandingsList({ reward, standings, meId }: { reward: Reward; standings:
               <div className="min-w-0 flex-1">
                 <Link to={contributorPathById(s.user_id)} className="block truncate text-sm font-medium text-gray-900 hover:underline">
                   {s.name}
-                  {isMe && <span className="ml-2 text-xs font-semibold text-accent">You</span>}
+                  {isMe && <span className="ml-2 text-xs font-semibold text-accent-text">You</span>}
                 </Link>
                 <div className="mt-0.5 flex flex-wrap gap-1" aria-label={levelBreakdown(reward, s)}>
                   {countedStages(reward).map((stage) => {
@@ -428,7 +429,7 @@ function StandingsList({ reward, standings, meId }: { reward: Reward; standings:
         })}
       </ul>
       {standings.length > STANDINGS_SHOWN && (
-        <button type="button" onClick={() => setAll(!all)} className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-accent hover:underline">
+        <button type="button" onClick={() => setAll(!all)} className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-accent-text hover:underline">
           {all ? <ChevronUp className="h-3.5 w-3.5" aria-hidden /> : <ChevronDown className="h-3.5 w-3.5" aria-hidden />}
           {all ? 'Show fewer' : `Show all ${standings.length}`}
         </button>
@@ -554,7 +555,7 @@ function AwardModal({ reward, standings, onClose }: { reward: Reward; standings:
                       <Avatar name={s.name} photoUrl={s.avatar_url} size={24} />
                       <span className="min-w-0 flex-1 truncate text-sm text-gray-900">{s.name}</span>
                       <span className="text-xs text-gray-400">{scoreText(reward, s.points)}</span>
-                      {order >= 0 && <span className="w-16 text-right text-xs font-semibold text-accent">{ordinal(order + 1)} · {formatMoney(amountFor(order), reward.currency)}</span>}
+                      {order >= 0 && <span className="w-16 text-right text-xs font-semibold text-accent-text">{ordinal(order + 1)} · {formatMoney(amountFor(order), reward.currency)}</span>}
                     </label>
                   </li>
                 )
@@ -597,7 +598,7 @@ function AwardModal({ reward, standings, onClose }: { reward: Reward; standings:
           <button
             type="submit"
             disabled={award.isPending || (custom && picked.length === 0)}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
           >
             <Award className="h-4 w-4" aria-hidden />
             {award.isPending ? 'Awarding...' : 'Award'}
@@ -873,7 +874,7 @@ function NewRewardModal({ projects, onClose }: { projects: Project[]; onClose: (
           {rule === 'custom' && (
             <div className="mt-1 flex gap-3 text-xs">
               {prizes.length < 10 && (
-                <button type="button" onClick={() => setPrizes([...prizes, ''])} className="inline-flex items-center gap-1.5 font-semibold text-accent hover:underline">
+                <button type="button" onClick={() => setPrizes([...prizes, ''])} className="inline-flex items-center gap-1.5 font-semibold text-accent-text hover:underline">
                   <Plus className="h-3.5 w-3.5" aria-hidden />
                   Different prize for the next place
                 </button>
@@ -970,7 +971,7 @@ function NewRewardModal({ projects, onClose }: { projects: Project[]; onClose: (
           <button
             type="submit"
             disabled={create.isPending || !title.trim()}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
           >
             <Plus className="h-4 w-4" aria-hidden />
             {create.isPending ? 'Creating...' : 'Create reward'}

@@ -198,7 +198,7 @@ export function CtsFormModal({ email, submissions, trainer, onClose }: Props) {
                     type="button"
                     onClick={() => openCtsForm(group)}
                     aria-describedby={needsPick === group.key ? `cts-pick-${group.key}` : undefined}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground hover:opacity-90 pointer-coarse:min-h-11"
+                    className="inline-flex items-center gap-1.5 rounded-full bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground hover:opacity-90 pointer-coarse:min-h-11"
                   >
                     <ClipboardCheck className="h-4 w-4" aria-hidden />
                     Open CTS Form ({chosen.length})
@@ -243,7 +243,7 @@ export function CtsFormModal({ email, submissions, trainer, onClose }: Props) {
                           </td>
                           <td className="whitespace-nowrap px-3 py-2 text-xs">
                             {rowDate === todayIso ? (
-                              <span className="font-semibold text-accent">Today</span>
+                              <span className="font-semibold text-accent-text">Today</span>
                             ) : (
                               <span className="text-gray-500">{rowDate ?? '—'}</span>
                             )}

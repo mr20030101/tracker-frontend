@@ -14,6 +14,23 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.0.0 — 2026-11-07
+
+### Changed
+
+- **A new look across the tracker.** Warm cream pages with a honey-yellow accent, softer rounded cards, pill-shaped buttons and tabs, and new type (Inter for text, Outfit for titles and big numbers). Dark mode gets the same warm palette.
+- **Dashboards open with a big greeting and your numbers at a glance.** Leads see tasks submitted, active contributors and who has no progress, with meters for submitted, team target and logged-then-submitted. Contributors see today, this week and their streak, with day and week goal meters. The sky banner and owl are gone from the dashboard (the login page keeps them).
+- The menu is now a floating dark panel. A round tab on its edge collapses it to icons and expands it again, and in the collapsed menu, hovering or tabbing to an icon shows the page's name.
+- Switching pages slides the menu's honey highlight to the new page, stretching toward it and settling. The pill tabs (Day / Week / Month, Mine / Team and the others) move the same way.
+- Page titles unfold letter by letter when a page opens. With reduced motion turned on in your device settings, they just appear.
+- The top bar's search, messages, notifications and account are round buttons, and their unread counts are honey badges.
+- **Attendance Form** on the dashboard says "Attendance opens at 6:00 AM" before the window opens, instead of being greyed out.
+
+### Removed
+
+- The date picker on the lead dashboard. Use **Prev** / **Next** and **Day / Week / Month** to move between periods.
+- The "with no progress" button on the lead dashboard. The count is now the **No progress** figure and meter at the top.
+
 ## 7.3.0 — 2026-11-07
 
 ### Changed

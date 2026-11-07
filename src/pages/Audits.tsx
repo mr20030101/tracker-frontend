@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
+import { FoldText } from '../components/FoldText'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ExternalLink, Pencil, Plus } from 'lucide-react'
@@ -28,7 +29,7 @@ const EVERYONE = 'everyone'
 
 function StatTile({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5">
+    <div className="card p-5">
       <div className="text-xs font-semibold uppercase tracking-wider text-gray-400">{label}</div>
       <div className="mt-1 text-3xl font-bold text-gray-900">{children}</div>
       {hint && <div className="mt-1 text-xs text-gray-500">{hint}</div>}
@@ -262,7 +263,7 @@ export function Audits() {
     <div>
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Audits</h1>
+          <h1 className="text-3xl font-medium sm:text-4xl text-gray-900"><FoldText text="Audits" /></h1>
           <p className="max-w-2xl text-sm text-gray-500">
             Spot check the tasks your CBs logged. Add an entry for each one you audit: find the task by its ID or the CB's name, then give it a score and note the errors you found.
           </p>
@@ -284,7 +285,7 @@ export function Audits() {
             type="button"
             onClick={() => open('new')}
             disabled={team.length === 0}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
           >
             <Plus className="h-4 w-4" aria-hidden />
             Add entry

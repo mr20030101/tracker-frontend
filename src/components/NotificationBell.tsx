@@ -272,19 +272,17 @@ export function NotificationBell() {
       <button
         ref={buttonRef}
         onClick={() => setOpen((v) => !v)}
-        className={`relative rounded-lg border p-2 ${
-          ringing
-            ? 'border-status-danger-text bg-status-danger-bg text-status-danger-text'
-            : 'border-gray-200 bg-white text-gray-500 hover:bg-gray-50'
+        className={`relative flex h-11 w-11 items-center justify-center rounded-full shadow-card transition-colors duration-100 ${
+          ringing ? 'bg-status-danger-bg text-status-danger-text' : 'bg-white text-gray-700 hover:bg-gray-100'
         }`}
         aria-label={ringing ? 'Notifications: new request' : 'Notifications'}
       >
-        {ringing && <span className="call-sonar absolute inset-0 rounded-lg border-2 border-status-danger-text" aria-hidden />}
+        {ringing && <span className="call-sonar absolute inset-0 rounded-full border-2 border-status-danger-text" aria-hidden />}
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className={`h-5 w-5 ${ringing ? 'call-ring-shake' : ''}`}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2a2 2 0 0 1-.6 1.4L4 17h5m6 0v1a3 3 0 1 1-6 0v-1m6 0H9" />
         </svg>
         {count > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-status-danger-text px-1 text-[10px] font-bold text-white">
+          <span className="absolute -right-0.5 -top-0.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold text-accent-foreground ring-2 ring-gray-50">
             {count}
           </span>
         )}

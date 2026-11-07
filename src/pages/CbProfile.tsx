@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { FoldText } from '../components/FoldText'
 import { createPortal } from 'react-dom'
 import { Navigate, useParams, Link } from 'react-router-dom'
 import { ChevronDown, ChevronLeft, Eye, MessageCircle, Pencil, Sparkles, Trophy, X } from 'lucide-react'
@@ -282,8 +283,8 @@ export function CbProfile() {
         <Avatar name={displayName} photoUrl={isOwnProfile ? currentUser?.avatar_url : data.user?.avatar_url} size={56} />
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
-              {displayName}
+            <h1 className="flex items-center gap-2 text-3xl font-medium sm:text-4xl text-gray-900">
+              <FoldText text={displayName} />
             </h1>
             {data.user && (
               <span className="rounded-full bg-accent-bg px-3 py-1 text-xs font-medium capitalize text-accent-foreground">
@@ -310,7 +311,7 @@ export function CbProfile() {
           {!isOwnProfile && contributorId && (
             <Link
               to={messagePath(contributorId)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+              className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
             >
               <MessageCircle className="h-4 w-4" />
               Message
@@ -319,7 +320,7 @@ export function CbProfile() {
           {isOwnProfile && (
             <Link
               to="/settings"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+              className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
             >
               <Pencil className="h-4 w-4" aria-hidden />
               Edit Profile
@@ -346,7 +347,7 @@ export function CbProfile() {
       )}
 
       {(leadShift || (!isOwnProfile && data.user?.shift)) && (
-        <div className="mb-6 rounded-xl border border-gray-200 bg-white px-5 py-4 text-sm text-gray-600">
+        <div className="mb-6 card px-5 py-4 text-sm text-gray-600">
           <span className="font-medium text-gray-700">Shift:</span> {leadShift ? shiftLabel(leadShift) : data.user?.shift}
           {leadShift && <span className="ml-2 text-xs text-gray-400">Extension and reclaim requests can be sent during this shift</span>}
           {data.user?.meet_link && (
@@ -369,7 +370,7 @@ export function CbProfile() {
       {/* Same for Project Levels — a CB sees their own on the Dashboard now; this stays only
           for a lead/admin reviewing someone else. */}
       {isContributorRole && !isOwnProfile && levelProjects.length > 0 && (
-        <div className="mb-6 rounded-xl border border-gray-200 bg-white p-5">
+        <div className="mb-6 card p-5">
           <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-700">
             <Trophy className="h-4 w-4 text-amber-500" />
             Project Levels
@@ -396,13 +397,13 @@ export function CbProfile() {
       )}
 
       {isOwnProfile && data.user?.role === 'lead' && (
-        <div className="mt-6 rounded-xl border border-gray-200 bg-white p-5">
+        <div className="mt-6 card p-5">
           <div className="mb-3 flex items-center justify-between">
             <div className="text-sm font-semibold text-gray-700">Team Recommendations</div>
             <button
               onClick={() => recommendationMutation.mutate()}
               disabled={recommendationMutation.isPending}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
             >
               <Sparkles className="h-4 w-4" aria-hidden />
               {recommendationMutation.isPending

@@ -160,14 +160,14 @@ export function MessagesButton() {
     <div className="relative">
       <button
         onClick={() => (isOpen ? close() : openInbox())}
-        className="relative rounded-lg border border-gray-200 bg-white p-2 text-gray-500 hover:bg-gray-50"
+        className="relative flex h-11 w-11 items-center justify-center rounded-full bg-white text-gray-700 shadow-card transition-colors duration-100 hover:bg-gray-100"
         aria-label="Messages"
       >
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-5 w-5">
           <path strokeLinecap="round" strokeLinejoin="round" d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
         </svg>
         {totalUnread > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-status-danger-text px-1 text-[10px] font-bold text-white">
+          <span className="absolute -right-0.5 -top-0.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold text-accent-foreground ring-2 ring-gray-50">
             {totalUnread}
           </span>
         )}
@@ -307,7 +307,7 @@ export function MessagesButton() {
                       type="button"
                       onClick={handleBulkDelete}
                       disabled={selectedIds.size === 0 || bulkDeleteMutation.isPending}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-status-danger-text px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                      className="inline-flex items-center gap-1.5 rounded-full bg-status-danger-text px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
                     >
                       <Trash2 className="h-3.5 w-3.5" aria-hidden />
                       Delete

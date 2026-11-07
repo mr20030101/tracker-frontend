@@ -1,4 +1,5 @@
 import type { ReactNode, Ref } from 'react'
+import { FoldText } from './FoldText'
 import { useNightSky } from '../lib/theme'
 import { LoginOwl, type OwlMood } from './LoginOwl'
 import { SkyBackdrop } from './SkyBackdrop'
@@ -58,7 +59,7 @@ export function PerchedCard({
 export function CardHeading({ title, subtitle }: { title: ReactNode; subtitle?: ReactNode }) {
   return (
     <div className="mb-6 text-center">
-      <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
+      <h1 className="text-3xl font-medium sm:text-4xl text-gray-900"><FoldText text={title} /></h1>
       {subtitle && <p className="mt-1 text-sm text-gray-500">{subtitle}</p>}
     </div>
   )

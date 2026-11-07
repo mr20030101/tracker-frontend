@@ -77,7 +77,7 @@ export function GlobalSearch({ pages }: { pages: SearchPage[] }) {
         onClick={() => setOpen(true)}
         aria-label="Search"
         title={`Search (${IS_MAC ? '⌘' : 'Ctrl+'}K)`}
-        className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 p-1.5 text-sm text-gray-400 hover:bg-gray-100 sm:w-56 sm:px-3"
+        className="flex h-11 w-11 items-center justify-center gap-2 rounded-full bg-white text-sm text-gray-500 shadow-card transition-colors duration-100 hover:bg-gray-100 sm:w-60 sm:justify-start sm:px-4"
       >
         <Search className="h-4 w-4 shrink-0" />
         <span className="hidden flex-1 text-left sm:inline">Search...</span>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { FoldText } from '../components/FoldText'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ColumnDef, RowSelectionState } from '@tanstack/react-table'
@@ -126,7 +127,7 @@ function CopyButton({ text, label }: { text: string; label: string }) {
     <button
       type="button"
       onClick={async () => setCopied(await copyText(text))}
-      className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+      className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50"
     >
       {copied ? <Check className="h-4 w-4" strokeWidth={2} /> : <Copy className="h-4 w-4" strokeWidth={2} />}
       {copied ? 'Copied' : label}
@@ -195,7 +196,7 @@ function NotesEditor({ application, onSaved }: { application: HiringApplication;
           type="button"
           onClick={() => save.mutate()}
           disabled={!changed || save.isPending}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-full bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground disabled:opacity-50"
         >
           <Save className="h-3.5 w-3.5" aria-hidden />
           {save.isPending ? 'Saving...' : 'Save notes'}
@@ -586,7 +587,7 @@ export function Hiring() {
               if (el) el.indeterminate = table.getIsSomePageRowsSelected()
             }}
             onChange={table.getToggleAllPageRowsSelectedHandler()}
-            className="h-4 w-4 rounded border-gray-300 text-accent focus:ring-accent"
+            className="h-4 w-4 rounded border-gray-300 text-accent-text focus:ring-accent"
           />
         ),
         cell: ({ row }) => (
@@ -595,7 +596,7 @@ export function Hiring() {
             aria-label={`Select ${row.original.full_name}`}
             checked={row.getIsSelected()}
             onChange={row.getToggleSelectedHandler()}
-            className="h-4 w-4 rounded border-gray-300 text-accent focus:ring-accent"
+            className="h-4 w-4 rounded border-gray-300 text-accent-text focus:ring-accent"
           />
         ),
         enableSorting: false,
@@ -819,8 +820,8 @@ export function Hiring() {
     <div>
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
-            Hiring
+          <h1 className="flex items-center gap-2 text-3xl font-medium sm:text-4xl text-gray-900">
+            <FoldText text="Hiring" />
           </h1>
           <p className="text-sm text-gray-500">
             {isAdmin
@@ -863,7 +864,7 @@ export function Hiring() {
         </div>
       )}
 
-      <div className="mb-6 rounded-xl border border-gray-200 bg-white p-5">
+      <div className="mb-6 card p-5">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-sm font-semibold text-gray-700">Application link</h2>
           <div className="flex flex-wrap items-center gap-4">
@@ -946,7 +947,7 @@ export function Hiring() {
             <>
               <button
                 onClick={() => openReview({ applications: selected, decision: 'accept' })}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground"
+                className="inline-flex items-center gap-1.5 rounded-full bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground"
               >
                 <Check className="h-4 w-4" aria-hidden />
                 Accept selected
@@ -977,7 +978,7 @@ export function Hiring() {
             <button
               onClick={() => onboardBulkMutation.mutate({ applications: selected, onboarded: true })}
               disabled={onboardBulkMutation.isPending}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-full bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground disabled:opacity-50"
             >
               <Check className="h-4 w-4" aria-hidden />
               Mark onboarded
@@ -987,7 +988,7 @@ export function Hiring() {
             <button
               onClick={() => onboardBulkMutation.mutate({ applications: selected, onboarded: false })}
               disabled={onboardBulkMutation.isPending}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
             >
               <RotateCcw className="h-4 w-4" aria-hidden />
               Mark not onboarded
@@ -995,7 +996,7 @@ export function Hiring() {
           )}
           <button
             onClick={() => exportApplications(selected, `hiring-selected-${todayStamp()}.csv`)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
           >
             <Download className="h-4 w-4" aria-hidden />
             Export selected
@@ -1023,7 +1024,7 @@ export function Hiring() {
               type="button"
               onClick={() => exportApplications(rows, `hiring-${statusFilter}-${todayStamp()}.csv`)}
               disabled={rows.length === 0}
-              className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
             >
               <Download className="h-4 w-4" aria-hidden />
               Export all
@@ -1158,7 +1159,7 @@ export function Hiring() {
                       setDetails(null)
                       openCreate(details)
                     }}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
+                    className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
                   >
                     <UserPlus className="h-4 w-4" aria-hidden />
                     Create account
@@ -1194,7 +1195,7 @@ export function Hiring() {
                         setDetails(null)
                         openReview({ applications: [details], decision: 'accept' })
                       }}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
+                      className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
                     >
                       <Check className="h-4 w-4" aria-hidden />
                       Accept
@@ -1343,7 +1344,7 @@ export function Hiring() {
                   !bootcamp.meetUrl.trim()
                 }
                 onClick={() => emailMutation.mutate({ ids: emailing.map((applicant) => applicant.id), details: bootcamp })}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
               >
                 <Send className="h-4 w-4" aria-hidden />
                 {emailMutation.isPending ? 'Sending...' : `Send ${plural(emailing.length, 'email')}`}
@@ -1389,7 +1390,7 @@ export function Hiring() {
                 type="button"
                 disabled={createAccountMutation.isPending}
                 onClick={() => createAccountMutation.mutate(creating)}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
               >
                 <UserPlus className="h-4 w-4" aria-hidden />
                 {createAccountMutation.isPending ? 'Creating...' : 'Create account'}
@@ -1511,7 +1512,7 @@ export function Hiring() {
               <button
                 type="button"
                 onClick={() => setCredentials(null)}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
+                className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
               >
                 <Check className="h-4 w-4" aria-hidden />
                 Done
@@ -1553,7 +1554,7 @@ export function Hiring() {
                 type="button"
                 disabled={deleteMutation.isPending}
                 onClick={() => deleteMutation.mutate(deleting)}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-status-danger-text px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-full bg-status-danger-text px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
               >
                 <Trash2 className="h-4 w-4" aria-hidden />
                 {deleteMutation.isPending ? 'Deleting...' : `Delete ${plural(deleting.length, 'application')}`}
@@ -1600,7 +1601,7 @@ export function Hiring() {
                 type="button"
                 disabled={clearHiringMutation.isPending || clearConfirmText !== 'CLEAR'}
                 onClick={() => clearHiringMutation.mutate()}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-status-danger-text px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-full bg-status-danger-text px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
               >
                 <Trash2 className="h-4 w-4" aria-hidden />
                 {clearHiringMutation.isPending ? 'Clearing...' : 'Clear all hiring data'}

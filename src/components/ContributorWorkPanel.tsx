@@ -443,7 +443,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                                 ? 'Opens the Bad Video Validation/Removal form, prefilled, and marks this approved'
                                 : 'Check the details, then open the Reclaim / Extend form and mark this approved'
                             }
-                            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground disabled:opacity-50"
+                            className="inline-flex items-center gap-1.5 rounded-full bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground disabled:opacity-50"
                           >
                             <ExternalLink className="h-3.5 w-3.5" aria-hidden />
                             Request
@@ -463,7 +463,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                               }
                             }}
                             disabled={withdrawRequestMutation.isPending}
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+                            className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
                           >
                             <Trash2 className="h-3.5 w-3.5" aria-hidden />
                             Delete
@@ -474,7 +474,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                           {request.type !== 'bad_video' && submission && (
                             <button
                               onClick={() => setRequestingExtensionFor({ submission, type: request.type, mode: 'edit', request })}
-                              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+                              className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50"
                             >
                               <Pencil className="h-3.5 w-3.5" aria-hidden />
                               Edit
@@ -483,7 +483,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                           <button
                             onClick={() => withdrawRequestMutation.mutate(request.id)}
                             disabled={withdrawRequestMutation.isPending}
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+                            className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
                           >
                             <Undo2 className="h-3.5 w-3.5" aria-hidden />
                             Withdraw
@@ -503,7 +503,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
           type="button"
           onClick={() => setGraphsToggledOn((v) => !v)}
           aria-expanded={showGraphs}
-          className="mb-4 inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
+          className="mb-4 inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
         >
           {showGraphs ? <ChevronUp className="h-4 w-4" aria-hidden /> : <ChevronDown className="h-4 w-4" aria-hidden />}
           {showGraphs ? 'Hide graphs' : 'Show graphs'}
@@ -543,7 +543,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                 which are deliberately empty in the public view — showing it
                 there would just be a permanent, misleading 0. */}
             {!data.is_public_view && (
-              <div className="flex items-center gap-5 rounded-xl border border-gray-200 bg-white p-5 lg:col-span-1">
+              <div className="flex items-center gap-5 card p-5 lg:col-span-1">
                 <ProgressRing value={rangeProgress} label={`${viewLabel} Goal`} sublabel={`${submittedInRange} / ${rangeTarget}`} />
                 <div className="flex flex-col gap-3">
                   <div>
@@ -563,17 +563,17 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
               </div>
             )}
 
-            <div className={`rounded-xl border border-gray-200 bg-white p-5 ${data.is_public_view ? 'lg:col-span-3' : 'lg:col-span-2'}`}>
+            <div className={`card p-5 ${data.is_public_view ? 'lg:col-span-3' : 'lg:col-span-2'}`}>
               <div className="mb-3 flex items-center justify-between">
                 <div className="text-sm font-semibold text-gray-700">Submission Trend</div>
                 <span className="text-xs text-gray-400">last {TREND_DAYS} days</span>
               </div>
-              <LineChart data={trendData} color="#d4a017" unitLabel="submitted" />
+              <LineChart data={trendData} color="#e0a91f" unitLabel="submitted" />
             </div>
           </div>
 
           <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="rounded-xl border border-gray-200 bg-white p-5">
+            <div className="card p-5">
               <div className="mb-3 text-sm font-semibold text-gray-700">By Stage (all-time)</div>
               <div className="flex flex-col gap-3">
                 {stages.length === 0 && <div className="text-sm text-gray-400">No submissions yet.</div>}
@@ -588,7 +588,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                 ))}
               </div>
             </div>
-            <div className="rounded-xl border border-gray-200 bg-white p-5">
+            <div className="card p-5">
               <div className="mb-3 text-sm font-semibold text-gray-700">By Project (all-time)</div>
               <div className="flex flex-col gap-3">
                 {data.project_breakdown.length === 0 && <div className="text-sm text-gray-400">No submissions yet.</div>}
@@ -629,7 +629,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
 
             <button
               onClick={() => shiftRange(-1)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+              className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
             >
               <ChevronLeft className="h-4 w-4" aria-hidden />
               Prev
@@ -641,7 +641,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
               onClick={() => shiftRange(1)}
               disabled={isCurrentRange}
               title={isCurrentRange ? "Can't browse into the future." : undefined}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
             >
               Next
               <ChevronRight className="h-4 w-4" aria-hidden />
@@ -662,7 +662,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
             {ctsEnabled && (
             <button
               onClick={() => setShowCtsModal(true)}
-              className="ml-auto inline-flex animate-heartbeat-soft items-center gap-1.5 rounded-lg bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600"
+              className="ml-auto inline-flex animate-heartbeat-soft items-center gap-1.5 rounded-full bg-gray-900 px-4 py-2 text-sm font-semibold text-gray-50 hover:bg-gray-800"
             >
               <ClipboardCheck className="h-4 w-4" aria-hidden />
               CTS Form
@@ -670,21 +670,21 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
             )}
             <button
               onClick={() => setBulkImporting(true)}
-              className={`${ctsEnabled ? '' : 'ml-auto '}inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50`}
+              className={`${ctsEnabled ? '' : 'ml-auto '}inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50`}
             >
               <FileUp className="h-4 w-4" aria-hidden />
               Bulk Import
             </button>
             <button
               onClick={() => setFormTarget('new')}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
+              className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
             >
               <Plus className="h-4 w-4" aria-hidden />
               Add Submission
             </button>
           </div>
 
-          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+          <div className="overflow-hidden card">
             <div className="border-b border-gray-200 bg-gray-50 px-5 py-3 text-sm font-semibold text-gray-700">
               Submissions — {rangeLabel()}
             </div>
@@ -997,7 +997,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
 // these are computed).
 function StatCard({ label, value, sublabel, icon }: { label: string; value: number; sublabel?: string; icon?: ReactNode }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4">
+    <div className="card p-4">
       <div className="mb-1 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-gray-400">
         {icon}
         {label}

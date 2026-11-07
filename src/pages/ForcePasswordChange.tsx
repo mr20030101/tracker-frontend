@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { FoldText } from '../components/FoldText'
 import { KeyRound, LogOut } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { supabase } from '../lib/api'
@@ -44,7 +45,7 @@ export function ForcePasswordChange() {
         <div className="mb-6">
           <Logo />
         </div>
-        <h1 className="mb-1 text-base font-semibold text-gray-900">Set a new password</h1>
+        <h1 className="mb-1 text-base font-semibold text-gray-900"><FoldText text="Set a new password" /></h1>
         <p className="mb-5 text-sm text-gray-500">
           Your login was just created or reset. Choose a new password before continuing.
         </p>
@@ -75,7 +76,7 @@ export function ForcePasswordChange() {
           <button
             type="submit"
             disabled={submitting}
-            className="mt-2 inline-flex items-center justify-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+            className="mt-2 inline-flex items-center justify-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
           >
             <KeyRound className="h-4 w-4" aria-hidden />
             {submitting ? 'Updating...' : 'Set password and continue'}

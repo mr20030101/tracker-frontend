@@ -40,8 +40,8 @@ export function AccountMenu() {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label="Your account"
-        className={`flex items-center gap-2 rounded-full border p-0.5 transition-colors sm:pr-2.5 ${
-          open ? 'border-accent bg-accent-bg/40' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+        className={`flex h-11 items-center gap-2 rounded-full p-1.5 shadow-card transition-colors duration-100 sm:pr-3.5 ${
+          open ? 'bg-accent-bg' : 'bg-white hover:bg-gray-100'
         }`}
       >
         <Avatar name={user.name} photoUrl={user.avatar_url} size={30} />

@@ -106,7 +106,7 @@ export function DataTable<TData>({
   const to = Math.min(total, from + pagination.pageSize - 1)
 
   return (
-    <div className={bare ? '' : 'rounded-xl border border-gray-200 bg-white'}>
+    <div className={bare ? '' : 'card'}>
       {toolbar}
       <div className="overflow-x-auto">
         <table className="w-full min-w-[36rem] text-left text-sm">

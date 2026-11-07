@@ -24,10 +24,10 @@ export function RewardsSpotlight({ meId }: { meId: string }) {
     <div className="mb-6 rounded-xl border border-accent/40 bg-white p-5">
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-          <Gift className="h-4 w-4 text-accent" />
+          <Gift className="h-4 w-4 text-accent-text" />
           Rewards up for grabs
         </div>
-        <Link to="/rewards" className="inline-flex items-center gap-1.5 text-xs font-semibold text-accent hover:underline">
+        <Link to="/rewards" className="inline-flex items-center gap-1.5 text-xs font-semibold text-accent-text hover:underline">
           <ArrowRight className="h-3.5 w-3.5" aria-hidden />
           See all
         </Link>
@@ -60,7 +60,7 @@ function RewardLine({ reward, meId, today }: { reward: Reward; meId: string; tod
         <span className="font-semibold text-gray-900">{reward.title}</span>
         <span className="text-xs font-medium text-gray-500">{when}</span>
       </div>
-      <div className="text-sm font-bold text-accent">{describePrize(reward)}</div>
+      <div className="text-sm font-bold text-accent-text">{describePrize(reward)}</div>
       {mine && <div className="mt-0.5 text-sm text-gray-700">{mine}</div>}
     </li>
   )

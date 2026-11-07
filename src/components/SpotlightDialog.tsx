@@ -48,7 +48,7 @@ export function SpotlightDialog({
         className="nudge-in relative w-full max-w-sm rounded-2xl border border-gray-200 bg-white px-6 pb-6 pt-12 text-center shadow-xl"
       >
         {/* The badge sits half above the card's top edge. */}
-        <div className="absolute -top-9 left-1/2 h-[72px] w-[72px] -translate-x-1/2 rounded-full bg-white text-accent shadow-md">
+        <div className="absolute -top-9 left-1/2 h-[72px] w-[72px] -translate-x-1/2 rounded-full bg-white text-accent-text shadow-md">
           <svg viewBox="0 0 72 72" className="absolute inset-0" aria-hidden="true">
             <circle cx="36" cy="36" r="27" className="fill-current opacity-10" />
             <g className="nudge-spin">
@@ -92,7 +92,7 @@ export function SpotlightDialog({
               <button
                 type="button"
                 onClick={primary.onClick}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
+                className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
               >
                 {primary.icon && <primary.icon className="h-4 w-4" aria-hidden />}
                 {primary.label}

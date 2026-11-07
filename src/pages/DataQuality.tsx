@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
+import { FoldText } from '../components/FoldText'
 import { Link } from 'react-router-dom'
 import { Pencil, Trash2 } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -58,7 +59,7 @@ function Section({
 }) {
   const [open, setOpen] = useState(true)
   return (
-    <div className="mb-4 overflow-hidden rounded-xl border border-gray-200 bg-white">
+    <div className="mb-4 overflow-hidden card">
       <div className="flex w-full items-center justify-between px-5 py-4">
         <button onClick={() => setOpen((v) => !v)} className="flex flex-1 items-center gap-2 text-left">
           <div>
@@ -347,8 +348,8 @@ export function DataQuality() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
-          Data Quality
+        <h1 className="flex items-center gap-2 text-3xl font-medium sm:text-4xl text-gray-900">
+          <FoldText text="Data Quality" />
         </h1>
         <p className="text-sm text-gray-500">Automated checks across all task log submissions.</p>
       </div>

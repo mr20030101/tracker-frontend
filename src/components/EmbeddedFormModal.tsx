@@ -56,7 +56,7 @@ export function EmbeddedFormModal({
       </div>
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         {openedInTab && onSubmitted && !wasSubmitted ? (
-          <button type="button" onClick={markSubmitted} className="inline-flex items-center gap-1.5 text-xs font-semibold text-accent underline">
+          <button type="button" onClick={markSubmitted} className="inline-flex items-center gap-1.5 text-xs font-semibold text-accent-text underline">
             <Check className="h-3.5 w-3.5 shrink-0" aria-hidden />
             Submitted it in the new tab? Mark it as submitted
           </button>

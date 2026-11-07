@@ -1,4 +1,5 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { FoldText } from '../components/FoldText'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Check, ChevronDown, Eye, Megaphone, Pencil, Pin, PinOff, Plus, Save, Search, Trash2, Users, X } from 'lucide-react'
 import { api, errorMessage, supabase } from '../lib/api'
@@ -103,7 +104,7 @@ export function Announcements() {
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">Announcements</h1>
+          <h1 className="flex items-center gap-2 text-3xl font-medium sm:text-4xl text-gray-900"><FoldText text="Announcements" /></h1>
           <p className="text-sm text-gray-500">
             {isManager ? 'Post updates to your team, a project, or everyone.' : 'Updates from your lead and admins.'}
           </p>
@@ -111,7 +112,7 @@ export function Announcements() {
         {isManager && (
           <button
             onClick={() => setComposing(true)}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
+            className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
           >
             <Plus className="h-4 w-4" aria-hidden />
             New announcement
@@ -126,7 +127,7 @@ export function Announcements() {
         </div>
       )}
       {!isLoading && !isError && announcements.length === 0 && (
-        <div className="flex flex-col items-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-12 text-center text-sm text-gray-400">
+        <div className="flex flex-col items-center gap-2 card px-5 py-12 text-center text-sm text-gray-400">
           <Megaphone className="h-8 w-8 text-gray-300" />
           No announcements yet.
         </div>
@@ -420,7 +421,7 @@ function ComposeAnnouncement({
           <button
             type="submit"
             disabled={postMutation.isPending || !title.trim() || !body.trim() || tooLong}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
           >
             {editing ? <Save className="h-4 w-4" aria-hidden /> : <Megaphone className="h-4 w-4" aria-hidden />}
             {postMutation.isPending ? (editing ? 'Saving...' : 'Posting...') : editing ? 'Save changes' : 'Post'}

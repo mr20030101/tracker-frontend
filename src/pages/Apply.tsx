@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { FoldText } from '../components/FoldText'
 import { createPortal } from 'react-dom'
 import { useParams } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
@@ -496,7 +497,7 @@ function ApplicationForm({ leadId }: { leadId: string }) {
 function Notice({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="text-center">
-      <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
+      <h1 className="text-3xl font-medium sm:text-4xl text-gray-900"><FoldText text={title} /></h1>
       <p className="mt-2 text-sm text-gray-500">{children}</p>
     </div>
   )

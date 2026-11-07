@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { FoldText } from '../components/FoldText'
 import { Link } from 'react-router-dom'
 import { Ban, Check, ClipboardCheck, Download, ExternalLink, Eye, Flag, Send, Trash2, Undo2, X } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -86,14 +87,14 @@ export function Feedback() {
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Feedback</h1>
+          <h1 className="text-3xl font-medium sm:text-4xl text-gray-900"><FoldText text="Feedback" /></h1>
           <p className="text-sm text-gray-500">
             {isManager
               ? "Feedback your team got on their tasks. Check each one and mark it valid or invalid, with your remarks."
               : 'Report the feedback you got on a task. Your lead checks whether it holds up and adds their remarks.'}
           </p>
         </div>
-        <button onClick={() => setNewReport(true)} className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground">
+        <button onClick={() => setNewReport(true)} className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground">
           <Flag className="h-4 w-4" aria-hidden />
           Report feedback
         </button>
@@ -116,7 +117,7 @@ export function Feedback() {
               <button
                 onClick={exportRows}
                 disabled={rows.length === 0}
-                className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
               >
                 <Download className="h-4 w-4" aria-hidden />
                 Export
@@ -387,7 +388,7 @@ function FeedbackDetailsModal({
                 onClick={() => reviewMutation.mutate('valid')}
                 disabled={busy}
                 title="The feedback is true"
-                className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-full bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground disabled:opacity-50"
               >
                 <Check className="h-3.5 w-3.5" aria-hidden />
                 Mark valid
@@ -474,7 +475,7 @@ function NewFeedbackModal({ onClose }: { onClose: () => void }) {
           <button
             type="submit"
             disabled={fileMutation.isPending}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
           >
             <Send className="h-4 w-4" aria-hidden />
             {fileMutation.isPending ? 'Sending...' : 'Send to lead'}

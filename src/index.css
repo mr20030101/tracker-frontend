@@ -1,7 +1,8 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: 'Roboto', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Outfit', 'Inter', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'Roboto Mono', ui-monospace, SFMono-Regular, monospace;
 
   --text-xs: calc(0.75rem + 2px);
@@ -18,18 +19,53 @@
   --text-8xl: calc(6rem + 2px);
   --text-9xl: calc(8rem + 2px);
 
-  --color-accent: #d4a017;
-  --color-accent-foreground: #1a1500;
-  --color-accent-bg: #f7ead0;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.875rem;
+  --radius-xl: 1.25rem;
+  --radius-2xl: 1.5rem;
+  --radius-3xl: 1.75rem;
 
-  --color-status-success-bg: #ecfdf3;
-  --color-status-success-text: #027a48;
-  --color-status-warning-bg: #fffaeb;
-  --color-status-warning-text: #b54708;
-  --color-status-danger-bg: #fef3f2;
-  --color-status-danger-text: #b42318;
-  --color-status-neutral-bg: #f2f4f7;
-  --color-status-neutral-text: #475467;
+  --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Warm neutrals: every gray-* and white in the app takes these, so pages repaint without class changes. */
+  --color-white: #fffdf8;
+  --color-gray-50: #f5f3ee;
+  --color-gray-100: #efece4;
+  --color-gray-200: #e3dfd4;
+  --color-gray-300: #d2cdc1;
+  --color-gray-400: #858177;
+  --color-gray-500: #75726a;
+  --color-gray-600: #5c5a54;
+  --color-gray-700: #45433e;
+  --color-gray-800: #2e2d2a;
+  --color-gray-900: #1d1d1b;
+
+  /* Links: honey-brown instead of blue, so the only colour on the page is the accent family. */
+  --color-sky-100: #fbefc9;
+  --color-sky-600: #8a6206;
+  --color-sky-700: #74520a;
+  --color-sky-800: #5a4306;
+
+  --color-night: #252523;
+  --color-night-2: #34332f;
+  --color-night-ink: #f4f2ec;
+  --color-night-dim: #a9a69c;
+
+  --color-accent: #f6c343;
+  --color-accent-foreground: #4a3705;
+  --color-accent-bg: #fbe29a;
+  --color-accent-text: #8a6206;
+
+  --color-status-success-bg: #e6f0e4;
+  --color-status-success-text: #3f7f52;
+  --color-status-warning-bg: #fbefd9;
+  --color-status-warning-text: #a35e10;
+  --color-status-danger-bg: #f9e7e1;
+  --color-status-danger-text: #b03a24;
+  --color-status-neutral-bg: #efece4;
+  --color-status-neutral-text: #5c5a54;
+
+  --shadow-card: 0 1px 0 #ffffffcc inset, 0 18px 40px -26px #3c321459;
 }
 
 :root {
@@ -46,6 +82,34 @@
 
 body {
   @apply bg-gray-50 text-gray-900 antialiased font-sans;
+  background-image: radial-gradient(70rem 40rem at 100% 100%, var(--app-glow), transparent 70%);
+  background-attachment: fixed;
+  letter-spacing: -0.005em;
+}
+
+:root {
+  --app-glow: #fbeec0;
+}
+
+:root[data-theme='dark'] {
+  --app-glow: #2a230f;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --app-glow: #2a230f;
+  }
+}
+
+/* Page titles and big figures use the display face. */
+h1,
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+main h1 {
+  font-weight: 500;
 }
 
 /* Night mode: overrides the gray/white/sky theme variables so the whole
@@ -55,67 +119,79 @@ body {
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
     color-scheme: dark;
-    --color-white: #1a1d24;
-    --color-gray-50: #12141a;
-    --color-gray-100: #1f222a;
-    --color-gray-200: #2b2f39;
-    --color-gray-300: #3c4150;
-    --color-gray-400: #7a8190;
-    --color-gray-500: #98a0ad;
-    --color-gray-600: #b1b8c4;
-    --color-gray-700: #cdd2db;
-    --color-gray-800: #e2e5eb;
-    --color-gray-900: #f5f6f8;
+    --color-white: #252523;
+    --color-gray-50: #1b1b19;
+    --color-gray-100: #2c2b28;
+    --color-gray-200: #36352f;
+    --color-gray-300: #4a4842;
+    --color-gray-400: #8f8c83;
+    --color-gray-500: #a9a69c;
+    --color-gray-600: #c4c1b8;
+    --color-gray-700: #dcd9d0;
+    --color-gray-800: #ebe8e0;
+    --color-gray-900: #f4f2ec;
 
-    --color-sky-100: #163650;
-    --color-sky-600: #38bdf8;
-    --color-sky-700: #5ec9f8;
-    --color-sky-800: #a9e2ff;
+    --color-sky-100: #3a2f12;
+    --color-sky-600: #f6c343;
+    --color-sky-700: #f8d06a;
+    --color-sky-800: #fbe29a;
 
-    --color-accent: #e0ab1e;
-    --color-accent-bg: #caa23a;
+    --color-night: #121211;
+    --color-night-2: #2c2b28;
 
-    --color-status-success-bg: #0d1f17;
-    --color-status-success-text: #34d399;
-    --color-status-warning-bg: #241a08;
-    --color-status-warning-text: #fbbf24;
-    --color-status-danger-bg: #241417;
-    --color-status-danger-text: #f87171;
-    --color-status-neutral-bg: #1c1f27;
-    --color-status-neutral-text: #aab2c0;
+    --color-accent: #f6c343;
+    --color-accent-bg: #f2c64e;
+    --color-accent-text: #f6c343;
+
+    --color-status-success-bg: #18241a;
+    --color-status-success-text: #7cc48f;
+    --color-status-warning-bg: #2a2010;
+    --color-status-warning-text: #f0b45a;
+    --color-status-danger-bg: #2c1813;
+    --color-status-danger-text: #f08a72;
+    --color-status-neutral-bg: #2c2b28;
+    --color-status-neutral-text: #c4c1b8;
+
+    --shadow-card: 0 1px 0 #ffffff0d inset, 0 18px 40px -26px #00000099;
   }
 }
 
 :root[data-theme='dark'] {
   color-scheme: dark;
-  --color-white: #1a1d24;
-  --color-gray-50: #12141a;
-  --color-gray-100: #1f222a;
-  --color-gray-200: #2b2f39;
-  --color-gray-300: #3c4150;
-  --color-gray-400: #7a8190;
-  --color-gray-500: #98a0ad;
-  --color-gray-600: #b1b8c4;
-  --color-gray-700: #cdd2db;
-  --color-gray-800: #e2e5eb;
-  --color-gray-900: #f5f6f8;
+  --color-white: #252523;
+  --color-gray-50: #1b1b19;
+  --color-gray-100: #2c2b28;
+  --color-gray-200: #36352f;
+  --color-gray-300: #4a4842;
+  --color-gray-400: #8f8c83;
+  --color-gray-500: #a9a69c;
+  --color-gray-600: #c4c1b8;
+  --color-gray-700: #dcd9d0;
+  --color-gray-800: #ebe8e0;
+  --color-gray-900: #f4f2ec;
 
-  --color-sky-100: #163650;
-  --color-sky-600: #38bdf8;
-  --color-sky-700: #5ec9f8;
-  --color-sky-800: #a9e2ff;
+  --color-sky-100: #3a2f12;
+  --color-sky-600: #f6c343;
+  --color-sky-700: #f8d06a;
+  --color-sky-800: #fbe29a;
 
-  --color-accent: #e0ab1e;
-  --color-accent-bg: #caa23a;
+  --color-night: #121211;
+  --color-night-2: #2c2b28;
 
-  --color-status-success-bg: #0d1f17;
-  --color-status-success-text: #34d399;
-  --color-status-warning-bg: #241a08;
-  --color-status-warning-text: #fbbf24;
-  --color-status-danger-bg: #241417;
-  --color-status-danger-text: #f87171;
-  --color-status-neutral-bg: #1c1f27;
-  --color-status-neutral-text: #aab2c0;
+  --color-accent: #f6c343;
+  --color-accent-bg: #f2c64e;
+  --color-accent-text: #f6c343;
+
+  --color-status-success-bg: #18241a;
+  --color-status-success-text: #7cc48f;
+  --color-status-warning-bg: #2a2010;
+  --color-status-warning-text: #f0b45a;
+  --color-status-danger-bg: #2c1813;
+  --color-status-danger-text: #f08a72;
+  --color-status-neutral-bg: #2c2b28;
+  --color-status-neutral-text: #c4c1b8;
+
+  --shadow-card: 0 1px 0 #ffffff0d inset, 0 18px 40px -26px #00000099;
 }
 
 @keyframes heartbeat {
@@ -197,16 +273,16 @@ body {
    gray/white tokens for its own, so every link, label, divider and hover inside repaints at once. */
 .nav-dark {
   color-scheme: dark;
-  --color-white: #0b0c0f;
-  --color-gray-50: #15171c;
-  --color-gray-100: #1d2027;
-  --color-gray-200: #262a32;
-  --color-gray-300: #3a3f4b;
-  --color-gray-400: #8a919e;
-  --color-gray-500: #a3aab6;
-  --color-gray-600: #d4d8df;
-  --color-gray-700: #eceef2;
-  --color-gray-800: #f5f6f8;
+  --color-white: #252523;
+  --color-gray-50: #2c2b28;
+  --color-gray-100: #34332f;
+  --color-gray-200: #3d3c37;
+  --color-gray-300: #4a4842;
+  --color-gray-400: #a9a69c;
+  --color-gray-500: #bdbab0;
+  --color-gray-600: #dcd9d0;
+  --color-gray-700: #ebe8e0;
+  --color-gray-800: #f4f2ec;
   --color-gray-900: #ffffff;
   color: var(--color-gray-900);
 }
@@ -731,4 +807,104 @@ body {
 .rich-text p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
   @apply pointer-events-none float-left h-0 text-gray-400;
+}
+
+/* The app's surface: a soft warm panel with a hairline highlight, used for every content card. */
+@utility card {
+  border-radius: var(--radius-3xl);
+  border: 1px solid var(--card-edge);
+  background-color: var(--color-white);
+  box-shadow: var(--shadow-card);
+}
+
+:root {
+  --card-edge: #1d1d1b0f;
+}
+
+:root[data-theme='dark'] {
+  --card-edge: #ffffff0d;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --card-edge: #ffffff0d;
+  }
+}
+
+/* The hatched meter from the dashboard hero: diagonal hairlines on a pale track. */
+.meter-stripes {
+  background-color: color-mix(in srgb, var(--color-white) 70%, transparent);
+  background-image: repeating-linear-gradient(-55deg, transparent 0 7px, var(--color-gray-300) 7px 8px);
+  box-shadow: var(--shadow-card);
+}
+
+@keyframes nav-tip-in {
+  from {
+    opacity: 0;
+    translate: -4px 0;
+  }
+}
+
+.nav-tip {
+  animation: nav-tip-in 120ms var(--ease-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-tip {
+    animation: none;
+  }
+}
+
+/* Page titles unfold letter by letter (components/FoldText). */
+.fold-word {
+  display: inline-block;
+  white-space: nowrap;
+  perspective: 700px;
+}
+
+.fold-char {
+  position: relative;
+  display: inline-block;
+  transform-origin: 50% 0%;
+  backface-visibility: hidden;
+  animation: fold-in 650ms cubic-bezier(0.215, 0.61, 0.355, 1) both;
+  animation-delay: calc(var(--fold-i) * 45ms);
+}
+
+.fold-char::after {
+  content: attr(data-char);
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  background: linear-gradient(180deg, rgb(0 0 0 / 0.58) 0%, rgb(0 0 0 / 0.22) 42%, rgb(255 255 255 / 0.26) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  opacity: 0;
+  animation: fold-crease 650ms cubic-bezier(0.215, 0.61, 0.355, 1) both;
+  animation-delay: calc(var(--fold-i) * 45ms);
+}
+
+@keyframes fold-in {
+  from {
+    opacity: 0;
+    transform: rotateX(-92deg);
+  }
+}
+
+@keyframes fold-crease {
+  from {
+    opacity: 0.55;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fold-char,
+  .fold-char::after {
+    animation: none;
+  }
 }
