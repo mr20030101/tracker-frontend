@@ -81,8 +81,9 @@ export function TaskSubmissionForm({ submission, onClose }: Props) {
 
   // Scope the Project choices to whichever lead the target CB is attached
   // to, so a submission can only be logged against a project that lead
-  // actually runs.
-  const { data: contributorLeadId } = useQuery({
+  // actually runs. A contributor logging their own already knows their lead.
+  const ownLeadId = !isManager ? (user?.lead_id ?? null) : undefined
+  const { data: lookedUpLeadId } = useQuery({
     queryKey: ['profile-lead-id', form.cb_email],
     queryFn: async () => {
       const { data, error: profileError } = await supabase
@@ -93,8 +94,9 @@ export function TaskSubmissionForm({ submission, onClose }: Props) {
       if (profileError) throw profileError
       return (data?.lead_id as string | null) ?? null
     },
-    enabled: Boolean(form.cb_email),
+    enabled: isManager && Boolean(form.cb_email),
   })
+  const contributorLeadId = ownLeadId !== undefined ? ownLeadId : lookedUpLeadId
 
   const { data: leadProjectIds } = useQuery({
     queryKey: ['project-leads-for-lead', contributorLeadId],

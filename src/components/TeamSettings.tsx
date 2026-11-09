@@ -42,7 +42,8 @@ const TEAM_LEGEND: { term: string; text: string }[] = [
   },
 ]
 
-export function TeamSettings() {
+/** `bare` drops the card and heading, for use inside a modal that has its own title. */
+export function TeamSettings({ bare = false }: { bare?: boolean }) {
   const { user } = useAuth()
   const isAdmin = user?.role === 'admin'
   const { data: leads = [] } = useQuery({
@@ -58,9 +59,9 @@ export function TeamSettings() {
   const teams = isAdmin ? leads : user ? [{ id: user.id, name: user.name }] : []
 
   return (
-    <section className="card px-5 py-4">
+    <section className={bare ? '' : 'card px-5 py-4'}>
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h2 className="text-base font-semibold text-gray-900">Team settings</h2>
+        {!bare && <h2 className="text-base font-semibold text-gray-900">Team settings</h2>}
         <p className="text-sm text-gray-500">
           {isAdmin
             ? "What each lead's team uses in the Tracker. Switching something off hides it from that team's contributors."

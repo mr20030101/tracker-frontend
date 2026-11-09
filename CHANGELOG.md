@@ -14,6 +14,17 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.12.0 — 2026-11-09
+
+### Changed
+
+- The **CBs** page and sidebar link are now called **Contributors**.
+- On the **Leads** page, team settings open in a window from the new **Team settings** button next to Add Login, instead of sitting under the list of logins.
+
+### Fixed
+
+- **Add Submission is quicker.** Saving a task used to make four trips to the server one after another before the task was even sent, two of them only to re-check who you are. It now makes two. Opening the form no longer looks up your own lead before the Project list settles. The rest of the tracker is a little quicker for the same reason.
+
 ## 8.11.0 — 2026-11-09
 
 ### Changed

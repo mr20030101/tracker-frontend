@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { FoldText } from '../components/FoldText'
 import { Link, useSearchParams } from 'react-router-dom'
-import { FileUp, KeyRound, Trash2, UserCheck, UserMinus, UserPlus, X } from 'lucide-react'
+import { FileUp, KeyRound, Trash2, UserCheck, UserMinus, UserPlus, X, SlidersHorizontal } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ColumnDef, RowSelectionState } from '@tanstack/react-table'
 import { api } from '../lib/api'
@@ -55,11 +55,12 @@ const emptyForm = { name: '', email: '', password: '', role: 'contributor' as Us
 export function Users({ view = 'cbs' }: { view?: 'cbs' | 'leads' }) {
   const { user: currentUser } = useAuth()
   const isAdmin = currentUser?.role === 'admin'
-  const pageTitle = view === 'cbs' ? 'CBs' : isAdmin ? 'Leads' : 'Team settings'
+  const pageTitle = view === 'cbs' ? 'Contributors' : isAdmin ? 'Leads' : 'Team settings'
   usePageTitle(pageTitle)
   const queryClient = useQueryClient()
   const [adding, setAdding] = useState(false)
   const [bulkImporting, setBulkImporting] = useState(false)
+  const [teamSettingsOpen, setTeamSettingsOpen] = useState(false)
   const [resetTarget, setResetTarget] = useState<User | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null)
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
@@ -513,6 +514,15 @@ export function Users({ view = 'cbs' }: { view?: 'cbs' | 'leads' }) {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {view === 'leads' && (
+            <button
+              onClick={() => setTeamSettingsOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+            >
+              <SlidersHorizontal className="h-4 w-4" aria-hidden />
+              Team settings
+            </button>
+          )}
           <button
             onClick={() => setBulkImporting(true)}
             className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50"
@@ -656,10 +666,10 @@ export function Users({ view = 'cbs' }: { view?: 'cbs' | 'leads' }) {
         }
         rowClassName={(u) => (!u.is_active ? 'opacity-60' : '')}
       />
-      {view === 'leads' && (
-        <div className="mt-6">
-          <TeamSettings />
-        </div>
+      {teamSettingsOpen && (
+        <Modal title="Team settings" onClose={() => setTeamSettingsOpen(false)} maxWidthClassName="max-w-6xl">
+          <TeamSettings bare />
+        </Modal>
       )}
 
       {bulkImporting && (
