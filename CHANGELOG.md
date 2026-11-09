@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.12.0 — 2026-11-09
+
 ### Changed
 
 - The **CBs** page and sidebar link are now called **Contributors**.
