@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.10.0 — 2026-11-09
+
 ### Added
 
 - **Program for each team: Bootcamp or RST.** An admin sets it in **Settings → Team** (new Program column). Jay Anne's team starts as RST and everyone else as Bootcamp. When a lead files an extension for someone on an RST team, the tracker opens the **RST Task Extension Form** with the CB's email, Task ID, reason and project filled in, instead of the Scale Reclaim / Extend form.
