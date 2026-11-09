@@ -14,6 +14,10 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Fixed
+
+- **Add Submission is quicker.** Saving a task used to make four trips to the server one after another before the task was even sent, two of them only to re-check who you are. It now makes one. Opening the form no longer looks up your own lead before the Project list settles. The rest of the tracker is a little quicker for the same reason.
+
 ## 8.11.0 — 2026-11-09
 
 ### Changed

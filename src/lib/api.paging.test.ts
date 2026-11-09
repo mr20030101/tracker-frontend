@@ -1,8 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { api } from './api'
 
-const { mockGetUser, mockOrder } = vi.hoisted(() => ({
-  mockGetUser: vi.fn(),
+const { mockGetSession, mockOrder } = vi.hoisted(() => ({
+  mockGetSession: vi.fn(),
   mockOrder: vi.fn(),
 }))
 
@@ -34,7 +34,7 @@ vi.mock('@supabase/supabase-js', () => {
 
   return {
     createClient: vi.fn(() => ({
-      auth: { getUser: mockGetUser },
+      auth: { getSession: mockGetSession },
       from: (table: string) => makeBuilder(table),
     })),
   }
@@ -43,7 +43,7 @@ vi.mock('@supabase/supabase-js', () => {
 describe('submissions() paging order stability', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } }, error: null })
+    mockGetSession.mockResolvedValue({ data: { session: { user: { id: 'u1' } } }, error: null })
   })
 
   it('appends id as ascending tie-breaker when sorting ascending', async () => {
