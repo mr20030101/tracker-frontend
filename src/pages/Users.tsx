@@ -21,7 +21,6 @@ import { usePageTitle } from '../lib/usePageTitle'
 
 const ROLES: User['role'][] = ['contributor', 'lead', 'admin']
 const ROLE_OPTIONS = ROLES.map((r) => ({ value: r, label: r.charAt(0).toUpperCase() + r.slice(1) }))
-const DEFAULT_PASSWORD = 'password'
 
 type StatusFilter = '' | 'active' | 'disabled'
 type Notice = { tone: 'success' | 'error'; text: string }
@@ -48,7 +47,7 @@ function formatLastSeen(lastSeenAt: string | null) {
   return `${Math.floor(hours / 24)}d ago`
 }
 
-const emptyForm = { name: '', email: '', password: DEFAULT_PASSWORD, role: 'contributor' as User['role'], shift: '' }
+const emptyForm = { name: '', email: '', password: '', role: 'contributor' as User['role'], shift: '' }
 
 export function Users() {
   usePageTitle('Users')
@@ -117,10 +116,18 @@ export function Users() {
   }, [notice])
 
   const createMutation = useMutation({
-    mutationFn: async () => api.post('/users', form),
-    onSuccess: () => {
+    mutationFn: async () => (await api.post<{ id: string; temporary_password?: string; emailed_to?: string; email_error?: string }>('/users', form)).data,
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
-      setNotice({ tone: 'success', text: `Added ${form.name}. They'll be asked to choose a new password when they first sign in.` })
+      // The account exists either way; an email that didn't go leaves the password on screen to pass on.
+      setNotice(
+        result.emailed_to
+          ? { tone: 'success', text: `Added ${form.name}. We emailed their sign-in details to ${result.emailed_to}. They'll choose their own password when they first sign in.` }
+          : {
+              tone: 'error',
+              text: `Added ${form.name}, but the email couldn't be sent (${result.email_error ?? 'no reason given'}). Send them their temporary password yourself: ${result.temporary_password ?? form.password}`,
+            },
+      )
       setAdding(false)
       setForm(emptyForm)
       setError(null)
@@ -480,7 +487,6 @@ export function Users() {
           <p className="text-sm text-gray-500">
             {isAdmin ? 'Manage CB logins, roles, and passwords.' : "Manage your team's logins and passwords."}
           </p>
-          <p className="mt-1 text-xs text-gray-400">New accounts default to: {DEFAULT_PASSWORD}</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -666,8 +672,8 @@ export function Users() {
               <label className="mb-1 block text-sm font-medium text-gray-700">Temporary Password</label>
               <input
                 type="text"
-                required
                 minLength={8}
+                placeholder="Leave blank to make one up"
                 value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
