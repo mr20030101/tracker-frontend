@@ -14,6 +14,10 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Added
+
+- **Two new themes: Black and Neon.** Pick them in **Settings → Appearance**. Black is the dark theme on pure black with plain greys, easy on phones with OLED screens. Neon is near-black with neon green buttons, links and highlights. Like the other themes, the choice is remembered on each device.
+
 ## 8.13.0 — 2026-11-09
 
 ### Added
