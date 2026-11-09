@@ -43,7 +43,7 @@ import { ProgressRing } from './ProgressRing'
 import { LineChart } from './LineChart'
 import { CountUp } from './CountUp'
 import { GrowBar } from './GrowBar'
-import { StatusPill } from './StatusPill'
+import { BackupFormFailed, StatusPill } from './StatusPill'
 import { ActionsMenu } from './ActionsMenu'
 import { TaskTimer } from './TaskTimer'
 import { SortableHeader } from './SortableHeader'
@@ -819,7 +819,10 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                       <td className="px-5 py-3 text-gray-600">{row.project?.name ?? '—'}</td>
                       <td className="px-5 py-3 uppercase text-gray-600">{row.stage}</td>
                       <td className="px-5 py-3">
-                        <StatusPill status={row.status} />
+                        <div className="flex flex-wrap items-center gap-2">
+                          <StatusPill status={row.status} />
+                          <BackupFormFailed task={row} />
+                        </div>
                       </td>
                       <td className="px-5 py-3">
                         <TaskTimer task={row} canControl={canEdit} />

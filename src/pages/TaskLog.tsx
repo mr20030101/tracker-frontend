@@ -8,7 +8,7 @@ import { sanitiseOrTerm } from '../lib/sanitiseOrTerm'
 import { useAuth } from '../lib/auth'
 import { formatTime, toISODate } from '../lib/week'
 import type { Paginated, Project, Stage, SubmissionStatus, TaskSubmission } from '../types'
-import { StatusPill } from '../components/StatusPill'
+import { BackupFormFailed, StatusPill } from '../components/StatusPill'
 import { Avatar } from '../components/Avatar'
 import { ActionsMenu } from '../components/ActionsMenu'
 import { Select } from '../components/Select'
@@ -39,6 +39,7 @@ const STATUS_OPTIONS: { value: SubmissionStatus; label: string }[] = [
   { value: 'submitted', label: 'Submitted' },
   { value: 'in_progress', label: 'In Progress' },
   { value: 'empty', label: 'Empty' },
+  { value: 'rejected', label: 'Rejected/SBQ' },
   { value: 'expired', label: 'Expired' },
   { value: 'claimed_by_another', label: 'Claimed by Another Person' },
 ]
@@ -361,6 +362,7 @@ function ManagerTaskLog() {
                         <StatusPill status={row.status} />
                       </button>
                     )}
+                    <BackupFormFailed task={row} />
                   </div>
                 </td>
                 <td className="px-5 py-3 text-gray-500">

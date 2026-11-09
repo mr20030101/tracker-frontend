@@ -21,6 +21,7 @@ const STATUS_OPTIONS: { value: SubmissionStatus; label: string }[] = [
   { value: 'submitted', label: 'Submitted' },
   { value: 'in_progress', label: 'In Progress' },
   { value: 'empty', label: 'Empty' },
+  { value: 'rejected', label: 'Rejected/SBQ' },
   { value: 'expired', label: 'Expired' },
   { value: 'claimed_by_another', label: 'Claimed by Another Person' },
 ]
