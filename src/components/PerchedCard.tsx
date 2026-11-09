@@ -2,11 +2,10 @@ import type { ReactNode, Ref } from 'react'
 import { FoldText } from './FoldText'
 import { useTheme } from '../lib/theme'
 import { LoginOwl, type OwlMood } from './LoginOwl'
-import { Logo } from './Logo'
 import { AppFooter } from './AppFooter'
 
 // The full-page layout shared by the login page and the application form: the app's cream
-// backdrop with the logo in a pill at the top, and a centred card with the owl mascot perched on
+// backdrop and a centred card with the owl mascot perched on
 // its top edge (the bottom of the owl tucks behind the card, the talons grip it in front).
 export function PerchedCard({
   lookX = 0,
@@ -31,10 +30,7 @@ export function PerchedCard({
   const night = useTheme().theme === 'dark'
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 pb-16 pt-24">
-      <div className="absolute left-4 top-4 rounded-full bg-white/70 px-4 py-2.5 shadow-card sm:left-8 sm:top-6">
-        <Logo className="h-7" />
-      </div>
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-16">
       <div className={`relative w-full ${maxWidthClassName} pt-20`}>
         <div className="absolute left-1/2 top-0 w-28 -translate-x-1/2">
           <LoginOwl lookX={lookX} lookY={lookY} mood={mood} night={night} />
