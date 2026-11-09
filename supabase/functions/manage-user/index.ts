@@ -429,7 +429,10 @@ Deno.serve(async (request) => {
         return Response.json({ id: data.user.id, ...emailStatus }, { headers: corsHeaders })
     }
 
-    if (!body.email || !body.password || !body.name) return errorResponse('Name, email, and password are required.', 400)
+    if (!body.email || !body.name) return errorResponse('Name and email are required.', 400)
+    const typedPassword = typeof body.password === 'string' ? body.password.trim() : ''
+    if (typedPassword && typedPassword.length < 8) return errorResponse('A temporary password needs at least 8 characters.', 400)
+    const password = typedPassword || generateTemporaryPassword()
 
     // Only an admin caller may hand out a non-contributor role — a lead's
     // logins always come out as contributors, regardless of what was sent.
@@ -448,7 +451,7 @@ Deno.serve(async (request) => {
 
     if (userId) {
         const { error } = await admin.auth.admin.updateUserById(userId, {
-            password: body.password,
+            password,
             email_confirm: true,
             user_metadata: { name: body.name, role },
         })
@@ -456,7 +459,7 @@ Deno.serve(async (request) => {
     } else {
         const { data, error } = await admin.auth.admin.createUser({
             email: body.email,
-            password: body.password,
+            password,
             email_confirm: true,
             user_metadata: { name: body.name, role },
         })
@@ -486,5 +489,13 @@ Deno.serve(async (request) => {
             : `Created a ${role} account for ${body.name} (${body.email})`,
         { role },
     )
-    return Response.json({ id: userId }, { headers: corsHeaders })
+    const emailStatus = await emailAccount(request, {
+        kind: 'activation',
+        to: body.email,
+        name: body.name,
+        loginEmail: body.email,
+        password,
+        from: { name: profile.name, email: profile.email },
+    })
+    return Response.json({ id: userId, temporary_password: password, ...emailStatus }, { headers: corsHeaders })
 })
