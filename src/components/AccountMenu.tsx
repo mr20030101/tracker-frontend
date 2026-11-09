@@ -1,14 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
-import { ChevronDown, LogOut, Settings, UserRound } from 'lucide-react'
+import { ChevronDown, Download, LogOut, Settings, Share, SquarePlus, UserRound } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { contributorPath } from '../lib/urlRef'
 import { Avatar } from './Avatar'
+import { Modal } from './Modal'
+import { isIosBrowser, promptInstall, useCanInstall } from '../lib/install'
 
 // Your avatar in the header. Opens who you're signed in as, a link to your profile, and Sign out.
 export function AccountMenu() {
   const { user, logout } = useAuth()
   const [open, setOpen] = useState(false)
+  const [iosHelp, setIosHelp] = useState(false)
+  const canInstall = useCanInstall()
+  const showInstall = canInstall || isIosBrowser()
   const root = useRef<HTMLDivElement>(null)
   const location = useLocation()
 
@@ -80,6 +85,21 @@ export function AccountMenu() {
               <Settings className="h-4 w-4 text-gray-400" />
               Settings
             </NavLink>
+            {showInstall && (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setOpen(false)
+                  if (canInstall) void promptInstall()
+                  else setIosHelp(true)
+                }}
+                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+              >
+                <Download className="h-4 w-4 text-gray-400" />
+                Install app
+              </button>
+            )}
             <button
               type="button"
               role="menuitem"
@@ -91,6 +111,25 @@ export function AccountMenu() {
             </button>
           </div>
         </div>
+      )}
+      {iosHelp && (
+        <Modal title="Install the tracker" onClose={() => setIosHelp(false)}>
+          <ol className="flex flex-col gap-3 text-sm text-gray-700">
+            <li className="flex items-start gap-3">
+              <Share className="mt-0.5 h-4 w-4 shrink-0 text-gray-500" aria-hidden />
+              <span>
+                In Safari, tap <strong>Share</strong> at the bottom of the screen.
+              </span>
+            </li>
+            <li className="flex items-start gap-3">
+              <SquarePlus className="mt-0.5 h-4 w-4 shrink-0 text-gray-500" aria-hidden />
+              <span>
+                Choose <strong>Add to Home Screen</strong>, then <strong>Add</strong>.
+              </span>
+            </li>
+          </ol>
+          <p className="mt-4 text-xs text-gray-500">The tracker then opens from your home screen like an app, without the browser bars.</p>
+        </Modal>
       )}
     </div>
   )
