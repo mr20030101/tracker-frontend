@@ -314,6 +314,30 @@ export function buildExtensionRequestFormUrl(params: {
   return `${EXTENSION_REQUEST_FORM_URL}?${query.toString()}`
 }
 
+// RST teams' own extension form ("RST Task Extension Form"). No request type, level or Remotask ID.
+const RST_EXTENSION_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSeURxoFjNqHdPiG5z1AkNfAcFJL5oSOuQqBdvYh-xBEA8zbsQ/viewform'
+const RST_EXTENSION_FORM_ENTRY = {
+  cbEmail: 'entry.459544622',
+  taskId: 'entry.1934029394',
+  reason: 'entry.2131209052',
+  projectName: 'entry.1473472423',
+}
+const RST_FORM_PROJECTS: { match: RegExp; option: string }[] = [
+  { match: /aloha/i, option: 'Aloha-OTS_Tasking' },
+  { match: /ego/i, option: 'Ego-OTS_Tasking' },
+]
+
+/** A link to the RST extension form, prefilled. */
+export function buildRstExtensionFormUrl(params: { taskId: string | null; cbEmail: string | null; projectName: string | null; reason: string | null }): string {
+  const query = new URLSearchParams({ usp: 'pp_url' })
+  if (params.cbEmail) query.set(RST_EXTENSION_FORM_ENTRY.cbEmail, params.cbEmail)
+  if (params.taskId) query.set(RST_EXTENSION_FORM_ENTRY.taskId, params.taskId)
+  if (params.reason) query.set(RST_EXTENSION_FORM_ENTRY.reason, params.reason)
+  const project = params.projectName ? RST_FORM_PROJECTS.find((p) => p.match.test(params.projectName!))?.option : undefined
+  if (project) query.set(RST_EXTENSION_FORM_ENTRY.projectName, project)
+  return `${RST_EXTENSION_FORM_URL}?${query.toString()}`
+}
+
 // The "Bad Video Validation/Removal" form (ALOHA | URSA | YAM) a lead/admin files once they've
 // decided a flagged task's video really does need removal/validation — same mechanism as the
 // extension form above: open it prefilled, in a new tab, and mark the request approved here.
