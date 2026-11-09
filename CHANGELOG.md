@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.9.1 — 2026-11-09
+
 ### Fixed
 
 - **New accounts from the Users page are emailed their sign-in details**, like accounts made from Hiring. Before, nothing was sent. The temporary password no longer defaults to "password": leave it blank and a strong one is made up. If the email can't be sent, the page says why and shows the temporary password to pass on yourself.
