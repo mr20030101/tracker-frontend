@@ -23,7 +23,7 @@ export interface TeamSeries {
 }
 
 export function TeamTrendChart({ labels, series, unitLabel }: { labels: string[]; series: TeamSeries[]; unitLabel: string }) {
-  const { theme } = useTheme()
+  const { mode: theme } = useTheme()
   const tickColor = theme === 'dark' ? '#7a8190' : '#9ca3af'
   const gridColor = theme === 'dark' ? '#2b2f39' : '#f3f4f6'
 

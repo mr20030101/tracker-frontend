@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type R
 import { FoldText } from '../components/FoldText'
 import { useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Camera, Check, Eye, EyeOff, KeyRound, Lock, Mic, MicOff, Monitor, Moon, Palette, PhoneCall, Save, Sun, Undo2, UserRound, Volume2, type LucideIcon } from 'lucide-react'
+import { Camera, Check, Eye, EyeOff, KeyRound, Lock, Mic, MicOff, Monitor, Moon, MoonStar, Palette, PhoneCall, Save, Sun, Undo2, UserRound, Volume2, Zap, type LucideIcon } from 'lucide-react'
 import { supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useCall } from '../lib/call'
@@ -480,8 +480,11 @@ function PasswordSection() {
 }
 
 // Fixed colours for the theme pictures, so each shows its own theme whatever the page is in now.
-const LIGHT_PALETTE = { page: '#f3f4f6', header: '#ffffff', card: '#ffffff', line: '#e5e7eb', text: '#d1d5db' }
-const DARK_PALETTE = { page: '#12141a', header: '#1a1d24', card: '#1a1d24', line: '#2b2f39', text: '#3c4150' }
+const LIGHT_PALETTE = { page: '#f3f4f6', header: '#ffffff', card: '#ffffff', line: '#e5e7eb', text: '#d1d5db', accent: '#d4a017' }
+const DARK_PALETTE = { page: '#12141a', header: '#1a1d24', card: '#1a1d24', line: '#2b2f39', text: '#3c4150', accent: '#d4a017' }
+const BLACK_PALETTE = { page: '#000000', header: '#0a0a0a', card: '#0a0a0a', line: '#262626', text: '#3a3a3a', accent: '#d4a017' }
+const NEON_PALETTE = { page: '#050706', header: '#0e120f', card: '#0e120f', line: '#1e2620', text: '#2d382f', accent: '#39ff14' }
+const PALETTES = { light: LIGHT_PALETTE, dark: DARK_PALETTE, black: BLACK_PALETTE, neon: NEON_PALETTE }
 type ThemePalette = typeof LIGHT_PALETTE
 
 // A small picture of the tracker: the black sidebar, the header, a heading and two cards.
@@ -489,7 +492,7 @@ function ThemePicture({ palette }: { palette: ThemePalette }) {
   return (
     <div className="flex h-full w-full" style={{ background: palette.page }}>
       <div className="flex w-[18%] flex-col gap-1.5 bg-[#0b0c0f] p-2">
-        <div className="h-2 w-3/4 rounded-full bg-[#d4a017]" />
+        <div className="h-2 w-3/4 rounded-full" style={{ background: palette.accent }} />
         <div className="h-1.5 w-full rounded-full bg-white/25" />
         <div className="h-1.5 w-full rounded-full bg-white/25" />
         <div className="h-1.5 w-2/3 rounded-full bg-white/25" />
@@ -501,7 +504,7 @@ function ThemePicture({ palette }: { palette: ThemePalette }) {
           <div className="grid flex-1 grid-cols-2 gap-2">
             {[0, 1].map((i) => (
               <div key={i} className="flex flex-col gap-1.5 rounded-md p-1.5" style={{ background: palette.card, border: `1px solid ${palette.line}` }}>
-                <div className={`h-1.5 rounded-full bg-[#d4a017] ${i ? 'w-1/3' : 'w-1/2'}`} />
+                <div className={`h-1.5 rounded-full ${i ? 'w-1/3' : 'w-1/2'}`} style={{ background: palette.accent }} />
                 <div className="h-1.5 w-full rounded-full" style={{ background: palette.line }} />
                 <div className="h-1.5 w-3/4 rounded-full" style={{ background: palette.line }} />
               </div>
@@ -514,12 +517,14 @@ function ThemePicture({ palette }: { palette: ThemePalette }) {
 }
 
 function AppearanceSection() {
-  const { theme, manual, chooseTheme } = useTheme()
+  const { theme, mode, manual, chooseTheme } = useTheme()
   const choice = manual ? theme : 'system'
   const options = [
     { value: 'system' as const, label: 'System', hint: 'Matches your device', icon: Monitor },
     { value: 'light' as const, label: 'Light', hint: 'Always light', icon: Sun },
     { value: 'dark' as const, label: 'Dark', hint: 'Always dark', icon: Moon },
+    { value: 'black' as const, label: 'Black', hint: 'Pure black, easy on OLED screens', icon: MoonStar },
+    { value: 'neon' as const, label: 'Neon', hint: 'Dark with neon green', icon: Zap },
   ]
 
   return (
@@ -529,7 +534,7 @@ function AppearanceSection() {
           <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
             <h3 className="text-sm font-semibold text-gray-900">Theme</h3>
             {choice === 'system' && (
-              <span className="text-xs text-gray-500">Your device is set to {theme} right now.</span>
+              <span className="text-xs text-gray-500">Your device is set to {mode} right now.</span>
             )}
           </div>
           <div role="radiogroup" aria-label="Theme" className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -558,7 +563,7 @@ function AppearanceSection() {
                         </div>
                       </>
                     ) : (
-                      <ThemePicture palette={value === 'light' ? LIGHT_PALETTE : DARK_PALETTE} />
+                      <ThemePicture palette={PALETTES[value]} />
                     )}
                   </div>
                   <div className="flex items-center gap-3 px-4 py-3">

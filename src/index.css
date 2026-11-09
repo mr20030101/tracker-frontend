@@ -202,6 +202,86 @@ main h1 {
   --shadow-card: 0 1px 2px #00000040, 0 12px 24px -12px #000000a6;
 }
 
+/* Black: the dark theme on pure black, with neutral greys instead of warm ones (kind to OLED screens). */
+:root[data-theme][data-palette='black'] {
+  --color-white: #0a0a0a;
+  --color-gray-50: #000000;
+  --color-gray-100: #161616;
+  --color-gray-200: #222222;
+  --color-gray-300: #333333;
+  --color-gray-400: #8a8a8a;
+  --color-gray-500: #a3a3a3;
+  --color-gray-600: #c2c2c2;
+  --color-gray-700: #dadada;
+  --color-gray-800: #ebebeb;
+  --color-gray-900: #f5f5f5;
+
+  --color-night: #000000;
+  --color-night-2: #161616;
+  --color-ink: #f5f5f5;
+  --color-ink-foreground: #000000;
+  --color-status-neutral-bg: #161616;
+  --color-status-neutral-text: #c2c2c2;
+
+  --card-edge: #ffffff1f;
+  --shadow-card: none;
+  --app-glow: transparent;
+}
+
+:root[data-palette='black'] .nav-dark {
+  --color-white: #000000;
+  --color-gray-50: #111111;
+  --color-gray-100: #1a1a1a;
+  --color-gray-200: #262626;
+  --color-gray-300: #333333;
+  border-right: 1px solid #ffffff14;
+}
+
+/* Neon: near-black with a neon green accent and a faint green glow. */
+:root[data-theme][data-palette='neon'] {
+  --color-white: #0e120f;
+  --color-gray-50: #050706;
+  --color-gray-100: #151b16;
+  --color-gray-200: #1e2620;
+  --color-gray-300: #2d382f;
+  --color-gray-400: #7f8c80;
+  --color-gray-500: #9aa79b;
+  --color-gray-600: #bcc7bd;
+  --color-gray-700: #d6e0d7;
+  --color-gray-800: #e8f0e9;
+  --color-gray-900: #f2fff3;
+
+  --color-sky-100: #0f2e0a;
+  --color-sky-600: #39ff14;
+  --color-sky-700: #6dff52;
+  --color-sky-800: #a3ff94;
+
+  --color-night: #050706;
+  --color-night-2: #151b16;
+  --color-ink: #e8f0e9;
+  --color-ink-foreground: #050706;
+
+  --color-accent: #39ff14;
+  --color-accent-foreground: #041a00;
+  --color-accent-bg: #39ff14;
+  --color-accent-text: #39ff14;
+  --color-status-neutral-bg: #151b16;
+  --color-status-neutral-text: #bcc7bd;
+
+  --card-edge: #39ff1426;
+  --shadow-card: 0 0 0 1px #39ff140d, 0 12px 28px -14px #39ff1440;
+  --app-glow: #39ff1414;
+}
+
+:root[data-palette='neon'] .nav-dark {
+  --color-white: #050706;
+  --color-gray-50: #0e120f;
+  --color-gray-100: #151b16;
+  --color-gray-200: #1e2620;
+  --color-gray-300: #2d382f;
+  border-right: 1px solid #39ff1426;
+}
+
 @keyframes heartbeat {
   0%,
   100% {

@@ -1,6 +1,12 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 
-type Theme = 'light' | 'dark'
+/** What can be picked in Settings → Appearance. Black and Neon are dark themes with their own colours. */
+export type Theme = 'light' | 'dark' | 'black' | 'neon'
+const THEMES: Theme[] = ['light', 'dark', 'black', 'neon']
+
+/** Light or dark, whatever the theme: what charts, logos and the login owl go by. */
+export type ThemeMode = 'light' | 'dark'
+export const modeOf = (theme: Theme): ThemeMode => (theme === 'light' ? 'light' : 'dark')
 
 function getSystemTheme(): Theme {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
@@ -9,15 +15,25 @@ function getSystemTheme(): Theme {
 function getStoredTheme(): Theme | null {
   try {
     const stored = localStorage.getItem('theme')
-    return stored === 'light' || stored === 'dark' ? stored : null
+    return THEMES.includes(stored as Theme) ? (stored as Theme) : null
   } catch {
     return null
   }
 }
 
+// data-theme is light or dark, which every dark-mode rule keys off; data-palette adds Black's or
+// Neon's own colours on top. index.html sets both before the first paint, the same way.
+function applyTheme(theme: Theme) {
+  const root = document.documentElement
+  root.setAttribute('data-theme', modeOf(theme))
+  if (theme === 'black' || theme === 'neon') root.setAttribute('data-palette', theme)
+  else root.removeAttribute('data-palette')
+}
+
 interface ThemeContextValue {
   theme: Theme
-  /** True once the person has picked Light or Dark in Settings (it's then remembered); false while following the system. */
+  mode: ThemeMode
+  /** True once the person has picked a theme in Settings (it's then remembered); false while following the system. */
   manual: boolean
   /**
    * Picks a theme in Settings → Appearance, remembered on the device. 'system' forgets the
@@ -32,9 +48,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => getStoredTheme() ?? getSystemTheme())
   const [manual, setManual] = useState(() => getStoredTheme() !== null)
 
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme)
-  }, [theme])
+  useEffect(() => applyTheme(theme), [theme])
 
   // Following the system: switches along with the device (e.g. its own sunset schedule).
   useEffect(() => {
@@ -57,7 +71,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  return <ThemeContext.Provider value={{ theme, manual, chooseTheme }}>{children}</ThemeContext.Provider>
+  return <ThemeContext.Provider value={{ theme, mode: modeOf(theme), manual, chooseTheme }}>{children}</ThemeContext.Provider>
 }
 
 export function useTheme() {
@@ -67,4 +81,3 @@ export function useTheme() {
   }
   return ctx
 }
-

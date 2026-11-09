@@ -26,7 +26,7 @@ interface Props {
 }
 
 export function LineChart({ data, color: colorProp, unitLabel }: Props) {
-  const { theme } = useTheme()
+  const { mode: theme } = useTheme()
   const color = colorProp === 'ink' ? (theme === 'dark' ? '#f4f2ec' : '#1d1d1b') : colorProp
   const tickColor = theme === 'dark' ? '#8f8c83' : '#858177'
   const gridColor = theme === 'dark' ? '#36352f' : '#efece4'
