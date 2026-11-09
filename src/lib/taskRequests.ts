@@ -288,8 +288,26 @@ function formProjectOption(projectName: string | null): string | null {
   return FORM_PROJECTS.find((p) => p.match.test(projectName))?.option ?? null
 }
 
-// Who files it: always written this way on the form, whoever in the app opens it.
-const EXTENSION_FORM_SUPPORT_NAME = 'Tan, Jay-Anne R.'
+/** A name as the Scale forms write it: "Jay Anne R. Tan" becomes "Tan, Jay Anne R.". */
+export function formSupportName(name: string | null): string | null {
+  const trimmed = name?.trim().replace(/\s+/g, ' ')
+  if (!trimmed) return null
+  if (trimmed.includes(',')) return trimmed
+  const parts = trimmed.split(' ')
+  if (parts.length < 2) return trimmed
+  const last = parts.pop()!
+  return `${last}, ${parts.join(' ')}`
+}
+
+/** The name of the contributor's own lead, or null when they have no lead (or it can't be read). */
+export async function fetchCbLeadName(cbUserId: string): Promise<string | null> {
+  const { data: cb, error } = await supabase.from('profiles').select('lead_id').eq('id', cbUserId).maybeSingle()
+  if (error) throw error
+  if (!cb?.lead_id) return null
+  const { data: lead, error: leadError } = await supabase.from('profiles').select('name').eq('id', cb.lead_id).maybeSingle()
+  if (leadError) throw leadError
+  return lead?.name ?? null
+}
 
 /** A link to the Reclaim/Extend form with as much of it prefilled as we have on hand. */
 export function buildExtensionRequestFormUrl(params: {
@@ -300,6 +318,8 @@ export function buildExtensionRequestFormUrl(params: {
   stage: Stage | null
   projectName: string | null
   reason: string | null
+  /** The contributor's lead, who the request is filed under. */
+  leadName: string | null
 }): string {
   const query = new URLSearchParams({ usp: 'pp_url' })
   if (params.taskId) query.set(EXTENSION_FORM_ENTRY.taskId, params.taskId)
@@ -310,7 +330,8 @@ export function buildExtensionRequestFormUrl(params: {
   if (project) query.set(EXTENSION_FORM_ENTRY.projectName, project)
   query.set(EXTENSION_FORM_ENTRY.requestType, params.requestType)
   if (params.reason) query.set(EXTENSION_FORM_ENTRY.reason, params.reason)
-  query.set(EXTENSION_FORM_ENTRY.supportName, EXTENSION_FORM_SUPPORT_NAME)
+  const supportName = formSupportName(params.leadName)
+  if (supportName) query.set(EXTENSION_FORM_ENTRY.supportName, supportName)
   return `${EXTENSION_REQUEST_FORM_URL}?${query.toString()}`
 }
 
@@ -352,8 +373,7 @@ const BAD_VIDEO_FORM_ENTRY = {
   workforceName: 'entry.701886437',
   workforce: 'entry.8749894',
 }
-// Like the Reclaim/Extend form's support name: always written this way, whoever opens the form and
-// whatever the report itself recorded. Workforce must match the form's option ("REMOTE") exactly.
+// Always written this way, whoever opens the form and whatever the report itself recorded. Workforce must match the form's option ("REMOTE") exactly.
 const BAD_VIDEO_FORM_SUPPORT_NAME = 'Tan, Jay-anne R.'
 const BAD_VIDEO_FORM_WORKFORCE = 'REMOTE'
 const BAD_VIDEO_FORM_WORKFORCE_NAME = 'Greyowls'
