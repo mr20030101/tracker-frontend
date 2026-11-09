@@ -11,6 +11,9 @@ import { DialogHost } from './lib/dialog.tsx'
 import { UpdateBanner } from './components/UpdateBanner.tsx'
 import './lib/sound.ts'
 import './lib/consoleWarning.ts'
+import { startInstallListener } from './lib/install.ts'
+
+startInstallListener()
 
 const queryClient = new QueryClient()
 
