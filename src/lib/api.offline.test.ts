@@ -2,45 +2,44 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { isNetworkError } from './offlineQueue'
 import { api } from './api'
 
-const { mockGetUser } = vi.hoisted(() => ({
-  mockGetUser: vi.fn(),
+const { mockGetSession, mockMaybeSingle } = vi.hoisted(() => ({
+  mockGetSession: vi.fn(),
+  mockMaybeSingle: vi.fn(),
 }))
 
 vi.mock('@supabase/supabase-js', () => ({
   createClient: vi.fn(() => ({
-    auth: { getUser: mockGetUser },
+    auth: { getSession: mockGetSession },
     from: () => ({
       select: () => ({
-        eq: () => ({
-          maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
-        }),
+        eq: () => ({ maybeSingle: mockMaybeSingle }),
       }),
     }),
   })),
 }))
 
-describe('currentProfile: auth errors on a flaky network', () => {
+describe('currentProfile on a flaky network', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('rethrows the auth error when getUser returns a network failure, not Unauthenticated', async () => {
-    const networkError = Object.assign(new Error('Failed to fetch'), { name: 'AuthRetryableFetchError' })
-    mockGetUser.mockResolvedValue({ data: { user: null }, error: networkError })
-
-    const caught = await api.get('/me').catch((e: unknown) => e)
-
-    expect(caught).toBe(networkError)
-    expect(isNetworkError(caught)).toBe(true)
-  })
-
-  it('throws Unauthenticated when there is no user and no auth error', async () => {
-    mockGetUser.mockResolvedValue({ data: { user: null }, error: null })
+  it('reports a lost connection while reading the profile as a network error', async () => {
+    mockGetSession.mockResolvedValue({ data: { session: { user: { id: 'u1' } } }, error: null })
+    mockMaybeSingle.mockResolvedValue({ data: null, error: { message: 'TypeError: Failed to fetch' } })
 
     const caught = await api.get('/me').catch((e: unknown) => e)
 
     expect(caught).toBeInstanceOf(Error)
+    expect(isNetworkError(caught)).toBe(true)
+  })
+
+  it('throws Unauthenticated when there is no session', async () => {
+    mockGetSession.mockResolvedValue({ data: { session: null }, error: null })
+
+    const caught = await api.get('/me').catch((e: unknown) => e)
+
     expect((caught as Error).message).toBe('Unauthenticated')
     expect(isNetworkError(caught)).toBe(false)
+    expect(mockMaybeSingle).not.toHaveBeenCalled()
   })
 })

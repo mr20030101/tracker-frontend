@@ -49,11 +49,19 @@ async function result<T>(query: PromiseLike<{ data: T[] | null; error: { message
   return { data: data ?? [] }
 }
 
+// The signed-in user's id from the session kept in the browser. getUser() would ask the auth server
+// on every call, a round trip before each request; the database checks the token itself anyway.
+async function sessionUserId(): Promise<string | null> {
+  const { data } = await supabase.auth.getSession()
+  return data.session?.user.id ?? null
+}
+
 async function currentProfile(): Promise<User> {
-  const { data: authData, error: authError } = await supabase.auth.getUser()
-  if (!authData.user) throw authError ?? new Error('Unauthenticated')
-  const { data, error } = await supabase.from('profiles').select('*').eq('id', authData.user.id).maybeSingle()
-  if (error) throw error
+  const userId = await sessionUserId()
+  if (!userId) throw new Error('Unauthenticated')
+  const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle()
+  // As an Error, so a lost connection ("Failed to fetch") is recognised and the submission queued.
+  if (error) throw new Error(error.message)
   // Every login gets a profile from the handle_new_user() trigger, filled in by manage-user; one
   // without it (or not yet activated) has no business in the app.
   if (!data || !data.is_active) throw new Error('Account disabled')
@@ -345,14 +353,14 @@ export const api = {
     throw new Error(`Unsupported GET endpoint: ${path}`)
   },
   async post<T>(path: string, payload: Record<string, unknown>): Promise<Response<T>> {
-    await currentProfile()
+    const me = await currentProfile()
     if (path === '/users') {
       const { data, error } = await supabase.functions.invoke('manage-user', { body: payload })
       if (error) throw await functionErrorMessage(error)
       return { data: data as T }
     }
     const table = path.slice(1).replace('task-submissions', 'task_submissions')
-    const row = path === '/task-submissions' ? { ...payload, user_id: (await supabase.auth.getUser()).data.user?.id } : payload
+    const row = path === '/task-submissions' ? { ...payload, user_id: me.id } : payload
     const { data, error } = await supabase.from(table).insert(row).select().single()
     if (error) throw taskIdConflictError(table, error)
     return { data: data as T }
