@@ -34,12 +34,13 @@ const schemaFile = `${dir}/2-schema.sql`
 pgDump(conn, ['--schema-only', '--no-owner', '--schema=public', '--file', schemaFile])
 const schema = readFileSync(schemaFile, 'utf8')
   .split('\n')
-  .filter((line) => !/^(CREATE SCHEMA public;|COMMENT ON SCHEMA public )/.test(line))
+  .filter((line) => !/^(CREATE SCHEMA public;|COMMENT ON SCHEMA public |ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin )/.test(line))
   .join('\n')
 writeFileSync(schemaFile, schema)
 
 step('auth triggers, storage policies and realtime tables')
 const extras = query(conn, `
+  set search_path = '';
   select pg_get_triggerdef(t.oid) || ';'
   from pg_trigger t
   join pg_proc p on p.oid = t.tgfoid
@@ -69,6 +70,18 @@ pgDump(conn, [
   `${dir}/4-data.sql`,
 ])
 pgDump(conn, ['--data-only', '--table=storage.buckets', '--file', `${dir}/5-buckets.sql`])
+
+step('scheduled jobs (pg_cron)')
+const hasCron = query(conn, `select exists (select 1 from pg_extension where extname = 'pg_cron')`) === 't'
+const cron = hasCron
+  ? query(conn, `
+    set search_path = '';
+    select format('select cron.schedule(%L, %L, %L);', jobname, schedule, command)
+      || case when active then '' else format(E'\\nupdate cron.job set active = false where jobname = %L;', jobname) end
+    from cron.job order by jobname`)
+  : ''
+writeFileSync(`${dir}/6-cron.sql`, `${cron}\n`)
+writeFileSync(`${dir}/project-ref.txt`, `${conn.projectRef}\n`)
 
 step('row counts')
 writeFileSync(`${dir}/counts.txt`, `${query(conn, COUNTS_SQL)}\n`)

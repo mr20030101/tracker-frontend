@@ -14,6 +14,12 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.7.1 — 2026-11-09
+
+### Fixed
+
+- **Backup and restore.** `npm run backup` now also saves scheduled jobs, and `npm run restore` brings them back pointed at the new project, along with the bot reply address. Restoring no longer stops on database permissions that only Supabase itself can set, and a wrong database password now gives a clear message. Nothing changes in the app itself.
+
 ## 8.7.0 — 2026-11-07
 
 ### Added

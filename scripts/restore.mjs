@@ -6,7 +6,9 @@
 // Needs TARGET_DB_URL, TARGET_SUPABASE_URL and TARGET_SERVICE_ROLE_KEY in .env.backup. Refuses to
 // run against the project the backup came from, or any project that already has tables.
 
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { dirname, join } from 'node:path'
 import { createClient } from '@supabase/supabase-js'
 import { COUNTS_SQL, ROOT, connection, fail, loadEnv, psql, query, requireEnv } from './db-tools.mjs'
 
@@ -28,6 +30,12 @@ if (query(target, `select count(*) from pg_tables where schemaname = 'public'`) 
   fail(`Project ${target.projectRef} already has tables in public. Restore only into a new, empty project.`)
 }
 
+// Scheduled jobs and app_secrets.bot_reply_url call the old project's edge functions by URL; point them at the new one.
+const sourceRef = existsSync(`${dir}/project-ref.txt`) ? readFileSync(`${dir}/project-ref.txt`, 'utf8').trim() : null
+const cronSql = existsSync(`${dir}/6-cron.sql`) ? readFileSync(`${dir}/6-cron.sql`, 'utf8') : ''
+const cronFile = join(mkdtempSync(join(tmpdir(), 'restore-')), 'cron.sql')
+writeFileSync(cronFile, sourceRef ? cronSql.replaceAll(sourceRef, target.projectRef) : cronSql)
+
 console.log(`Restoring ${dir} into ${target.projectRef}`)
 console.log('- database (one transaction: nothing is kept if any step fails)')
 psql(target, [
@@ -39,7 +47,13 @@ psql(target, [
   '-c', 'set session_replication_role = replica',
   '-f', `${dir}/4-data.sql`,
   '-f', `${dir}/5-buckets.sql`,
+  '-c', 'set session_replication_role = origin',
+  '-f', cronFile,
+  ...(sourceRef
+    ? ['-c', `update public.app_secrets set value = replace(value, '${sourceRef}', '${target.projectRef}') where value like '%${sourceRef}%'`]
+    : []),
 ], { stdio: ['ignore', 'ignore', 'inherit'] })
+rmSync(dirname(cronFile), { recursive: true, force: true })
 
 console.log('- storage files')
 const supabase = createClient(targetUrl, targetKey, { auth: { persistSession: false } })
