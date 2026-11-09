@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.13.0 — 2026-11-09
+
 ### Added
 
 - **Install the tracker as an app.** Open your account menu (your name, top right) and choose **Install app**. It then opens from your desktop, dock or home screen in its own window, without the browser bars. On an iPhone or iPad, the same button shows the two Safari steps (Share → Add to Home Screen). If the connection drops, the app shows a short "You're offline" page with a Try again button instead of the browser's error.
