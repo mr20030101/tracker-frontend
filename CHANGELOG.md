@@ -14,6 +14,10 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Fixed
+
+- **Reclaim and extension requests are filed under the contributor's own lead.** When a lead opens the Scale Reclaim / Extend form from a request, the Support Name now shows that contributor's lead (for example "Garcia, Ina") instead of always Jay Anne. If the contributor has no lead, the field is left blank to fill in.
+
 ## 8.14.0 — 2026-11-09
 
 ### Added

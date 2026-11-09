@@ -1,6 +1,7 @@
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { ExternalLink, X } from 'lucide-react'
-import { buildExtensionRequestFormUrl, buildRstExtensionFormUrl } from '../lib/taskRequests'
+import { buildExtensionRequestFormUrl, buildRstExtensionFormUrl, fetchCbLeadName } from '../lib/taskRequests'
 import { useTeamFeatures } from '../lib/teamFeatures'
 import type { Stage } from '../types'
 import { Modal } from './Modal'
@@ -36,7 +37,13 @@ export function FileTimeRequestModal({
 }) {
   const [fields, setFields] = useState(initial)
   const team = useTeamFeatures(cbUserId)
-  const ready = !cbUserId || team.loaded
+  const lead = useQuery({
+    queryKey: ['cb-lead-name', cbUserId],
+    queryFn: () => fetchCbLeadName(cbUserId!),
+    enabled: !!cbUserId,
+    staleTime: 5 * 60_000,
+  })
+  const ready = !cbUserId || (team.loaded && !lead.isPending)
   const rst = ready && team.program === 'rst'
   const set = <K extends keyof TimeRequestFormFields>(key: K, value: TimeRequestFormFields[K]) => setFields((prev) => ({ ...prev, [key]: value }))
   const text = (value: string) => (value.trim() === '' ? null : value)
@@ -49,7 +56,7 @@ export function FileTimeRequestModal({
           e.preventDefault()
           if (!ready) return
           const reason = fields.reason?.trim() || null
-          const url = rst ? buildRstExtensionFormUrl({ ...fields, reason }) : buildExtensionRequestFormUrl({ ...fields, reason })
+          const url = rst ? buildRstExtensionFormUrl({ ...fields, reason }) : buildExtensionRequestFormUrl({ ...fields, reason, leadName: lead.data ?? null })
           window.open(url, '_blank', 'noopener,noreferrer')
           onFiled()
           onClose()
