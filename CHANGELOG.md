@@ -14,6 +14,12 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.9.2 — 2026-11-09
+
+### Changed
+
+- The sign-in, forgot-password and application pages no longer show the Grey Owls badge in the top-left corner. The owl on the card stays.
+
 ## 8.9.1 — 2026-11-09
 
 ### Fixed
