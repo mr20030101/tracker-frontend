@@ -711,8 +711,35 @@ function CallsSection() {
   )
 }
 
-// Leads and admins: switching the CTS Form and Attendance on or off for a team (a lead's own; every
-// lead's for an admin). Each switch saves straight away.
+
+// Leads and admins: what each team uses (a lead's own; every lead's for an admin), one row per team
+// with what each switch does explained once above. Each switch saves straight away.
+type TeamToggleKey = 'ctsEnabled' | 'attendanceEnabled' | 'attendancePublic' | 'backupFormEnabled'
+
+const TEAM_TOGGLES: { key: TeamToggleKey; label: string }[] = [
+  { key: 'ctsEnabled', label: 'CTS Form' },
+  { key: 'attendanceEnabled', label: 'Attendance' },
+  { key: 'attendancePublic', label: 'Public' },
+  { key: 'backupFormEnabled', label: 'Backup form' },
+]
+
+const TEAM_LEGEND: { term: string; text: string }[] = [
+  { term: 'CTS Form', text: 'The CTS Form button and CTS column on the Dashboard, Task Log and profile.' },
+  { term: 'Attendance', text: 'The Attendance page, form and countdown. Off, contributors can’t file it themselves.' },
+  {
+    term: 'Public',
+    text: 'Contributors see who on the team filed today, with each person’s photo. Emails, Task IDs and screenshots stay private. Needs Attendance on.',
+  },
+  {
+    term: 'Backup form',
+    text: 'Each task marked Submitted, Rejected/SBQ or Expired goes to the Back Up Task Tracker Remote Google Form once. Tasks finished while it’s off aren’t sent later. Needs a CTS trainer.',
+  },
+  {
+    term: 'CTS trainer',
+    text: 'Exactly as it reads in the Google Forms, e.g. “garcia, ina dimaano”. Fills the CTS Form’s “Under Trainer Team” and the backup form’s “Support / Trainer”.',
+  },
+]
+
 function TeamSection() {
   const { user } = useAuth()
   const isAdmin = user?.role === 'admin'
@@ -739,19 +766,43 @@ function TeamSection() {
           : 'What your team uses in the Tracker. Switching something off hides it from your contributors.'
       }
     >
+      <dl className="mb-5 grid gap-x-8 gap-y-2 rounded-md bg-gray-50 px-4 py-3 sm:grid-cols-2">
+        {TEAM_LEGEND.map(({ term, text }) => (
+          <div key={term} className="text-xs leading-5">
+            <dt className="inline font-semibold text-gray-800">{term}</dt>
+            <dd className="inline text-gray-500"> — {text}</dd>
+          </div>
+        ))}
+      </dl>
+
       {teams.length === 0 ? (
         <p className="text-sm text-gray-500">{isLoading ? 'Loading...' : 'No leads yet.'}</p>
       ) : (
-        <div className="divide-y divide-gray-100">
-          {teams.map((team) => (
-            <TeamFeatureRow
-              key={team.id}
-              leadId={team.id}
-              title={isAdmin ? `${team.name}\u2019s team` : 'Your team'}
-              features={features?.get(team.id) ?? ALL_FEATURES_ON}
-              disabled={isLoading}
-            />
-          ))}
+        <div role="table" aria-label="Team features">
+          <div role="row" className="hidden border-b border-gray-200 pb-2 text-xs font-medium text-gray-500 md:grid md:grid-cols-12 md:gap-4">
+            <span role="columnheader" className="md:col-span-3">
+              Team
+            </span>
+            {TEAM_TOGGLES.map(({ key, label }) => (
+              <span key={key} role="columnheader" className="md:col-span-1">
+                {label}
+              </span>
+            ))}
+            <span role="columnheader" className="md:col-span-5">
+              CTS trainer
+            </span>
+          </div>
+          <div role="rowgroup" className="divide-y divide-gray-100">
+            {teams.map((team) => (
+              <TeamFeatureRow
+                key={team.id}
+                leadId={team.id}
+                title={isAdmin ? `${team.name.trim()}’s team` : 'Your team'}
+                features={features?.get(team.id) ?? ALL_FEATURES_ON}
+                disabled={isLoading}
+              />
+            ))}
+          </div>
         </div>
       )}
     </Section>
@@ -760,88 +811,52 @@ function TeamSection() {
 
 function TeamFeatureRow({ leadId, title, features, disabled }: { leadId: string; title: string; features: TeamFeatures; disabled: boolean }) {
   const queryClient = useQueryClient()
-  const save = useMutation({
-    mutationFn: (next: TeamFeatures) => setTeamFeatures(leadId, next),
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['team-features-list'] })
-      queryClient.invalidateQueries({ queryKey: ['team-features'] })
-    },
-  })
-  const shown = save.isPending && save.variables ? save.variables : features
-  const toggles: { key: 'ctsEnabled' | 'attendanceEnabled' | 'attendancePublic'; label: string; hint: string }[] = [
-    { key: 'ctsEnabled', label: 'CTS Form', hint: 'The CTS Form button and CTS column on the Dashboard, Task Log and profile.' },
-    { key: 'attendanceEnabled', label: 'Attendance', hint: 'The Attendance page, form and countdown. Off, contributors can\u2019t file it themselves.' },
-    {
-      key: 'attendancePublic',
-      label: 'Public attendance',
-      hint: 'Contributors see who on the team has filed today, with each person\u2019s attendance photo. Emails, Task IDs and screenshots stay private.',
-    },
-  ]
-  return (
-    <div className="py-4 first:pt-0 last:pb-0">
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
-        {save.error && <span className="text-xs text-status-danger-text">{errorMessage(save.error, "Couldn't save.")}</span>}
-      </div>
-      <div className="space-y-3">
-        {toggles.map(({ key, label, hint }) => (
-          <div key={key} className="flex items-start justify-between gap-4">
-            <div>
-              <div className="text-sm font-medium text-gray-800">{label}</div>
-              <div className="text-xs text-gray-500">{hint}</div>
-              {key === 'attendancePublic' && !shown.attendanceEnabled && (
-                <div className="mt-0.5 text-xs font-medium text-gray-700">Turn on Attendance first to make it public.</div>
-              )}
-            </div>
-            <Switch
-              checked={shown[key]}
-              onChange={(next) => save.mutate({ ...shown, [key]: next })}
-              disabled={disabled || save.isPending || (key === 'attendancePublic' && !shown.attendanceEnabled)}
-              label={`${label} for ${title}`}
-            />
-          </div>
-        ))}
-        <CtsTrainerField leadId={leadId} title={title} trainer={features.ctsTrainer} disabled={disabled} />
-        <BackupFormSwitch leadId={leadId} title={title} features={features} disabled={disabled} />
-      </div>
-    </div>
-  )
-}
+  const onSettled = () => {
+    queryClient.invalidateQueries({ queryKey: ['team-features-list'] })
+    queryClient.invalidateQueries({ queryKey: ['team-features'] })
+  }
+  const save = useMutation({ mutationFn: (next: TeamFeatures) => setTeamFeatures(leadId, next), onSettled })
+  const saveBackup = useMutation({ mutationFn: (next: boolean) => setTeamBackupForm(leadId, next), onSettled })
 
-function BackupFormSwitch({ leadId, title, features, disabled }: { leadId: string; title: string; features: TeamFeatures; disabled: boolean }) {
-  const queryClient = useQueryClient()
-  const save = useMutation({
-    mutationFn: (next: boolean) => setTeamBackupForm(leadId, next),
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['team-features-list'] })
-      queryClient.invalidateQueries({ queryKey: ['team-features'] })
-    },
-  })
-  const checked = save.isPending && save.variables !== undefined ? save.variables : features.backupFormEnabled
+  const shown: TeamFeatures = {
+    ...(save.isPending && save.variables ? save.variables : features),
+    backupFormEnabled: saveBackup.isPending && saveBackup.variables !== undefined ? saveBackup.variables : features.backupFormEnabled,
+  }
+  const error = save.error ?? saveBackup.error
+
+  const change = (key: TeamToggleKey, next: boolean) =>
+    key === 'backupFormEnabled' ? saveBackup.mutate(next) : save.mutate({ ...shown, [key]: next })
+
   return (
-    <div className="flex items-start justify-between gap-4">
-      <div>
-        <div className="text-sm font-medium text-gray-800">Back Up Task Tracker form</div>
-        <div className="text-xs text-gray-500">
-          Each task marked Submitted, Rejected/SBQ or Expired is sent to the Back Up Task Tracker Remote Google Form once, with the
-          CTS trainer above as Support / Trainer. Tasks finished while this is off aren{'\u2019'}t sent later.
+    <div role="row" className="grid grid-cols-1 gap-3 py-4 md:grid-cols-12 md:items-center md:gap-4 md:py-3">
+      <div role="rowheader" className="min-w-0 md:col-span-3">
+        <h3 className="truncate text-sm font-semibold text-gray-900">{title}</h3>
+        {error && <div className="text-xs text-status-danger-text">{errorMessage(error, "Couldn't save.")}</div>}
+      </div>
+      {TEAM_TOGGLES.map(({ key, label }) => (
+        <div key={key} role="cell" className="flex items-center justify-between gap-4 md:col-span-1 md:justify-start">
+          <span aria-hidden className="text-sm text-gray-700 md:hidden">
+            {label}
+          </span>
+          <Switch
+            checked={shown[key]}
+            onChange={(next) => change(key, next)}
+            disabled={disabled || save.isPending || saveBackup.isPending || (key === 'attendancePublic' && !shown.attendanceEnabled)}
+            label={`${label} for ${title}`}
+          />
         </div>
-        {checked && !features.ctsTrainer && (
-          <div className="mt-0.5 text-xs font-medium text-gray-700">Set the CTS trainer above, or the form can{'\u2019'}t take the tasks.</div>
+      ))}
+      <div role="cell" className="md:col-span-5">
+        <CtsTrainerField leadId={leadId} title={title} trainer={features.ctsTrainer} disabled={disabled} />
+        {shown.backupFormEnabled && !features.ctsTrainer && (
+          <div className="mt-1 text-xs font-medium text-status-danger-text">Needed for the backup form, or its tasks can{'’'}t be sent.</div>
         )}
-        {save.error && <div className="mt-1 text-xs text-status-danger-text">{errorMessage(save.error, "Couldn't save.")}</div>}
       </div>
-      <Switch
-        checked={checked}
-        onChange={(next) => save.mutate(next)}
-        disabled={disabled || save.isPending}
-        label={`Back Up Task Tracker form for ${title}`}
-      />
     </div>
   )
 }
 
-/** The CTS Form's "Under Trainer Team" answer prefilled for this team's contributors. */
+/** The trainer, as it reads in the Google Forms: CTS "Under Trainer Team" and backup form "Support / Trainer". */
 function CtsTrainerField({ leadId, title, trainer, disabled }: { leadId: string; title: string; trainer: string | null; disabled: boolean }) {
   const queryClient = useQueryClient()
   const [draft, setDraft] = useState<string | null>(null)
@@ -861,15 +876,9 @@ function CtsTrainerField({ leadId, title, trainer, disabled }: { leadId: string;
         e.preventDefault()
         if (changed && !save.isPending) save.mutate(draft!)
       }}
-      className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2"
     >
-      <label htmlFor={`cts-trainer-${leadId}`} className="min-w-0 flex-1">
-        <div className="text-sm font-medium text-gray-800">CTS trainer</div>
-        <div className="text-xs text-gray-500">
-          Prefilled as “Under Trainer Team” in the CTS Form. Type it exactly as it reads there, e.g. “garcia, ina dimaano”.
-          Blank leaves it for the contributor to pick.
-        </div>
-        {save.error && <div className="mt-1 text-xs text-status-danger-text">{errorMessage(save.error, "Couldn't save the trainer.")}</div>}
+      <label htmlFor={`cts-trainer-${leadId}`} className="mb-1 block text-sm text-gray-700 md:hidden">
+        CTS trainer
       </label>
       <div className="flex items-center gap-2">
         <input
@@ -880,24 +889,25 @@ function CtsTrainerField({ leadId, title, trainer, disabled }: { leadId: string;
           placeholder="last, first middle"
           disabled={disabled || save.isPending}
           aria-label={`CTS trainer for ${title}`}
-          className="h-9 w-60 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-800 pointer-coarse:h-11"
+          className="h-9 min-w-0 flex-1 rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-800 pointer-coarse:h-11"
         />
         {changed && (
           <>
             <button
               type="submit"
               aria-busy={save.isPending}
-              className="inline-flex h-9 pointer-coarse:h-11 items-center gap-1.5 rounded-full bg-accent px-3 text-sm font-semibold text-accent-foreground"
+              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md bg-accent px-3 text-sm font-semibold text-accent-foreground pointer-coarse:h-11"
             >
               <Save className="h-4 w-4" aria-hidden />
               {save.isPending ? 'Saving...' : 'Save'}
             </button>
-            <button type="button" onClick={() => setDraft(null)} className="text-xs text-gray-500 hover:underline pointer-coarse:min-h-11">
+            <button type="button" onClick={() => setDraft(null)} className="shrink-0 text-xs text-gray-500 hover:underline pointer-coarse:min-h-11">
               Cancel
             </button>
           </>
         )}
       </div>
+      {save.error && <div className="mt-1 text-xs text-status-danger-text">{errorMessage(save.error, "Couldn't save the trainer.")}</div>}
     </form>
   )
 }
