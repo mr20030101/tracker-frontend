@@ -54,22 +54,30 @@ export function connection(dbUrl) {
   }
 }
 
+function runPg(name, fn) {
+  try {
+    return fn()
+  } catch {
+    fail(`${name} failed (the reason is above). If it says "password authentication failed", the password in the database URL is wrong.`)
+  }
+}
+
 export function psql(conn, args, options = {}) {
-  return execFileSync(pgBin('psql'), [conn.url, '-X', '-v', 'ON_ERROR_STOP=1', ...args], {
+  return runPg('psql', () => execFileSync(pgBin('psql'), [conn.url, '-X', '-v', 'ON_ERROR_STOP=1', ...args], {
     env: conn.env,
     encoding: 'utf8',
     maxBuffer: 256 * 1024 * 1024,
     stdio: ['ignore', 'pipe', 'inherit'],
     ...options,
-  })
+  }))
 }
 
 export function query(conn, sql) {
-  return psql(conn, ['-At', '-c', sql]).trim()
+  return psql(conn, ['-qAt', '-c', sql]).trim()
 }
 
 export function pgDump(conn, args) {
-  execFileSync(pgBin('pg_dump'), [conn.url, ...args], { env: conn.env, stdio: ['ignore', 'inherit', 'inherit'] })
+  runPg('pg_dump', () => execFileSync(pgBin('pg_dump'), [conn.url, ...args], { env: conn.env, stdio: ['ignore', 'inherit', 'inherit'] }))
 }
 
 export const COUNTS_SQL = `
