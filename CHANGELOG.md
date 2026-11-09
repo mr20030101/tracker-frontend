@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.9.0 — 2026-11-09
+
 ### Changed
 
 - **Settings → Team is now one table.** Each team is a single row of switches (CTS Form, Attendance, Public, Backup form) with its CTS trainer, and what each switch does is explained once at the top instead of under every team. On a phone each team is a short list of labelled switches. A team with the backup form on but no trainer gets a red note under the trainer field.
