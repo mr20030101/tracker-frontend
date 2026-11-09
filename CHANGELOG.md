@@ -14,6 +14,11 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Changed
+
+- **Attendance is filled in step by step:** Photo, Hours, Status, then Review, with Next and Back buttons and a progress bar showing where you are. The Review step shows every answer, with a **Change** link that goes back to that step, before you submit. A lead filing for someone skips the photo step. The photo you took stays when you go back to it, instead of opening the camera again.
+- The attendance camera no longer mirrors. The live view, the photo you take and the saved photo all face the same way, so nothing flips when you take it.
+
 ## 8.9.2 — 2026-11-09
 
 ### Changed
