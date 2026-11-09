@@ -18,6 +18,11 @@ each stretch of work by the date it shipped.
 
 - **Program for each team: Bootcamp or RST.** An admin sets it in **Settings → Team** (new Program column). Jay Anne's team starts as RST and everyone else as Bootcamp. When a lead files an extension for someone on an RST team, the tracker opens the **RST Task Extension Form** with the CB's email, Task ID, reason and project filled in, instead of the Scale Reclaim / Extend form.
 
+### Changed
+
+- **Attendance is filled in step by step:** Photo, Hours, Status, then Review, with Next and Back buttons and a progress bar showing where you are. The Review step shows your photo and every answer in one card before you submit; tap any of them to go back and change it. A lead filing for someone skips the photo step. The photo you took stays when you go back to it, instead of opening the camera again.
+- The attendance camera no longer mirrors. The live view, the photo you take and the saved photo all face the same way, so nothing flips when you take it.
+
 ## 8.9.2 — 2026-11-09
 
 ### Changed

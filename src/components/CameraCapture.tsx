@@ -8,7 +8,7 @@ const JPEG_QUALITY = 0.75
 // window the server gives an upload to be used.
 const MAX_FILE_AGE_MS = 30 * 60 * 1000
 
-type CameraState = { kind: 'starting' } | { kind: 'live' } | { kind: 'taken'; previewUrl: string; mirrored: boolean } | { kind: 'error'; message: string }
+type CameraState = { kind: 'starting' } | { kind: 'live' } | { kind: 'taken'; previewUrl: string } | { kind: 'error'; message: string }
 
 function cameraError(error: unknown): string {
   const name = error instanceof DOMException ? error.name : ''
@@ -82,7 +82,7 @@ export function CameraCapture({ onChange }: { onChange: (photo: Blob | null) => 
     const blob = await toJpeg(video, video.videoWidth, video.videoHeight)
     if (!blob) return
     stop()
-    setState({ kind: 'taken', previewUrl: URL.createObjectURL(blob), mirrored: true })
+    setState({ kind: 'taken', previewUrl: URL.createObjectURL(blob) })
     onChange(blob)
   }
 
@@ -98,7 +98,7 @@ export function CameraCapture({ onChange }: { onChange: (photo: Blob | null) => 
       image.close()
       if (!blob) throw new Error('encode failed')
       setFileError(null)
-      setState({ kind: 'taken', previewUrl: URL.createObjectURL(blob), mirrored: false })
+      setState({ kind: 'taken', previewUrl: URL.createObjectURL(blob) })
       onChange(blob)
     } catch {
       setFileError("That photo couldn't be read. Try a different one.")
@@ -114,14 +114,14 @@ export function CameraCapture({ onChange }: { onChange: (photo: Blob | null) => 
   return (
     <div className="flex flex-col gap-2">
       <div className="relative aspect-[4/3] overflow-hidden rounded-lg bg-gray-900">
-        {/* Mirrored like a mirror, which is what people expect from a front camera; the photo itself isn't. */}
+        {/* Not mirrored: the live view, the taken photo and the saved photo all face the same way. */}
         <video
           ref={videoRef}
           playsInline
           muted
-          className={`h-full w-full -scale-x-100 object-cover ${state.kind === 'live' ? '' : 'hidden'}`}
+          className={`h-full w-full object-cover ${state.kind === 'live' ? '' : 'hidden'}`}
         />
-        {state.kind === 'taken' && <img src={state.previewUrl} alt="Your attendance photo" className={`h-full w-full object-cover ${state.mirrored ? '-scale-x-100' : ''}`} />}
+        {state.kind === 'taken' && <img src={state.previewUrl} alt="Your attendance photo" className="h-full w-full object-cover" />}
         {state.kind === 'starting' && <div className="flex h-full items-center justify-center text-sm text-gray-300">Opening camera...</div>}
         {state.kind === 'error' && (
           <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center text-sm text-gray-200">
