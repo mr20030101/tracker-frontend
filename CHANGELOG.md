@@ -14,6 +14,10 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Changed
+
+- **Leads and CBs are separate pages.** The sidebar's **Users** link is now **CBs** (contributor logins), and a new **Leads** link lists lead and admin logins with every team's settings below them: program, CTS Form, Attendance, Public, backup form and CTS trainer. These settings moved here from Settings, which no longer has a Team tab. A lead's link is called **Team settings** and shows their own team's settings. What each setting does is folded away under "What each setting does".
+
 ## 8.10.0 — 2026-11-09
 
 ### Added

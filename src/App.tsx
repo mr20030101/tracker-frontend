@@ -68,6 +68,7 @@ function ProtectedLayout() {
         <Route path="/settings" element={<Settings />} />
         <Route path="/contributors/:email" element={<CbProfile />} />
         {isManager && <Route path="/users" element={<Users />} />}
+        {isManager && <Route path="/leads" element={<Users view="leads" />} />}
         {isManager && <Route path="/projects" element={<Projects />} />}
         {isManager && <Route path="/hiring" element={<Hiring />} />}
         {isManager && <Route path="/data-quality" element={<DataQuality />} />}

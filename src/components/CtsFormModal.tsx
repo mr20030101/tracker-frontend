@@ -37,7 +37,7 @@ function buildCtsFormUrl({ email, projectCode, taskerLevel, taskIds, snipboardUr
   if (taskIds.length) params.set('entry.1598956863', taskIds.join(', '))
   if (taskerLevel) params.set('entry.520410062', taskerLevel)
   if (snipboardUrls.length) params.set('entry.354206748', snipboardUrls.join(','))
-  // "Under Trainer Team": the team's trainer, set by its lead in Settings → Team.
+  // "Under Trainer Team": the team's trainer, set on the Leads (Team settings) page.
   if (trainer) params.set('entry.1877212952', trainer)
   return `${CTS_FORM_URL}?${params.toString()}`
 }
