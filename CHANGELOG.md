@@ -14,6 +14,13 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.8.0 — 2026-11-09
+
+### Added
+
+- **Back Up Task Tracker form.** Each task marked Submitted, Rejected/SBQ or Expired can now go to the "Back Up Task Tracker Remote" Google Form by itself, once, so contributors no longer fill it in for every task. It works however the task is marked: the task form, Task Log, the timer or the browser extension. A lead (or an admin) turns it on for their team in **Settings → Team**. It's off until then, and it uses the team's CTS trainer as Support / Trainer. A task that couldn't be sent shows **Not in backup form**, and editing the task tries again.
+- **Rejected/SBQ status** for a task rejected or sent back to the queue in Remotasks.
+
 ## 8.7.1 — 2026-11-09
 
 ### Fixed

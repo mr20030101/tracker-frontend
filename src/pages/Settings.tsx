@@ -21,7 +21,7 @@ import { RemotasksIdField } from '../components/RemotasksIdField'
 import { Reveal } from '../components/Reveal'
 import { Select } from '../components/Select'
 import { Switch } from '../components/Switch'
-import { ALL_FEATURES_ON, fetchTeamFeaturesList, setTeamCtsTrainer, setTeamFeatures, type TeamFeatures } from '../lib/teamFeatures'
+import { ALL_FEATURES_ON, fetchTeamFeaturesList, setTeamBackupForm, setTeamCtsTrainer, setTeamFeatures, type TeamFeatures } from '../lib/teamFeatures'
 import type { User } from '../types'
 
 const SECTIONS: { id: string; label: string; icon: LucideIcon }[] = [
@@ -802,7 +802,41 @@ function TeamFeatureRow({ leadId, title, features, disabled }: { leadId: string;
           </div>
         ))}
         <CtsTrainerField leadId={leadId} title={title} trainer={features.ctsTrainer} disabled={disabled} />
+        <BackupFormSwitch leadId={leadId} title={title} features={features} disabled={disabled} />
       </div>
+    </div>
+  )
+}
+
+function BackupFormSwitch({ leadId, title, features, disabled }: { leadId: string; title: string; features: TeamFeatures; disabled: boolean }) {
+  const queryClient = useQueryClient()
+  const save = useMutation({
+    mutationFn: (next: boolean) => setTeamBackupForm(leadId, next),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['team-features-list'] })
+      queryClient.invalidateQueries({ queryKey: ['team-features'] })
+    },
+  })
+  const checked = save.isPending && save.variables !== undefined ? save.variables : features.backupFormEnabled
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <div>
+        <div className="text-sm font-medium text-gray-800">Back Up Task Tracker form</div>
+        <div className="text-xs text-gray-500">
+          Each task marked Submitted, Rejected/SBQ or Expired is sent to the Back Up Task Tracker Remote Google Form once, with the
+          CTS trainer above as Support / Trainer. Tasks finished while this is off aren{'\u2019'}t sent later.
+        </div>
+        {checked && !features.ctsTrainer && (
+          <div className="mt-0.5 text-xs font-medium text-gray-700">Set the CTS trainer above, or the form can{'\u2019'}t take the tasks.</div>
+        )}
+        {save.error && <div className="mt-1 text-xs text-status-danger-text">{errorMessage(save.error, "Couldn't save.")}</div>}
+      </div>
+      <Switch
+        checked={checked}
+        onChange={(next) => save.mutate(next)}
+        disabled={disabled || save.isPending}
+        label={`Back Up Task Tracker form for ${title}`}
+      />
     </div>
   )
 }

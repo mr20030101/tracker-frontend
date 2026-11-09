@@ -58,7 +58,7 @@ export interface Project {
 }
 
 export type Stage = 'attempt' | 'l0' | 'l1'
-export type SubmissionStatus = 'submitted' | 'in_progress' | 'empty' | 'expired' | 'claimed_by_another'
+export type SubmissionStatus = 'submitted' | 'in_progress' | 'empty' | 'expired' | 'claimed_by_another' | 'rejected'
 
 // A contributor's rank on a given project — distinct from Stage above,
 // which describes a task submission's own pipeline stage.
@@ -88,6 +88,9 @@ export interface TaskSubmission {
   // The task's timer: running while timer_started_at is set, plus the seconds banked from earlier runs.
   timer_started_at?: string | null
   timer_elapsed_seconds?: number
+  // The Back Up Task Tracker form (20261109_task_backup_form.sql): when it was sent, or why it failed.
+  backup_form_sent_at?: string | null
+  backup_form_error?: string | null
   created_at: string
   updated_at?: string
 }

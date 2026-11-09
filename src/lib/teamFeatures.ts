@@ -10,6 +10,8 @@ export interface TeamFeatures {
   attendancePublic: boolean
   // The CTS Form's "Under Trainer Team" answer for the team's contributors; null leaves it blank.
   ctsTrainer: string | null
+  // Finished tasks are sent to the Back Up Task Tracker Google Form (20261109_task_backup_form.sql). Off by default.
+  backupFormEnabled: boolean
 }
 
 interface TeamFeaturesRow {
@@ -17,6 +19,7 @@ interface TeamFeaturesRow {
   attendance_enabled: boolean
   attendance_public: boolean
   cts_trainer: string | null
+  backup_form_enabled: boolean
 }
 
 const fromRow = (r: TeamFeaturesRow): TeamFeatures => ({
@@ -24,9 +27,10 @@ const fromRow = (r: TeamFeaturesRow): TeamFeatures => ({
   attendanceEnabled: r.attendance_enabled,
   attendancePublic: r.attendance_public,
   ctsTrainer: r.cts_trainer,
+  backupFormEnabled: r.backup_form_enabled ?? false,
 })
 
-export const ALL_FEATURES_ON: TeamFeatures = { ctsEnabled: true, attendanceEnabled: true, attendancePublic: false, ctsTrainer: null }
+export const ALL_FEATURES_ON: TeamFeatures = { ctsEnabled: true, attendanceEnabled: true, attendancePublic: false, ctsTrainer: null, backupFormEnabled: false }
 
 /** The features of one person's team: a contributor's lead's, or a lead's own. All on for an admin. */
 export async function fetchTeamFeaturesFor(userId: string): Promise<TeamFeatures> {
@@ -61,7 +65,13 @@ export async function setTeamCtsTrainer(leadId: string, trainer: string): Promis
   if (error) throw error
 }
 
-const ALL_FEATURES_OFF: TeamFeatures = { ctsEnabled: false, attendanceEnabled: false, attendancePublic: false, ctsTrainer: null }
+/** Turns sending a team's finished tasks to the Back Up Task Tracker form on or off. */
+export async function setTeamBackupForm(leadId: string, enabled: boolean): Promise<void> {
+  const { error } = await supabase.rpc('set_team_backup_form', { p_lead_id: leadId, p_enabled: enabled })
+  if (error) throw error
+}
+
+const ALL_FEATURES_OFF: TeamFeatures = { ctsEnabled: false, attendanceEnabled: false, attendancePublic: false, ctsTrainer: null, backupFormEnabled: false }
 
 /**
  * The features of `userId`'s team. Until it loads, everything is hidden, so a team that has

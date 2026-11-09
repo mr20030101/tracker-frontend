@@ -38,6 +38,10 @@ const STATUS_MAP: Record<string, SubmissionStatus> = {
   expired: 'expired',
   'claimed by another person': 'claimed_by_another',
   claimed_by_another: 'claimed_by_another',
+  rejected: 'rejected',
+  'rejected/sbq': 'rejected',
+  'reject/sbq': 'rejected',
+  sbq: 'rejected',
 }
 
 const STAGE_MAP: Record<string, Stage> = {
