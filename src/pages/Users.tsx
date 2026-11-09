@@ -15,6 +15,7 @@ import { DataTable } from '../components/DataTable'
 import { ActionsMenu } from '../components/ActionsMenu'
 import { Select } from '../components/Select'
 import { SearchInput, SegmentedTabs, TableToolbar, toolbarControlClass } from '../components/TableToolbar'
+import { TeamSettings } from '../components/TeamSettings'
 import { BulkImportUsersModal } from '../components/BulkImportUsersModal'
 import { contributorPath } from '../lib/urlRef'
 import { usePageTitle } from '../lib/usePageTitle'
@@ -49,10 +50,13 @@ function formatLastSeen(lastSeenAt: string | null) {
 
 const emptyForm = { name: '', email: '', password: '', role: 'contributor' as User['role'], shift: '' }
 
-export function Users() {
-  usePageTitle('Users')
+// Two pages share this: CBs (/users, contributor logins) and Leads (/leads: lead and admin logins,
+// with every team's settings below). A lead's /leads is just their own team's settings.
+export function Users({ view = 'cbs' }: { view?: 'cbs' | 'leads' }) {
   const { user: currentUser } = useAuth()
   const isAdmin = currentUser?.role === 'admin'
+  const pageTitle = view === 'cbs' ? 'CBs' : isAdmin ? 'Leads' : 'Team settings'
+  usePageTitle(pageTitle)
   const queryClient = useQueryClient()
   const [adding, setAdding] = useState(false)
   const [bulkImporting, setBulkImporting] = useState(false)
@@ -77,21 +81,23 @@ export function Users() {
     refetchInterval: 2 * 60_000,
   })
 
-  const people = useMemo(() => (data ?? []).filter((u) => u.id !== currentUser?.id), [data, currentUser?.id])
+  const everyone = useMemo(() => (data ?? []).filter((u) => u.id !== currentUser?.id), [data, currentUser?.id])
+  const people = useMemo(
+    () => everyone.filter((u) => (view === 'leads' ? u.role !== 'contributor' : u.role === 'contributor')),
+    [everyone, view],
+  )
   const leads = useMemo(() => (data ?? []).filter((u) => u.role === 'lead'), [data])
   const leadOptions = useMemo(() => leads.map((lead) => ({ value: lead.id, label: lead.name })), [leads])
   const leadNameById = useMemo(() => new Map((data ?? []).map((u) => [u.id, u.name])), [data])
 
-  const roleParam = searchParams.get('role')
-  // A lead only ever sees their own contributors, so role and lead filters (and any
-  // stale ?role= / ?lead= in the URL) are admin-only.
-  const roleFilter = isAdmin ? (ROLES.find((r) => r === roleParam) ?? '') : ''
+  // A lead only ever sees their own contributors, so the lead filter (and any stale ?lead= in the
+  // URL) is admin-only, and only means something among CBs.
   const statusParam = searchParams.get('status')
   const statusFilter: StatusFilter = statusParam === 'active' || statusParam === 'disabled' ? statusParam : ''
   const leadParam = searchParams.get('lead') ?? ''
-  const leadFilter = isAdmin && (leadParam === 'none' || leads.some((lead) => lead.id === leadParam)) ? leadParam : ''
+  const leadFilter = isAdmin && view === 'cbs' && (leadParam === 'none' || leads.some((lead) => lead.id === leadParam)) ? leadParam : ''
 
-  function setFilter(key: 'role' | 'status' | 'lead', value: string) {
+  function setFilter(key: 'view' | 'status' | 'lead', value: string) {
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev)
@@ -246,6 +252,7 @@ export function Users() {
 
   function openAdd() {
     setError(null)
+    if (isAdmin) setForm((f) => ({ ...f, role: view === 'leads' ? 'lead' : 'contributor' }))
     setAdding(true)
   }
 
@@ -286,7 +293,6 @@ export function Users() {
 
   const rows = people
     .filter((u) => !normalizedSearch || u.name.toLowerCase().includes(normalizedSearch) || u.email.toLowerCase().includes(normalizedSearch))
-    .filter((u) => !roleFilter || u.role === roleFilter)
     .filter((u) => !statusFilter || (statusFilter === 'active' ? u.is_active : !u.is_active))
     .filter((u) => !leadFilter || (leadFilter === 'none' ? !u.lead_id : u.lead_id === leadFilter))
 
@@ -294,7 +300,7 @@ export function Users() {
   const visibleIds = new Set(rows.map((u) => u.id))
   const selectedIds = Object.keys(rowSelection).filter((id) => rowSelection[id] && visibleIds.has(id))
 
-  const hasActiveFilters = Boolean(search || roleFilter || statusFilter || leadFilter)
+  const hasActiveFilters = Boolean(search || statusFilter || leadFilter)
 
   const activeCount = people.filter((u) => u.is_active).length
   const statusTabs: { value: StatusFilter; label: string; count: number }[] = [
@@ -477,15 +483,33 @@ export function Users() {
   const bulkBusy = bulkMutation.isPending
   const bulkSelectClass = 'rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm outline-none focus:border-accent'
 
+  if (view === 'leads' && !isAdmin) {
+    return (
+      <div>
+        <div className="mb-6">
+          <h1 className="flex items-center gap-2 text-3xl font-medium sm:text-4xl text-gray-900">
+            <FoldText text={pageTitle} />
+          </h1>
+          <p className="text-sm text-gray-500">What your team uses in the Tracker.</p>
+        </div>
+        <TeamSettings />
+      </div>
+    )
+  }
+
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="flex items-center gap-2 text-3xl font-medium sm:text-4xl text-gray-900">
-            <FoldText text="Users" />
+            <FoldText text={pageTitle} />
           </h1>
           <p className="text-sm text-gray-500">
-            {isAdmin ? 'Manage CB logins, roles, and passwords.' : "Manage your team's logins and passwords."}
+            {view === 'leads'
+              ? 'Lead and admin logins, and what each team uses in the Tracker.'
+              : isAdmin
+                ? 'Manage CB logins, roles, and passwords.'
+                : "Manage your team's logins and passwords."}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -593,13 +617,7 @@ export function Users() {
             />
             {isAdmin && (
               <>
-                <Select
-                  value={roleFilter}
-                  aria-label="Filter by role"
-                  onChange={(value) => setFilter('role', value)}
-                  options={[{ value: '', label: 'All Roles' }, ...ROLE_OPTIONS]}
-                  className={toolbarControlClass}
-                />
+                {view === 'cbs' && (
                 <Select
                   value={leadFilter}
                   aria-label="Filter by lead"
@@ -607,6 +625,7 @@ export function Users() {
                   options={[{ value: '', label: 'All Leads' }, { value: 'none', label: 'No Lead Assigned' }, ...leadOptions]}
                   className={toolbarControlClass}
                 />
+                )}
               </>
             )}
             {hasActiveFilters && (
@@ -637,6 +656,11 @@ export function Users() {
         }
         rowClassName={(u) => (!u.is_active ? 'opacity-60' : '')}
       />
+      {view === 'leads' && (
+        <div className="mt-6">
+          <TeamSettings />
+        </div>
+      )}
 
       {bulkImporting && (
         <BulkImportUsersModal

@@ -133,7 +133,7 @@ export async function handleSendTaskToBackupForm(request: Request, env: BackupFo
 
   let error: string | null = null
   if (!team.cts_trainer) {
-    error = "The team has no trainer set (Settings → Team → CTS trainer), and the form requires one."
+    error = "The team has no trainer set (Leads page → CTS trainer), and the form requires one."
   } else {
     try {
       const formResponse = await fetchImpl(BACKUP_FORM_RESPONSE_URL, {

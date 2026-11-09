@@ -21,6 +21,7 @@ import {
   Menu,
   X,
   type LucideIcon,
+  UserCog,
 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { prefersReducedMotion } from '../lib/motion'
@@ -101,7 +102,8 @@ function navSections(
         ? [
           { to: '/messages', label: 'Messages', icon: MessageCircle },
           { to: '/announcements', label: 'Announcements', icon: Megaphone, badge: unreadAnnouncements },
-          { to: '/users', label: 'Users', icon: UsersIcon },
+          { to: '/users', label: 'CBs', icon: UsersIcon },
+          { to: '/leads', label: isAdmin ? 'Leads' : 'Team settings', icon: UserCog },
           { to: '/projects', label: 'Projects', icon: FolderKanban },
           { to: '/hiring', label: 'Hiring', icon: UserPlus },
         ]
@@ -158,7 +160,8 @@ const CRUMBS: Record<string, string> = {
   '/activity-log': 'Activity Log',
   '/resources': 'Resources',
   '/announcements': 'Announcements',
-  '/users': 'Users',
+  '/users': 'CBs',
+  '/leads': 'Leads',
   '/projects': 'Projects',
   '/hiring': 'Hiring',
   '/settings': 'Settings',

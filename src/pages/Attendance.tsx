@@ -80,7 +80,7 @@ export function Attendance() {
   usePageTitle('Attendance')
   const { user } = useAuth()
   const isManager = Boolean(user && MANAGER_ROLES.includes(user.role))
-  // Until we know, nothing; a team with attendance switched off (Settings → Team) just gets a note.
+  // Until we know, nothing; a team with attendance switched off (Leads / Team settings page) just gets a note.
   const { attendanceEnabled, attendancePublic, loaded } = useTeamFeatures(user?.id)
   if (!loaded) return null
   if (!attendanceEnabled) return <AttendanceOff isManager={isManager} />
@@ -96,8 +96,8 @@ function AttendanceOff({ isManager }: { isManager: boolean }) {
           <>
             Attendance is switched off for your team, so your contributors don't file it in the Tracker. You can turn it back on
             in{' '}
-            <Link to="/settings?tab=team" className="font-medium text-sky-700 hover:underline">
-              Settings → Team
+            <Link to="/leads" className="font-medium text-sky-700 hover:underline">
+              Team settings
             </Link>
             .
           </>
