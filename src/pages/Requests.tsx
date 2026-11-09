@@ -673,6 +673,7 @@ export function Requests() {
       {filingRequest && (
         <FileTimeRequestModal
           initial={filingRequest.fields}
+          cbUserId={filingRequest.request.requester?.id ?? null}
           onFiled={() => reviewMutation.mutate({ id: filingRequest.request.id, status: 'approved' })}
           onClose={() => setFilingRequest(null)}
         />

@@ -972,6 +972,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
       {filingRequest && (
         <FileTimeRequestModal
           initial={filingRequest.fields}
+          cbUserId={data?.user?.id ?? null}
           onFiled={() => reviewRequestMutation.mutate({ id: filingRequest.request.id, status: 'approved' })}
           onClose={() => setFilingRequest(null)}
         />

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ExternalLink, X } from 'lucide-react'
-import { buildExtensionRequestFormUrl } from '../lib/taskRequests'
+import { buildExtensionRequestFormUrl, buildRstExtensionFormUrl } from '../lib/taskRequests'
+import { useTeamFeatures } from '../lib/teamFeatures'
 import type { Stage } from '../types'
 import { Modal } from './Modal'
 
@@ -20,16 +21,23 @@ const inputClass = 'w-full rounded-lg border border-gray-200 px-3 py-2 text-sm o
 // "Reclaim / Extend" form, prefilled from the request and editable, so nothing is filed until
 // they've checked it. "Open form" opens the form with these and calls onFiled (which marks the
 // request approved). The edits only go on the form; the request itself keeps what was sent.
+// A contributor on an RST team goes to the RST extension form instead, which takes fewer details.
 export function FileTimeRequestModal({
   initial,
+  cbUserId,
   onFiled,
   onClose,
 }: {
   initial: TimeRequestFormFields
+  /** The contributor the request is for: their team's program picks the form. */
+  cbUserId: string | null
   onFiled: () => void
   onClose: () => void
 }) {
   const [fields, setFields] = useState(initial)
+  const team = useTeamFeatures(cbUserId)
+  const ready = !cbUserId || team.loaded
+  const rst = ready && team.program === 'rst'
   const set = <K extends keyof TimeRequestFormFields>(key: K, value: TimeRequestFormFields[K]) => setFields((prev) => ({ ...prev, [key]: value }))
   const text = (value: string) => (value.trim() === '' ? null : value)
 
@@ -39,12 +47,18 @@ export function FileTimeRequestModal({
         className="flex flex-col gap-4"
         onSubmit={(e) => {
           e.preventDefault()
-          window.open(buildExtensionRequestFormUrl({ ...fields, reason: fields.reason?.trim() || null }), '_blank', 'noopener,noreferrer')
+          if (!ready) return
+          const reason = fields.reason?.trim() || null
+          const url = rst ? buildRstExtensionFormUrl({ ...fields, reason }) : buildExtensionRequestFormUrl({ ...fields, reason })
+          window.open(url, '_blank', 'noopener,noreferrer')
           onFiled()
           onClose()
         }}
       >
-        <p className="text-sm text-gray-600">Check the details, then open the Scale form with them filled in. It's marked approved once the form opens.</p>
+        <p className="text-sm text-gray-600">
+          Check the details, then open the {rst ? 'RST extension form' : 'Scale form'} with them filled in. It{'\u2019'}s marked approved once the form opens.
+        </p>
+        {!rst && (
         <div>
           <span className="mb-1 block text-sm font-medium text-gray-700">Request type</span>
           <div className="flex gap-2">
@@ -63,14 +77,17 @@ export function FileTimeRequestModal({
             ))}
           </div>
         </div>
+        )}
         <label className="block">
           <span className="mb-1 block text-sm font-medium text-gray-700">Task ID</span>
           <input value={fields.taskId ?? ''} onChange={(e) => set('taskId', text(e.target.value))} className={`${inputClass} font-mono`} />
         </label>
-        <label className="block">
-          <span className="mb-1 block text-sm font-medium text-gray-700">Remotask ID</span>
-          <input value={fields.remotaskId ?? ''} onChange={(e) => set('remotaskId', text(e.target.value))} className={`${inputClass} font-mono`} />
-        </label>
+        {!rst && (
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium text-gray-700">Remotask ID</span>
+            <input value={fields.remotaskId ?? ''} onChange={(e) => set('remotaskId', text(e.target.value))} className={`${inputClass} font-mono`} />
+          </label>
+        )}
         <label className="block">
           <span className="mb-1 block text-sm font-medium text-gray-700">Reason</span>
           <textarea rows={3} maxLength={500} value={fields.reason ?? ''} onChange={(e) => set('reason', e.target.value)} className={inputClass} />
@@ -83,9 +100,9 @@ export function FileTimeRequestModal({
             <X className="h-4 w-4" aria-hidden />
             Cancel
           </button>
-          <button type="submit" className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground">
+          <button type="submit" aria-busy={!ready} className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground">
             <ExternalLink className="h-4 w-4" aria-hidden />
-            Open form
+            {ready ? 'Open form' : 'Checking team...'}
           </button>
         </div>
       </form>

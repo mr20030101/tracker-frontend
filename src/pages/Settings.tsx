@@ -21,7 +21,7 @@ import { RemotasksIdField } from '../components/RemotasksIdField'
 import { Reveal } from '../components/Reveal'
 import { Select } from '../components/Select'
 import { Switch } from '../components/Switch'
-import { ALL_FEATURES_ON, fetchTeamFeaturesList, setTeamBackupForm, setTeamCtsTrainer, setTeamFeatures, type TeamFeatures } from '../lib/teamFeatures'
+import { ALL_FEATURES_ON, fetchTeamFeaturesList, setTeamBackupForm, setTeamCtsTrainer, setTeamFeatures, setTeamProgram, type TeamFeatures, type TeamProgram } from '../lib/teamFeatures'
 import type { User } from '../types'
 
 const SECTIONS: { id: string; label: string; icon: LucideIcon }[] = [
@@ -723,7 +723,13 @@ const TEAM_TOGGLES: { key: TeamToggleKey; label: string }[] = [
   { key: 'backupFormEnabled', label: 'Backup form' },
 ]
 
+const PROGRAM_OPTIONS: { value: TeamProgram; label: string }[] = [
+  { value: 'bootcamp', label: 'Bootcamp' },
+  { value: 'rst', label: 'RST' },
+]
+
 const TEAM_LEGEND: { term: string; text: string }[] = [
+  { term: 'Program', text: 'Bootcamp or RST. RST teams file extensions on the RST Task Extension Form instead of the Scale form. Set by an admin.' },
   { term: 'CTS Form', text: 'The CTS Form button and CTS column on the Dashboard, Task Log and profile.' },
   { term: 'Attendance', text: 'The Attendance page, form and countdown. Off, contributors can’t file it themselves.' },
   {
@@ -780,15 +786,18 @@ function TeamSection() {
       ) : (
         <div role="table" aria-label="Team features">
           <div role="row" className="hidden border-b border-gray-200 pb-2 text-xs font-medium text-gray-500 md:grid md:grid-cols-12 md:gap-4">
-            <span role="columnheader" className="md:col-span-3">
+            <span role="columnheader" className="md:col-span-2">
               Team
+            </span>
+            <span role="columnheader" className="md:col-span-2">
+              Program
             </span>
             {TEAM_TOGGLES.map(({ key, label }) => (
               <span key={key} role="columnheader" className="md:col-span-1">
                 {label}
               </span>
             ))}
-            <span role="columnheader" className="md:col-span-5">
+            <span role="columnheader" className="md:col-span-4">
               CTS trainer
             </span>
           </div>
@@ -799,6 +808,7 @@ function TeamSection() {
                 leadId={team.id}
                 title={isAdmin ? `${team.name.trim()}’s team` : 'Your team'}
                 features={features?.get(team.id) ?? ALL_FEATURES_ON}
+                canSetProgram={isAdmin}
                 disabled={isLoading}
               />
             ))}
@@ -809,7 +819,19 @@ function TeamSection() {
   )
 }
 
-function TeamFeatureRow({ leadId, title, features, disabled }: { leadId: string; title: string; features: TeamFeatures; disabled: boolean }) {
+function TeamFeatureRow({
+  leadId,
+  title,
+  features,
+  canSetProgram,
+  disabled,
+}: {
+  leadId: string
+  title: string
+  features: TeamFeatures
+  canSetProgram: boolean
+  disabled: boolean
+}) {
   const queryClient = useQueryClient()
   const onSettled = () => {
     queryClient.invalidateQueries({ queryKey: ['team-features-list'] })
@@ -817,21 +839,40 @@ function TeamFeatureRow({ leadId, title, features, disabled }: { leadId: string;
   }
   const save = useMutation({ mutationFn: (next: TeamFeatures) => setTeamFeatures(leadId, next), onSettled })
   const saveBackup = useMutation({ mutationFn: (next: boolean) => setTeamBackupForm(leadId, next), onSettled })
+  const saveProgram = useMutation({ mutationFn: (next: TeamProgram) => setTeamProgram(leadId, next), onSettled })
+  const program = saveProgram.isPending && saveProgram.variables ? saveProgram.variables : features.program
 
   const shown: TeamFeatures = {
     ...(save.isPending && save.variables ? save.variables : features),
     backupFormEnabled: saveBackup.isPending && saveBackup.variables !== undefined ? saveBackup.variables : features.backupFormEnabled,
   }
-  const error = save.error ?? saveBackup.error
+  const error = save.error ?? saveBackup.error ?? saveProgram.error
 
   const change = (key: TeamToggleKey, next: boolean) =>
     key === 'backupFormEnabled' ? saveBackup.mutate(next) : save.mutate({ ...shown, [key]: next })
 
   return (
     <div role="row" className="grid grid-cols-1 gap-3 py-4 md:grid-cols-12 md:items-center md:gap-4 md:py-3">
-      <div role="rowheader" className="min-w-0 md:col-span-3">
+      <div role="rowheader" className="min-w-0 md:col-span-2">
         <h3 className="truncate text-sm font-semibold text-gray-900">{title}</h3>
         {error && <div className="text-xs text-status-danger-text">{errorMessage(error, "Couldn't save.")}</div>}
+      </div>
+      <div role="cell" className="flex items-center justify-between gap-4 md:col-span-2 md:justify-start">
+        <span aria-hidden className="text-sm text-gray-700 md:hidden">
+          Program
+        </span>
+        {canSetProgram ? (
+          <Select
+            value={program}
+            onChange={(value) => saveProgram.mutate(value as TeamProgram)}
+            options={PROGRAM_OPTIONS}
+            disabled={disabled || saveProgram.isPending}
+            aria-label={`Program for ${title}`}
+            className="h-9 rounded-md border border-gray-200 bg-white px-2 text-sm text-gray-800 pointer-coarse:h-11"
+          />
+        ) : (
+          <span className="text-sm text-gray-800">{program === 'rst' ? 'RST' : 'Bootcamp'}</span>
+        )}
       </div>
       {TEAM_TOGGLES.map(({ key, label }) => (
         <div key={key} role="cell" className="flex items-center justify-between gap-4 md:col-span-1 md:justify-start">
@@ -846,7 +887,7 @@ function TeamFeatureRow({ leadId, title, features, disabled }: { leadId: string;
           />
         </div>
       ))}
-      <div role="cell" className="md:col-span-5">
+      <div role="cell" className="md:col-span-4">
         <CtsTrainerField leadId={leadId} title={title} trainer={features.ctsTrainer} disabled={disabled} />
         {shown.backupFormEnabled && !features.ctsTrainer && (
           <div className="mt-1 text-xs font-medium text-status-danger-text">Needed for the backup form, or its tasks can{'’'}t be sent.</div>
