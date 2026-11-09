@@ -14,6 +14,11 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Changed
+
+- The **CBs** page and sidebar link are now called **Contributors**.
+- On the **Leads** page, team settings open in a window from the new **Team settings** button next to Add Login, instead of sitting under the list of logins.
+
 ## 8.11.0 — 2026-11-09
 
 ### Changed

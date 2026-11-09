@@ -102,7 +102,7 @@ function navSections(
         ? [
           { to: '/messages', label: 'Messages', icon: MessageCircle },
           { to: '/announcements', label: 'Announcements', icon: Megaphone, badge: unreadAnnouncements },
-          { to: '/users', label: 'CBs', icon: UsersIcon },
+          { to: '/users', label: 'Contributors', icon: UsersIcon },
           { to: '/leads', label: isAdmin ? 'Leads' : 'Team settings', icon: UserCog },
           { to: '/projects', label: 'Projects', icon: FolderKanban },
           { to: '/hiring', label: 'Hiring', icon: UserPlus },
@@ -160,7 +160,7 @@ const CRUMBS: Record<string, string> = {
   '/activity-log': 'Activity Log',
   '/resources': 'Resources',
   '/announcements': 'Announcements',
-  '/users': 'CBs',
+  '/users': 'Contributors',
   '/leads': 'Leads',
   '/projects': 'Projects',
   '/hiring': 'Hiring',
