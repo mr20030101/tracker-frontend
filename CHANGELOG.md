@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.15.0 — 2026-11-10
+
 ### Added
 
 - **Running tasks on the lead dashboard.** A new table shows every task whose timer is going right now on your team: contributor, task ID, project, stage, when it was logged, its time limit, time so far and time left before it expires. The ones closest to expiring are listed first and highlighted. Leads and admins can stop a timer from the table (after a confirmation); the time so far is kept and the task stays in progress.
