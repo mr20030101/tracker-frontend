@@ -30,6 +30,9 @@ const TEAM_TOGGLES: { key: TeamToggleKey; label: string }[] = [
   { key: 'messagingEnabled', label: 'Messaging' },
 ]
 
+// A team nobody has changed a setting for: the defaults, with messaging off (20261110_messaging_off_all.sql).
+const NO_SETTINGS_YET: TeamFeatures = { ...ALL_FEATURES_ON, messagingEnabled: false }
+
 const PROGRAM_OPTIONS: { value: TeamProgram; label: string }[] = [
   { value: 'bootcamp', label: 'Bootcamp' },
   { value: 'rst', label: 'RST' },
@@ -121,7 +124,7 @@ export function TeamSettings({ bare = false }: { bare?: boolean }) {
                 key={team.id}
                 leadId={team.id}
                 title={isAdmin ? `${team.name.trim()}’s team` : 'Your team'}
-                features={features?.get(team.id) ?? ALL_FEATURES_ON}
+                features={features?.get(team.id) ?? NO_SETTINGS_YET}
                 isAdmin={isAdmin}
                 disabled={isLoading}
               />
