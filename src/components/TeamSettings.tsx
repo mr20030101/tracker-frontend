@@ -9,6 +9,7 @@ import {
   setTeamBackupForm,
   setTeamCtsTrainer,
   setTeamFeatures,
+  setTeamAttendanceGform,
   setTeamMessaging,
   setTeamProgram,
   type TeamFeatures,
@@ -20,12 +21,13 @@ import { Switch } from './Switch'
 
 // Leads and admins: what each team uses (a lead's own; every lead's for an admin), one row per team
 // with what each switch does explained once above. Each switch saves straight away.
-type TeamToggleKey = 'ctsEnabled' | 'attendanceEnabled' | 'attendancePublic' | 'backupFormEnabled' | 'messagingEnabled'
+type TeamToggleKey = 'ctsEnabled' | 'attendanceEnabled' | 'attendancePublic' | 'attendanceGformEnabled' | 'backupFormEnabled' | 'messagingEnabled'
 
 const TEAM_TOGGLES: { key: TeamToggleKey; label: string }[] = [
   { key: 'ctsEnabled', label: 'CTS Form' },
   { key: 'attendanceEnabled', label: 'Attendance' },
   { key: 'attendancePublic', label: 'Public' },
+  { key: 'attendanceGformEnabled', label: 'Attend. form' },
   { key: 'backupFormEnabled', label: 'Backup form' },
   { key: 'messagingEnabled', label: 'Messaging' },
 ]
@@ -45,6 +47,10 @@ const TEAM_LEGEND: { term: string; text: string }[] = [
   {
     term: 'Public',
     text: 'Contributors see who on the team filed today, with each person’s photo. Emails, Task IDs and screenshots stay private. Needs Attendance on.',
+  },
+  {
+    term: 'Attend. form',
+    text: 'Filed attendance is sent to the attendance Google Form. Off, the team’s attendance stays in the Tracker only. Needs Attendance on.',
   },
   {
     term: 'Backup form',
@@ -114,7 +120,7 @@ export function TeamSettings({ bare = false }: { bare?: boolean }) {
                 {label}
               </span>
             ))}
-            <span role="columnheader" className="md:col-span-3">
+            <span role="columnheader" className="md:col-span-2">
               CTS trainer
             </span>
           </div>
@@ -158,18 +164,21 @@ function TeamFeatureRow({
   const saveBackup = useMutation({ mutationFn: (next: boolean) => setTeamBackupForm(leadId, next), onSettled })
   const saveProgram = useMutation({ mutationFn: (next: TeamProgram) => setTeamProgram(leadId, next), onSettled })
   const saveMessaging = useMutation({ mutationFn: (next: boolean) => setTeamMessaging(leadId, next), onSettled })
+  const saveGform = useMutation({ mutationFn: (next: boolean) => setTeamAttendanceGform(leadId, next), onSettled })
   const program = saveProgram.isPending && saveProgram.variables ? saveProgram.variables : features.program
 
   const shown: TeamFeatures = {
     ...(save.isPending && save.variables ? save.variables : features),
     backupFormEnabled: saveBackup.isPending && saveBackup.variables !== undefined ? saveBackup.variables : features.backupFormEnabled,
     messagingEnabled: saveMessaging.isPending && saveMessaging.variables !== undefined ? saveMessaging.variables : features.messagingEnabled,
+    attendanceGformEnabled: saveGform.isPending && saveGform.variables !== undefined ? saveGform.variables : features.attendanceGformEnabled,
   }
-  const error = save.error ?? saveBackup.error ?? saveProgram.error ?? saveMessaging.error
+  const error = save.error ?? saveBackup.error ?? saveProgram.error ?? saveMessaging.error ?? saveGform.error
 
   const change = (key: TeamToggleKey, next: boolean) => {
     if (key === 'backupFormEnabled') saveBackup.mutate(next)
     else if (key === 'messagingEnabled') saveMessaging.mutate(next)
+    else if (key === 'attendanceGformEnabled') saveGform.mutate(next)
     else save.mutate({ ...shown, [key]: next })
   }
 
@@ -209,7 +218,8 @@ function TeamFeatureRow({
               save.isPending ||
               saveBackup.isPending ||
               saveMessaging.isPending ||
-              (key === 'attendancePublic' && !shown.attendanceEnabled) ||
+              saveGform.isPending ||
+              ((key === 'attendancePublic' || key === 'attendanceGformEnabled') && !shown.attendanceEnabled) ||
               // Admins only: a lead sees their team's setting but can't change it.
               (key === 'messagingEnabled' && !isAdmin)
             }
@@ -217,7 +227,7 @@ function TeamFeatureRow({
           />
         </div>
       ))}
-      <div role="cell" className="md:col-span-3">
+      <div role="cell" className="md:col-span-2">
         <CtsTrainerField leadId={leadId} title={title} trainer={features.ctsTrainer} disabled={disabled} />
         {shown.backupFormEnabled && !features.ctsTrainer && (
           <div className="mt-1 text-xs font-medium text-status-danger-text">Needed for the backup form, or its tasks can{'’'}t be sent.</div>

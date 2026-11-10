@@ -471,12 +471,16 @@ function GoogleFormStatus({ entry }: { entry: AttendanceWithFiler }) {
   const queryClient = useQueryClient()
   // Shared by every card, and rarely changes (it's a Vercel setting).
   const { data: enabled = false } = useQuery({ queryKey: ['google-form-enabled'], queryFn: fetchGoogleFormEnabled, staleTime: 5 * 60_000 })
+  // A team can keep its attendance in the Tracker only (Settings → Team): nothing to show for it.
+  const { data: teams } = useQuery({ queryKey: ['team-features-list'], queryFn: fetchTeamFeaturesList, staleTime: 60_000 })
+  const teamLeadId = entry.person?.lead_id ?? entry.person?.id ?? null
   const retry = useMutation({
     mutationFn: () => sendAttendanceToGoogleForm(entry.user_id, entry.date),
     onSettled: () => queryClient.invalidateQueries({ queryKey: ['attendance'] }),
   })
 
   if (!enabled) return null
+  if (teamLeadId && teams?.get(teamLeadId)?.attendanceGformEnabled === false && !sentToGoogleForm(entry)) return null
   if (sentToGoogleForm(entry)) {
     return (
       <div className="flex items-center gap-1 text-xs text-gray-400">

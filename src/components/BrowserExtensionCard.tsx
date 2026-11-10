@@ -37,8 +37,7 @@ export function BrowserExtensionCard() {
             Browser extension <span className="ml-1 text-xs font-medium text-gray-400">v{manifest.version}</span>
           </h2>
           <p className="text-sm text-gray-500">
-            Time your tasks and send extension or reclaim requests from your browser. Alarms at 30 minutes, 1 hour and 10 minutes
-            before a task expires. For Brave, Chrome and Edge.
+            Time your tasks and send extension or reclaim requests from your browser. For Brave, Chrome and Edge.
           </p>
         </div>
         <a

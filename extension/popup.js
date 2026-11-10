@@ -12,7 +12,7 @@ const REASON_PLACEHOLDERS = {
   extension: 'Why do you need more time?',
   reclaim: 'Why does this task need to be reclaimed?',
 }
-// Same as background.js: minutes a task has before it expires, from when it was started.
+// Minutes a task has on Remotasks before it expires, from when it was started: the countdown on the task card.
 const EXPIRY_MINUTES = { attempt: 90, l1: 90, l10: 90, l0: 120 }
 
 const $ = (id) => document.getElementById(id)
@@ -144,10 +144,11 @@ function render() {
   $('no-remotasks-id').hidden = Boolean(profile.remotasks_id)
 
   const project = $('project')
-  if (project.options.length !== projects.length + 1) {
-    project.replaceChildren(new Option('Choose a project…', ''), ...projects.map((p) => new Option(p.name, String(p.id))))
+  // No "Choose a project" option: your project is picked already (background.js loadAccount).
+  if (project.options.length !== projects.length || [...project.options].some((o, i) => o.value !== String(projects[i]?.id))) {
+    project.replaceChildren(...projects.map((p) => new Option(p.name, String(p.id))))
   }
-  if (document.activeElement !== project) project.value = settings.projectId ? String(settings.projectId) : ''
+  if (document.activeElement !== project) project.value = String(settings.projectId ?? projects[0]?.id ?? '')
   setChecked('stage', settings.stage ?? 'attempt')
 
   $('request-task').placeholder = state.current?.taskId ?? 'Paste the task ID'
@@ -181,11 +182,21 @@ function renderRequestType() {
 async function renderRequests() {
   const list = $('requests')
   const taskId = requestTaskId()
-  const requests = taskId ? await call({ type: 'get-requests', taskId }).catch(() => []) : []
+  let result = { requests: [] }
+  if (taskId) {
+    try {
+      result = await call({ type: 'get-requests', taskId })
+    } catch (err) {
+      result = { requests: [], note: `Couldn’t load the requests: ${err.message}` }
+    }
+  }
+  // A slower earlier load mustn't overwrite the list for the ID now in the box.
+  if (taskId !== requestTaskId()) return
+  const { requests, note } = result
   if (requests.length === 0) {
     const li = document.createElement('li')
     li.className = 'list-empty'
-    li.textContent = taskId ? 'No requests for this task yet.' : 'Start a task or paste a task ID above.'
+    li.textContent = note ?? (taskId ? 'No requests for this task yet.' : 'Start a task or paste a task ID above.')
     list.replaceChildren(li)
     return
   }
@@ -238,6 +249,7 @@ $('reload').addEventListener('click', (event) =>
   act(event.currentTarget, async () => {
     await call({ type: 'reload' })
     $('reset-confirm').hidden = true
+    await fillFromPage()
   }),
 )
 
@@ -329,8 +341,29 @@ $('request').addEventListener('submit', (event) => {
   })
 })
 
+// On a Remotasks task page (when the popup opens, and on Reload): its ID goes into both task ID
+// boxes, unless one is typed already.
+async function fillFromPage() {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+  let taskId = null
+  try {
+    const url = new URL(tab?.url ?? '')
+    const id = url.searchParams.get('sceneId')
+    if (/(^|\.)remotasks\.com$/.test(url.hostname) && /^[0-9a-f]{24}$/i.test(id ?? '')) taskId = id.toLowerCase()
+  } catch {
+    // Not a page with a URL we can read.
+  }
+  if (!taskId) return
+  if (!$('task-input').value) $('task-input').value = taskId
+  if (!$('request-task').value) {
+    $('request-task').value = taskId
+    renderRequests()
+  }
+}
+
 renderRequestType()
 refresh()
+fillFromPage()
 // The timer ticks here; the stored state is re-read now and then in case it changed in the tracker.
 setInterval(() => state && renderTask(), 1000)
 setInterval(refresh, 10000)

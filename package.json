@@ -1,7 +1,7 @@
 {
   "name": "frontend",
   "private": true,
-  "version": "8.23.2",
+  "version": "8.24.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -30,6 +30,7 @@
     "@tiptap/react": "3.31.4",
     "@tiptap/starter-kit": "3.31.4",
     "@vercel/speed-insights": "^2.0.0",
+    "@vladmandic/face-api": "^1.7.15",
     "animejs": "^4.5.0",
     "axios": "^1.20.0",
     "chart.js": "^4.5.1",

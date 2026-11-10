@@ -19,6 +19,11 @@ describe('timeRequestFormFor', () => {
     expect(timeRequestFormFor({ name: 'Aloha OTS', code: null })).toBe('scale')
   })
 
+  it('files Sweet Yam on the same Scale forms as Aloha OTS', () => {
+    expect(timeRequestFormFor({ name: 'Sweet Yam', code: 'sweet_yam' })).toBe('scale')
+    expect(timeRequestFormFor({ name: 'Sweet Yam', code: null })).toBe('scale')
+  })
+
   it('uses the Scale form for any other project, or none', () => {
     expect(timeRequestFormFor({ name: 'Sweet Yam', code: 'sweet_yam' })).toBe('scale')
     expect(timeRequestFormFor(null)).toBe('scale')

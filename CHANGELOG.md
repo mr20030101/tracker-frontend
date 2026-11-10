@@ -14,6 +14,26 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.24.0 — 2026-11-11
+
+### Added
+
+- **A team can keep its attendance off the Google Form.** Settings → Team has an "Attend. form" switch per lead's team, on by default. Off, that team's filed attendance stays in the Tracker only and isn't sent to the attendance Google Form, and the Attendance page doesn't show it as "Not sent". The lead or an admin can change it, and changes go in the Activity Log.
+- **The attendance camera tells babies apart.** A face it estimates to be under 4 years old is labelled "Baby" (with a baby icon) instead of "Human", on the live camera and on the saved photo. It's still accepted.
+
+
+### Removed
+
+- **The browser extension no longer rings.** The alarms at 30 minutes, 1 hour and 10 minutes before a task expires are gone, with their notifications and sound, and so is the text about them in the extension and on Resources. The extension also no longer asks for the alarms and notifications permissions. Its task card still shows how long is left. Browser extension 1.5.0; download it again from Resources.
+
+### Changed
+
+- **The attendance camera labels a face "Human".** The label over the face box, on the live camera and on the saved photo, reads Human with a person icon instead of Ghost.
+- **The attendance camera's buttons.** Take photo is a round shutter button on the camera picture, Retake sits on the photo once it's taken, and "Upload a photo instead" is a link under it.
+- **Uploaded attendance photos are cropped like camera photos.** An upload is cut to the camera's 4:3 shape, centred on the face, before it's checked and saved.
+- **The browser extension picks your project for you.** There's no "Choose a project" step any more: it lists the projects you're assigned (or your lead's, until you're assigned any) with your first one already picked, and remembers it if you choose another. Start no longer stops with "Pick your project first".
+- **The browser extension fills in the task ID for you.** Open it while you're on a Remotasks task page and the task ID from that page is already in the Start box and on the Requests tab, so there's nothing to paste. Pasting still works anywhere else.
+
 ## 8.23.2 — 2026-11-10
 
 ### Fixed
