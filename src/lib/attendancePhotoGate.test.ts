@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { handleUploadAttendancePhoto, handleViewAttendancePhoto, MAX_PHOTO_BYTES, type AttendancePhotoEnv } from './attendancePhotoGate'
-import { resetDriveTokenCache } from './googleDrive'
+import { resetDriveFolderCache, resetDriveTokenCache } from './googleDrive'
 
 const ENV: AttendancePhotoEnv = {
   SUPABASE_URL: 'https://project.supabase.co',
@@ -44,12 +44,17 @@ function fakeFetch({ user = true, active = true, uploadsToday = 0, canView = tru
     if (url.endsWith('/rest/v1/rpc/can_view_attendance_photo')) return Response.json(canView)
     if (url.includes('oauth2.googleapis.com')) return Response.json({ access_token: 'google-token', expires_in: 3600 })
     if (url.includes('/upload/drive/v3/files')) return Response.json({ id: 'drive-file-123' })
+    // The day's folder already exists.
+    if (url.includes('/drive/v3/files?q=')) return Response.json({ files: [{ id: 'day-folder' }] })
     if (url.includes('/drive/v3/files/')) return new Response(jpeg(), { headers: { 'Content-Type': 'image/jpeg' } })
     throw new Error(`Unexpected fetch: ${url}`)
   })
 }
 
-beforeEach(resetDriveTokenCache)
+beforeEach(() => {
+  resetDriveTokenCache()
+  resetDriveFolderCache()
+})
 
 describe('handleUploadAttendancePhoto', () => {
   it('uploads to Drive, records the upload and returns the reference', async () => {
@@ -61,7 +66,12 @@ describe('handleUploadAttendancePhoto', () => {
     expect(JSON.parse(String(record?.[1]?.body))).toEqual({ user_id: 'user-1', drive_file_id: 'drive-file-123' })
     // Named with the day and Singapore time, so a retake is its own file.
     const driveUpload = fetchImpl.mock.calls.find(([url]) => String(url).includes('/upload/drive/v3/files'))
-    expect(await new Response(driveUpload?.[1]?.body as Blob).text()).toContain('"name":"2026-10-16 10.00.00 cb@example.com.jpg"')
+    const sent = await new Response(driveUpload?.[1]?.body as Blob).text()
+    expect(sent).toContain('"name":"2026-10-16 10.00.00 cb@example.com.jpg"')
+    // Into that day's folder.
+    expect(sent).toContain('"parents":["day-folder"]')
+    const lookup = fetchImpl.mock.calls.find(([url]) => String(url).includes('/drive/v3/files?q='))
+    expect(new URL(String(lookup?.[0])).searchParams.get('q')).toContain("name = '2026-10-16'")
   })
 
   it('refuses without a valid session, or for an inactive account', async () => {

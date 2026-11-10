@@ -6,9 +6,6 @@ import { checkFrame, loadFaceDetector, type FrameCheck } from '../lib/faceDetect
 // Saved photos are this wide at most: plenty to recognise someone, and about 20–40 KB as a JPEG.
 const PHOTO_WIDTH = 480
 const JPEG_QUALITY = 0.75
-// A photo picked from a file (only offered when the camera can't open) must be this fresh, the same
-// window the server gives an upload to be used.
-const MAX_FILE_AGE_MS = 30 * 60 * 1000
 const LIVE_CHECK_MS = 500
 // The preview's shape (aspect-[4/3]); boxes are mapped onto it as object-cover crops the video.
 const PREVIEW_ASPECT = 4 / 3
@@ -81,9 +78,9 @@ async function checkAndMarkFace(canvas: HTMLCanvasElement): Promise<string | nul
 }
 
 /**
- * Takes a photo with the device's camera, live. Only when the camera can't be opened can a photo
- * be picked from a file instead, and it must have been taken in the last 30 minutes. Either way the
- * photo must show a person's face, not an animal (checked on the device; see faceDetector.ts). Calls
+ * Takes a photo with the device's camera, live, or uses one uploaded from the device (any photo:
+ * its file date isn't checked). Either way the photo must show a person's face, not an animal
+ * (checked on the device; see faceDetector.ts). Calls
  * `onChange` with the JPEG once taken, and with null on a retake.
  */
 export function CameraCapture({ onChange }: { onChange: (photo: Blob | null) => void }) {
@@ -169,10 +166,6 @@ export function CameraCapture({ onChange }: { onChange: (photo: Blob | null) => 
 
   async function pickFile(file: File | undefined) {
     if (!file) return
-    if (Date.now() - file.lastModified > MAX_FILE_AGE_MS) {
-      setFileError('That photo is too old. Take a new one now, then choose it.')
-      return
-    }
     try {
       const image = await createImageBitmap(file)
       const canvas = scaled(image, image.width, image.height)
@@ -184,7 +177,9 @@ export function CameraCapture({ onChange }: { onChange: (photo: Blob | null) => 
       }
       const blob = await toJpeg(canvas)
       if (!blob) throw new Error('encode failed')
+      stop()
       setFileError(null)
+      setFaceError(null)
       setState({ kind: 'taken', previewUrl: URL.createObjectURL(blob) })
       onChange(blob)
     } catch {
@@ -276,27 +271,6 @@ export function CameraCapture({ onChange }: { onChange: (photo: Blob | null) => 
           </div>
         )}
       </div>
-      {state.kind === 'error' && (
-        <>
-          <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
-            <Upload className="h-4 w-4" />
-            Upload a photo instead
-            {/* capture opens the camera app directly on phones; elsewhere it's a file picker. */}
-            <input
-              type="file"
-              accept="image/*"
-              capture="user"
-              className="sr-only"
-              onChange={(e) => {
-                void pickFile(e.target.files?.[0])
-                e.target.value = ''
-              }}
-            />
-          </label>
-          <p className="text-xs text-gray-500">Use a photo of yourself taken in the last 30 minutes.</p>
-          {fileError && <p className="text-xs text-red-600">{fileError}</p>}
-        </>
-      )}
       {live && (
         <>
           <button
@@ -313,6 +287,25 @@ export function CameraCapture({ onChange }: { onChange: (photo: Blob | null) => 
               {faceError}
             </p>
           )}
+        </>
+      )}
+      {state.kind !== 'taken' && (
+        <>
+          {/* No capture attribute: on phones this offers the gallery as well as the camera. */}
+          <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+            <Upload className="h-4 w-4" aria-hidden />
+            {state.kind === 'error' ? 'Upload a photo instead' : 'Or upload a photo'}
+            <input
+              type="file"
+              accept="image/*"
+              className="sr-only"
+              onChange={(e) => {
+                void pickFile(e.target.files?.[0])
+                e.target.value = ''
+              }}
+            />
+          </label>
+          {fileError && <p className="text-xs text-red-600">{fileError}</p>}
         </>
       )}
       {state.kind === 'taken' && (

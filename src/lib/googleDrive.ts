@@ -81,18 +81,86 @@ export async function driveAccessToken(env: DriveEnv, fetchImpl: typeof fetch = 
   return body.access_token
 }
 
-/** Uploads a file into GOOGLE_DRIVE_FOLDER_ID and returns its Drive file id. */
+const FOLDER_MIME = 'application/vnd.google-apps.folder'
+
+// Subfolder ids by name, while a warm function instance lives, so most uploads skip the lookup.
+const folderCache = new Map<string, string>()
+
+/** Forgets the cached subfolder ids (for tests). */
+export function resetDriveFolderCache() {
+  folderCache.clear()
+}
+
+async function driveJson<T>(response: Response, what: string): Promise<T> {
+  const body = (await response.json().catch(() => null)) as (T & { error?: { message?: string } }) | null
+  if (!response.ok || !body) throw new Error(`${what} failed: ${body?.error?.message ?? response.status}`)
+  return body
+}
+
+/** Folders named `name` directly in GOOGLE_DRIVE_FOLDER_ID, oldest first. */
+async function listFolders(env: DriveEnv, token: string, name: string, fetchImpl: typeof fetch): Promise<string[]> {
+  const escape = (value: string) => value.replace(/\\/g, '\\\\').replace(/'/g, "\\'")
+  const query = new URLSearchParams({
+    q: `'${escape(env.GOOGLE_DRIVE_FOLDER_ID ?? '')}' in parents and name = '${escape(name)}' and mimeType = '${FOLDER_MIME}' and trashed = false`,
+    orderBy: 'createdTime',
+    fields: 'files(id)',
+    supportsAllDrives: 'true',
+    includeItemsFromAllDrives: 'true',
+  })
+  const response = await fetchImpl(`https://www.googleapis.com/drive/v3/files?${query}`, { headers: { Authorization: `Bearer ${token}` } })
+  const body = await driveJson<{ files?: { id: string }[] }>(response, 'Drive folder lookup')
+  return (body.files ?? []).map((file) => file.id)
+}
+
+/**
+ * The id of the folder called `name` inside GOOGLE_DRIVE_FOLDER_ID, created if there isn't one.
+ * Uploads can race to create the same folder (everyone files attendance at 6:00), so after creating
+ * one it looks again: if an older one exists, that's used and the new, still-empty one is removed.
+ */
+export async function driveSubfolder(env: DriveEnv, name: string, fetchImpl: typeof fetch = fetch): Promise<string> {
+  const cached = folderCache.get(name)
+  if (cached) return cached
+  const token = await driveAccessToken(env, fetchImpl)
+
+  let id = (await listFolders(env, token, name, fetchImpl))[0]
+  if (!id) {
+    const created = await driveJson<{ id: string }>(
+      await fetchImpl('https://www.googleapis.com/drive/v3/files?supportsAllDrives=true&fields=id', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, mimeType: FOLDER_MIME, parents: [env.GOOGLE_DRIVE_FOLDER_ID] }),
+      }),
+      'Creating the Drive folder',
+    )
+    const oldest = (await listFolders(env, token, name, fetchImpl))[0] ?? created.id
+    if (oldest !== created.id) {
+      await fetchImpl(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(created.id)}?supportsAllDrives=true`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      }).catch(() => null)
+    }
+    id = oldest
+  }
+  folderCache.set(name, id)
+  return id
+}
+
+/**
+ * Uploads a file into GOOGLE_DRIVE_FOLDER_ID, or into its subfolder `folder` (created if needed),
+ * and returns its Drive file id.
+ */
 export async function uploadToDrive(
   env: DriveEnv,
-  file: { name: string; mimeType: string; data: Uint8Array<ArrayBuffer>; description?: string },
+  file: { name: string; mimeType: string; data: Uint8Array<ArrayBuffer>; description?: string; folder?: string },
   fetchImpl: typeof fetch = fetch,
 ): Promise<string> {
+  const parent = file.folder ? await driveSubfolder(env, file.folder, fetchImpl) : env.GOOGLE_DRIVE_FOLDER_ID
   const token = await driveAccessToken(env, fetchImpl)
   const boundary = `tracker-${crypto.randomUUID()}`
   const metadata = JSON.stringify({
     name: file.name,
     mimeType: file.mimeType,
-    parents: [env.GOOGLE_DRIVE_FOLDER_ID],
+    parents: [parent],
     description: file.description,
   })
   const body = new Blob([

@@ -14,6 +14,13 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.22.1 — 2026-11-10
+
+### Changed
+
+- **Attendance photos can be uploaded.** "Or upload a photo" is always under the camera, not only when the camera won't open, and on phones it offers the gallery as well as the camera. Any photo can be used: it's no longer refused for being older than 30 minutes going by its file date. It still has to show a face.
+- **Attendance photos are filed in Google Drive by day.** Each photo goes into a folder named for its day (e.g. 2026-11-11) inside the attendance folder, created with the day's first photo. Photos already in Drive stay where they are and still show in the Tracker.
+
 ## 8.22.0 — 2026-11-10
 
 ### Added
