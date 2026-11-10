@@ -27,6 +27,7 @@ export async function fetchGroupPage(groupId: number, beforeId?: number): Promis
 
 export async function sendGroupMessage(groupId: number, senderId: string, body: string): Promise<void> {
   const { error } = await supabase.from('group_messages').insert({ group_id: groupId, sender_id: senderId, body })
+  if (error?.code === '42501') throw new Error('This can’t be sent: messaging is off for your team, or you’re no longer in this group.')
   if (error) throw error
 }
 

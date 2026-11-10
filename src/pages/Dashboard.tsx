@@ -24,7 +24,7 @@ export function Dashboard() {
   const isAdmin = user?.role === 'admin'
   const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('week')
   const [anchorDate, setAnchorDate] = useState(() => new Date())
-  const { usersById, myId, openChatWith } = useMessaging()
+  const { usersById, myId, openChatWith, messagingEnabled } = useMessaging()
   const admin = useMemo(() => [...usersById.values()].find((u) => u.role === 'admin' && u.id !== myId), [usersById, myId])
 
   const rangeStart = useMemo(() => {
@@ -228,7 +228,7 @@ export function Dashboard() {
                   {overdueRequests} overdue request{overdueRequests === 1 ? '' : 's'}
                 </Link>
               )}
-              {admin && (
+              {admin && messagingEnabled && (
                 <button
                   onClick={() => openChatWith(admin.id, admin.name)}
                   className="flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-gray-800 shadow-card hover:bg-gray-100"

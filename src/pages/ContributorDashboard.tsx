@@ -54,7 +54,7 @@ export function ContributorDashboard() {
   usePageTitle('Dashboard')
   const { user } = useAuth()
   const email = user?.email ?? ''
-  const { usersById, openChatWith } = useMessaging()
+  const { usersById, openChatWith, messagingEnabled } = useMessaging()
   const bot = useMemo(() => [...usersById.values()].find((u) => u.is_bot), [usersById])
   const [showCtsModal, setShowCtsModal] = useState(false)
   // A lead can switch the CTS Form and Attendance off for their team.
@@ -285,7 +285,7 @@ export function ContributorDashboard() {
                 {attendanceNotYetOpen ? 'Attendance opens at 6:00 AM' : todaysAttendance ? 'Attendance filed ✓' : 'Attendance Form'}
               </button>
               )}
-              {bot && (
+              {bot && messagingEnabled && (
                 <button
                   type="button"
                   onClick={() => openChatWith(bot.id, bot.name)}
