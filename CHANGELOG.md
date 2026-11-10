@@ -14,6 +14,17 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.15.0 — 2026-11-10
+
+### Added
+
+- **Running tasks on the lead dashboard.** A new table shows every task whose timer is going right now on your team: contributor, task ID, project, stage, when it was logged, its time limit, time so far and time left before it expires. The ones closest to expiring are listed first and highlighted. Leads and admins can stop a timer from the table (after a confirmation); the time so far is kept and the task stays in progress.
+- **Timer limit per project.** In Projects, each project can set how many minutes a task's timer can run (Task Timer Limit). Blank means 3 hours.
+
+### Changed
+
+- **A task's timer stops at its project's limit and the task is marked Expired.** Once a task has been timed for its project's limit in total (3 hours unless the project sets one), it's expired within a minute and the timer stays at the limit. Tasks already in progress past their limit are expired when this goes live.
+
 ## 8.14.2 — 2026-11-10
 
 ### Fixed

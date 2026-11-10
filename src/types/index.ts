@@ -55,6 +55,8 @@ export interface Project {
   daily_quota_l0?: number | null
   daily_quota_l1?: number | null
   daily_quota_l10?: number | null
+  // How long a task's timer can run before the task expires; null means 3 hours.
+  timer_limit_minutes?: number | null
 }
 
 export type Stage = 'attempt' | 'l0' | 'l1'
