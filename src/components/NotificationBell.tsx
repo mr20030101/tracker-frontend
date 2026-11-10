@@ -1,11 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useLocation } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { X } from 'lucide-react'
 import { supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
-import { liveChannelName, useIsActive } from '../lib/idle'
+import { liveChannelName } from '../lib/idle'
 import { ALERT_NOTIFICATION_SOUND, loopSound } from '../lib/sound'
 import { Avatar } from './Avatar'
 import { RequestAlarm } from './RequestAlarm'
@@ -152,11 +152,11 @@ export function NotificationBell() {
       .then(({ data }) => setProjectNames(new Map((data ?? []).map((p) => [p.id as number, p.name as string]))))
   }, [isManager])
 
-  // The live feeds pause while the tab is idle. The request alarm still rings from its own poll.
-  const active = useIsActive()
+  // The live feeds stay connected all the time, idle tab or not, so nothing waits for a reload.
+  const queryClient = useQueryClient()
 
   useEffect(() => {
-    if (!isManager || !active) return
+    if (!isManager) return
 
     function addSubmissionAlert(row: TaskSubmissionRow) {
       const { profileNames, projectNames } = lookups.current
@@ -190,10 +190,10 @@ export function NotificationBell() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [isManager, active])
+  }, [isManager])
 
   useEffect(() => {
-    if (!isManager || !active) return
+    if (!isManager) return
 
     function addRequestAlert(row: TaskRequestRow) {
       const { profilesById, refetchPending } = lookups.current
@@ -202,8 +202,9 @@ export function NotificationBell() {
       setRequestAlerts((prev) =>
         [{ id, name: profile?.name ?? 'Someone', email: profile?.email ?? '', type: row.type }, ...prev].slice(0, MAX_SUBMISSION_ALERTS),
       )
-      // Ring now rather than at the next check.
+      // Ring now rather than at the next check, and bring the Requests badge and list up to date.
       refetchPending()
+      queryClient.invalidateQueries({ queryKey: ['task-requests'] })
     }
 
     const channel = supabase
@@ -222,7 +223,7 @@ export function NotificationBell() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [isManager, user?.id, active])
+  }, [isManager, user?.id, queryClient])
 
   // Deliberately hard to ignore: the alert sound plays on repeat, the bell shakes and the tab title
   // flashes, and none of it stops until the request has been seen.
