@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.18.1 — 2026-11-10
+
 ### Changed
 
 - **Messaging is off for every team.** As announced, the app has outgrown it. New leads' teams start with it off too. An admin can still turn it back on for a team in Settings → Team.
