@@ -1,7 +1,7 @@
 // Server side of attendance photos, run by the Vercel Function in api/attendance-photo.ts. Photos
 // live in Google Drive (see googleDrive.ts), never in Supabase:
 //   POST  the camera's JPEG, from a signed-in contributor during the attendance window. Uploaded to
-//         Drive and recorded in attendance_photo_uploads, which file_attendance() checks. Returns
+//         that day's folder in Drive and recorded in attendance_photo_uploads, which file_attendance() checks. Returns
 //         { ref }, the Drive file id the form then files with.
 //   GET   ?ref=<id>, the photo on an attendance entry, for whoever can see that entry (themselves,
 //         their lead, an admin, or a teammate on a public team): can_view_attendance_photo().
@@ -76,7 +76,14 @@ export async function handleUploadAttendancePhoto(
   try {
     fileId = await uploadToDrive(
       env,
-      { name: `${today} ${sgTime(now)} ${caller.email || caller.id}.jpg`, mimeType: 'image/jpeg', data: bytes, description: `Attendance photo, ${caller.email} (${caller.id}), ${today}` },
+      {
+        name: `${today} ${sgTime(now)} ${caller.email || caller.id}.jpg`,
+        mimeType: 'image/jpeg',
+        data: bytes,
+        description: `Attendance photo, ${caller.email} (${caller.id}), ${today}`,
+        // One folder per day (e.g. 2026-11-11), created with the day's first photo.
+        folder: today,
+      },
       fetchImpl,
     )
   } catch (error) {
