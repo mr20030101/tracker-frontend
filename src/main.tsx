@@ -12,10 +12,14 @@ import { UpdateBanner } from './components/UpdateBanner.tsx'
 import './lib/sound.ts'
 import './lib/consoleWarning.ts'
 import { startInstallListener } from './lib/install.ts'
+import { startIdleWatch } from './lib/idle.ts'
 
 startInstallListener()
+startIdleWatch()
 
-const queryClient = new QueryClient()
+// Data fetched in the last 30 seconds is used as is: switching back to the tab (or between pages)
+// doesn't refetch everything on screen at once. Polls and live events still refresh it sooner.
+const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 30_000 } } })
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

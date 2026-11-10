@@ -80,6 +80,8 @@ export async function sendMessage(recipientId: string, body: string): Promise<vo
   const senderId = authData.user?.id
   if (!senderId) throw new Error('Unauthenticated')
   const { error } = await supabase.from('messages').insert({ sender_id: senderId, recipient_id: recipientId, body })
+  // Refused by row-level security: messaging is off for your team or theirs (20261110_team_messaging.sql).
+  if (error?.code === '42501') throw new Error('Messaging is turned off for your team or theirs, so this can’t be sent.')
   if (error) throw error
 }
 

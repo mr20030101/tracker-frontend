@@ -3,20 +3,31 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Save } from 'lucide-react'
 import { errorMessage, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
-import { ALL_FEATURES_ON, fetchTeamFeaturesList, setTeamBackupForm, setTeamCtsTrainer, setTeamFeatures, setTeamProgram, type TeamFeatures, type TeamProgram } from '../lib/teamFeatures'
+import {
+  ALL_FEATURES_ON,
+  fetchTeamFeaturesList,
+  setTeamBackupForm,
+  setTeamCtsTrainer,
+  setTeamFeatures,
+  setTeamMessaging,
+  setTeamProgram,
+  type TeamFeatures,
+  type TeamProgram,
+} from '../lib/teamFeatures'
 import type { User } from '../types'
 import { Select } from './Select'
 import { Switch } from './Switch'
 
 // Leads and admins: what each team uses (a lead's own; every lead's for an admin), one row per team
 // with what each switch does explained once above. Each switch saves straight away.
-type TeamToggleKey = 'ctsEnabled' | 'attendanceEnabled' | 'attendancePublic' | 'backupFormEnabled'
+type TeamToggleKey = 'ctsEnabled' | 'attendanceEnabled' | 'attendancePublic' | 'backupFormEnabled' | 'messagingEnabled'
 
 const TEAM_TOGGLES: { key: TeamToggleKey; label: string }[] = [
   { key: 'ctsEnabled', label: 'CTS Form' },
   { key: 'attendanceEnabled', label: 'Attendance' },
   { key: 'attendancePublic', label: 'Public' },
   { key: 'backupFormEnabled', label: 'Backup form' },
+  { key: 'messagingEnabled', label: 'Messaging' },
 ]
 
 const PROGRAM_OPTIONS: { value: TeamProgram; label: string }[] = [
@@ -35,6 +46,10 @@ const TEAM_LEGEND: { term: string; text: string }[] = [
   {
     term: 'Backup form',
     text: 'Each task marked Submitted, Rejected/SBQ or Expired goes to the Back Up Task Tracker Remote Google Form once. Tasks finished while it’s off aren’t sent later. Needs a CTS trainer.',
+  },
+  {
+    term: 'Messaging',
+    text: 'Messages, the chat button and group chats for the lead and their contributors. Off, they can’t send or receive messages. Set by an admin.',
   },
   {
     term: 'CTS trainer',
@@ -96,7 +111,7 @@ export function TeamSettings({ bare = false }: { bare?: boolean }) {
                 {label}
               </span>
             ))}
-            <span role="columnheader" className="md:col-span-4">
+            <span role="columnheader" className="md:col-span-3">
               CTS trainer
             </span>
           </div>
@@ -107,7 +122,7 @@ export function TeamSettings({ bare = false }: { bare?: boolean }) {
                 leadId={team.id}
                 title={isAdmin ? `${team.name.trim()}’s team` : 'Your team'}
                 features={features?.get(team.id) ?? ALL_FEATURES_ON}
-                canSetProgram={isAdmin}
+                isAdmin={isAdmin}
                 disabled={isLoading}
               />
             ))}
@@ -122,13 +137,13 @@ function TeamFeatureRow({
   leadId,
   title,
   features,
-  canSetProgram,
+  isAdmin,
   disabled,
 }: {
   leadId: string
   title: string
   features: TeamFeatures
-  canSetProgram: boolean
+  isAdmin: boolean
   disabled: boolean
 }) {
   const queryClient = useQueryClient()
@@ -139,16 +154,21 @@ function TeamFeatureRow({
   const save = useMutation({ mutationFn: (next: TeamFeatures) => setTeamFeatures(leadId, next), onSettled })
   const saveBackup = useMutation({ mutationFn: (next: boolean) => setTeamBackupForm(leadId, next), onSettled })
   const saveProgram = useMutation({ mutationFn: (next: TeamProgram) => setTeamProgram(leadId, next), onSettled })
+  const saveMessaging = useMutation({ mutationFn: (next: boolean) => setTeamMessaging(leadId, next), onSettled })
   const program = saveProgram.isPending && saveProgram.variables ? saveProgram.variables : features.program
 
   const shown: TeamFeatures = {
     ...(save.isPending && save.variables ? save.variables : features),
     backupFormEnabled: saveBackup.isPending && saveBackup.variables !== undefined ? saveBackup.variables : features.backupFormEnabled,
+    messagingEnabled: saveMessaging.isPending && saveMessaging.variables !== undefined ? saveMessaging.variables : features.messagingEnabled,
   }
-  const error = save.error ?? saveBackup.error ?? saveProgram.error
+  const error = save.error ?? saveBackup.error ?? saveProgram.error ?? saveMessaging.error
 
-  const change = (key: TeamToggleKey, next: boolean) =>
-    key === 'backupFormEnabled' ? saveBackup.mutate(next) : save.mutate({ ...shown, [key]: next })
+  const change = (key: TeamToggleKey, next: boolean) => {
+    if (key === 'backupFormEnabled') saveBackup.mutate(next)
+    else if (key === 'messagingEnabled') saveMessaging.mutate(next)
+    else save.mutate({ ...shown, [key]: next })
+  }
 
   return (
     <div role="row" className="grid grid-cols-1 gap-3 py-4 md:grid-cols-12 md:items-center md:gap-4 md:py-3">
@@ -160,7 +180,7 @@ function TeamFeatureRow({
         <span aria-hidden className="text-sm text-gray-700 md:hidden">
           Program
         </span>
-        {canSetProgram ? (
+        {isAdmin ? (
           <Select
             value={program}
             onChange={(value) => saveProgram.mutate(value as TeamProgram)}
@@ -181,12 +201,20 @@ function TeamFeatureRow({
           <Switch
             checked={shown[key]}
             onChange={(next) => change(key, next)}
-            disabled={disabled || save.isPending || saveBackup.isPending || (key === 'attendancePublic' && !shown.attendanceEnabled)}
+            disabled={
+              disabled ||
+              save.isPending ||
+              saveBackup.isPending ||
+              saveMessaging.isPending ||
+              (key === 'attendancePublic' && !shown.attendanceEnabled) ||
+              // Admins only: a lead sees their team's setting but can't change it.
+              (key === 'messagingEnabled' && !isAdmin)
+            }
             label={`${label} for ${title}`}
           />
         </div>
       ))}
-      <div role="cell" className="md:col-span-4">
+      <div role="cell" className="md:col-span-3">
         <CtsTrainerField leadId={leadId} title={title} trainer={features.ctsTrainer} disabled={disabled} />
         {shown.backupFormEnabled && !features.ctsTrainer && (
           <div className="mt-1 text-xs font-medium text-status-danger-text">Needed for the backup form, or its tasks can{'’'}t be sent.</div>

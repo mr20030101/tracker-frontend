@@ -14,6 +14,17 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.18.0 — 2026-11-10
+
+### Added
+
+- **Admins can turn messaging off per team.** Settings → Team has a new Messaging switch for each lead's team. With it off, the lead and their contributors don't see Messages, the chat button, chat bubbles or group chats, and messages can't be sent by them or to them. Leads see their team's setting but only an admin can change it. Every team keeps messaging until an admin turns it off, and each change is recorded in the Activity Log.
+
+### Changed
+
+- **Idle tabs stop working in the background, to keep the tracker quick for everyone.** After 10 minutes with no mouse, keyboard or touch (or with the tab hidden), a tab stops checking in as online, stops refreshing its pages, and stops listening for new submissions and requests. The first movement or key press wakes it and refreshes anything out of date. Chat messages, calls, running timers and the leads' request alarm keep working while idle.
+- **Switching back to the tracker no longer reloads everything on screen.** Anything loaded in the last 30 seconds is shown as is.
+
 ## 8.17.0 — 2026-11-10
 
 ### Changed

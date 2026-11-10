@@ -2,6 +2,8 @@ import { createContext, useContext, useEffect, useMemo, useReducer, useRef, useS
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from './api'
 import { useAuth } from './auth'
+import { liveChannelName } from './idle'
+import { useTeamFeatures } from './teamFeatures'
 import { buildConversations, fetchConversationSummaries, fetchDirectory } from './messages'
 import { fetchGroupSummaries } from './groupChats'
 import { MESSAGE_NOTIFICATION_SOUND, playSound } from './sound'
@@ -17,6 +19,8 @@ interface MessagingContextValue {
   openChatWith: (userId: string, name: string) => void
   close: () => void
   myId: string | null
+  // Off when an admin has switched chat off for this person's team: hide every way into it.
+  messagingEnabled: boolean
   usersById: Map<string, DirectoryUser>
   conversations: Conversation[]
   // Group chats the caller is in, most recently active first.
@@ -27,6 +31,8 @@ interface MessagingContextValue {
   // Who is typing a direct message to you right now, for the open chat, its header and the conversation list.
   typingUserIds: Set<string>
 }
+
+const NO_GROUPS: ChatGroupSummary[] = []
 
 const MessagingContext = createContext<MessagingContextValue | null>(null)
 
@@ -43,6 +49,9 @@ export function MessagingProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
   const myId = user?.id ?? null
   const queryClient = useQueryClient()
+  // The directory below still loads either way: other pages use it for names and avatars.
+  const { messagingEnabled: teamMessaging } = useTeamFeatures(myId)
+  const chatOn = Boolean(myId) && teamMessaging
 
   const [isOpen, setIsOpen] = useState(false)
   const [activeUserId, setActiveUserId] = useState<string | null>(null)
@@ -54,10 +63,11 @@ export function MessagingProvider({ children }: { children: ReactNode }) {
   const { data: summaries = [], isSuccess: messagesLoaded } = useQuery({
     queryKey: ['messages', myId, 'summary'],
     queryFn: fetchConversationSummaries,
-    enabled: Boolean(myId),
+    enabled: chatOn,
     refetchInterval: 5 * 60_000,
   })
-  const recentMessages = useMemo(() => summaries.flatMap((s) => s.recent), [summaries])
+  // Turned off with a tab open: what was already loaded is hidden too.
+  const recentMessages = useMemo(() => (chatOn ? summaries.flatMap((s) => s.recent) : []), [summaries, chatOn])
 
   const { data: directory = [] } = useQuery({
     queryKey: ['directory'],
@@ -69,7 +79,7 @@ export function MessagingProvider({ children }: { children: ReactNode }) {
   const usersById = useMemo(() => new Map(directory.map((d) => [d.id, d])), [directory])
 
   // Your typing inbox, listened to for as long as you're signed in (see directTypingKey).
-  const typingUserIdList = useTypingIndicator(myId ? directTypingKey(myId) : null, myId, '')
+  const typingUserIdList = useTypingIndicator(chatOn && myId ? directTypingKey(myId) : null, myId, '')
   const typingUserIds = useMemo(() => new Set(typingUserIdList), [typingUserIdList])
 
   // A bot reply's bubble is held back behind a "typing…" indicator until its reveal time (see
@@ -107,15 +117,17 @@ export function MessagingProvider({ children }: { children: ReactNode }) {
   }, [summaries, visibleMessages, myId])
 
   const conversations = useMemo(
-    () => (myId ? buildConversations(myId, visibleMessages, usersById, unreadByOther) : []),
-    [myId, visibleMessages, usersById, unreadByOther],
+    () => (myId && chatOn ? buildConversations(myId, visibleMessages, usersById, unreadByOther) : []),
+    [myId, chatOn, visibleMessages, usersById, unreadByOther],
   )
-  const { data: groups = [], isSuccess: groupsLoaded } = useQuery({
+  const { data: groupData = NO_GROUPS, isSuccess: groupsLoaded } = useQuery({
     queryKey: ['group-chats', myId],
     queryFn: fetchGroupSummaries,
-    enabled: Boolean(myId),
+    enabled: chatOn,
     refetchInterval: 5 * 60_000,
   })
+
+  const groups = chatOn ? groupData : NO_GROUPS
 
   const totalUnread =
     conversations.reduce((sum, c) => sum + c.unreadCount, 0) + groups.reduce((sum, g) => sum + g.unread_count, 0)
@@ -173,9 +185,9 @@ export function MessagingProvider({ children }: { children: ReactNode }) {
   // delay, and the sound are all handled above, off the query data itself, not this raw payload.
   // The key prefix also refreshes whichever thread is open.
   useEffect(() => {
-    if (!myId) return
+    if (!myId || !chatOn) return
     const channel = supabase
-      .channel('messages-live')
+      .channel(liveChannelName('messages-live'))
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => {
         queryClient.invalidateQueries({ queryKey: ['messages', myId] })
       })
@@ -191,15 +203,17 @@ export function MessagingProvider({ children }: { children: ReactNode }) {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [myId, queryClient])
+  }, [myId, queryClient, chatOn])
 
   function openInbox() {
+    if (!chatOn) return
     setActiveUserId(null)
     setActiveUserName(null)
     setIsOpen(true)
   }
 
   function openChatWith(userId: string, name: string) {
+    if (!chatOn) return
     setActiveUserId(userId)
     setActiveUserName(name)
     setIsOpen(true)
@@ -212,13 +226,14 @@ export function MessagingProvider({ children }: { children: ReactNode }) {
   return (
     <MessagingContext.Provider
       value={{
-        isOpen,
+        isOpen: isOpen && chatOn,
         activeUserId,
         activeUserName,
         openInbox,
         openChatWith,
         close,
         myId,
+        messagingEnabled: chatOn,
         usersById,
         conversations,
         groups,

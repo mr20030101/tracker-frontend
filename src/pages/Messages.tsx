@@ -23,6 +23,7 @@ import { messagePreview } from '../lib/callLog'
 import { useCall } from '../lib/call'
 import { errorMessage } from '../lib/api'
 import { useAuth } from '../lib/auth'
+import { useTeamFeatures } from '../lib/teamFeatures'
 import { groupPath } from '../lib/groupChats'
 import { GroupChatPane, GroupIcon, NewGroupModal } from '../components/GroupChat'
 import { confirmDialog } from '../lib/dialog'
@@ -33,7 +34,23 @@ import { directTypingKey, useTypingIndicator } from '../lib/useTypingIndicator'
 // Messenger's own send-bubble blue, matching MessageBubble.tsx — kept local rather than
 // repointing the app's global --color-accent, which drives buttons everywhere else.
 
+/** The Messages page, or a note when an admin has switched messaging off for the viewer's team. */
 export function Messages() {
+  const { user } = useAuth()
+  const { messagingEnabled, loaded } = useTeamFeatures(user?.id)
+  if (!loaded) return null
+  if (!messagingEnabled) {
+    return (
+      <div className="card mx-auto max-w-lg px-5 py-6 text-sm text-gray-600">
+        <h1 className="mb-1 text-base font-semibold text-gray-900">Messaging is off</h1>
+        An admin has turned messaging off for your team. Contact your lead another way.
+      </div>
+    )
+  }
+  return <MessagesPage />
+}
+
+function MessagesPage() {
   const { userId: routeRef, groupId: groupRef } = useParams<{ userId: string; groupId: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()

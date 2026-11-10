@@ -14,6 +14,8 @@ export interface TeamFeatures {
   backupFormEnabled: boolean
   // Bootcamp or RST (20261109_team_program.sql): RST teams file extensions on the RST form.
   program: TeamProgram
+  // Chat for the team (20261110_team_messaging.sql): Messages, the chat button and group chats. Set by an admin.
+  messagingEnabled: boolean
 }
 
 export type TeamProgram = 'bootcamp' | 'rst'
@@ -25,6 +27,7 @@ interface TeamFeaturesRow {
   cts_trainer: string | null
   backup_form_enabled: boolean
   program: TeamProgram | null
+  messaging_enabled: boolean | null
 }
 
 const fromRow = (r: TeamFeaturesRow): TeamFeatures => ({
@@ -34,9 +37,18 @@ const fromRow = (r: TeamFeaturesRow): TeamFeatures => ({
   ctsTrainer: r.cts_trainer,
   backupFormEnabled: r.backup_form_enabled ?? false,
   program: r.program ?? 'bootcamp',
+  messagingEnabled: r.messaging_enabled ?? true,
 })
 
-export const ALL_FEATURES_ON: TeamFeatures = { ctsEnabled: true, attendanceEnabled: true, attendancePublic: false, ctsTrainer: null, backupFormEnabled: false, program: 'bootcamp' }
+export const ALL_FEATURES_ON: TeamFeatures = {
+  ctsEnabled: true,
+  attendanceEnabled: true,
+  attendancePublic: false,
+  ctsTrainer: null,
+  backupFormEnabled: false,
+  program: 'bootcamp',
+  messagingEnabled: true,
+}
 
 /** The features of one person's team: a contributor's lead's, or a lead's own. All on for an admin. */
 export async function fetchTeamFeaturesFor(userId: string): Promise<TeamFeatures> {
@@ -77,13 +89,27 @@ export async function setTeamBackupForm(leadId: string, enabled: boolean): Promi
   if (error) throw error
 }
 
+/** Turns a team's messaging on or off (admins only). */
+export async function setTeamMessaging(leadId: string, enabled: boolean): Promise<void> {
+  const { error } = await supabase.rpc('set_team_messaging', { p_lead_id: leadId, p_enabled: enabled })
+  if (error) throw error
+}
+
 /** Moves a team to Bootcamp or RST (admins only). */
 export async function setTeamProgram(leadId: string, program: TeamProgram): Promise<void> {
   const { error } = await supabase.rpc('set_team_program', { p_lead_id: leadId, p_program: program })
   if (error) throw error
 }
 
-const ALL_FEATURES_OFF: TeamFeatures = { ctsEnabled: false, attendanceEnabled: false, attendancePublic: false, ctsTrainer: null, backupFormEnabled: false, program: 'bootcamp' }
+const ALL_FEATURES_OFF: TeamFeatures = {
+  ctsEnabled: false,
+  attendanceEnabled: false,
+  attendancePublic: false,
+  ctsTrainer: null,
+  backupFormEnabled: false,
+  program: 'bootcamp',
+  messagingEnabled: false,
+}
 
 /**
  * The features of `userId`'s team. Until it loads, everything is hidden, so a team that has

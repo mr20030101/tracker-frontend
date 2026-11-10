@@ -52,6 +52,8 @@ function navSections(
   isAdmin: boolean,
   // Off when the person's team doesn't take attendance in the Tracker (never for an admin).
   attendanceEnabled: boolean,
+  // Off when an admin has switched chat off for the person's team.
+  messagingEnabled: boolean,
   pendingRequests: number,
   overdueRequests: number,
   pendingFeedback: number,
@@ -100,7 +102,7 @@ function navSections(
       label: 'Team',
       items: isManager
         ? [
-          { to: '/messages', label: 'Messages', icon: MessageCircle },
+          ...(messagingEnabled ? [{ to: '/messages', label: 'Messages', icon: MessageCircle }] : []),
           { to: '/announcements', label: 'Announcements', icon: Megaphone, badge: unreadAnnouncements },
           { to: '/users', label: 'Contributors', icon: UsersIcon },
           { to: '/leads', label: isAdmin ? 'Leads' : 'Team settings', icon: UserCog },
@@ -108,7 +110,7 @@ function navSections(
           { to: '/hiring', label: 'Hiring', icon: UserPlus },
         ]
         : [
-          { to: '/messages', label: 'Messages', icon: MessageCircle },
+          ...(messagingEnabled ? [{ to: '/messages', label: 'Messages', icon: MessageCircle }] : []),
           { to: '/announcements', label: 'Announcements', icon: Megaphone, badge: unreadAnnouncements },
         ],
     },
@@ -283,8 +285,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const activePill = useStretchyPill(navListRef, 'a[aria-current="page"]', 'y', [location.pathname, rail, docked, menuOpen])
 
   const ownProfilePath = user ? contributorPath(user.email) : '/'
-  const { attendanceEnabled } = useTeamFeatures(user?.id)
-  const sections = navSections(isManager, isAdmin, attendanceEnabled, pendingRequests, overdueRequests, pendingFeedback, unreadAnnouncements)
+  const { attendanceEnabled, messagingEnabled } = useTeamFeatures(user?.id)
+  const sections = navSections(isManager, isAdmin, attendanceEnabled, messagingEnabled, pendingRequests, overdueRequests, pendingFeedback, unreadAnnouncements)
   const isCurrent = (item: { to: string; match?: string[] }) => (item.match ?? [item.to]).includes(location.pathname)
   const searchPages = [
     ...sections.flatMap((section) =>
@@ -464,7 +466,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               </div>
               <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
                 {user && <GlobalSearch pages={searchPages} />}
-                {user && !onMessages && <MessagesButton />}
+                {user && !onMessages && messagingEnabled && <MessagesButton />}
                 {user && <NotificationBell />}
                 {user && <AccountMenu />}
               </div>

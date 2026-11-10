@@ -15,11 +15,12 @@ const MAX_SHOWN = 5
 // (hover for their name and your last message, x to put the bubble away), and a compose button.
 export function OnlineUsers() {
   const { user: currentUser } = useAuth()
-  const { openChatWith, openInbox, conversations } = useMessaging()
+  const { openChatWith, openInbox, conversations, messagingEnabled } = useMessaging()
   const { data } = useQuery({
     queryKey: ['directory'],
     queryFn: fetchDirectory,
     refetchInterval: 2 * 60_000,
+    enabled: messagingEnabled,
   })
   // Bubbles put away with x (or "Close all bubbles"), for this visit; they're back after a reload.
   const [dismissed, setDismissed] = useState<Set<string>>(new Set())
@@ -28,7 +29,7 @@ export function OnlineUsers() {
   const online = (data ?? []).filter(
     (u) => u.id !== currentUser?.id && u.is_active && isOnline(u.last_seen_at) && !dismissed.has(u.id),
   )
-  if (online.length === 0) return null
+  if (!messagingEnabled || online.length === 0) return null
 
   const shown = online.slice(0, MAX_SHOWN)
   const overflow = online.length - shown.length
