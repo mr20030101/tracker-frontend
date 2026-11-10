@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.16.0 — 2026-11-10
+
 ### Added
 
 - **Attendance photos must show a face.** While the camera is open, each face found is boxed and a label shows whether a face is in frame. Taking the photo checks it: if no face can be seen (an empty desk, the ceiling, a dark room) the photo isn't taken and the camera stays open with a note on what to fix. A photo of an animal with no person in it is refused too ("That looks like a cat, not a person"); a pet beside its owner is fine. The label reads **Ghost** (with a ghost icon) for a person, **Animal (cat)**, **No face in frame** or **Move closer**. The saved photo keeps the box and the Ghost label, so leads see what was checked. An uploaded photo is checked and marked the same way. The check runs on the phone or computer itself. It only finds a face and never identifies who it is, and nothing about the face is saved. On a browser that can't run the check, the photo is taken as before.
