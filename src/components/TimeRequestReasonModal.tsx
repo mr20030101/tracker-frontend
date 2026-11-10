@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { RotateCw, Save, Send, X } from 'lucide-react'
+import { ExternalLink, RotateCw, Save, Send, X } from 'lucide-react'
 import { errorMessage } from '../lib/api'
 import { Modal } from './Modal'
 
@@ -35,6 +35,7 @@ export function TimeRequestReasonModal({
   error,
   onSubmit,
   onClose,
+  selfFile = false,
 }: {
   type: TimeRequestType
   taskId: string | null
@@ -44,6 +45,8 @@ export function TimeRequestReasonModal({
   error: unknown
   onSubmit: (reason: string) => void
   onClose: () => void
+  /** The contributor files it themselves on the TASK ISSUES form next (Octet Mind), not their lead. */
+  selfFile?: boolean
 }) {
   const [reason, setReason] = useState(initialReason)
   const labels = TIME_REQUEST_LABELS[type]
@@ -53,7 +56,9 @@ export function TimeRequestReasonModal({
     <Modal title={title} onClose={onClose}>
       <div className="flex flex-col gap-4">
         <p className="text-sm text-gray-600">
-          {mode === 'edit'
+          {selfFile
+            ? <>You file this {labels.noun} yourself on the TASK ISSUES form. Next, the form opens here with your details and this reason filled in.</>
+            : mode === 'edit'
             ? 'Your lead sees the new reason straight away. It stays pending.'
             : mode === 'resend'
               ? 'Your last one was denied. This sends your lead a new request.'
@@ -84,8 +89,26 @@ export function TimeRequestReasonModal({
             onClick={() => onSubmit(reason)}
             className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
           >
-            {mode === 'edit' ? <Save className="h-4 w-4" aria-hidden /> : mode === 'resend' ? <RotateCw className="h-4 w-4" aria-hidden /> : <Send className="h-4 w-4" aria-hidden />}
-            {mode === 'edit' ? (isPending ? 'Saving...' : 'Save') : isPending ? 'Sending...' : mode === 'resend' ? 'Resend request' : 'Send request'}
+            {selfFile ? (
+              <ExternalLink className="h-4 w-4" aria-hidden />
+            ) : mode === 'edit' ? (
+              <Save className="h-4 w-4" aria-hidden />
+            ) : mode === 'resend' ? (
+              <RotateCw className="h-4 w-4" aria-hidden />
+            ) : (
+              <Send className="h-4 w-4" aria-hidden />
+            )}
+            {selfFile
+              ? 'Continue to form'
+              : mode === 'edit'
+                ? isPending
+                  ? 'Saving...'
+                  : 'Save'
+                : isPending
+                  ? 'Sending...'
+                  : mode === 'resend'
+                    ? 'Resend request'
+                    : 'Send request'}
           </button>
         </div>
       </div>

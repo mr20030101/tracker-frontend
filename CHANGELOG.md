@@ -14,6 +14,10 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Changed
+
+- **Octet Mind contributors file their own extensions and reclaims.** On an Octet Mind task, Request extension or Request reclaim asks for the reason, then opens the TASK ISSUES form inside the Tracker with the contributor's details filled in. Once they submit it, the request is recorded as filed, so their lead sees it in Requests without having to act on it. It isn't limited to the lead's shift. Closing the form without submitting records nothing. Aloha OTS and Aloha OTS Tasking (RST) requests still go to the lead as before.
+
 ## 8.20.0 — 2026-11-10
 
 ### Changed

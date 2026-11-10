@@ -7,6 +7,7 @@ import { useAuth } from '../lib/auth'
 import { errorMessage } from '../lib/api'
 import {
   buildBadVideoRequestFormUrl,
+  timeRequestFormFor,
   deleteTaskRequestsBulk,
   editTaskRequest,
   fetchTaskRequests,
@@ -29,6 +30,7 @@ import { Detail } from '../components/Detail'
 import { Modal } from '../components/Modal'
 import { FileTimeRequestModal, type TimeRequestFormFields } from '../components/FileTimeRequestModal'
 import { TimeRequestReasonModal, type TimeRequestMode } from '../components/TimeRequestReasonModal'
+import { SelfFileTaskIssueModal } from '../components/SelfFileTaskIssueModal'
 import type { RequestStatus, RequestType } from '../types'
 import { contributorPath } from '../lib/urlRef'
 import { useNow } from '../lib/useNow'
@@ -680,7 +682,19 @@ export function Requests() {
         />
       )}
 
-      {revisingRequest && (
+      {revisingRequest && revisingRequest.mode === 'resend' && timeRequestFormFor(revisingRequest.request.task_submission?.project) === 'task_issues' ? (
+        // Octet Mind: resending means filing it yourself on TASK ISSUES.
+        <SelfFileTaskIssueModal
+          submissionId={revisingRequest.request.task_submission_id}
+          taskId={revisingRequest.request.task_submission?.task_id ?? null}
+          cbEmail={revisingRequest.request.task_submission?.cb_email ?? null}
+          remotasksId={user?.remotasks_id ?? null}
+          type={revisingRequest.request.type}
+          mode="resend"
+          initialReason={revisingRequest.request.reason ?? ''}
+          onClose={() => setRevisingRequest(null)}
+        />
+      ) : revisingRequest && (
         <TimeRequestReasonModal
           type={revisingRequest.request.type}
           taskId={revisingRequest.request.task_submission?.task_id ?? null}

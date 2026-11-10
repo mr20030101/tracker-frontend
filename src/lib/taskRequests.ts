@@ -174,6 +174,16 @@ export async function requestExtension(
   if (error) throw error
 }
 
+/**
+ * Records an extension or reclaim the contributor filed themselves on the TASK ISSUES form (Octet
+ * Mind), already approved. Called once the form reports it was submitted. A pending or denied
+ * request of the same type on the task becomes this one.
+ */
+export async function fileOwnTaskRequest(submissionId: number, type: 'extension' | 'reclaim', reason: string): Promise<void> {
+  const { error } = await supabase.rpc('file_own_task_request', { p_submission_id: submissionId, p_type: type, p_reason: reason.trim() })
+  if (error) throw error
+}
+
 /** Changes the reason on the caller's own extension or reclaim request while it's still pending. */
 export async function editTaskRequest(id: number, reason: string): Promise<void> {
   const { error } = await supabase.rpc('edit_own_task_request', { p_request_id: id, p_reason: reason.trim() })

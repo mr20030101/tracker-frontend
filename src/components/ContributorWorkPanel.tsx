@@ -54,6 +54,7 @@ import { TaskSubmissionForm } from './TaskSubmissionForm'
 import { BulkImportModal } from './BulkImportModal'
 import { BadVideoReportModal } from './BadVideoReportModal'
 import { FileTimeRequestModal, type TimeRequestFormFields } from './FileTimeRequestModal'
+import { SelfFileTaskIssueModal } from './SelfFileTaskIssueModal'
 import { TIME_REQUEST_LABELS, TimeRequestReasonModal, type TimeRequestMode, type TimeRequestType } from './TimeRequestReasonModal'
 import { confirmDialog } from '../lib/dialog'
 import { WORKING_DAYS } from '../lib/quotas'
@@ -102,6 +103,13 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
   const [bulkImporting, setBulkImporting] = useState(false)
   // The reason form a contributor is filling in: a new request, a resend after a denial, or an edit
   // of a pending one (`request` is the earlier/pending one for the last two).
+  // An Octet Mind task's extension or reclaim the contributor is filing themselves (TASK ISSUES).
+  const [selfFiling, setSelfFiling] = useState<{
+    submission: TaskSubmission
+    type: TimeRequestType
+    mode: TimeRequestMode
+    request?: TaskRequest
+  } | null>(null)
   const [requestingExtensionFor, setRequestingExtensionFor] = useState<{
     submission: TaskSubmission
     type: TimeRequestType
@@ -716,8 +724,22 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                     // Menu items for one extension/reclaim request on this row: a contributor sends,
                     // edits or withdraws their own, or resends one that was denied; a lead/admin files
                     // or denies a pending one, or deletes it.
+                    // Octet Mind: the contributor files it themselves, any time, so there's no pending step.
+                    const selfFiles = timeRequestFormFor(row.project) === 'task_issues'
                     const timeRequestItems = (type: TimeRequestType, request: TaskRequest | undefined) => {
                       const { noun } = TIME_REQUEST_LABELS[type]
+                      if (selfFiles && canRequestExtension) {
+                        return request?.status === 'approved'
+                          ? []
+                          : [
+                              {
+                                label: `Request ${noun}`,
+                                icon: type === 'extension' ? Clock : RotateCcw,
+                                onClick: () =>
+                                  setSelfFiling({ submission: row, type, mode: request?.status === 'denied' ? 'resend' : 'new', request }),
+                              },
+                            ]
+                      }
                       return [
                         ...(canRequestExtension
                           ? request?.status === 'pending'
@@ -949,6 +971,19 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
 
       {bulkImporting && (
         <BulkImportModal projects={allProjects} contributorEmail={email} contributorName={contributorName} onClose={() => setBulkImporting(false)} />
+      )}
+
+      {selfFiling && (
+        <SelfFileTaskIssueModal
+          submissionId={selfFiling.submission.id}
+          taskId={selfFiling.submission.task_id}
+          cbEmail={selfFiling.submission.cb_email}
+          remotasksId={currentUser?.remotasks_id ?? null}
+          type={selfFiling.type}
+          mode={selfFiling.mode}
+          initialReason={selfFiling.request?.reason ?? ''}
+          onClose={() => setSelfFiling(null)}
+        />
       )}
 
       {requestingExtensionFor && (
