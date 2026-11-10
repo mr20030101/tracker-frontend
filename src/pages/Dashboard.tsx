@@ -12,6 +12,7 @@ import { useMessaging } from '../lib/messagingContext'
 import type { DashboardSummary } from '../types'
 import { LineChart } from '../components/LineChart'
 import { DashboardHero } from '../components/DashboardHero'
+import { RunningTasksCard } from '../components/RunningTasksCard'
 import { OVERDUE_HOURS, fetchOverdueRequestCount } from '../lib/taskRequests'
 import { usePageTitle } from '../lib/usePageTitle'
 
@@ -287,6 +288,8 @@ export function Dashboard() {
           </button>
         )}
       </div>
+
+      <RunningTasksCard />
 
       {isLoading && <div className="text-gray-400">Loading...</div>}
 
