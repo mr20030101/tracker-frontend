@@ -213,7 +213,7 @@ function Palette({ pages, onClose }: { pages: SearchPage[]; onClose: () => void 
         key: `announcement-${a.id}`,
         group: 'Announcements',
         label: a.title,
-        sublabel: `${a.author?.name ?? 'Unknown'} · ${new Date(a.created_at).toLocaleDateString()}`,
+        sublabel: `${a.author?.name ?? usersById.get(a.author_id)?.name ?? 'Unknown'} · ${new Date(a.created_at).toLocaleDateString()}`,
         icon: <Megaphone className="h-4 w-4 text-gray-500" />,
         run: () => go('/announcements'),
       })
