@@ -19,6 +19,7 @@
     "pack:extension": "node scripts/pack-extension.mjs"
   },
   "dependencies": {
+    "@mediapipe/tasks-vision": "^1.2.2",
     "@supabase/supabase-js": "^2.116.0",
     "@tanstack/react-query": "^5.102.8",
     "@tanstack/react-table": "^8.21.3",
