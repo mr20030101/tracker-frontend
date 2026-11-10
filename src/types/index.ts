@@ -93,6 +93,7 @@ export interface TaskSubmission {
   // The Back Up Task Tracker form (20261109_task_backup_form.sql): when it was sent, or why it failed.
   backup_form_sent_at?: string | null
   backup_form_error?: string | null
+  backup_form_attempts?: number | null
   created_at: string
   updated_at?: string
 }
