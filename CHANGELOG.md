@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.23.2 — 2026-11-10
+
 ### Fixed
 
 - **Notifications come in live again without a reload.** Since idle tabs were paused, a tab left alone for 10 minutes stopped hearing about new submissions and requests, and its badges stopped counting, until you moved the mouse or reloaded. The live feeds behind the bell and the Requests, Feedback and Announcements badges now keep running whether the tab is idle or not, and a new request updates the Requests badge and list straight away. Idle tabs still skip the online ping and the page refreshes.
