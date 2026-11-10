@@ -12,6 +12,7 @@ import { confirmDialog } from '../lib/dialog'
 import { usePageTitle } from '../lib/usePageTitle'
 import { LEVEL_TIERS } from '../components/LevelPill'
 import { QUOTA_LEVELS, projectQuota } from '../lib/quotas'
+import { DEFAULT_TIMER_LIMIT_MINUTES, formatTimer, timerLimitSeconds } from '../lib/taskTimer'
 
 type QuotaInputs = Record<ProjectLevel, string>
 
@@ -74,6 +75,36 @@ function QuotaSummary({ project }: { project: Project }) {
   )
 }
 
+const TIMER_LIMIT_ERROR = 'The timer limit must be a whole number of minutes from 1 to 1440, or blank for 3 hours.'
+
+function timerLimitValid(input: string) {
+  const value = input.trim()
+  return value === '' || (/^\d+$/.test(value) && Number(value) >= 1 && Number(value) <= 1440)
+}
+
+function timerLimitColumn(input: string) {
+  return { timer_limit_minutes: input.trim() === '' ? null : Number(input) }
+}
+
+function TimerLimitField({ value, onChange }: { value: string; onChange: (next: string) => void }) {
+  return (
+    <div>
+      <label className="mb-1 block text-sm font-medium text-gray-700">Task Timer Limit (minutes)</label>
+      <input
+        type="number"
+        min={1}
+        max={1440}
+        step={1}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={String(DEFAULT_TIMER_LIMIT_MINUTES)}
+        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-accent"
+      />
+      <p className="mt-1 text-xs text-gray-400">A task on this project is marked Expired once its timer reaches this. Leave blank for 3 hours.</p>
+    </div>
+  )
+}
+
 interface ProjectLead {
   project_id: number
   lead_id: string
@@ -88,10 +119,12 @@ export function Projects() {
   const [name, setName] = useState('')
   const [code, setCode] = useState('')
   const [quotas, setQuotas] = useState<QuotaInputs>(NO_QUOTAS)
+  const [timerLimit, setTimerLimit] = useState('')
   const [editTarget, setEditTarget] = useState<Project | null>(null)
   const [editName, setEditName] = useState('')
   const [editCode, setEditCode] = useState('')
   const [editQuotas, setEditQuotas] = useState<QuotaInputs>(NO_QUOTAS)
+  const [editTimerLimit, setEditTimerLimit] = useState('')
   const [assignTarget, setAssignTarget] = useState<Project | null>(null)
   const [selectedLeadId, setSelectedLeadId] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -126,20 +159,26 @@ export function Projects() {
   const leadNameById = new Map(leads.map((lead) => [lead.id, lead.name]))
 
   const createMutation = useMutation({
-    mutationFn: async () => api.post('/projects', { name, code: code.trim() || null, ...quotaColumns(quotas) }),
+    mutationFn: async () => api.post('/projects', { name, code: code.trim() || null, ...quotaColumns(quotas), ...timerLimitColumn(timerLimit) }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] })
       setAdding(false)
       setName('')
       setCode('')
       setQuotas(NO_QUOTAS)
+      setTimerLimit('')
       setError(null)
     },
     onError: () => setError('Could not create this project. The name may already be in use.'),
   })
 
   const updateMutation = useMutation({
-    mutationFn: async () => api.patch(`/projects/${editTarget!.id}`, { name: editName, code: editCode.trim() || null, ...quotaColumns(editQuotas) }),
+    mutationFn: async () => api.patch(`/projects/${editTarget!.id}`, {
+        name: editName,
+        code: editCode.trim() || null,
+        ...quotaColumns(editQuotas),
+        ...timerLimitColumn(editTimerLimit),
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] })
       // Targets come from the quotas, so everything showing one is out of date.
@@ -189,6 +228,7 @@ export function Projects() {
   function handleCreate(e: FormEvent) {
     e.preventDefault()
     if (!quotasValid(quotas)) return setError(QUOTA_ERROR)
+    if (!timerLimitValid(timerLimit)) return setError(TIMER_LIMIT_ERROR)
     setError(null)
     createMutation.mutate()
   }
@@ -196,6 +236,7 @@ export function Projects() {
   function handleUpdate(e: FormEvent) {
     e.preventDefault()
     if (!quotasValid(editQuotas)) return setError(QUOTA_ERROR)
+    if (!timerLimitValid(editTimerLimit)) return setError(TIMER_LIMIT_ERROR)
     setError(null)
     updateMutation.mutate()
   }
@@ -237,12 +278,13 @@ export function Projects() {
       )}
 
       <div className="overflow-x-auto card">
-        <table className="w-full min-w-[44rem] text-left text-sm">
+        <table className="w-full min-w-[50rem] text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
             <tr>
               <th className="px-5 py-3">Name</th>
               <th className="px-5 py-3">Project Code</th>
               <th className="px-5 py-3">Daily Quota</th>
+              <th className="px-5 py-3 text-right">Timer Limit</th>
               {isAdmin && <th className="px-5 py-3">Leads</th>}
               <th className="px-5 py-3 text-right">Actions</th>
             </tr>
@@ -250,14 +292,14 @@ export function Projects() {
           <tbody className="divide-y divide-gray-100">
             {isLoading && (
               <tr>
-                <td colSpan={isAdmin ? 5 : 4} className="px-5 py-6 text-center text-gray-400">
+                <td colSpan={isAdmin ? 6 : 5} className="px-5 py-6 text-center text-gray-400">
                   Loading...
                 </td>
               </tr>
             )}
             {!isLoading && data?.length === 0 && (
               <tr>
-                <td colSpan={isAdmin ? 5 : 4} className="px-5 py-6 text-center text-gray-400">
+                <td colSpan={isAdmin ? 6 : 5} className="px-5 py-6 text-center text-gray-400">
                   No projects yet.
                 </td>
               </tr>
@@ -270,6 +312,10 @@ export function Projects() {
                   <td className="px-5 py-3 font-mono text-xs text-gray-600">{project.code ?? '—'}</td>
                   <td className="px-5 py-3">
                     <QuotaSummary project={project} />
+                  </td>
+                  <td className="px-5 py-3 text-right font-mono text-xs tabular-nums text-gray-600">
+                    {formatTimer(timerLimitSeconds(project))}
+                    {project.timer_limit_minutes == null && <span className="ml-1 font-sans text-gray-400">(default)</span>}
                   </td>
                   {isAdmin && (
                     <td className="px-5 py-3">
@@ -322,6 +368,7 @@ export function Projects() {
                                 setEditName(project.name)
                                 setEditCode(project.code ?? '')
                                 setEditQuotas(quotaInputs(project))
+                                setEditTimerLimit(project.timer_limit_minutes == null ? '' : String(project.timer_limit_minutes))
                                 setError(null)
                               },
                             },
@@ -375,6 +422,7 @@ export function Projects() {
               <p className="mt-1 text-xs text-gray-400">Exactly as it's listed under Tracking Project in the CTS Tracker.</p>
             </div>
             <QuotaFields value={quotas} onChange={setQuotas} />
+            <TimerLimitField value={timerLimit} onChange={setTimerLimit} />
             {error && <div className="text-sm text-status-danger-text">{error}</div>}
             <div className="mt-2 flex justify-end gap-2">
               <button
@@ -421,6 +469,7 @@ export function Projects() {
               <p className="mt-1 text-xs text-gray-400">Exactly as it's listed under Tracking Project in the CTS Tracker.</p>
             </div>
             <QuotaFields value={editQuotas} onChange={setEditQuotas} />
+            <TimerLimitField value={editTimerLimit} onChange={setEditTimerLimit} />
             {error && <div className="text-sm text-status-danger-text">{error}</div>}
             <div className="mt-2 flex justify-end gap-2">
               <button
