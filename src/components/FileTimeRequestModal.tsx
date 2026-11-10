@@ -10,6 +10,7 @@ import {
   type TimeRequestForm,
 } from '../lib/taskRequests'
 import type { Stage } from '../types'
+import { EmbeddedFormModal } from './EmbeddedFormModal'
 import { Modal } from './Modal'
 
 export interface TimeRequestFormFields {
@@ -22,6 +23,11 @@ export interface TimeRequestFormFields {
   projectCode: string | null
   reason: string | null
 }
+
+// Public, single-page forms open inside the Tracker, like the CTS form, and the request is approved
+// once the lead submits it there. The Scale form needs a Google sign-in, which can't load in a
+// frame, so it still opens in a new tab and counts as filed when it opens.
+const EMBEDDED_FORMS: ReadonlySet<TimeRequestForm> = new Set(['rst', 'task_issues'])
 
 const FORM_NAMES: Record<TimeRequestForm, string> = {
   scale: 'Scale form',
@@ -50,6 +56,8 @@ export function FileTimeRequestModal({
   onClose: () => void
 }) {
   const [fields, setFields] = useState(initial)
+  const [embeddedUrl, setEmbeddedUrl] = useState<string | null>(null)
+  const [submitted, setSubmitted] = useState(false)
   const form = timeRequestFormFor({ name: fields.projectName ?? '', code: fields.projectCode })
   const lead = useQuery({
     queryKey: ['cb-lead-name', cbUserId],
@@ -60,6 +68,21 @@ export function FileTimeRequestModal({
   const ready = form !== 'scale' || !cbUserId || !lead.isPending
   const set = <K extends keyof TimeRequestFormFields>(key: K, value: TimeRequestFormFields[K]) => setFields((prev) => ({ ...prev, [key]: value }))
   const text = (value: string) => (value.trim() === '' ? null : value)
+
+  if (embeddedUrl) {
+    return (
+      <EmbeddedFormModal
+        title={FORM_NAMES[form]}
+        url={embeddedUrl}
+        onClose={onClose}
+        onSubmitted={() => {
+          setSubmitted(true)
+          onFiled()
+        }}
+        status={submitted ? <span className="text-xs font-medium text-status-success-text">Submitted. Request marked approved.</span> : null}
+      />
+    )
+  }
 
   return (
     <Modal title={`File ${fields.requestType === 'Reclaim' ? 'reclaim' : 'extension'} request`} onClose={onClose}>
@@ -75,13 +98,20 @@ export function FileTimeRequestModal({
               : form === 'task_issues'
                 ? buildTaskIssuesFormUrl({ ...fields, reason })
                 : buildExtensionRequestFormUrl({ ...fields, reason, leadName: lead.data ?? null })
+          if (EMBEDDED_FORMS.has(form)) {
+            setEmbeddedUrl(url)
+            return
+          }
           window.open(url, '_blank', 'noopener,noreferrer')
           onFiled()
           onClose()
         }}
       >
         <p className="text-sm text-gray-600">
-          Check the details, then open the {FORM_NAMES[form]} with them filled in. It{'\u2019'}s marked approved once the form opens.
+          Check the details, then open the {FORM_NAMES[form]} with them filled in.{' '}
+          {EMBEDDED_FORMS.has(form)
+            ? 'It opens here, and the request is marked approved once you submit it.'
+            : 'It\u2019s marked approved once the form opens.'}
           {form === 'task_issues' && ' Pick the reason category on the form.'}
         </p>
         {form !== 'rst' && (

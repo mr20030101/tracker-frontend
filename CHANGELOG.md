@@ -14,6 +14,10 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Changed
+
+- **The TASK ISSUES and RST extension forms open inside the Tracker.** When a lead clicks Request on an Octet Mind or Aloha OTS Tasking (RST) task, the prefilled form now opens in a window in the Tracker, like the CTS form, instead of a new tab. The request is marked approved once the lead submits the form there; closing it without submitting leaves the request pending. If the form doesn't load, it can still be opened in a new tab. The Scale form (Aloha OTS) needs a Google sign-in, so it still opens in a new tab.
+
 ## 8.19.0 — 2026-11-10
 
 ### Changed
