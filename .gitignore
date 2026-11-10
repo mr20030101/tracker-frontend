@@ -44,3 +44,7 @@ backups/
 
 # Packed browser extension zips (npm run pack:extension)
 extension-build/
+
+# Other coding agents' local config
+.agents/
+.codex/
