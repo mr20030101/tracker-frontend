@@ -51,11 +51,14 @@ function request(body: unknown = { user_id: USER_ID, date: '2026-10-17' }) {
   })
 }
 
-function fakeFetch({ sentAt = null as string | null, formStatus = 200, visible = true } = {}) {
+function fakeFetch({ sentAt = null as string | null, formStatus = 200, visible = true, teamForm = null as boolean | null } = {}) {
   return vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
     const url = String(input)
     if (url.endsWith('/auth/v1/user')) return Response.json({ id: USER_ID, email: 'cb@example.com' })
+    if (url.includes('/rest/v1/profiles') && url.includes('select=id,role,lead_id')) return Response.json([{ id: USER_ID, role: 'contributor', lead_id: 'lead-1' }])
     if (url.includes('/rest/v1/profiles')) return Response.json([{ is_active: true, must_change_password: false }])
+    // The team's setting; null is a team that never changed it.
+    if (url.includes('/rest/v1/team_features?')) return Response.json(teamForm === null ? [] : [{ attendance_gform_enabled: teamForm }])
     if (url.includes('/rest/v1/attendance?') && init?.method === 'PATCH') return new Response(null, { status: 204 })
     if (url.includes('/rest/v1/attendance?')) {
       return Response.json(
@@ -105,6 +108,21 @@ describe('handleSendAttendanceToGoogleForm', () => {
 
   it('rejects a malformed request', async () => {
     expect((await handleSendAttendanceToGoogleForm(request({ user_id: 'x', date: 'today' }), ENV, fakeFetch())).status).toBe(400)
+  })
+
+  it("doesn't send for a team that turned the form off", async () => {
+    const fetchImpl = fakeFetch({ teamForm: false })
+    const response = await handleSendAttendanceToGoogleForm(request(), ENV, fetchImpl)
+    expect(await response.json()).toEqual({ sent: false, offForTeam: true })
+    expect(fetchImpl.mock.calls.some(([url]) => String(url) === GOOGLE_FORM_RESPONSE_URL)).toBe(false)
+    expect(fetchImpl.mock.calls.some(([, init]) => init?.method === 'PATCH')).toBe(false)
+  })
+
+  it('sends for a team that has it on, or never changed it', async () => {
+    for (const teamForm of [true, null]) {
+      const fetchImpl = fakeFetch({ teamForm })
+      expect(await (await handleSendAttendanceToGoogleForm(request(), ENV, fetchImpl)).json()).toEqual({ sent: true })
+    }
   })
 
   it('does nothing at all while sending is off', async () => {

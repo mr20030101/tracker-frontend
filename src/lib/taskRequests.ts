@@ -348,7 +348,7 @@ export function buildExtensionRequestFormUrl(params: {
 // Which form an extension or reclaim is filed on goes by the task's project:
 //   Aloha OTS Tasking (RST), Aloha-OTS_Tasking  → the RST Task Extension Form
 //   Octet Mind, octet-mind                      → the TASK ISSUES form
-//   Aloha OTS, aloha_data_collection_v1, others → the Scale Reclaim / Extend form
+//   Aloha OTS, Sweet Yam, others              → the Scale Reclaim / Extend form (and Bad Video)
 export type TimeRequestForm = 'scale' | 'rst' | 'task_issues'
 
 const projectKey = (value: string | null | undefined) => (value ?? '').trim().toLowerCase().replace(/[\s_-]+/g, '')

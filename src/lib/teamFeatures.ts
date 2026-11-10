@@ -16,6 +16,8 @@ export interface TeamFeatures {
   program: TeamProgram
   // Chat for the team (20261110_team_messaging.sql): Messages, the chat button and group chats. Set by an admin.
   messagingEnabled: boolean
+  // Filed attendance goes to the attendance Google Form (20261111_team_attendance_gform.sql). On by default.
+  attendanceGformEnabled: boolean
 }
 
 export type TeamProgram = 'bootcamp' | 'rst'
@@ -28,6 +30,7 @@ interface TeamFeaturesRow {
   backup_form_enabled: boolean
   program: TeamProgram | null
   messaging_enabled: boolean | null
+  attendance_gform_enabled: boolean | null
 }
 
 const fromRow = (r: TeamFeaturesRow): TeamFeatures => ({
@@ -38,6 +41,7 @@ const fromRow = (r: TeamFeaturesRow): TeamFeatures => ({
   backupFormEnabled: r.backup_form_enabled ?? false,
   program: r.program ?? 'bootcamp',
   messagingEnabled: r.messaging_enabled ?? true,
+  attendanceGformEnabled: r.attendance_gform_enabled ?? true,
 })
 
 export const ALL_FEATURES_ON: TeamFeatures = {
@@ -48,6 +52,7 @@ export const ALL_FEATURES_ON: TeamFeatures = {
   backupFormEnabled: false,
   program: 'bootcamp',
   messagingEnabled: true,
+  attendanceGformEnabled: true,
 }
 
 /** The features of one person's team: a contributor's lead's, or a lead's own. All on for an admin. */
@@ -95,6 +100,12 @@ export async function setTeamMessaging(leadId: string, enabled: boolean): Promis
   if (error) throw error
 }
 
+/** Turns sending a team's attendance to the attendance Google Form on or off (the lead themselves, or an admin). */
+export async function setTeamAttendanceGform(leadId: string, enabled: boolean): Promise<void> {
+  const { error } = await supabase.rpc('set_team_attendance_gform', { p_lead_id: leadId, p_enabled: enabled })
+  if (error) throw error
+}
+
 /** Moves a team to Bootcamp or RST (admins only). */
 export async function setTeamProgram(leadId: string, program: TeamProgram): Promise<void> {
   const { error } = await supabase.rpc('set_team_program', { p_lead_id: leadId, p_program: program })
@@ -109,6 +120,7 @@ const ALL_FEATURES_OFF: TeamFeatures = {
   backupFormEnabled: false,
   program: 'bootcamp',
   messagingEnabled: false,
+  attendanceGformEnabled: false,
 }
 
 /**

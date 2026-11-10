@@ -77,6 +77,23 @@ export function handleGoogleFormStatus(env: GoogleFormEnv): Response {
   return json(200, { enabled: googleFormEnabled(env) })
 }
 
+/** Whether this person's team sends attendance to the Google Form (team_features.attendance_gform_enabled). */
+async function teamSendsToGoogleForm(url: string, serviceKey: string, userId: string, fetchImpl: typeof fetch): Promise<boolean> {
+  const headers = { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` }
+  try {
+    const people = await fetchImpl(`${url}/rest/v1/profiles?id=eq.${userId}&select=id,role,lead_id&limit=1`, { headers })
+    const [person] = people.ok ? ((await people.json()) as { id: string; role: string; lead_id: string | null }[]) : []
+    const leadId = person?.role === 'lead' ? person.id : person?.lead_id
+    if (!leadId) return true
+    const teams = await fetchImpl(`${url}/rest/v1/team_features?lead_id=eq.${leadId}&select=attendance_gform_enabled&limit=1`, { headers })
+    if (!teams.ok) return true
+    const [team] = (await teams.json()) as { attendance_gform_enabled: boolean | null }[]
+    return team?.attendance_gform_enabled !== false
+  } catch {
+    return true
+  }
+}
+
 export async function handleSendAttendanceToGoogleForm(request: Request, env: GoogleFormEnv, fetchImpl: typeof fetch = fetch): Promise<Response> {
   // Off: nothing is sent or recorded, so turning it on later doesn't send these older saves.
   if (!googleFormEnabled(env)) return json(200, { sent: false, disabled: true })
@@ -105,6 +122,10 @@ export async function handleSendAttendanceToGoogleForm(request: Request, env: Go
   // Only the day's first submission goes to the form: once it's there, later edits and retakes aren't
   // sent, so the sheet gets one row per person per day (and this can't be used to add copies).
   if (entry.google_form_sent_at) return json(200, { sent: true, already: true })
+
+  // A team can keep its attendance in the Tracker only (Settings → Team). Read with the service role;
+  // if it can't be read, it's sent as before.
+  if (!(await teamSendsToGoogleForm(url, serviceKey, userId, fetchImpl))) return json(200, { sent: false, offForTeam: true })
 
   let error: string | null = null
   try {

@@ -4,8 +4,10 @@ Logs and times your Remotasks tasks in the tracker from a browser button, for Ch
 Brave. It signs in with your tracker account and shows your email and Remotasks ID from your
 profile.
 
-- **Start:** paste a task ID (or a task link with `?sceneId=` in it) and press Start. The task is
-  logged as **In Progress** under the project and stage you picked, with its timer running. A task
+- **Start:** open the extension on the task's Remotasks page (the ID is read from `?sceneId=` and
+  filled in for you, on the Requests tab too), or paste a task ID or link, and press Start. The task is
+  logged as **In Progress** under the project and stage picked, with its timer running. Your
+  project is picked for you (your first assigned one); choose another if you're on more than one. A task
   you logged before picks its timer back up instead. Starting a task pauses any other timer you
   have running.
 - **Screenshot link:** paste the link to your screenshot (Snipboard, Lightshot, etc.) on the
@@ -13,11 +15,9 @@ profile.
   link as on the tracker's form; clear the field and Save to remove it.
 - **Submitted** marks it Submitted, which stops the timer. **Pause** and **Resume** stop and
   restart the timer without changing the task.
-- **Alarms:** every task in progress rings (a notification and the tracker's alert sound) at
-  **30 minutes**, **1 hour**, and **10 minutes before it expires**. A task expires 1 hour 30
-  minutes after it was started for Attempt, L1 and L10, and 2 hours for L0, counted from when you
-  pressed Start (pausing doesn't move it). The timer card shows how long is left. A task that's
-  been submitted or reset doesn't ring.
+- **Expiry countdown:** the task card shows how long is left before the task expires on Remotasks
+  (1 hour 30 minutes after it was started for Attempt, L1 and L10, 2 hours for L0). There are no
+  alarms or notifications.
 - **Reload** (top right) brings everything up to date from the tracker: your profile, your
   projects, and the task showing. A task that's finished (submitted, expired, or no longer in the
   tracker) is cleared, ready for the next; one still in progress stays.

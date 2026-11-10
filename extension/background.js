@@ -11,18 +11,6 @@ const SUPABASE_ANON_KEY =
 const SUBMISSION_FIELDS = 'id,task_id,user_id,project_id,stage,status,snipboard_url,created_at,timer_started_at,timer_elapsed_seconds'
 // Refresh the sign-in this long before it runs out.
 const REFRESH_MARGIN_S = 60
-// How long a task has before it expires, by stage, counted from when it was started here.
-const EXPIRY_MINUTES = { attempt: 90, l1: 90, l10: 90, l0: 120 }
-// When each task's alarm goes off, in minutes after it was started.
-function alarmPoints(stage) {
-  const expiry = EXPIRY_MINUTES[stage] ?? EXPIRY_MINUTES.attempt
-  return [
-    { key: '30m', at: 30, title: '30 minutes on this task' },
-    { key: '1h', at: 60, title: '1 hour on this task' },
-    { key: 'expiring', at: expiry - 10, title: '10 minutes before this task expires' },
-  ]
-}
-
 // A Remotasks task ID: 24 characters of 0-9 and a-f (as in src/lib/remotasks.ts).
 const TASK_ID_PATTERN = /^[0-9a-f]{24}$/i
 
@@ -91,17 +79,27 @@ async function signIn(email, password) {
   await loadAccount(session.userId)
 }
 
-// Your profile and the projects to choose from, fresh from the tracker.
+// Your profile and the projects to choose from, fresh from the tracker: the ones you're assigned
+// among your lead's (all of your lead's until you're assigned any; every project without a lead),
+// as on the tracker (src/lib/cbProjects.ts). The first is picked until you choose another.
 async function loadAccount(userId) {
-  const [profile] = await rest(`profiles?id=eq.${userId}&select=id,name,email,role,remotasks_id`)
+  const [profile] = await rest(`profiles?id=eq.${userId}&select=id,name,email,role,remotasks_id,lead_id`)
   if (!profile) throw new Error('No tracker profile found for this account.')
-  // Only the projects they hold a level on, falling back to every project.
-  const levels = await rest(`contributor_project_levels?user_id=eq.${userId}&select=project_id,projects(id,name)`)
-  let projects = levels.map((l) => l.projects).filter(Boolean)
-  if (projects.length === 0) projects = await rest('projects?select=id,name&order=name')
+  let projects
+  if (profile.lead_id) {
+    const [leadRows, levels] = await Promise.all([
+      rest(`project_leads?lead_id=eq.${profile.lead_id}&select=project_id,projects(id,name)`),
+      rest(`contributor_project_levels?user_id=eq.${userId}&select=project_id`),
+    ])
+    const leadProjects = leadRows.map((row) => row.projects).filter(Boolean)
+    const mine = new Set(levels.map((row) => row.project_id))
+    const assigned = leadProjects.filter((project) => mine.has(project.id))
+    projects = assigned.length > 0 ? assigned : leadProjects
+  }
+  if (!projects || projects.length === 0) projects = await rest('projects?select=id,name&order=name')
   projects.sort((a, b) => a.name.localeCompare(b.name))
   const settings = (await load('settings')) ?? {}
-  if (!projects.some((p) => p.id === settings.projectId)) settings.projectId = projects.length === 1 ? projects[0].id : null
+  if (!projects.some((p) => p.id === settings.projectId)) settings.projectId = projects[0]?.id ?? null
   await save({ profile, projects, settings: { stage: 'attempt', ...settings } })
 }
 
@@ -118,7 +116,6 @@ async function reload() {
     if (row?.status === 'in_progress') {
       await save({ current: { ...current, row } })
     } else {
-      if (current.row) await clearAlarms(current.row.id)
       await save({ current: null })
     }
   }
@@ -126,7 +123,6 @@ async function reload() {
 }
 
 async function signOut() {
-  await clearAllAlarms()
   await chrome.storage.local.remove(['session', 'profile', 'projects', 'current'])
   await updateBadge()
 }
@@ -176,11 +172,13 @@ async function setTimer(id, running) {
 // Logs the task as In Progress with its timer running, or picks the timer back up on one already
 // logged. Starting one pauses any other timer you have running (the database runs one at a time).
 async function start(input) {
-  const [profile, settings, current] = await Promise.all([load('profile'), load('settings'), load('current')])
+  const [profile, settings, current, projects] = await Promise.all([load('profile'), load('settings'), load('current'), load('projects')])
+  // Your chosen project, else the first of yours (what the picker shows).
+  const projectId = settings?.projectId ?? projects?.[0]?.id ?? null
   if (!profile) throw new Error('Sign in to Grey Owls Tracker first.')
   const taskId = parseTaskId(input)
   if (!taskId) throw new Error('That isn’t a task ID. A task ID is 24 characters of 0-9 and a-f.')
-  if (!settings?.projectId) throw new Error('Pick your project first.')
+  if (!projectId) throw new Error('You have no project in the tracker yet. Ask your lead to add you to one.')
 
   const found = await findOwnRow(taskId, profile.id)
   if (found.taken) throw new Error('Someone else already logged this task ID.')
@@ -198,7 +196,7 @@ async function start(input) {
           cb_email: profile.email,
           user_id: profile.id,
           task_id: taskId,
-          project_id: settings.projectId,
+          project_id: projectId,
           stage: settings.stage,
           status: 'in_progress',
           date: todaySG(),
@@ -211,7 +209,6 @@ async function start(input) {
     }
   }
   await setCurrent(taskId, row, created)
-  await scheduleAlarms(row)
 }
 
 async function pauseOrResume(running) {
@@ -259,7 +256,6 @@ async function markSubmitted(screenshot) {
   })
   // Nothing comes back when it wasn't in progress any more (submitted or changed in the tracker).
   if (!row) throw new Error('This task isn’t in progress in the tracker any more.')
-  await clearAlarms(row.id)
   await save({ current: { ...current, row } })
   await updateBadge()
 }
@@ -281,7 +277,6 @@ async function reset(remove) {
     } else if (row?.timer_started_at) {
       await setTimer(row.id, false)
     }
-    if (row) await clearAlarms(row.id)
   }
   await save({ current: null })
   await updateBadge()
@@ -322,14 +317,19 @@ async function requestableRow(input) {
   return { profile, row: found.row }
 }
 
-/** Your requests on a task, newest first. */
+/** Your requests on a task, newest first, or why there can't be any. */
 async function taskRequests(input) {
   const taskId = parseTaskId(input)
   const profile = await load('profile')
-  if (!taskId || !profile) return []
+  if (!profile) return { requests: [] }
+  if (!taskId) return { requests: [], note: 'That isn’t a task ID. A task ID is 24 characters of 0-9 and a-f.' }
   const found = await findOwnRow(taskId, profile.id)
-  if (!found.row) return []
-  return rest(`task_requests?task_submission_id=eq.${found.row.id}&type=in.(extension,reclaim)&select=id,type,status,reason,requested_at&order=requested_at.desc`)
+  if (found.taken) return { requests: [], note: 'This task was logged by someone else.' }
+  if (!found.row) return { requests: [], note: 'This task isn’t in the tracker yet. Start it on the Timer tab first.' }
+  const requests = await rest(
+    `task_requests?task_submission_id=eq.${found.row.id}&type=in.(extension,reclaim)&select=id,type,status,reason,requested_at&order=requested_at.desc`,
+  )
+  return { requests }
 }
 
 // Octet Mind's extensions and reclaims are filed by the contributor on its TASK ISSUES form, not
@@ -386,78 +386,6 @@ async function sendRequest(input, type, reason) {
   })
   return { selfFiled: false }
 }
-
-// --- alarms --------------------------------------------------------------------------------
-
-// Each task's alarms are named task:<submission id>:<task id>:<point>, so they survive the browser
-// closing the background script and can be cleared together.
-function alarmPrefix(submissionId) {
-  return `task:${submissionId}:`
-}
-
-async function scheduleAlarms(row) {
-  if (row.status !== 'in_progress' || !row.created_at) return
-  const startedAt = new Date(row.created_at).getTime()
-  for (const point of alarmPoints(row.stage)) {
-    const when = startedAt + point.at * 60_000
-    if (when > Date.now()) chrome.alarms.create(`${alarmPrefix(row.id)}${row.task_id}:${point.key}`, { when })
-  }
-}
-
-async function clearAlarms(submissionId) {
-  const alarms = await chrome.alarms.getAll()
-  await Promise.all(alarms.filter((a) => a.name.startsWith(alarmPrefix(submissionId))).map((a) => chrome.alarms.clear(a.name)))
-}
-
-async function clearAllAlarms() {
-  const alarms = await chrome.alarms.getAll()
-  await Promise.all(alarms.filter((a) => a.name.startsWith('task:')).map((a) => chrome.alarms.clear(a.name)))
-}
-
-function clockLabel(time) {
-  return new Date(time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
-}
-
-async function onAlarm(name) {
-  const [, submissionId, taskId, key] = name.split(':')
-  // Only while it's still in progress: one submitted or changed in the tracker meanwhile stays quiet.
-  const [row] = await rest(`task_submissions?id=eq.${submissionId}&select=${SUBMISSION_FIELDS}`)
-  if (row?.status !== 'in_progress') return
-  const point = alarmPoints(row.stage).find((p) => p.key === key)
-  if (!point) return
-  const expiresAt = new Date(row.created_at).getTime() + (EXPIRY_MINUTES[row.stage] ?? EXPIRY_MINUTES.attempt) * 60_000
-  chrome.notifications.create(name, {
-    type: 'basic',
-    iconUrl: 'icon-128.png',
-    title: point.title,
-    message: `Task ${taskId}\nExpires at ${clockLabel(expiresAt)}.`,
-    priority: 2,
-    // The last one stays up until it's dismissed.
-    requireInteraction: key === 'expiring',
-  })
-  await playAlarmSound()
-}
-
-// A background script can't play sound itself, so an offscreen page does.
-async function playAlarmSound() {
-  try {
-    const contexts = await chrome.runtime.getContexts({ contextTypes: ['OFFSCREEN_DOCUMENT'] })
-    if (contexts.length === 0) {
-      await chrome.offscreen.createDocument({
-        url: 'offscreen.html',
-        reasons: ['AUDIO_PLAYBACK'],
-        justification: 'Plays the task alarm.',
-      })
-    }
-    await chrome.runtime.sendMessage({ type: 'play-alarm', target: 'offscreen' })
-  } catch {
-    // The notification still shows without the sound.
-  }
-}
-
-chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name.startsWith('task:')) onAlarm(alarm.name).catch(() => {})
-})
 
 async function updateBadge() {
   const current = await load('current')

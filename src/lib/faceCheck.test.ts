@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { coverRect, faceLabel, faceMessage, faceVerdict } from './faceCheck'
+import { aspectCrop, coverRect, faceLabel, faceMessage, faceVerdict } from './faceCheck'
 
 const face = (width: number, score = 0.9) => ({ width, height: width, score })
 const seen = (label: string, score = 0.8) => ({ label, score })
@@ -47,8 +47,8 @@ describe('faceVerdict', () => {
 })
 
 describe('labels', () => {
-  it('calls a person a ghost and names an animal', () => {
-    expect(faceLabel({ kind: 'ok' })).toBe('Ghost')
+  it('calls a person human and names an animal', () => {
+    expect(faceLabel({ kind: 'ok' })).toBe('Human')
     expect(faceLabel({ kind: 'animal', animal: 'cat' })).toBe('Animal (cat)')
     expect(faceMessage({ kind: 'animal', animal: 'cat' })).toBe('That looks like a cat, not a person. Take a photo of yourself.')
   })
@@ -74,5 +74,35 @@ describe('coverRect', () => {
     expect(rect.top).toBeCloseTo(((0.5 - 0.21875) / 0.5625) * 100, 5)
     expect(rect.height).toBeCloseTo((0.1875 / 0.5625) * 100, 5)
     expect(rect.width).toBe(50)
+  })
+})
+
+describe('babies', () => {
+  const face = { width: 200, height: 200, score: 0.9 }
+  it('labels a face estimated under 4 years old a baby', () => {
+    expect(faceVerdict([face], 480, [], 1.3)).toEqual({ kind: 'baby' })
+    expect(faceLabel({ kind: 'baby' })).toBe('Baby')
+  })
+
+  it('calls an older face human, as when no age could be estimated', () => {
+    expect(faceVerdict([face], 480, [], 4)).toEqual({ kind: 'ok' })
+    expect(faceVerdict([face], 480, [], 34)).toEqual({ kind: 'ok' })
+    expect(faceVerdict([face], 480, [], null)).toEqual({ kind: 'ok' })
+  })
+})
+
+describe('aspectCrop', () => {
+  it('takes the widest 4:3 area of a tall photo, round the face', () => {
+    // 600x1200 portrait, face near the top: a 600x450 slice that keeps the face in the middle.
+    expect(aspectCrop(600, 1200, 4 / 3, { x: 300, y: 300 })).toEqual({ x: 0, y: 75, width: 600, height: 450 })
+  })
+
+  it('stays inside the photo when the face is near an edge', () => {
+    expect(aspectCrop(600, 1200, 4 / 3, { x: 300, y: 50 })).toEqual({ x: 0, y: 0, width: 600, height: 450 })
+    expect(aspectCrop(600, 1200, 4 / 3, { x: 300, y: 1190 })).toEqual({ x: 0, y: 750, width: 600, height: 450 })
+  })
+
+  it('trims the sides of a wide photo, and centres without a face', () => {
+    expect(aspectCrop(1600, 900, 4 / 3)).toEqual({ x: 200, y: 0, width: 1200, height: 900 })
   })
 })
