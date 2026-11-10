@@ -108,10 +108,29 @@ export async function handleSendTaskToBackupForm(request: Request, env: BackupFo
   if (!id) return json(400, { message: 'Which task?' })
 
   const headers = { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` }
+  // A failed read throws rather than coming back empty, so a bad query can't pass for "no such
+  // profile" and quietly look like the team having it off.
   const read = async <T>(path: string): Promise<T[]> => {
     const response = await fetchImpl(`${url}/rest/v1/${path}`, { headers })
-    return response.ok ? ((await response.json()) as T[]) : []
+    if (!response.ok) throw new Error(`Reading ${path.split('?')[0]} failed (${response.status}): ${(await response.text()).slice(0, 300)}`)
+    return (await response.json()) as T[]
   }
+
+  try {
+    return await send(id, read, headers, url, fetchImpl)
+  } catch (err) {
+    console.error('api/task-backup-form:', err)
+    return json(500, { message: err instanceof Error ? err.message : 'Sending failed.' })
+  }
+}
+
+async function send(
+  id: number,
+  read: <T>(path: string) => Promise<T[]>,
+  headers: Record<string, string>,
+  url: string,
+  fetchImpl: typeof fetch,
+): Promise<Response> {
 
   const [task] = await read<TaskRow>(
     `task_submissions?id=eq.${id}&select=id,task_id,cb_email,stage,status,backup_form_sent_at,project:projects(name,code)&limit=1`,
@@ -120,8 +139,8 @@ export async function handleSendTaskToBackupForm(request: Request, env: BackupFo
   if (task.backup_form_sent_at) return json(200, { sent: true, already: true })
   if (!STATUS_ANSWERS[task.status]) return json(200, { sent: false, reason: 'not finished' })
 
-  const [person] = await read<{ id: string; role: string; lead_id: string | null; remotasks_email: string | null }>(
-    `profiles?email=ilike.${encodeURIComponent(escapeLike(task.cb_email.trim()))}&select=id,role,lead_id,remotasks_email&limit=1`,
+  const [person] = await read<{ id: string; role: string; lead_id: string | null }>(
+    `profiles?email=ilike.${encodeURIComponent(escapeLike(task.cb_email.trim()))}&select=id,role,lead_id&limit=1`,
   )
   const leadId = person?.role === 'lead' ? person.id : person?.lead_id
   const [team] = leadId
@@ -139,7 +158,7 @@ export async function handleSendTaskToBackupForm(request: Request, env: BackupFo
       const formResponse = await fetchImpl(BACKUP_FORM_RESPONSE_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: backupFormBody(task, person.remotasks_email?.trim() || task.cb_email.trim(), team.cts_trainer),
+        body: backupFormBody(task, task.cb_email.trim(), team.cts_trainer),
         redirect: 'manual',
       })
       if (formResponse.status >= 400) error = `The Google Form refused it (${formResponse.status}).`
