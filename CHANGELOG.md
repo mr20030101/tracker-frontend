@@ -14,6 +14,11 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Fixed
+
+- **Notifications come in live again without a reload.** Since idle tabs were paused, a tab left alone for 10 minutes stopped hearing about new submissions and requests, and its badges stopped counting, until you moved the mouse or reloaded. The live feeds behind the bell and the Requests, Feedback and Announcements badges now keep running whether the tab is idle or not, and a new request updates the Requests badge and list straight away. Idle tabs still skip the online ping and the page refreshes.
+- **Pages use the full width when messaging is off.** Room was kept on the right for the chat bubbles, which only show when messaging is on, so pages had a wider gap on the right than the left.
+
 ## 8.23.1 — 2026-11-10
 
 ### Fixed
