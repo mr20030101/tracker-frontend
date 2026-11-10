@@ -4783,7 +4783,8 @@ on conflict (lead_id) do update set cts_trainer = excluded.cts_trainer, updated_
 -- covered. The function records how it went on the task. Run after 20261106_team_cts_trainer.sql.
 --
 -- Needs two rows in app_secrets, set by hand (not committed):
---   task_backup_form_url    = https://greyowlstracker.space/api/task-backup-form
+--   task_backup_form_url    = https://www.greyowlstracker.space/api/task-backup-form
+--     (the www address: the bare domain answers with a redirect, which pg_net doesn't follow)
 --   task_backup_form_secret = the same value as Vercel's TASK_BACKUP_FORM_SECRET
 -- Without them nothing is sent.
 -- ============================================================================================

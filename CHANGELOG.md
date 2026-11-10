@@ -14,6 +14,12 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.14.2 — 2026-11-10
+
+### Fixed
+
+- **Finished tasks reach the Back Up Task Tracker form again.** For teams with the backup form on, no task was being sent: the tracker treated every team as having it off, however the task was logged (the tracker, Task Log or the browser extension). Each finished task is now sent once as intended, with the email the contributor logs tasks with. If sending ever fails, the reason is recorded instead of looking like the form is switched off.
+
 ## 8.14.1 — 2026-11-10
 
 ### Fixed

@@ -51,14 +51,28 @@ function request(body: unknown = { submission_id: 42 }, secret = 'shared-secret'
   })
 }
 
+// The columns each table really has: PostgREST answers 400 for a select naming any other.
+const COLUMNS: Record<string, string[]> = {
+  task_submissions: ['id', 'task_id', 'cb_email', 'stage', 'status', 'backup_form_sent_at', 'project:projects(name', 'code)'],
+  profiles: ['id', 'role', 'lead_id', 'email', 'name', 'remotasks_id'],
+  team_features: ['lead_id', 'backup_form_enabled', 'cts_trainer'],
+}
+function badSelect(url: string): boolean {
+  const match = url.match(/\/rest\/v1\/(\w+)\?.*select=([^&]+)/)
+  if (!match) return false
+  const known = COLUMNS[match[1]]
+  return !!known && decodeURIComponent(match[2]).split(',').some((column) => !known.includes(column))
+}
+
 function fakeFetch({ sentAt = null as string | null, status = 'submitted', enabled = true, trainer = 'garcia, ina dimaano' as string | null, formStatus = 200 } = {}) {
   return vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
     const url = String(input)
+    if (badSelect(url)) return Response.json({ code: '42703', message: 'column does not exist' }, { status: 400 })
     if (url.includes('/rest/v1/task_submissions?') && init?.method === 'PATCH') return new Response(null, { status: 204 })
     if (url.includes('/rest/v1/task_submissions?')) {
       return Response.json([{ id: 42, ...TASK, status, cb_email: 'cb_one@example.com', backup_form_sent_at: sentAt }])
     }
-    if (url.includes('/rest/v1/profiles?')) return Response.json([{ id: 'cb', role: 'contributor', lead_id: 'lead-1', remotasks_email: 'cb@remotasks.com' }])
+    if (url.includes('/rest/v1/profiles?')) return Response.json([{ id: 'cb', role: 'contributor', lead_id: 'lead-1' }])
     if (url.includes('/rest/v1/team_features?')) return Response.json([{ backup_form_enabled: enabled, cts_trainer: trainer }])
     if (url === BACKUP_FORM_RESPONSE_URL) return new Response('ok', { status: formStatus })
     throw new Error(`Unexpected fetch: ${url}`)
@@ -70,10 +84,10 @@ const patchBody = (fetchImpl: ReturnType<typeof fakeFetch>) =>
   JSON.parse(String(fetchImpl.mock.calls.find(([, init]) => init?.method === 'PATCH')?.[1]?.body))
 
 describe('handleSendTaskToBackupForm', () => {
-  it('posts the task with the Remotasks email and records it as sent', async () => {
+  it("posts the task with the CB's email and records it as sent", async () => {
     const fetchImpl = fakeFetch()
     expect((await handleSendTaskToBackupForm(request(), ENV, fetchImpl)).status).toBe(200)
-    expect(new URLSearchParams(String(posted(fetchImpl)?.[1]?.body)).get('entry.852481976')).toBe('cb@remotasks.com')
+    expect(new URLSearchParams(String(posted(fetchImpl)?.[1]?.body)).get('entry.852481976')).toBe('cb_one@example.com')
     expect(patchBody(fetchImpl)).toMatchObject({ backup_form_error: null })
     expect(patchBody(fetchImpl).backup_form_sent_at).toBeTruthy()
   })
@@ -82,6 +96,17 @@ describe('handleSendTaskToBackupForm', () => {
     const fetchImpl = fakeFetch()
     await handleSendTaskToBackupForm(request(), ENV, fetchImpl)
     expect(fetchImpl.mock.calls.some(([url]) => String(url).includes(`email=ilike.${encodeURIComponent('cb\\_one@example.com')}`))).toBe(true)
+  })
+
+  it("reports a failed lookup instead of treating it as the team having it off", async () => {
+    const base = fakeFetch()
+    const fetchImpl = vi.fn(async (input: string | URL | Request, init?: RequestInit) =>
+      String(input).includes('/rest/v1/profiles?') ? new Response('boom', { status: 500 }) : base(input, init),
+    )
+    const response = await handleSendTaskToBackupForm(request(), ENV, fetchImpl)
+    expect(response.status).toBe(500)
+    expect((await response.json()).message).toContain('profiles')
+    expect(posted(fetchImpl as unknown as ReturnType<typeof fakeFetch>)).toBeUndefined()
   })
 
   it('refuses a caller without the shared secret', async () => {
