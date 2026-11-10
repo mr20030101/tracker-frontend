@@ -6,7 +6,7 @@ import { fetchAllPages } from './fetchAll'
 import { sanitiseOrTerm } from './sanitiseOrTerm'
 import { WORKING_DAYS, fetchDailyQuotas, fetchWeeklyTargets } from './quotas'
 import { dailyHoursFor, hoursRendered } from './hoursTarget'
-import { fetchAssignments } from './cbProjects'
+import { assignedProjectIds, fetchAssignments } from './cbProjects'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim() || DEFAULT_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() || DEFAULT_SUPABASE_ANON_KEY
@@ -157,7 +157,13 @@ async function dashboard(params: Record<string, unknown>): Promise<DashboardSumm
     ? new Map((await fetchDailyQuotas()).filter((q) => q.project_id === projectId).map((q) => [q.user_id, q.daily_quota * WORKING_DAYS]))
     : null
   const filteredSubmissions = (submissions ?? []).filter((submission) => !projectId || submission.project_id === projectId)
-  const rows = (users ?? []).map((user) => {
+  // Filtered to a project: only the contributors on it (assigned, see lib/cbProjects.ts), and anyone
+  // who logged on it in the range anyway, so their work isn't hidden.
+  const onProject = (user: { id: string; email: string; lead_id?: string | null }) =>
+    !projectId ||
+    assignedProjectIds(user.id, user.lead_id ?? null, projectLeads ?? [], assignments).includes(projectId) ||
+    filteredSubmissions.some((s) => s.user_id === user.id || s.cb_email?.toLowerCase() === user.email.toLowerCase())
+  const rows = (users ?? []).filter(onProject).map((user) => {
     const entries = filteredSubmissions.filter(
       (submission) =>
         (submission.user_id === user.id || submission.cb_email?.toLowerCase() === user.email.toLowerCase()) &&
@@ -192,7 +198,7 @@ async function dashboard(params: Record<string, unknown>): Promise<DashboardSumm
   // of rows (or an unmatched email) inflate the distinct-submitter count, silently
   // under-reporting contributors_without_submissions.
   const activeContributorEmails = new Set(
-    (users ?? []).filter((user) => user.is_active).map((user) => user.email.toLowerCase()),
+    (users ?? []).filter((user) => user.is_active && onProject(user)).map((user) => user.email.toLowerCase()),
   )
 
   const dailyReport: DailyReportRow[] = []
