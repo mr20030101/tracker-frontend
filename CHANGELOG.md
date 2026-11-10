@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.22.0 — 2026-11-10
+
 ### Added
 
 - **L10 tasks.** Tasks can be logged at L10 (Add/Edit task, bulk import, Task Log filter and the browser extension). L10 goes to the Back Up Task Tracker, CTS and Reclaim / Extend forms as "L10". Rewards have an L10 level with its own points; existing rewards count L10 tasks at 1 point, like the other levels. Browser extension 1.3.0 adds the L10 choice; download it again from Resources.
