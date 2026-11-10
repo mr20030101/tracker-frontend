@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.17.0 — 2026-11-10
+
 ### Changed
 
 - **Every task needs a project.** Adding or editing a task (Task Log, your dashboard, Data Quality) no longer offers "None". Saving without a project highlights the Project field and says to choose one. The browser extension already required it. Bulk import is unchanged.
