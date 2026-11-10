@@ -8,7 +8,7 @@ const SUPABASE_URL = 'https://ieovepkcseytccagzedg.supabase.co'
 const SUPABASE_ANON_KEY =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imllb3ZlcGtjc2V5dGNjYWd6ZWRnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxNjU1NDUsImV4cCI6MjEwNDc0MTU0NX0.OMZEAONl3XoSwjb_RhYo70fYXThONXVBGQLlGF-OQ7s'
 
-const SUBMISSION_FIELDS = 'id,task_id,user_id,stage,status,snipboard_url,created_at,timer_started_at,timer_elapsed_seconds'
+const SUBMISSION_FIELDS = 'id,task_id,user_id,project_id,stage,status,snipboard_url,created_at,timer_started_at,timer_elapsed_seconds'
 // Refresh the sign-in this long before it runs out.
 const REFRESH_MARGIN_S = 60
 // How long a task has before it expires, by stage, counted from when it was started here.
@@ -332,11 +332,44 @@ async function taskRequests(input) {
   return rest(`task_requests?task_submission_id=eq.${found.row.id}&type=in.(extension,reclaim)&select=id,type,status,reason,requested_at&order=requested_at.desc`)
 }
 
+// Octet Mind's extensions and reclaims are filed by the contributor on its TASK ISSUES form, not
+// sent to the lead: the same rule as timeRequestFormFor() in the tracker (src/lib/taskRequests.ts).
+const TASK_ISSUES_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSdSToZndSe2yOh2bp2aGT07RByEwWsG-K_7Dih3J6oias5XRA/viewform'
+
+function selfFilesRequests(project) {
+  const code = String(project?.code ?? '').trim().toLowerCase().replace(/[\s_-]+/g, '')
+  if (code) return code === 'octetmind'
+  return /octet/i.test(project?.name ?? '')
+}
+
+function taskIssuesFormUrl({ type, taskId, email, remotasksId, reason }) {
+  const query = new URLSearchParams({ usp: 'pp_url' })
+  if (taskId) query.set('entry.386497914', taskId)
+  if (remotasksId) query.set('entry.673063933', remotasksId)
+  if (email) query.set('entry.899316383', email)
+  query.set('entry.1173139433', type === 'reclaim' ? 'Reclaim' : 'Extend')
+  if (reason) query.set('entry.1706519998', reason)
+  query.set('entry.949669351', 'REMOTE - BOOTCAMP')
+  return `${TASK_ISSUES_FORM_URL}?${query}`
+}
+
 async function sendRequest(input, type, reason) {
   if (!['extension', 'reclaim'].includes(type)) throw new Error('Choose Extension or Reclaim.')
   if (!String(reason ?? '').trim()) throw new Error('Give a reason.')
   const { profile, row } = await requestableRow(input)
   if (!REQUESTABLE_STATUSES.includes(row.status)) throw new Error('Requests are only for tasks that are in progress or expired.')
+
+  const [project] = row.project_id ? await rest(`projects?id=eq.${row.project_id}&select=name,code`) : []
+  if (selfFilesRequests(project)) {
+    // Recorded first (file_own_task_request in 20261110_self_filed_task_issues.sql), then the form
+    // opens in a new tab, which closes this popup.
+    await rest('rpc/file_own_task_request', { method: 'POST', body: { p_submission_id: row.id, p_type: type, p_reason: reason.trim() } })
+    await chrome.tabs.create({
+      url: taskIssuesFormUrl({ type, taskId: row.task_id, email: profile.email, remotasksId: profile.remotasks_id, reason: reason.trim() }),
+    })
+    return { selfFiled: true }
+  }
+
   const [shift] = await rest('rpc/request_shift', { method: 'POST', body: {} })
   if (shift && !inShift(shift)) {
     throw new Error(`Extension and reclaim requests open during ${shift.lead_name}'s shift, ${timeLabel(shift.starts_min)} – ${timeLabel(shift.ends_min)}.`)
@@ -351,6 +384,7 @@ async function sendRequest(input, type, reason) {
       remotasks_id: profile.remotasks_id ?? null,
     },
   })
+  return { selfFiled: false }
 }
 
 // --- alarms --------------------------------------------------------------------------------

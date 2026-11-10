@@ -18,6 +18,10 @@ each stretch of work by the date it shipped.
 
 - **Contributors are assigned projects.** The Contributors page has a Projects column with each contributor's projects. Their lead (on the lead's own projects) or an admin ticks and unticks them from the projects the lead runs, with at least one always ticked. A contributor's assigned projects are the ones they can pick when logging a task, and the ones their Hours / day target comes from. Their profile's Project Levels lists only those. Everyone starts on all of their lead's projects, as before.
 
+### Changed
+
+- **The browser extension files Octet Mind extensions and reclaims on TASK ISSUES.** As in the tracker, sending an extension or reclaim for an Octet Mind task records it as filed and opens the TASK ISSUES form in a new tab with your details filled in, at any time of day, instead of sending your lead a request. Other projects still go to your lead. Browser extension 1.4.0; download it again from Resources.
+
 ## 8.22.1 — 2026-11-10
 
 ### Changed
