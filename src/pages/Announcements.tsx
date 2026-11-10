@@ -139,13 +139,18 @@ export function Announcements() {
             const mine = a.author_id === user?.id
             const canManage = mine || isAdmin
             const isNew = !mine && seenOnArrival !== undefined && !seenOnArrival.has(a.id)
+            // A contributor can't read an admin's profile, so the join comes back empty; the directory
+            // (names and avatars of admins, leads and bots for everyone) fills it in.
+            const directoryAuthor = usersById.get(a.author_id)
+            const authorName = a.author?.name ?? directoryAuthor?.name ?? 'Unknown'
+            const authorPhoto = a.author?.avatar_url ?? directoryAuthor?.avatar_url
             return (
               <li
                 key={a.id}
                 className={`rounded-xl border bg-white p-5 ${a.pinned ? 'border-accent' : 'border-gray-200'}`}
               >
                 <div className="mb-2 flex items-start gap-3">
-                  <Avatar name={a.author?.name ?? 'Unknown'} photoUrl={a.author?.avatar_url} size={36} />
+                  <Avatar name={authorName} photoUrl={authorPhoto} size={36} />
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <h2 className="text-base font-semibold text-gray-900">{a.title}</h2>
@@ -160,7 +165,7 @@ export function Announcements() {
                       )}
                     </div>
                     <div className="text-xs text-gray-400">
-                      {a.author?.name ?? 'Unknown'} · {audienceLabel(a)} · {formatWhen(a.created_at)}
+                      {authorName} · {audienceLabel(a)} · {formatWhen(a.created_at)}
                     </div>
                   </div>
                   {canManage && (

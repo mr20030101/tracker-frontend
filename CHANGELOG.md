@@ -14,6 +14,12 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.18.2 — 2026-11-10
+
+### Fixed
+
+- **Announcements show who posted them.** Contributors saw "Unknown" and a "U" avatar on announcements posted by an admin. The admin's name and photo now show, on the Announcements page and in search.
+
 ## 8.18.1 — 2026-11-10
 
 ### Changed
