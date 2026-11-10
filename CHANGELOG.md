@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.23.1 — 2026-11-10
+
 ### Fixed
 
 - **Search engines and AI crawlers are told to keep out.** The tracker is a private work app: a robots.txt disallows everything, and every page says noindex, so it doesn't show up in search results.
