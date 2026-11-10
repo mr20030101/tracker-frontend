@@ -14,6 +14,10 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Fixed
+
+- **The TASK ISSUES and RST forms open in a new tab again.** Inside the Tracker, browsers that block Google's cookies in frames (Brave, Safari) showed a Google sign-in page instead of the form. Leads' requests are marked approved when the form opens, as with the Scale form. An Octet Mind contributor's own extension or reclaim is recorded when the form opens.
+
 ## 8.21.0 — 2026-11-10
 
 ### Changed

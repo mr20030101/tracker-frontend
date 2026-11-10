@@ -57,7 +57,7 @@ export function TimeRequestReasonModal({
       <div className="flex flex-col gap-4">
         <p className="text-sm text-gray-600">
           {selfFile
-            ? <>You file this {labels.noun} yourself on the TASK ISSUES form. Next, the form opens here with your details and this reason filled in.</>
+            ? <>You file this {labels.noun} yourself on the TASK ISSUES form. Next, the form opens in a new tab with your details and this reason filled in.</>
             : mode === 'edit'
             ? 'Your lead sees the new reason straight away. It stays pending.'
             : mode === 'resend'
