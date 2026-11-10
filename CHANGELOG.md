@@ -14,6 +14,11 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Fixed
+
+- **Search engines and AI crawlers are told to keep out.** The tracker is a private work app: a robots.txt disallows everything, and every page says noindex, so it doesn't show up in search results.
+- **Filtering the Leaderboard (and Dashboard) by a project lists only that project's contributors.** Picking a project showed every contributor, each with that project's target. It now shows the contributors assigned to it, plus anyone who logged tasks on it in the period, and "without submissions" counts only them.
+
 ## 8.23.0 — 2026-11-10
 
 ### Added
