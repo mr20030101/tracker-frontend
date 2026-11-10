@@ -14,19 +14,23 @@ const projectLeads = [
 ]
 
 describe('dailyHoursFor', () => {
-  it("takes the highest Hours / day among the lead's projects, not the sum", () => {
-    expect(dailyHoursFor('ina', projects, projectLeads)).toBe(8)
-    expect(dailyHoursFor('jay', projects, projectLeads)).toBe(6)
+  it("takes the highest Hours / day among their projects, not the sum (all their lead's until assigned)", () => {
+    expect(dailyHoursFor('cb', 'ina', projects, projectLeads, [])).toBe(8)
+    expect(dailyHoursFor('cb', 'jay', projects, projectLeads, [])).toBe(6)
+  })
+
+  it('goes by the projects they are assigned', () => {
+    expect(dailyHoursFor('cb', 'ina', projects, projectLeads, [{ user_id: 'cb', project_id: 2 }])).toBe(6)
   })
 
   it('is 0 without a lead or when none of their projects sets hours', () => {
-    expect(dailyHoursFor(null, projects, projectLeads)).toBe(0)
-    expect(dailyHoursFor('bermar', projects, projectLeads)).toBe(0)
-    expect(dailyHoursFor('nobody', projects, projectLeads)).toBe(0)
+    expect(dailyHoursFor('cb', null, projects, projectLeads, [])).toBe(0)
+    expect(dailyHoursFor('cb', 'bermar', projects, projectLeads, [])).toBe(0)
+    expect(dailyHoursFor('cb', 'nobody', projects, projectLeads, [])).toBe(0)
   })
 
   it('reads hours that arrive as text from the database', () => {
-    expect(dailyHoursFor('ina', [{ id: 1, daily_hours: '7.5' as unknown as number }], projectLeads)).toBe(7.5)
+    expect(dailyHoursFor('cb', 'ina', [{ id: 1, daily_hours: '7.5' as unknown as number }], projectLeads, [])).toBe(7.5)
   })
 })
 

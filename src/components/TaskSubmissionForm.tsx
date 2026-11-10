@@ -5,6 +5,7 @@ import { api, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { toISODate } from '../lib/week'
 import type { Project, Stage, SubmissionStatus, TaskSubmission } from '../types'
+import { assignedProjectIds, fetchAssignments } from '../lib/cbProjects'
 import { Modal } from './Modal'
 import { Select } from './Select'
 import { isNetworkError, queueSubmission } from '../lib/offlineQueue'
@@ -82,24 +83,28 @@ export function TaskSubmissionForm({ submission, onClose }: Props) {
   const [projectMissing, setProjectMissing] = useState(false)
   const projectFieldId = useId()
 
-  // Scope the Project choices to whichever lead the target CB is attached
-  // to, so a submission can only be logged against a project that lead
-  // actually runs. A contributor logging their own already knows their lead.
-  const ownLeadId = !isManager ? (user?.lead_id ?? null) : undefined
-  const { data: lookedUpLeadId } = useQuery({
+  // Scope the Project choices to the target CB's assigned projects, from the ones their lead runs
+  // (see lib/cbProjects.ts). A contributor logging their own already knows who they are.
+  const { data: lookedUp } = useQuery({
     queryKey: ['profile-lead-id', form.cb_email],
     queryFn: async () => {
       const { data, error: profileError } = await supabase
         .from('profiles')
-        .select('lead_id')
+        .select('id, lead_id')
         .eq('email', form.cb_email)
         .maybeSingle()
       if (profileError) throw profileError
-      return (data?.lead_id as string | null) ?? null
+      return data ? { id: data.id as string, leadId: (data.lead_id as string | null) ?? null } : null
     },
     enabled: isManager && Boolean(form.cb_email),
   })
-  const contributorLeadId = ownLeadId !== undefined ? ownLeadId : lookedUpLeadId
+  const contributorLeadId = !isManager ? (user?.lead_id ?? null) : lookedUp?.leadId
+  const contributorId = !isManager ? (user?.id ?? null) : (lookedUp?.id ?? null)
+  const { data: contributorAssignments } = useQuery({
+    queryKey: ['cb-project-assignments', contributorId],
+    queryFn: () => fetchAssignments([contributorId!]),
+    enabled: Boolean(contributorId),
+  })
 
   const { data: leadProjectIds } = useQuery({
     queryKey: ['project-leads-for-lead', contributorLeadId],
@@ -117,7 +122,15 @@ export function TaskSubmissionForm({ submission, onClose }: Props) {
   const currentProjectId = form.project_id ? Number(form.project_id) : null
   const visibleProjects = (() => {
     if (!contributorLeadId || !leadProjectIds) return projects ?? []
-    const scoped = (projects ?? []).filter((p) => leadProjectIds.includes(p.id))
+    const ids = contributorId
+      ? assignedProjectIds(
+          contributorId,
+          contributorLeadId,
+          leadProjectIds.map((projectId) => ({ project_id: projectId, lead_id: contributorLeadId })),
+          contributorAssignments ?? [],
+        )
+      : leadProjectIds
+    const scoped = (projects ?? []).filter((p) => ids.includes(p.id))
     if (currentProjectId && !scoped.some((p) => p.id === currentProjectId)) {
       const existing = projects?.find((p) => p.id === currentProjectId)
       if (existing) return [...scoped, existing]

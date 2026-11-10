@@ -22,6 +22,7 @@ import { NoSubmissionNudge } from '../components/NoSubmissionNudge'
 import { LevelPill } from '../components/LevelPill'
 import { WORKING_DAYS, projectQuota } from '../lib/quotas'
 import { dailyHoursFor, formatHours, hoursRendered } from '../lib/hoursTarget'
+import { fetchAssignments } from '../lib/cbProjects'
 import { Modal } from '../components/Modal'
 import { OnboardingChecklist } from '../components/OnboardingChecklist'
 import { AchievementsCard } from '../components/Achievements'
@@ -151,6 +152,12 @@ export function ContributorDashboard() {
     },
     enabled: Boolean(leadId),
   })
+  const cbId = data?.user?.id ?? null
+  const { data: cbAssignments = [] } = useQuery({
+    queryKey: ['cb-project-assignments', cbId],
+    queryFn: () => fetchAssignments([cbId!]),
+    enabled: Boolean(cbId),
+  })
 
   // A contributor's project list is exactly whichever projects their lead runs.
   const { data: leadProjectIds = [] } = useQuery({
@@ -214,7 +221,7 @@ export function ContributorDashboard() {
   // Days left in the business week, today included (Tuesday is 7, Monday is 1).
   const daysLeft = 7 - Math.round((Date.parse(today) - Date.parse(thisWeekIso)) / 86_400_000)
   // Goals in hours rendered: time on their task timers against Hours / day on their projects.
-  const dayHoursTarget = dailyHoursFor(leadId, allProjects, leadProjects)
+  const dayHoursTarget = dailyHoursFor(cbId ?? '', leadId, allProjects, leadProjects, cbAssignments)
   const weekHoursTarget = dayHoursTarget * WORKING_DAYS
   const hoursToday = hoursRendered(data.all_submissions.filter((r) => r.date?.slice(0, 10) === today))
   const hoursThisWeek = hoursRendered(data.week_submissions)

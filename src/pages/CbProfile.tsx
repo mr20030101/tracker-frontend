@@ -13,6 +13,7 @@ import type { ContributorProfile, ContributorProjectLevel, Project, ProjectLevel
 import { Avatar } from '../components/Avatar'
 import { LevelPill, LEVEL_TIERS } from '../components/LevelPill'
 import { projectQuota } from '../lib/quotas'
+import { assignedProjectIds } from '../lib/cbProjects'
 import { ContributorWorkPanel } from '../components/ContributorWorkPanel'
 import { Reveal } from '../components/Reveal'
 import { AchievementsCard, FeaturedBadgeChip } from '../components/Achievements'
@@ -175,8 +176,7 @@ export function CbProfile() {
     queryFn: async () => (await api.get<Project[]>('/projects')).data,
   })
 
-  // A contributor's project list is exactly whichever projects their lead
-  // runs — there's no separate "assign contributor to project" step.
+  // The projects their lead runs; they're assigned some of these (Contributors page).
   const { data: leadProjectIds = [] } = useQuery({
     queryKey: ['project-leads-for-lead', contributorLeadId],
     queryFn: async () => {
@@ -263,7 +263,16 @@ export function CbProfile() {
   // fall back to the levels bundled in the public stats RPC response instead.
   const effectiveProjectLevels = data.is_public_view ? (data.project_levels ?? []) : projectLevels
   const levelByProjectId = new Map(effectiveProjectLevels.map((row) => [row.project_id, row.level]))
-  const levelProjects = leadProjectIds
+  // Only the projects they're assigned, from their lead's (lib/cbProjects.ts).
+  const shownProjectIds = contributorId
+    ? assignedProjectIds(
+        contributorId,
+        contributorLeadId ?? null,
+        leadProjectIds.map((projectId) => ({ project_id: projectId, lead_id: contributorLeadId ?? '' })),
+        effectiveProjectLevels.map((row) => ({ user_id: contributorId, project_id: row.project_id })),
+      )
+    : leadProjectIds
+  const levelProjects = shownProjectIds
     .map((id) => allProjects.find((project) => project.id === id))
     .filter((project): project is Project => Boolean(project))
     .map((project) => ({ project, level: levelByProjectId.get(project.id) ?? ('contributor' as ProjectLevel) }))

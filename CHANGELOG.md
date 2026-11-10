@@ -14,6 +14,10 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Added
+
+- **Contributors are assigned projects.** The Contributors page has a Projects column with each contributor's projects. Their lead (on the lead's own projects) or an admin ticks and unticks them from the projects the lead runs, with at least one always ticked. A contributor's assigned projects are the ones they can pick when logging a task, and the ones their Hours / day target comes from. Their profile's Project Levels lists only those. Everyone starts on all of their lead's projects, as before.
+
 ## 8.22.1 — 2026-11-10
 
 ### Changed
