@@ -15,7 +15,7 @@ profile.
   restart the timer without changing the task.
 - **Alarms:** every task in progress rings (a notification and the tracker's alert sound) at
   **30 minutes**, **1 hour**, and **10 minutes before it expires**. A task expires 1 hour 30
-  minutes after it was started for Attempt and L1, and 2 hours for L0, counted from when you
+  minutes after it was started for Attempt, L1 and L10, and 2 hours for L0, counted from when you
   pressed Start (pausing doesn't move it). The timer card shows how long is left. A task that's
   been submitted or reset doesn't ring.
 - **Reload** (top right) brings everything up to date from the tracker: your profile, your

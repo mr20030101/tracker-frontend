@@ -11,7 +11,7 @@ export const AUDIT_SCORES = [
   { value: 1, label: 'Spam', hint: 'Spam task (80%)' },
 ] as const
 
-export const STAGE_LABELS: Record<Stage, string> = { attempt: 'Attempt', l0: 'L0', l1: 'L1' }
+export const STAGE_LABELS: Record<Stage, string> = { attempt: 'Attempt', l0: 'L0', l1: 'L1', l10: 'L10' }
 
 /** A lead's spot check of a task one of their CBs logged. */
 export interface TaskAudit {

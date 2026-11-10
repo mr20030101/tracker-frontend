@@ -12,7 +12,7 @@ const SUBMISSION_FIELDS = 'id,task_id,user_id,stage,status,snipboard_url,created
 // Refresh the sign-in this long before it runs out.
 const REFRESH_MARGIN_S = 60
 // How long a task has before it expires, by stage, counted from when it was started here.
-const EXPIRY_MINUTES = { attempt: 90, l1: 90, l0: 120 }
+const EXPIRY_MINUTES = { attempt: 90, l1: 90, l10: 90, l0: 120 }
 // When each task's alarm goes off, in minutes after it was started.
 function alarmPoints(stage) {
   const expiry = EXPIRY_MINUTES[stage] ?? EXPIRY_MINUTES.attempt

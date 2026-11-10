@@ -23,7 +23,7 @@ const FIELDS = {
 // The form's Project choices; anything else goes in as its "Other" answer.
 const PROJECT_OPTIONS = ['Aloha_OTS', 'Ego Nexus', 'ophiuchus_group', 'sweet yam', 'fill_metro', 'ego-ots-basic']
 
-const LEVEL_BY_STAGE: Record<string, string> = { attempt: 'Attempter', l0: 'L0', l1: 'L1' }
+const LEVEL_BY_STAGE: Record<string, string> = { attempt: 'Attempter', l0: 'L0', l1: 'L1', l10: 'L10' }
 
 const STATUS_ANSWERS: Record<string, string> = {
   submitted: 'Submitted',

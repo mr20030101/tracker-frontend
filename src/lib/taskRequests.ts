@@ -284,7 +284,7 @@ const EXTENSION_FORM_ENTRY = {
 }
 
 // The form's own spelling of each answer: a prefilled value that doesn't match an option exactly is ignored.
-const EXTENSION_FORM_TASK_LEVEL: Record<Stage, string> = { attempt: 'Attempt', l0: 'L0', l1: 'L1' }
+const EXTENSION_FORM_TASK_LEVEL: Record<Stage, string> = { attempt: 'Attempt', l0: 'L0', l1: 'L1', l10: 'L10' }
 // Our project names are longer ("Aloha OTS Mobile Group"), so they're matched on the key word.
 // The Bad Video form below spells its options the same way, so it shares these.
 const FORM_PROJECTS: { match: RegExp; option: string }[] = [

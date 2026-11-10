@@ -48,6 +48,7 @@ const STAGE_MAP: Record<string, Stage> = {
   attempt: 'attempt',
   l0: 'l0',
   l1: 'l1',
+  l10: 'l10',
 }
 
 function parseDate(raw: string): string | null {

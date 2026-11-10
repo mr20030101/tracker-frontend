@@ -14,6 +14,27 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Added
+
+- **L10 tasks.** Tasks can be logged at L10 (Add/Edit task, bulk import, Task Log filter and the browser extension). L10 goes to the Back Up Task Tracker, CTS and Reclaim / Extend forms as "L10". Rewards have an L10 level with its own points; existing rewards count L10 tasks at 1 point, like the other levels. Browser extension 1.3.0 adds the L10 choice; download it again from Resources.
+
+### Changed
+
+- **New reward is a step-by-step form.** Basics (title, rule, projects, team), then Levels (which count and their points), then Prize & dates, then Review, where you add details, see a summary and create it. Back and Next move between steps, each step is checked before moving on, and the step bar shows where you are.
+
+### Changed
+
+- **The Leaderboard's table tracks hours.** A new Hours column shows the time on each contributor's task timers for the day, week or month. The target is in hours: the highest Hours / day among the projects on their lead's team, times 5 for a week (or 1 for a day, 20 for a month), or that project's when filtered to one. Progress is hours rendered against that target, and sorting and the CSV export follow it. "Not set" shows when none of their projects has Hours / day. Tasks Submitted is unchanged.
+- **Contributors' goals are in hours.** On a contributor's dashboard and profile, the Day / Week / Month Goal ring and the Day and Week goal bars show hours on their task timers against Hours / day on their projects (for example 2.5h / 8h). Hours replaces Logged next to the ring; Submitted stays. "Not set" shows until their projects have Hours / day.
+
+### Added
+
+- **Hours / day per project.** Projects has a new Hours / day column, set when adding or editing a project: how many hours a contributor should render on it each day. It's the start of moving targets from task counts to hours rendered.
+
+### Removed
+
+- **Task timers no longer have a limit, and tasks no longer expire by themselves.** A timer now runs until the contributor pauses it or the task is no longer in progress. The Timer Limit column and setting are gone from Projects, and Running tasks on the lead dashboard lists the longest-running first, without Limit and Left. Tasks already marked Expired by the limit stay Expired.
+
 ## 8.21.1 — 2026-11-10
 
 ### Fixed

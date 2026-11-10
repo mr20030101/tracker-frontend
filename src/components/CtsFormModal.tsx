@@ -18,8 +18,8 @@ const TASKER_LEVEL_BY_PROJECT_LEVEL: Record<ProjectLevel, string> = {
   l1: 'L1',
   l10: 'L10',
 }
-const TASKER_LEVEL_BY_STAGE: Record<Stage, string> = { attempt: 'Attempter', l0: 'L0', l1: 'L1' }
-const STAGE_RANK: Record<Stage, number> = { attempt: 0, l0: 1, l1: 2 }
+const TASKER_LEVEL_BY_STAGE: Record<Stage, string> = { attempt: 'Attempter', l0: 'L0', l1: 'L1', l10: 'L10' }
+const STAGE_RANK: Record<Stage, number> = { attempt: 0, l0: 1, l1: 2, l10: 3 }
 
 interface CtsFormFields {
   email: string

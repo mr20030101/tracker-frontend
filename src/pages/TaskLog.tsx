@@ -33,6 +33,7 @@ const STAGES: { value: Stage | ''; label: string }[] = [
   { value: 'attempt', label: 'Attempt' },
   { value: 'l0', label: 'L0' },
   { value: 'l1', label: 'L1' },
+  { value: 'l10', label: 'L10' },
 ]
 
 const STATUS_OPTIONS: { value: SubmissionStatus; label: string }[] = [
