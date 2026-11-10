@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.19.0 — 2026-11-10
+
 ### Changed
 
 - **Extension and reclaim requests open the right form for the task's project.** When a lead or admin clicks Request:
