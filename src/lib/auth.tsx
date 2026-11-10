@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { api, logActivity, supabase, touchPresence } from './api'
+import { useIsActive } from './idle'
 import type { User } from '../types'
 
 const PRESENCE_INTERVAL_MS = 60_000
@@ -52,12 +53,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => listener.subscription.unsubscribe()
   }, [queryClient])
 
+  // Only while the tab is in use: an idle tab stops pinging, and pings once when it wakes.
+  const active = useIsActive()
   useEffect(() => {
-    if (!user) return
+    if (!user || !active) return
     touchPresence()
     const interval = setInterval(touchPresence, PRESENCE_INTERVAL_MS)
     return () => clearInterval(interval)
-  }, [user])
+  }, [user, active])
 
   async function login(email: string, password: string) {
     const trimmedEmail = email.trim()

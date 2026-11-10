@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { X } from 'lucide-react'
 import { supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
+import { liveChannelName, useIsActive } from '../lib/idle'
 import { ALERT_NOTIFICATION_SOUND, loopSound } from '../lib/sound'
 import { Avatar } from './Avatar'
 import { RequestAlarm } from './RequestAlarm'
@@ -74,14 +75,6 @@ interface TaskRequestRow {
   requested_by: string
   type: 'extension' | 'reclaim' | 'bad_video'
   status: string
-}
-
-// A fresh topic each time a subscription starts. supabase.channel() hands back an existing channel
-// with the same name, and removeChannel() only drops one once it has finished leaving, so
-// resubscribing straight after a cleanup used to get the old, closing channel back: no error, just
-// no more events. That's how a lead missed the alarm for a new request.
-function liveChannelName(name: string): string {
-  return `${name}-${crypto.randomUUID()}`
 }
 
 export function NotificationBell() {
@@ -159,8 +152,11 @@ export function NotificationBell() {
       .then(({ data }) => setProjectNames(new Map((data ?? []).map((p) => [p.id as number, p.name as string]))))
   }, [isManager])
 
+  // The live feeds pause while the tab is idle. The request alarm still rings from its own poll.
+  const active = useIsActive()
+
   useEffect(() => {
-    if (!isManager) return
+    if (!isManager || !active) return
 
     function addSubmissionAlert(row: TaskSubmissionRow) {
       const { profileNames, projectNames } = lookups.current
@@ -194,10 +190,10 @@ export function NotificationBell() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [isManager])
+  }, [isManager, active])
 
   useEffect(() => {
-    if (!isManager) return
+    if (!isManager || !active) return
 
     function addRequestAlert(row: TaskRequestRow) {
       const { profilesById, refetchPending } = lookups.current
@@ -226,7 +222,7 @@ export function NotificationBell() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [isManager, user?.id])
+  }, [isManager, user?.id, active])
 
   // Deliberately hard to ignore: the alert sound plays on repeat, the bell shakes and the tab title
   // flashes, and none of it stops until the request has been seen.
