@@ -1,4 +1,4 @@
-const STAGE_LABELS = { attempt: 'Attempt', l0: 'L0', l1: 'L1' }
+const STAGE_LABELS = { attempt: 'Attempt', l0: 'L0', l1: 'L1', l10: 'L10' }
 const REQUEST_STATUS = {
   pending: { label: 'Pending', tone: 'warning' },
   approved: { label: 'Approved', tone: 'success' },
@@ -13,7 +13,7 @@ const REASON_PLACEHOLDERS = {
   reclaim: 'Why does this task need to be reclaimed?',
 }
 // Same as background.js: minutes a task has before it expires, from when it was started.
-const EXPIRY_MINUTES = { attempt: 90, l1: 90, l0: 120 }
+const EXPIRY_MINUTES = { attempt: 90, l1: 90, l10: 90, l0: 120 }
 
 const $ = (id) => document.getElementById(id)
 

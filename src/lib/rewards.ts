@@ -30,6 +30,7 @@ export interface Reward {
   points_attempt: number
   points_l0: number
   points_l1: number
+  points_l10: number
   awarded_at: string | null
   created_at: string
 }
@@ -45,6 +46,7 @@ export interface RewardStanding {
   attempt_tasks: number
   l0_tasks: number
   l1_tasks: number
+  l10_tasks: number
   /** What places and thresholds go by: each counted task's level points, added up. */
   points: number
   weeks_hit: number
@@ -70,14 +72,14 @@ export const RULE_LABELS: Record<RewardRule, string> = {
   custom: 'Custom (you pick the winners)',
 }
 
-export const STAGES: Stage[] = ['attempt', 'l0', 'l1']
+export const STAGES: Stage[] = ['attempt', 'l0', 'l1', 'l10']
 
-export const STAGE_LABELS: Record<Stage, string> = { attempt: 'Attempter', l0: 'L0', l1: 'L1' }
+export const STAGE_LABELS: Record<Stage, string> = { attempt: 'Attempter', l0: 'L0', l1: 'L1', l10: 'L10' }
 
-type LevelPoints = Pick<Reward, 'points_attempt' | 'points_l0' | 'points_l1'>
+type LevelPoints = Pick<Reward, 'points_attempt' | 'points_l0' | 'points_l1' | 'points_l10'>
 
 export function stagePoints(reward: LevelPoints): Record<Stage, number> {
-  return { attempt: reward.points_attempt, l0: reward.points_l0, l1: reward.points_l1 }
+  return { attempt: reward.points_attempt, l0: reward.points_l0, l1: reward.points_l1, l10: reward.points_l10 }
 }
 
 /** The levels a reward counts, in order. */
@@ -104,8 +106,8 @@ export const formatScore = (n: number) => n.toLocaleString(undefined, { maximumF
 export const scoreText = (reward: LevelPoints, n: number) => `${formatScore(n)} ${scoreUnit(reward, n)}`
 
 /** "Attempter 10 · L0 7 · L1 6", the counted levels only. */
-export function levelBreakdown(reward: LevelPoints, s: Pick<RewardStanding, 'attempt_tasks' | 'l0_tasks' | 'l1_tasks'>): string {
-  const counts: Record<Stage, number> = { attempt: s.attempt_tasks, l0: s.l0_tasks, l1: s.l1_tasks }
+export function levelBreakdown(reward: LevelPoints, s: Pick<RewardStanding, 'attempt_tasks' | 'l0_tasks' | 'l1_tasks' | 'l10_tasks'>): string {
+  const counts = stageCounts(s)
   return countedStages(reward)
     .map((stage) => `${STAGE_LABELS[stage]} ${counts[stage].toLocaleString()}`)
     .join(' · ')
@@ -124,6 +126,11 @@ export function describeLevels(reward: LevelPoints): string | undefined {
   return `${names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : names[0]} tasks only`
 }
 
+/** A standing's submitted tasks at each level. */
+export function stageCounts(s: Pick<RewardStanding, 'attempt_tasks' | 'l0_tasks' | 'l1_tasks' | 'l10_tasks'>): Record<Stage, number> {
+  return { attempt: s.attempt_tasks, l0: s.l0_tasks, l1: s.l1_tasks, l10: s.l10_tasks }
+}
+
 // Before the levels migration, rewards have no points (every level counted as 1) and standings no
 // per-level counts.
 const asReward = (r: Reward): Reward => ({
@@ -132,6 +139,7 @@ const asReward = (r: Reward): Reward => ({
   points_attempt: Number(r.points_attempt ?? 1),
   points_l0: Number(r.points_l0 ?? 1),
   points_l1: Number(r.points_l1 ?? 1),
+  points_l10: Number(r.points_l10 ?? 1),
 })
 
 const asStanding = (s: RewardStanding): RewardStanding => ({
@@ -139,6 +147,7 @@ const asStanding = (s: RewardStanding): RewardStanding => ({
   attempt_tasks: s.attempt_tasks ?? 0,
   l0_tasks: s.l0_tasks ?? 0,
   l1_tasks: s.l1_tasks ?? 0,
+  l10_tasks: s.l10_tasks ?? 0,
   points: Number(s.points ?? s.submitted),
 })
 
@@ -197,6 +206,7 @@ export interface NewReward {
   points_attempt: number
   points_l0: number
   points_l1: number
+  points_l10: number
 }
 
 export async function createReward(input: NewReward): Promise<number> {
@@ -217,6 +227,7 @@ export async function createReward(input: NewReward): Promise<number> {
     p_points_attempt: input.points_attempt,
     p_points_l0: input.points_l0,
     p_points_l1: input.points_l1,
+    p_points_l10: input.points_l10,
   })
   if (error) throw error
   return data as number

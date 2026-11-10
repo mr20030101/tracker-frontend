@@ -55,11 +55,11 @@ export interface Project {
   daily_quota_l0?: number | null
   daily_quota_l1?: number | null
   daily_quota_l10?: number | null
-  // How long a task's timer can run before the task expires; null means 3 hours.
-  timer_limit_minutes?: number | null
+  // Hours a day a contributor is expected to render on the project; null when not set.
+  daily_hours?: number | null
 }
 
-export type Stage = 'attempt' | 'l0' | 'l1'
+export type Stage = 'attempt' | 'l0' | 'l1' | 'l10'
 export type SubmissionStatus = 'submitted' | 'in_progress' | 'empty' | 'expired' | 'claimed_by_another' | 'rejected'
 
 // A contributor's rank on a given project — distinct from Stage above,
@@ -184,6 +184,11 @@ export interface DashboardRow {
   tasks_submitted: number
   weekly_target: number
   progress: number
+  // Hours on their task timers in the range, the hours target for it (Hours / day on their
+  // projects; 0 when none is set) and the share of it rendered.
+  hours_rendered: number
+  hours_target: number
+  hours_progress: number
 }
 
 export interface DashboardSummary {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatTimer, isTimerRunning, timerLimitSeconds, timerSeconds } from './taskTimer'
+import { formatTimer, isTimerRunning, timerSeconds } from './taskTimer'
 
 describe('timerSeconds', () => {
   const start = '2026-10-24T01:00:00.000Z'
@@ -18,16 +18,8 @@ describe('timerSeconds', () => {
     expect(timerSeconds({ timer_started_at: start, timer_elapsed_seconds: 10 }, now - 5_000)).toBe(10)
   })
 
-  it('stops at the limit, 3 hours unless the project sets one', () => {
-    expect(timerSeconds({ timer_started_at: start, timer_elapsed_seconds: 10_000 }, now + 3_600_000)).toBe(10_800)
-    expect(timerSeconds({ timer_started_at: null, timer_elapsed_seconds: 20_000 }, now)).toBe(10_800)
-    expect(timerSeconds({ timer_started_at: null, timer_elapsed_seconds: 20_000 }, now, timerLimitSeconds({ timer_limit_minutes: 60 }))).toBe(3_600)
-  })
-
-  it('reads the limit from the project', () => {
-    expect(timerLimitSeconds(null)).toBe(10_800)
-    expect(timerLimitSeconds({ timer_limit_minutes: null })).toBe(10_800)
-    expect(timerLimitSeconds({ timer_limit_minutes: 90 })).toBe(5_400)
+  it('has no limit', () => {
+    expect(timerSeconds({ timer_started_at: start, timer_elapsed_seconds: 10_000 }, now + 3_600_000)).toBe(13_600)
   })
 
   it('runs while a start time is set', () => {

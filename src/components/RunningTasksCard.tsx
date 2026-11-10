@@ -6,7 +6,7 @@ import { useMessaging } from '../lib/messagingContext'
 import { useNow } from '../lib/useNow'
 import { confirmDialog } from '../lib/dialog'
 import { STAGE_LABELS } from '../lib/taskAudits'
-import { formatTimer, setTaskTimer, timerLimitSeconds, timerSeconds } from '../lib/taskTimer'
+import { formatTimer, setTaskTimer, timerSeconds } from '../lib/taskTimer'
 import type { Project, TaskSubmission } from '../types'
 
 type RunningTask = Pick<TaskSubmission, 'id' | 'task_id' | 'cb_email' | 'user_id' | 'project_id' | 'stage' | 'timer_started_at' | 'timer_elapsed_seconds' | 'created_at'>
@@ -55,11 +55,9 @@ export function RunningTasksCard() {
   const rows = tasks
     .map((task) => {
       const project = projects.find((p) => p.id === task.project_id) ?? null
-      const limit = timerLimitSeconds(project)
-      const seconds = timerSeconds(task, now, limit)
-      return { task, project, limit, seconds, left: limit - seconds }
+      return { task, project, seconds: timerSeconds(task, now) }
     })
-    .sort((a, b) => a.left - b.left)
+    .sort((a, b) => b.seconds - a.seconds)
 
   return (
     <div className="mb-4 overflow-hidden card">
@@ -67,7 +65,7 @@ export function RunningTasksCard() {
         <div>
           <h2 className="font-display text-lg text-gray-900">Running tasks</h2>
           <p className="mt-1 text-xs text-gray-500">
-            Tasks with a timer going now, closest to expiring first. A task expires once its timer reaches its project's limit.
+            Tasks with a timer going now, longest running first.
           </p>
         </div>
         <span className="text-sm font-semibold tabular-nums text-gray-900">{rows.length}</span>
@@ -91,20 +89,17 @@ export function RunningTasksCard() {
                 <th className="px-5 py-3">Project</th>
                 <th className="px-5 py-3">Stage</th>
                 <th className="px-5 py-3 text-right">Logged</th>
-                <th className="px-5 py-3 text-right">Limit</th>
                 <th className="px-5 py-3 text-right">Time</th>
-                <th className="px-5 py-3 text-right">Left</th>
                 <th className="px-5 py-3 text-right">
                   <span className="sr-only">Actions</span>
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {rows.map(({ task, project, limit, seconds, left }) => {
-                const nearlyDone = left <= Math.min(30 * 60, limit / 5)
+              {rows.map(({ task, project, seconds }) => {
                 const name = (task.user_id && usersById.get(task.user_id)?.name) || task.cb_email
                 return (
-                  <tr key={task.id} className={nearlyDone ? 'bg-status-danger-bg/30' : ''}>
+                  <tr key={task.id}>
                     <td className="px-5 py-3">
                       <Link to={`/contributors/${encodeURIComponent(task.cb_email)}`} className="font-medium text-gray-900 hover:underline">
                         {name}
@@ -114,11 +109,7 @@ export function RunningTasksCard() {
                     <td className="px-5 py-3 text-gray-600">{project?.name ?? '—'}</td>
                     <td className="px-5 py-3 text-gray-600">{STAGE_LABELS[task.stage]}</td>
                     <td className="whitespace-nowrap px-5 py-3 text-right text-xs tabular-nums text-gray-600">{LOGGED_FORMAT.format(new Date(task.created_at))}</td>
-                    <td className="px-5 py-3 text-right font-mono text-xs tabular-nums text-gray-500">{formatTimer(limit)}</td>
                     <td className="px-5 py-3 text-right font-mono text-xs tabular-nums text-status-success-text">{formatTimer(seconds)}</td>
-                    <td className={`px-5 py-3 text-right font-mono text-xs tabular-nums ${nearlyDone ? 'text-status-danger-text' : 'text-gray-500'}`}>
-                      {formatTimer(left)}
-                    </td>
                     <td className="px-5 py-2 text-right">
                       <button
                         type="button"

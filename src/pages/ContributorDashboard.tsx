@@ -21,6 +21,7 @@ import { TaskSubmissionForm } from '../components/TaskSubmissionForm'
 import { NoSubmissionNudge } from '../components/NoSubmissionNudge'
 import { LevelPill } from '../components/LevelPill'
 import { WORKING_DAYS, projectQuota } from '../lib/quotas'
+import { dailyHoursFor, formatHours, hoursRendered } from '../lib/hoursTarget'
 import { Modal } from '../components/Modal'
 import { OnboardingChecklist } from '../components/OnboardingChecklist'
 import { AchievementsCard } from '../components/Achievements'
@@ -139,6 +140,18 @@ export function ContributorDashboard() {
     queryFn: async () => (await api.get<Project[]>('/projects')).data,
   })
 
+  // The projects on their lead's team: the goals are the highest Hours / day among them.
+  const leadId = data?.user?.lead_id ?? null
+  const { data: leadProjects = [] } = useQuery({
+    queryKey: ['project-leads', 'of-lead', leadId],
+    queryFn: async () => {
+      const { data: rows, error } = await supabase.from('project_leads').select('project_id, lead_id').eq('lead_id', leadId!)
+      if (error) throw error
+      return rows as { project_id: number; lead_id: string }[]
+    },
+    enabled: Boolean(leadId),
+  })
+
   // A contributor's project list is exactly whichever projects their lead runs.
   const { data: leadProjectIds = [] } = useQuery({
     queryKey: ['project-leads-for-lead', contributorLeadId],
@@ -200,7 +213,13 @@ export function ContributorDashboard() {
   const showRecap = Boolean(recapStats) && recapSeen !== thisWeekIso
   // Days left in the business week, today included (Tuesday is 7, Monday is 1).
   const daysLeft = 7 - Math.round((Date.parse(today) - Date.parse(thisWeekIso)) / 86_400_000)
-  const dayProgress = dayTarget > 0 ? submittedToday / dayTarget : 0
+  // Goals in hours rendered: time on their task timers against Hours / day on their projects.
+  const dayHoursTarget = dailyHoursFor(leadId, allProjects, leadProjects)
+  const weekHoursTarget = dayHoursTarget * WORKING_DAYS
+  const hoursToday = hoursRendered(data.all_submissions.filter((r) => r.date?.slice(0, 10) === today))
+  const hoursThisWeek = hoursRendered(data.week_submissions)
+  const dayProgress = dayHoursTarget > 0 ? hoursToday / dayHoursTarget : 0
+  const goalText = (hours: number, target: number) => (target > 0 ? `${formatHours(hours)} / ${formatHours(target)}` : 'Not set')
 
   const stages = Object.entries(data.stage_breakdown) as [string, number][]
   const maxStageTotal = Math.max(1, ...stages.map(([, total]) => total))
@@ -241,12 +260,12 @@ export function ContributorDashboard() {
           { value: achievements?.current_streak ?? 0, label: 'Day streak', icon: Flame },
         ]}
         meters={[
-          { label: 'Day goal', pct: dayProgress * 100, tone: 'night', text: `${submittedToday} / ${dayTarget}` },
+          { label: 'Day goal', pct: dayProgress * 100, tone: 'night', text: goalText(hoursToday, dayHoursTarget) },
           {
             label: 'Week goal',
-            pct: data.weekly_target > 0 ? (data.submitted_this_week / data.weekly_target) * 100 : 0,
+            pct: weekHoursTarget > 0 ? (hoursThisWeek / weekHoursTarget) * 100 : 0,
             tone: 'honey',
-            text: `${data.submitted_this_week} / ${data.weekly_target}`,
+            text: goalText(hoursThisWeek, weekHoursTarget),
           },
           { label: 'Logged today, submitted', pct: loggedToday > 0 ? (submittedToday / loggedToday) * 100 : 0, tone: 'striped' },
           { label: 'Week gone', pct: ((7 - daysLeft) / 7) * 100, tone: 'outline' },
@@ -408,21 +427,23 @@ export function ContributorDashboard() {
 
       <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="flex items-center gap-5 card p-5 lg:col-span-1">
-          <ProgressRing value={dayProgress} label="Day Goal" sublabel={`${submittedToday} / ${dayTarget}`} />
+          <ProgressRing value={dayProgress} label="Day Goal" sublabel={goalText(hoursToday, dayHoursTarget)} />
           <div className="flex flex-col gap-3">
+            <div>
+              <div className="text-xs font-medium uppercase tracking-wider text-gray-400">Hours (Day)</div>
+              <div className="text-xl font-bold tabular-nums text-gray-900">{formatHours(hoursToday)}</div>
+            </div>
             <div>
               <div className="text-xs font-medium uppercase tracking-wider text-gray-400">Submitted (Day)</div>
               <div className="text-xl font-bold text-gray-900">
                 <CountUp value={submittedToday} />
               </div>
             </div>
-            <div>
-              <div className="text-xs font-medium uppercase tracking-wider text-gray-400">Logged (Day)</div>
-              <div className="text-xl font-bold text-gray-900">
-                <CountUp value={loggedToday} />
-              </div>
+            <div className="text-xs text-gray-400">
+              {dayHoursTarget > 0
+                ? 'Hours are the time on your task timers. The goal is a minimum, with no upper limit.'
+                : 'No Hours / day is set on your projects yet, so there’s no goal to show.'}
             </div>
-            <div className="text-xs text-gray-400">Minimum goal — submit as much as you want, no upper limit.</div>
           </div>
         </div>
 

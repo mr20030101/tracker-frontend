@@ -5,13 +5,6 @@ import { supabase } from './api'
 // database keeps the times on its own clock and runs one timer per person at a time
 // (task_submissions_timer in supabase/migrations/20261024_task_timers.sql).
 
-/** A timer stops at its project's limit (3 hours when the project sets none) and the task is marked Expired (20261110_task_timer_limit.sql). */
-export const DEFAULT_TIMER_LIMIT_MINUTES = 180
-
-export function timerLimitSeconds(project: { timer_limit_minutes?: number | null } | null | undefined): number {
-  return (project?.timer_limit_minutes ?? DEFAULT_TIMER_LIMIT_MINUTES) * 60
-}
-
 export interface TimedTask {
   timer_started_at?: string | null
   timer_elapsed_seconds?: number
@@ -21,13 +14,13 @@ export function isTimerRunning(task: TimedTask): boolean {
   return Boolean(task.timer_started_at)
 }
 
-/** Seconds spent on the task so far, counting the current run if it's going, up to the limit. */
-export function timerSeconds(task: TimedTask, now = Date.now(), limitSeconds = DEFAULT_TIMER_LIMIT_MINUTES * 60): number {
+/** Seconds spent on the task so far, counting the current run if it's going. */
+export function timerSeconds(task: TimedTask, now = Date.now()): number {
   const banked = task.timer_elapsed_seconds ?? 0
   const running = task.timer_started_at
     ? Math.max(0, Math.floor((now - new Date(task.timer_started_at).getTime()) / 1000))
     : 0
-  return Math.min(limitSeconds, banked + running)
+  return banked + running
 }
 
 /** 75 -> '1:15', 3725 -> '1:02:05'. */

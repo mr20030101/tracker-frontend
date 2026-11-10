@@ -58,6 +58,7 @@ import { SelfFileTaskIssueModal } from './SelfFileTaskIssueModal'
 import { TIME_REQUEST_LABELS, TimeRequestReasonModal, type TimeRequestMode, type TimeRequestType } from './TimeRequestReasonModal'
 import { confirmDialog } from '../lib/dialog'
 import { WORKING_DAYS } from '../lib/quotas'
+import { dailyHoursFor, formatHours, hoursRendered } from '../lib/hoursTarget'
 
 const TREND_DAYS = 30
 const MANAGER_ROLES = ['admin', 'lead']
@@ -140,6 +141,18 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
   const { data: allProjects = [] } = useQuery({
     queryKey: ['projects'],
     queryFn: async () => (await api.get<Project[]>('/projects')).data,
+  })
+
+  // The projects on their lead's team: the goal is the highest Hours / day among them.
+  const leadId = data?.user?.lead_id ?? null
+  const { data: leadProjects = [] } = useQuery({
+    queryKey: ['project-leads', 'of-lead', leadId],
+    queryFn: async () => {
+      const { data: rows, error } = await supabase.from('project_leads').select('project_id, lead_id').eq('lead_id', leadId!)
+      if (error) throw error
+      return rows as { project_id: number; lead_id: string }[]
+    },
+    enabled: Boolean(leadId),
   })
 
   // Keyed by the joined id list (not the array itself) so this doesn't refetch every time
@@ -375,15 +388,13 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
     return sort.dir === 'asc' ? cmp : -cmp
   })
 
-  const rangeTarget =
-    viewMode === 'day'
-      ? Math.round(data.weekly_target / WORKING_DAYS)
-      : viewMode === 'week'
-        ? data.weekly_target
-        : data.weekly_target * 4
+  // The goal is in hours rendered: Hours / day on their projects times the working days shown,
+  // against the time on their task timers in the range.
+  const workingDaysInView = viewMode === 'day' ? 1 : viewMode === 'week' ? WORKING_DAYS : WORKING_DAYS * 4
+  const rangeHoursTarget = dailyHoursFor(leadId, allProjects, leadProjects) * workingDaysInView
+  const hoursInRange = hoursRendered(visibleSubmissions)
   const submittedInRange = visibleSubmissions.filter((row) => row.status === 'submitted').length
-  const loggedInRange = visibleSubmissions.length
-  const rangeProgress = rangeTarget > 0 ? submittedInRange / rangeTarget : 0
+  const rangeProgress = rangeHoursTarget > 0 ? hoursInRange / rangeHoursTarget : 0
   const viewLabel = viewMode === 'day' ? 'Day' : viewMode === 'week' ? 'Week' : 'Month'
 
   const totalPages = Math.max(1, Math.ceil(sortedSubmissions.length / pageSize))
@@ -555,21 +566,27 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                 there would just be a permanent, misleading 0. */}
             {!data.is_public_view && (
               <div className="flex items-center gap-5 card p-5 lg:col-span-1">
-                <ProgressRing value={rangeProgress} label={`${viewLabel} Goal`} sublabel={`${submittedInRange} / ${rangeTarget}`} />
+                <ProgressRing
+                  value={rangeProgress}
+                  label={`${viewLabel} Goal`}
+                  sublabel={rangeHoursTarget > 0 ? `${formatHours(hoursInRange)} / ${formatHours(rangeHoursTarget)}` : 'Not set'}
+                />
                 <div className="flex flex-col gap-3">
+                  <div>
+                    <div className="text-xs font-medium uppercase tracking-wider text-gray-400">{`Hours (${viewLabel})`}</div>
+                    <div className="text-xl font-bold tabular-nums text-gray-900">{formatHours(hoursInRange)}</div>
+                  </div>
                   <div>
                     <div className="text-xs font-medium uppercase tracking-wider text-gray-400">{`Submitted (${viewLabel})`}</div>
                     <div className="text-xl font-bold text-gray-900">
                       <CountUp value={submittedInRange} />
                     </div>
                   </div>
-                  <div>
-                    <div className="text-xs font-medium uppercase tracking-wider text-gray-400">{`Logged (${viewLabel})`}</div>
-                    <div className="text-xl font-bold text-gray-900">
-                      <CountUp value={loggedInRange} />
-                    </div>
+                  <div className="text-xs text-gray-400">
+                    {rangeHoursTarget > 0
+                      ? 'Hours are the time on your task timers. The goal is a minimum, with no upper limit.'
+                      : 'No Hours / day is set on your projects yet, so there’s no goal to show.'}
                   </div>
-                  <div className="text-xs text-gray-400">Minimum goal — submit as much as you want, no upper limit.</div>
                 </div>
               </div>
             )}

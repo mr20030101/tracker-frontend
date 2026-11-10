@@ -2,7 +2,7 @@ import { useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import { FoldText } from '../components/FoldText'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Award, CalendarDays, Check, ChevronDown, ChevronUp, Gift, Lock, Plus, Trash2, Trophy, Users, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Award, CalendarDays, Check, ChevronDown, ChevronUp, Gift, Lock, Plus, Trash2, Trophy, Users, X } from 'lucide-react'
 import { api, errorMessage } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useMessaging } from '../lib/messagingContext'
@@ -11,6 +11,7 @@ import { usePageTitle } from '../lib/usePageTitle'
 import {
   RULE_LABELS,
   STAGES,
+  stageCounts,
   STAGE_LABELS,
   awardReward,
   countedStages,
@@ -301,6 +302,7 @@ const STAGE_PILL: Record<Stage, string> = {
   attempt: 'border-orange-500/40 bg-orange-500/10 text-orange-500',
   l0: 'border-sky-500/40 bg-sky-500/10 text-sky-500',
   l1: 'border-violet-500/40 bg-violet-500/10 text-violet-500',
+  l10: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-500',
 }
 
 // A task level as a small pill with its icon, and a value beside the label: its points on a
@@ -396,7 +398,7 @@ function StandingsList({ reward, standings, meId }: { reward: Reward; standings:
                 </Link>
                 <div className="mt-0.5 flex flex-wrap gap-1" aria-label={levelBreakdown(reward, s)}>
                   {countedStages(reward).map((stage) => {
-                    const count = { attempt: s.attempt_tasks, l0: s.l0_tasks, l1: s.l1_tasks }[stage]
+                    const count = stageCounts(s)[stage]
                     return (
                       <StagePill key={stage} stage={stage} faded={count === 0}>
                         {count.toLocaleString()}
@@ -625,6 +627,8 @@ const PRESETS: { value: Preset; label: string }[] = [
   { value: 'custom', label: 'Custom dates' },
 ]
 
+const REWARD_STEPS = ['Basics', 'Levels', 'Prize & dates', 'Review'] as const
+
 function NewRewardModal({ projects, onClose }: { projects: Project[]; onClose: () => void }) {
   const { user } = useAuth()
   const isAdmin = user?.role === 'admin'
@@ -648,11 +652,13 @@ function NewRewardModal({ projects, onClose }: { projects: Project[]; onClose: (
     attempt: { on: true, points: '1' },
     l0: { on: true, points: '1' },
     l1: { on: true, points: '1' },
+    l10: { on: true, points: '1' },
   })
   const [formError, setFormError] = useState<string | null>(null)
+  const [step, setStep] = useState(0)
 
   const levelPoints = (stage: Stage) => (levels[stage].on ? Number(levels[stage].points) || 0 : 0)
-  const pointsFields = { points_attempt: levelPoints('attempt'), points_l0: levelPoints('l0'), points_l1: levelPoints('l1') }
+  const pointsFields = { points_attempt: levelPoints('attempt'), points_l0: levelPoints('l0'), points_l1: levelPoints('l1'), points_l10: levelPoints('l10') }
 
   function setLevel(stage: Stage, change: Partial<{ on: boolean; points: string }>) {
     setLevels((current) => ({ ...current, [stage]: { ...current[stage], ...change } }))
@@ -691,17 +697,52 @@ function NewRewardModal({ projects, onClose }: { projects: Project[]; onClose: (
     onError: (err) => setFormError(errorMessage(err, 'Could not create the reward.')),
   })
 
+  // The form goes step by step; each step's checks run before moving on, and the last step creates it.
+  function stepError(index: number): string | null {
+    if (index === 0) {
+      if (!title.trim()) return 'Give the reward a title.'
+      if (rule === 'min_tasks' && !(Number(threshold) >= 1)) return 'How many tasks does it take?'
+    }
+    if (index === 1) {
+      if (STAGES.every((stage) => !levels[stage].on)) return 'Pick at least one level to count.'
+      if (STAGES.some((stage) => levels[stage].on && !validPoints(levels[stage].points)))
+        return 'Give each level you count between 0.01 and 100 points, with up to two decimals (e.g. 1.5).'
+    }
+    if (index === 2) {
+      const entered = prizes.slice(0, prizeSlots)
+      if (entered.length === 0 || entered.some((p) => p.trim() === '' || !Number.isFinite(Number(p)) || Number(p) < 0))
+        return 'Enter a prize amount for each place.'
+      if (range[1] < range[0]) return 'The end date is before the start date.'
+      if (rule === 'every_week_on_target' && countFullWeeks(range[0], range[1]) === 0)
+        return 'This date range contains no full Tuesday–Monday week, so "On target every week" can never be won. Extend the range to include at least one complete week.'
+    }
+    return null
+  }
+
+  function goTo(next: number) {
+    // Forward only past steps that check out; back is always fine.
+    for (let i = step; i < next; i++) {
+      const problem = stepError(i)
+      if (problem) {
+        setStep(i)
+        return setFormError(problem)
+      }
+    }
+    setFormError(null)
+    setStep(next)
+  }
+
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    const amounts = prizes.slice(0, prizeSlots).map((p) => Number(p))
-    if (amounts.some((a) => !Number.isFinite(a) || a < 0) || amounts.length === 0) return setFormError('Enter a prize amount for each place.')
-    if (rule === 'min_tasks' && !(Number(threshold) >= 1)) return setFormError('How many tasks does it take?')
-    if (STAGES.every((stage) => !levels[stage].on)) return setFormError('Pick at least one level to count.')
-    if (STAGES.some((stage) => levels[stage].on && !validPoints(levels[stage].points)))
-      return setFormError('Give each level you count between 0.01 and 100 points, with up to two decimals (e.g. 1.5).')
-    if (range[1] < range[0]) return setFormError('The end date is before the start date.')
-    if (rule === 'every_week_on_target' && countFullWeeks(range[0], range[1]) === 0)
-      return setFormError('This date range contains no full Tuesday–Monday week, so "On target every week" can never be won. Extend the range to include at least one complete week.')
+    if (create.isPending) return
+    if (step < REWARD_STEPS.length - 1) return goTo(step + 1)
+    for (let i = 0; i < REWARD_STEPS.length - 1; i++) {
+      const problem = stepError(i)
+      if (problem) {
+        setStep(i)
+        return setFormError(problem)
+      }
+    }
     setFormError(null)
     create.mutate({
       title: title.trim(),
@@ -711,7 +752,7 @@ function NewRewardModal({ projects, onClose }: { projects: Project[]; onClose: (
       threshold: (rule === 'min_tasks' || rule === 'top_submitters') && threshold ? Number(threshold) : null,
       places: rule === 'top_submitters' ? places : 1,
       project_id: projectId ? Number(projectId) : null,
-      prize_amounts: amounts,
+      prize_amounts: prizes.slice(0, prizeSlots).map((p) => Number(p)),
       currency,
       prize_note: prizeNote.trim(),
       starts_on: range[0],
@@ -737,245 +778,296 @@ function NewRewardModal({ projects, onClose }: { projects: Project[]; onClose: (
   return (
     <Modal title="New reward" onClose={onClose} maxWidthClassName="max-w-xl">
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <div>
-          <label className={labelClass}>Title</label>
-          <input
-            required
-            maxLength={120}
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="e.g. Top submitter of the week"
-            className={fieldClass}
-          />
-        </div>
+        <ol className="flex items-center gap-1 text-xs font-medium" aria-label="Steps">
+          {REWARD_STEPS.map((label, i) => (
+            <li key={label} className="flex min-w-0 flex-1 items-center gap-1">
+              <button
+                type="button"
+                onClick={() => goTo(i)}
+                aria-current={i === step ? 'step' : undefined}
+                className={`flex min-w-0 flex-1 items-center gap-1.5 rounded-md px-2 py-1.5 text-left pointer-coarse:min-h-11 ${
+                  i === step ? 'bg-accent/15 text-gray-900' : i < step ? 'text-gray-700 hover:bg-gray-50' : 'text-gray-400 hover:bg-gray-50'
+                }`}
+              >
+                <span
+                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] ${
+                    i < step ? 'bg-accent text-accent-foreground' : i === step ? 'border border-accent text-gray-900' : 'border border-gray-300'
+                  }`}
+                >
+                  {i < step ? <Check className="h-3 w-3" aria-hidden /> : i + 1}
+                </span>
+                <span className="truncate">{label}</span>
+              </button>
+            </li>
+          ))}
+        </ol>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div>
-            <label className={labelClass}>Rule</label>
-            <Select
-              value={rule}
-              onChange={(value) => chooseRule(value as RewardRule)}
-              options={(Object.keys(RULE_LABELS) as RewardRule[]).map((r) => ({ value: r, label: RULE_LABELS[r] }))}
-              fullWidth
-              className={fieldClass}
-            />
-          </div>
-          {rule === 'top_submitters' && (
+        {step === 0 && (
+          <>
             <div>
-              <label className={labelClass}>Prize places</label>
-              <Select
-                value={String(places)}
-                onChange={(value) => choosePlaces(Number(value))}
-                options={Array.from({ length: 10 }, (_, i) => ({ value: String(i + 1), label: i === 0 ? '1st place only' : `Top ${i + 1}` }))}
-                fullWidth
-                className={fieldClass}
-              />
-            </div>
-          )}
-          {(rule === 'min_tasks' || rule === 'top_submitters') && (
-            <div>
-              <label className={labelClass}>{rule === 'min_tasks' ? (scoredInPoints ? 'Points needed' : 'Tasks needed') : 'Minimum to qualify (optional)'}</label>
+              <label className={labelClass}>Title</label>
               <input
-                type="number"
-                min={1}
-                required={rule === 'min_tasks'}
-                value={threshold}
-                onChange={(e) => setThreshold(e.target.value)}
-                placeholder={rule === 'min_tasks' ? 'e.g. 60' : 'No minimum'}
+                required
+                maxLength={120}
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g. Top submitter of the week"
                 className={fieldClass}
               />
             </div>
-          )}
-          <div>
-            <label className={labelClass}>Count tasks from</label>
-            <Select
-              value={projectId}
-              onChange={setProjectId}
-              options={[{ value: '', label: 'All projects' }, ...projects.map((p) => ({ value: String(p.id), label: p.name }))]}
-              fullWidth
-              className={fieldClass}
-            />
-          </div>
-          {isAdmin && (
-            <div>
-              <label className={labelClass}>For</label>
-              <Select
-                value={teamLeadId}
-                onChange={setTeamLeadId}
-                options={[{ value: '', label: 'Everyone' }, ...leads.map((l) => ({ value: l.id, label: `${l.name}'s team` }))]}
-                fullWidth
-                className={fieldClass}
-              />
-            </div>
-          )}
-        </div>
 
-        <fieldset>
-          <legend className={labelClass}>Levels that count</legend>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-            {STAGES.map((stage) => (
-              <div key={stage} className={`flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 ${levels[stage].on ? 'border-accent/50 bg-accent/5' : 'border-gray-200'}`}>
-                <label className="flex w-full cursor-pointer items-center gap-2 text-sm font-medium text-gray-800">
-                  <input type="checkbox" checked={levels[stage].on} onChange={(e) => setLevel(stage, { on: e.target.checked })} />
-                  {STAGE_LABELS[stage]}
-                </label>
-                <input
-                  type="number"
-                  min={0.01}
-                  max={100}
-                  step="any"
-                  inputMode="decimal"
-                  disabled={!levels[stage].on}
-                  value={levels[stage].on ? levels[stage].points : ''}
-                  onChange={(e) => setLevel(stage, { points: e.target.value })}
-                  aria-label={`Points for each ${STAGE_LABELS[stage]} task`}
-                  className="w-16 rounded-md border border-gray-200 bg-white px-2 py-1 text-right text-sm outline-none focus:border-accent disabled:bg-gray-50"
-                />
-                <span className="text-xs text-gray-500">pts</span>
-              </div>
-            ))}
-          </div>
-          <p className="mt-1 text-xs text-gray-500">
-            Each submitted task scores its level’s points. Make the harder levels worth more, or untick a level to leave it out.
-            {rule === 'every_week_on_target' && ' Weekly targets still count tasks, at the ticked levels.'}
-          </p>
-        </fieldset>
-
-        <div>
-          <div className="mb-1 flex items-center justify-between">
-            <label className="block text-sm font-medium text-gray-700">Prize{prizeSlots > 1 ? 's' : ''}</label>
-            <select
-              value={currency}
-              onChange={(e) => setCurrency(e.target.value)}
-              aria-label="Currency"
-              className="rounded-md border border-gray-200 bg-white px-2 py-0.5 text-xs text-gray-700"
-            >
-              <option value="PHP">PHP ₱</option>
-              <option value="USD">USD $</option>
-            </select>
-          </div>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {Array.from({ length: prizeSlots }, (_, i) => (
-              <div key={i}>
-                {prizeSlots > 1 && <div className="mb-0.5 text-xs text-gray-500">{ordinal(i + 1)} place</div>}
-                <input
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  required
-                  value={prizes[i] ?? ''}
-                  onChange={(e) => setPrizes((current) => Object.assign([...current], { [i]: e.target.value }))}
-                  placeholder="1000"
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label className={labelClass}>Rule</label>
+                <Select
+                  value={rule}
+                  onChange={(value) => chooseRule(value as RewardRule)}
+                  options={(Object.keys(RULE_LABELS) as RewardRule[]).map((r) => ({ value: r, label: RULE_LABELS[r] }))}
+                  fullWidth
                   className={fieldClass}
                 />
               </div>
-            ))}
-          </div>
-          {rule === 'custom' && (
-            <div className="mt-1 flex gap-3 text-xs">
-              {prizes.length < 10 && (
-                <button type="button" onClick={() => setPrizes([...prizes, ''])} className="inline-flex items-center gap-1.5 font-semibold text-accent-text hover:underline">
-                  <Plus className="h-3.5 w-3.5" aria-hidden />
-                  Different prize for the next place
-                </button>
+              {rule === 'top_submitters' && (
+                <div>
+                  <label className={labelClass}>Prize places</label>
+                  <Select
+                    value={String(places)}
+                    onChange={(value) => choosePlaces(Number(value))}
+                    options={Array.from({ length: 10 }, (_, i) => ({ value: String(i + 1), label: i === 0 ? '1st place only' : `Top ${i + 1}` }))}
+                    fullWidth
+                    className={fieldClass}
+                  />
+                </div>
               )}
-              {prizes.length > 1 && (
-                <button type="button" onClick={() => setPrizes(prizes.slice(0, -1))} className="inline-flex items-center gap-1.5 font-semibold text-gray-500 hover:underline">
-                  <Trash2 className="h-3.5 w-3.5" aria-hidden />
-                  Remove last
-                </button>
+              {(rule === 'min_tasks' || rule === 'top_submitters') && (
+                <div>
+                  <label className={labelClass}>{rule === 'min_tasks' ? (scoredInPoints ? 'Points needed' : 'Tasks needed') : 'Minimum to qualify (optional)'}</label>
+                  <input
+                    type="number"
+                    min={1}
+                    required={rule === 'min_tasks'}
+                    value={threshold}
+                    onChange={(e) => setThreshold(e.target.value)}
+                    placeholder={rule === 'min_tasks' ? 'e.g. 60' : 'No minimum'}
+                    className={fieldClass}
+                  />
+                </div>
+              )}
+              <div>
+                <label className={labelClass}>Count tasks from</label>
+                <Select
+                  value={projectId}
+                  onChange={setProjectId}
+                  options={[{ value: '', label: 'All projects' }, ...projects.map((p) => ({ value: String(p.id), label: p.name }))]}
+                  fullWidth
+                  className={fieldClass}
+                />
+              </div>
+              {isAdmin && (
+                <div>
+                  <label className={labelClass}>For</label>
+                  <Select
+                    value={teamLeadId}
+                    onChange={setTeamLeadId}
+                    options={[{ value: '', label: 'Everyone' }, ...leads.map((l) => ({ value: l.id, label: `${l.name}'s team` }))]}
+                    fullWidth
+                    className={fieldClass}
+                  />
+                </div>
               )}
             </div>
-          )}
-          <input
-            maxLength={200}
-            value={prizeNote}
-            onChange={(e) => setPrizeNote(e.target.value)}
-            placeholder="Anything extra? e.g. + a shout-out in the team meeting"
-            className={`${fieldClass} mt-2`}
-          />
-        </div>
+          </>
+        )}
 
-        <div>
-          <label className={labelClass}>When</label>
-          <div className="mb-2 flex flex-wrap gap-1.5">
-            {PRESETS.map((p) => (
-              <button
-                key={p.value}
-                type="button"
-                onClick={() => choosePreset(p.value)}
-                className={`rounded-full px-3 py-1 text-xs font-semibold ${preset === p.value ? 'bg-accent text-accent-foreground' : 'border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <input
-              type="date"
-              required
-              min={toISODate(new Date())}
-              value={range[0]}
-              onChange={(e) => {
-                setPreset('custom')
-                setRange([e.target.value, range[1]])
-              }}
-              className={fieldClass}
-              aria-label="Starts"
-            />
-            <input
-              type="date"
-              required
-              min={range[0]}
-              value={range[1]}
-              onChange={(e) => {
-                setPreset('custom')
-                setRange([range[0], e.target.value])
-              }}
-              className={fieldClass}
-              aria-label="Ends"
-            />
-          </div>
-          {rule === 'every_week_on_target' && <p className="mt-1 text-xs text-gray-500">Counts each full business week (Tuesday to Monday) inside these dates.</p>}
-        </div>
+        {step === 1 && (
+          <>
+            <fieldset>
+              <legend className={labelClass}>Levels that count</legend>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                {STAGES.map((stage) => (
+                  <div key={stage} className={`flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 ${levels[stage].on ? 'border-accent/50 bg-accent/5' : 'border-gray-200'}`}>
+                    <label className="flex w-full cursor-pointer items-center gap-2 text-sm font-medium text-gray-800">
+                      <input type="checkbox" checked={levels[stage].on} onChange={(e) => setLevel(stage, { on: e.target.checked })} />
+                      {STAGE_LABELS[stage]}
+                    </label>
+                    <input
+                      type="number"
+                      min={0.01}
+                      max={100}
+                      step="any"
+                      inputMode="decimal"
+                      disabled={!levels[stage].on}
+                      value={levels[stage].on ? levels[stage].points : ''}
+                      onChange={(e) => setLevel(stage, { points: e.target.value })}
+                      aria-label={`Points for each ${STAGE_LABELS[stage]} task`}
+                      className="w-16 rounded-md border border-gray-200 bg-white px-2 py-1 text-right text-sm outline-none focus:border-accent disabled:bg-gray-50"
+                    />
+                    <span className="text-xs text-gray-500">pts</span>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-1 text-xs text-gray-500">
+                Each submitted task scores its level’s points. Make the harder levels worth more, or untick a level to leave it out.
+                {rule === 'every_week_on_target' && ' Weekly targets still count tasks, at the ticked levels.'}
+              </p>
+            </fieldset>
+          </>
+        )}
 
-        <div>
-          <label className={labelClass}>Details (optional)</label>
-          <textarea
-            rows={3}
-            maxLength={1000}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder={rule === 'custom' ? 'Explain the rule, e.g. best quality feedback from reviewers' : 'Anything else your team should know'}
-            className={`${fieldClass} resize-y`}
-          />
-        </div>
+        {step === 2 && (
+          <>
+            <div>
+              <div className="mb-1 flex items-center justify-between">
+                <label className="block text-sm font-medium text-gray-700">Prize{prizeSlots > 1 ? 's' : ''}</label>
+                <select
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value)}
+                  aria-label="Currency"
+                  className="rounded-md border border-gray-200 bg-white px-2 py-0.5 text-xs text-gray-700"
+                >
+                  <option value="PHP">PHP ₱</option>
+                  <option value="USD">USD $</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {Array.from({ length: prizeSlots }, (_, i) => (
+                  <div key={i}>
+                    {prizeSlots > 1 && <div className="mb-0.5 text-xs text-gray-500">{ordinal(i + 1)} place</div>}
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      required
+                      value={prizes[i] ?? ''}
+                      onChange={(e) => setPrizes((current) => Object.assign([...current], { [i]: e.target.value }))}
+                      placeholder="1000"
+                      className={fieldClass}
+                    />
+                  </div>
+                ))}
+              </div>
+              {rule === 'custom' && (
+                <div className="mt-1 flex gap-3 text-xs">
+                  {prizes.length < 10 && (
+                    <button type="button" onClick={() => setPrizes([...prizes, ''])} className="inline-flex items-center gap-1.5 font-semibold text-accent-text hover:underline">
+                      <Plus className="h-3.5 w-3.5" aria-hidden />
+                      Different prize for the next place
+                    </button>
+                  )}
+                  {prizes.length > 1 && (
+                    <button type="button" onClick={() => setPrizes(prizes.slice(0, -1))} className="inline-flex items-center gap-1.5 font-semibold text-gray-500 hover:underline">
+                      <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                      Remove last
+                    </button>
+                  )}
+                </div>
+              )}
+              <input
+                maxLength={200}
+                value={prizeNote}
+                onChange={(e) => setPrizeNote(e.target.value)}
+                placeholder="Anything extra? e.g. + a shout-out in the team meeting"
+                className={`${fieldClass} mt-2`}
+              />
+            </div>
 
-        <div className="rounded-lg bg-gray-50 px-3 py-2 text-sm">
-          <div className="font-semibold text-gray-900">{describePrize(previewReward)}</div>
-          <div className="text-gray-600">{describeRule(previewReward, projects.find((p) => String(p.id) === projectId)?.name)}</div>
-          {describeLevels(previewReward) && <div className="text-xs text-gray-500">Counts {describeLevels(previewReward)}</div>}
-          <div className="text-xs text-gray-500">{range[0] && range[1] ? formatRange(range[0], range[1]) : ''}</div>
-        </div>
+            <div>
+              <label className={labelClass}>When</label>
+              <div className="mb-2 flex flex-wrap gap-1.5">
+                {PRESETS.map((p) => (
+                  <button
+                    key={p.value}
+                    type="button"
+                    onClick={() => choosePreset(p.value)}
+                    className={`rounded-full px-3 py-1 text-xs font-semibold ${preset === p.value ? 'bg-accent text-accent-foreground' : 'border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="date"
+                  required
+                  min={toISODate(new Date())}
+                  value={range[0]}
+                  onChange={(e) => {
+                    setPreset('custom')
+                    setRange([e.target.value, range[1]])
+                  }}
+                  className={fieldClass}
+                  aria-label="Starts"
+                />
+                <input
+                  type="date"
+                  required
+                  min={range[0]}
+                  value={range[1]}
+                  onChange={(e) => {
+                    setPreset('custom')
+                    setRange([range[0], e.target.value])
+                  }}
+                  className={fieldClass}
+                  aria-label="Ends"
+                />
+              </div>
+              {rule === 'every_week_on_target' && <p className="mt-1 text-xs text-gray-500">Counts each full business week (Tuesday to Monday) inside these dates.</p>}
+            </div>
+          </>
+        )}
 
-        <label className="flex items-center gap-2 text-sm text-gray-700">
-          <input type="checkbox" checked={announce} onChange={(e) => setAnnounce(e.target.checked)} />
-          Post it as an announcement
-        </label>
+        {step === 3 && (
+          <>
+            <div>
+              <label className={labelClass}>Details (optional)</label>
+              <textarea
+                rows={3}
+                maxLength={1000}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder={rule === 'custom' ? 'Explain the rule, e.g. best quality feedback from reviewers' : 'Anything else your team should know'}
+                className={`${fieldClass} resize-y`}
+              />
+            </div>
+
+            <div className="rounded-lg bg-gray-50 px-3 py-2 text-sm">
+              <div className="font-semibold text-gray-900">{describePrize(previewReward)}</div>
+              <div className="text-gray-600">{describeRule(previewReward, projects.find((p) => String(p.id) === projectId)?.name)}</div>
+              {describeLevels(previewReward) && <div className="text-xs text-gray-500">Counts {describeLevels(previewReward)}</div>}
+              <div className="text-xs text-gray-500">{range[0] && range[1] ? formatRange(range[0], range[1]) : ''}</div>
+            </div>
+
+            <label className="flex items-center gap-2 text-sm text-gray-700">
+              <input type="checkbox" checked={announce} onChange={(e) => setAnnounce(e.target.checked)} />
+              Post it as an announcement
+            </label>
+          </>
+        )}
         {formError && <div className="rounded-lg bg-status-danger-text px-3 py-2 text-sm text-status-danger-bg">{formError}</div>}
-        <div className="flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600">
-            <X className="h-4 w-4" aria-hidden />
-            Cancel
-          </button>
+        <div className="flex items-center justify-between gap-2">
           <button
-            type="submit"
-            disabled={create.isPending || !title.trim()}
-            className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+            type="button"
+            onClick={step === 0 ? onClose : () => goTo(step - 1)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
           >
-            <Plus className="h-4 w-4" aria-hidden />
-            {create.isPending ? 'Creating...' : 'Create reward'}
+            {step === 0 ? <X className="h-4 w-4" aria-hidden /> : <ArrowLeft className="h-4 w-4" aria-hidden />}
+            {step === 0 ? 'Cancel' : 'Back'}
           </button>
+          {step < REWARD_STEPS.length - 1 ? (
+            <button type="submit" className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground">
+              Next: {REWARD_STEPS[step + 1]}
+              <ArrowRight className="h-4 w-4" aria-hidden />
+            </button>
+          ) : (
+            <button
+              type="submit"
+              aria-busy={create.isPending}
+              className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
+            >
+              <Plus className="h-4 w-4" aria-hidden />
+              {create.isPending ? 'Creating...' : 'Create reward'}
+            </button>
+          )}
         </div>
       </form>
     </Modal>

@@ -1,20 +1,19 @@
-import { useEffect } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Pause, Play } from 'lucide-react'
 import { useNow } from '../lib/useNow'
-import { formatTimer, timerLimitSeconds, isTimerRunning, setTaskTimer, timerSeconds, type TimedTask } from '../lib/taskTimer'
+import { formatTimer, isTimerRunning, setTaskTimer, timerSeconds, type TimedTask } from '../lib/taskTimer'
 
 /** The time read out, ticking every second while the timer runs. */
-function TimerReadout({ task, limit }: { task: TimedTask; limit: number }) {
+function TimerReadout({ task }: { task: TimedTask }) {
   const now = useNow(1000)
-  return <>{formatTimer(timerSeconds(task, now, limit))}</>
+  return <>{formatTimer(timerSeconds(task, now))}</>
 }
 
 /**
  * A task's timer: how long has been spent on it, with a start/pause button for someone who can
  * edit the task while it's in progress. Anyone else just sees the time.
  */
-export function TaskTimer({ task, canControl }: { task: TimedTask & { id: number; status: string; project?: { timer_limit_minutes?: number | null } | null }; canControl: boolean }) {
+export function TaskTimer({ task, canControl }: { task: TimedTask & { id: number; status: string }; canControl: boolean }) {
   const queryClient = useQueryClient()
   const running = isTimerRunning(task)
   const toggle = useMutation({
@@ -24,19 +23,7 @@ export function TaskTimer({ task, canControl }: { task: TimedTask & { id: number
       queryClient.invalidateQueries({ queryKey: ['task-submissions'] })
     },
   })
-  const limit = timerLimitSeconds(task.project)
-  const seconds = timerSeconds(task, Date.now(), limit)
-
-  // The database expires the task within a minute of the timer reaching its limit; reload then.
-  useEffect(() => {
-    if (!running) return
-    const wait = (limit - timerSeconds(task, Date.now(), limit) + 65) * 1000
-    const timeout = setTimeout(() => {
-      queryClient.invalidateQueries({ queryKey: ['contributor'] })
-      queryClient.invalidateQueries({ queryKey: ['task-submissions'] })
-    }, wait)
-    return () => clearTimeout(timeout)
-  }, [running, task, limit, queryClient])
+  const seconds = timerSeconds(task)
   const controllable = canControl && task.status === 'in_progress'
 
   if (!controllable && seconds === 0 && !running) return <span className="text-xs text-gray-300">—</span>
@@ -58,7 +45,7 @@ export function TaskTimer({ task, canControl }: { task: TimedTask & { id: number
         </button>
       )}
       <span className={`font-mono text-xs tabular-nums ${running ? 'text-status-success-text' : 'text-gray-500'}`}>
-        {running ? <TimerReadout task={task} limit={limit} /> : formatTimer(seconds)}
+        {running ? <TimerReadout task={task} /> : formatTimer(seconds)}
       </span>
     </span>
   )

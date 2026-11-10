@@ -9,6 +9,7 @@ import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, yearMonth, toISODate,
 import type { DashboardSummary, LeaderboardRow, Project } from '../types'
 import { Avatar } from '../components/Avatar'
 import { ProgressBar } from '../components/ProgressBar'
+import { formatHours } from '../lib/hoursTarget'
 import { Select } from '../components/Select'
 import { SearchInput, SegmentedTabs, TableCard, TableToolbar, toolbarControlClass } from '../components/TableToolbar'
 import { Reveal } from '../components/Reveal'
@@ -297,7 +298,7 @@ function ManagerLeaderboard() {
 
       return matchesSearch && matchesStatus && matchesActivity
     })
-    .sort((a, b) => (progressSort === 'desc' ? b.progress - a.progress : a.progress - b.progress))
+    .sort((a, b) => (progressSort === 'desc' ? b.hours_progress - a.hours_progress : a.hours_progress - b.hours_progress))
   const { data: achievements } = useAchievements(allRows.map((r) => r.user_id))
   const { data: featuredBadges } = useFeaturedBadges(allRows.map((r) => r.user_id))
 
@@ -410,8 +411,9 @@ function ManagerLeaderboard() {
                     name: r.name,
                     cb_email: r.cb_email,
                     tasks_submitted: r.tasks_submitted,
-                    target: r.weekly_target,
-                    progress_pct: Math.round(r.progress * 100),
+                    hours_rendered: Number(r.hours_rendered.toFixed(2)),
+                    target_hours: Number(r.hours_target.toFixed(2)),
+                    progress_pct: Math.round(r.hours_progress * 100),
                     current_streak_weeks: achievements?.get(r.user_id)?.current_streak ?? 0,
                     is_active: r.is_active,
                   })),
@@ -431,6 +433,7 @@ function ManagerLeaderboard() {
             <tr>
               <th className="px-5 py-3">Contributor</th>
               <th className="px-5 py-3">Tasks Submitted</th>
+              <th className="px-5 py-3">Hours</th>
               <th className="px-5 py-3">{viewLabel} Target</th>
               <SortableHeader label="Progress" active dir={progressSort} onClick={toggleProgressSort} />
               <th className="px-5 py-3">Account Status</th>
@@ -440,14 +443,14 @@ function ManagerLeaderboard() {
           <tbody className="divide-y divide-gray-100">
             {isLoading && (
               <tr>
-                <td colSpan={6} className="px-5 py-6 text-center text-gray-400">
+                <td colSpan={7} className="px-5 py-6 text-center text-gray-400">
                   Loading...
                 </td>
               </tr>
             )}
             {!isLoading && rows.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-5 py-6 text-center text-gray-400">
+                <td colSpan={7} className="px-5 py-6 text-center text-gray-400">
                   {allRows.length === 0 ? `No activity for ${periodPhrase}.` : 'No contributors match these filters.'}
                 </td>
               </tr>
@@ -478,10 +481,13 @@ function ManagerLeaderboard() {
                     </Link>
                   </td>
                   <td className="px-5 py-3 font-medium">{row.tasks_submitted}</td>
-                  {/* From the daily quotas on their projects (set on the Projects page), not edited here. */}
-                  <td className="px-5 py-3 text-gray-500">{row.weekly_target}</td>
+                  <td className="px-5 py-3 tabular-nums text-gray-900">{formatHours(row.hours_rendered)}</td>
+                  {/* Hours / day on their projects (set on the Projects page), not edited here. */}
+                  <td className="px-5 py-3 tabular-nums text-gray-500">
+                    {row.hours_target > 0 ? formatHours(row.hours_target) : <span title="No Hours / day set on their projects">Not set</span>}
+                  </td>
                   <td className="px-5 py-3">
-                    <ProgressBar value={row.progress} danger={noProgress} />
+                    <ProgressBar value={row.hours_progress} danger={noProgress} />
                   </td>
                   <td className="px-5 py-3">
                     <span
