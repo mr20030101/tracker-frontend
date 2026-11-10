@@ -174,6 +174,7 @@ export function Requests() {
         remotaskId: (request.type !== 'bad_video' ? request.remotasks_id : null) ?? request.requester?.remotasks_id ?? null,
         stage: request.task_submission?.stage ?? null,
         projectName: request.task_submission?.project?.name ?? null,
+        projectCode: request.task_submission?.project?.code ?? null,
         reason: request.reason,
       },
     })
@@ -218,7 +219,7 @@ export function Requests() {
               title={
                 request.type === 'bad_video'
                   ? 'Opens the Bad Video Validation/Removal form, prefilled, and marks this approved'
-                  : 'Check the details, then open the Reclaim / Extend form and mark this approved'
+                  : 'Check the details, then open the project’s extension form and mark this approved'
               }
               className="inline-flex items-center gap-1.5 rounded-full bg-accent px-3 py-1.5 text-xs font-semibold text-accent-foreground disabled:opacity-50"
             >

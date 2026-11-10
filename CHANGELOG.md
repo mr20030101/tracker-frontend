@@ -14,6 +14,16 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Changed
+
+- **Extension and reclaim requests open the right form for the task's project.** When a lead or admin clicks Request:
+  - **Aloha OTS** (aloha_data_collection_v1) opens the Scale Reclaim / Extend form, as before.
+  - **Aloha OTS Tasking (RST)** (Aloha-OTS_Tasking) opens the RST Task Extension Form.
+  - **Octet Mind** (octet-mind) opens the new TASK ISSUES form, with the task ID as its Scene ID, the Remotasks ID, email, Extend or Reclaim, the reason under Additional details and the location (REMOTE - BOOTCAMP) filled in. The reason category is picked on the form.
+
+  Previously the form went by the team's program (Bootcamp or RST).
+- **Report bad video is only offered for Aloha OTS tasks** (and the other projects on the Bad Video form). It's no longer in the menu for Aloha OTS Tasking (RST) or Octet Mind tasks, which have no bad video form.
+
 ## 8.18.2 — 2026-11-10
 
 ### Fixed
