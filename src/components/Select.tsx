@@ -27,6 +27,10 @@ interface SelectProps {
   /** Stacking level for the open list, when the select sits in something above modals (e.g. the call card). */
   zIndex?: number
   'aria-label'?: string
+  /** The trigger's id, so a <label htmlFor> names it and a form can focus it. */
+  id?: string
+  /** Marks the trigger as failing validation (aria-invalid). */
+  invalid?: boolean
 }
 
 interface PanelPosition {
@@ -73,6 +77,8 @@ export function Select({
   onClose,
   zIndex = PANEL_Z_INDEX,
   'aria-label': ariaLabel,
+  id: triggerId,
+  invalid,
 }: SelectProps) {
   const id = useId()
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -232,6 +238,7 @@ export function Select({
     <div className={`relative ${fullWidth ? 'block w-full' : 'inline-block'}`}>
       <button
         ref={triggerRef}
+        id={triggerId}
         type="button"
         role="combobox"
         aria-haspopup="listbox"
@@ -239,6 +246,7 @@ export function Select({
         aria-controls={open ? `${id}-list` : undefined}
         aria-activedescendant={open && activeIndex >= 0 ? `${id}-opt-${activeIndex}` : undefined}
         aria-label={ariaLabel}
+        aria-invalid={invalid || undefined}
         disabled={disabled}
         autoFocus={autoOpen}
         onClick={() => (open ? close(false) : openPanel())}

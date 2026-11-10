@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useId, useState, type FormEvent } from 'react'
 import { Plus, Save, X } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, supabase } from '../lib/api'
@@ -78,6 +78,8 @@ export function TaskSubmissionForm({ submission, onClose }: Props) {
       : { ...emptyForm, cb_email: isManager ? '' : (user?.email ?? '') },
   )
   const [error, setError] = useState<string | null>(null)
+  const [projectMissing, setProjectMissing] = useState(false)
+  const projectFieldId = useId()
 
   // Scope the Project choices to whichever lead the target CB is attached
   // to, so a submission can only be logged against a project that lead
@@ -191,6 +193,13 @@ export function TaskSubmissionForm({ submission, onClose }: Props) {
       setError('CB Email and Task ID are required.')
       return
     }
+    // The Back Up Task Tracker form can't take a task without one.
+    if (!form.project_id && !(isAdmin && form.new_project.trim())) {
+      setProjectMissing(true)
+      setError('Choose the task’s project.')
+      document.getElementById(projectFieldId)?.focus()
+      return
+    }
     setError(null)
     mutation.mutate()
   }
@@ -221,19 +230,33 @@ export function TaskSubmissionForm({ submission, onClose }: Props) {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">Project</label>
+          <label htmlFor={projectFieldId} className="mb-1 block text-sm font-medium text-gray-700">
+            Project
+          </label>
           <Select
+            id={projectFieldId}
             fullWidth
+            invalid={projectMissing}
             value={form.project_id}
-            onChange={(value) => setForm({ ...form, project_id: value, new_project: '' })}
-            options={[{ value: '', label: '— None —' }, ...visibleProjects.map((p) => ({ value: String(p.id), label: p.name }))]}
-            className="mb-2 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
+            onChange={(value) => {
+              setForm({ ...form, project_id: value, new_project: '' })
+              setProjectMissing(false)
+            }}
+            placeholder="Choose a project…"
+            options={visibleProjects.map((p) => ({ value: String(p.id), label: p.name }))}
+            className={`mb-2 rounded-lg border px-3 py-2 text-sm outline-none focus:border-accent ${
+              projectMissing ? 'border-status-danger-text' : 'border-gray-200'
+            }`}
           />
+          {projectMissing && <p className="mb-2 text-xs text-status-danger-text">Every task needs a project.</p>}
           {isAdmin && (
             <input
               placeholder="Or type a new project name..."
               value={form.new_project}
-              onChange={(e) => setForm({ ...form, new_project: e.target.value, project_id: '' })}
+              onChange={(e) => {
+                setForm({ ...form, new_project: e.target.value, project_id: '' })
+                setProjectMissing(false)
+              }}
               className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
             />
           )}

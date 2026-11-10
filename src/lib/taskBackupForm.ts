@@ -9,6 +9,7 @@ import { serverSupabaseConfig, type ServerSupabaseEnv } from './serverAuth.js'
 
 export const BACKUP_FORM_RESPONSE_URL =
   'https://docs.google.com/forms/d/e/1FAIpQLSeDF3s0JAiTkqNy5og8gApRXxko8qJ2Wy413K1AFfAR8Uf1sg/formResponse'
+export const BACKUP_FORM_VIEW_URL = BACKUP_FORM_RESPONSE_URL.replace(/formResponse$/, 'viewform')
 
 const FIELDS = {
   email: 'entry.852481976',
@@ -70,6 +71,96 @@ export function backupFormBody(task: BackupFormTask, email: string, trainer: str
   return body
 }
 
+/** Each choice field's current options, by entry id, from the form's page. Null if it can't be read. */
+export function formChoices(html: string): Map<string, string[]> | null {
+  const match = html.match(/FB_PUBLIC_LOAD_DATA_ = (.*?);<\/script>/s)
+  if (!match) return null
+  try {
+    const data = JSON.parse(match[1]) as unknown[]
+    const questions = (data[1] as unknown[])[1] as unknown[][]
+    const choices = new Map<string, string[]>()
+    for (const question of questions) {
+      for (const input of (question[4] as unknown[][] | null) ?? []) {
+        const options = ((input[1] as unknown[][] | null) ?? []).map((option) => String(option[0]))
+        // An empty option is the form's "Other": any answer goes, so it isn't checked.
+        if (options.length > 0 && !options.includes('')) choices.set(`entry.${input[0]}`, options)
+      }
+    }
+    return choices
+  } catch {
+    return null
+  }
+}
+
+const FIELD_NAMES: Record<string, string> = {
+  [FIELDS.level]: 'Task Level',
+  [FIELDS.status]: 'Task Status',
+  [FIELDS.trainer]: 'Support / Trainer',
+  [FIELDS.project]: 'Project',
+}
+
+/** Why the form refused a body: the first answer that isn't one of its field's current choices. */
+export function explainRefusal(body: URLSearchParams, choices: Map<string, string[]>): string | null {
+  for (const [entry, name] of Object.entries(FIELD_NAMES)) {
+    const options = choices.get(entry)
+    const answer = body.get(entry)
+    if (!options || answer === null || options.includes(answer)) continue
+    if (entry === FIELDS.trainer) {
+      return `The trainer "${answer}" isn't one of the backup form's ${name} choices. Fix it on the Leads page (CTS trainer) to match the form exactly.`
+    }
+    return `"${answer}" isn't one of the backup form's ${name} choices.`
+  }
+  return null
+}
+
+const QUESTION_ENTRIES: [string, string][] = [
+  ['Remotasks Email', FIELDS.email],
+  ['Task ID', FIELDS.taskId],
+  ['Project', FIELDS.project],
+  ['Task Level', FIELDS.level],
+  ['Task Status', FIELDS.status],
+  ['Support / Trainer', FIELDS.trainer],
+]
+
+const decodeHtml = (text: string) =>
+  text
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .trim()
+
+/**
+ * The questions Google flagged on the page it answers a refused response with, and its message
+ * for each (e.g. "This is a required question"). Empty if the page doesn't flag any.
+ */
+export function refusedQuestions(html: string): { question: string; message: string }[] {
+  const flagged: { question: string; message: string }[] = []
+  // Each question's alert holds Google's error for it, if any.
+  for (const item of html.split('role="listitem"').slice(1)) {
+    const title = item.match(/<span class="M7eMe">([^<]+)<\/span>/)?.[1]
+    const alert = item.match(/role="alert"[\s\S]*?<span class="RHiWt">([^<]*)<\/span>/)?.[1]
+    if (title && alert && decodeHtml(alert)) flagged.push({ question: decodeHtml(title).replace(/:$/, ''), message: decodeHtml(alert) })
+  }
+  return flagged
+}
+
+/** A refusal in words: each flagged question, Google's message, and what was sent for it. */
+export function describeRefusal(flagged: { question: string; message: string }[], body: URLSearchParams): string | null {
+  if (flagged.length === 0) return null
+  return flagged
+    .map(({ question, message }) => {
+      const entry = QUESTION_ENTRIES.find(([name]) => question.startsWith(name))?.[1]
+      const other = entry ? body.get(`${entry}.other_option_response`) : null
+      const sent = entry ? (other ?? body.get(entry)) : null
+      return `The Google Form refused ${question}${sent !== null ? ` "${sent}"` : ''}: ${message}`
+    })
+    .join(' ')
+    .slice(0, 500)
+}
+
 export interface BackupFormEnv extends ServerSupabaseEnv {
   /** Shared with the database (app_secrets.task_backup_form_secret); unset turns sending off. */
   TASK_BACKUP_FORM_SECRET?: string
@@ -91,6 +182,7 @@ interface TaskRow extends BackupFormTask {
   id: number
   cb_email: string
   backup_form_sent_at: string | null
+  backup_form_attempts: number | null
 }
 
 export async function handleSendTaskToBackupForm(request: Request, env: BackupFormEnv, fetchImpl: typeof fetch = fetch): Promise<Response> {
@@ -133,7 +225,7 @@ async function send(
 ): Promise<Response> {
 
   const [task] = await read<TaskRow>(
-    `task_submissions?id=eq.${id}&select=id,task_id,cb_email,stage,status,backup_form_sent_at,project:projects(name,code)&limit=1`,
+    `task_submissions?id=eq.${id}&select=id,task_id,cb_email,stage,status,backup_form_sent_at,backup_form_attempts,project:projects(name,code)&limit=1`,
   )
   if (!task) return json(404, { message: 'Task not found.' })
   if (task.backup_form_sent_at) return json(200, { sent: true, already: true })
@@ -153,15 +245,26 @@ async function send(
   let error: string | null = null
   if (!team.cts_trainer) {
     error = "The team has no trainer set (Leads page → CTS trainer), and the form requires one."
+  } else if (!task.project) {
+    error = "This task has no project, and the backup form requires one. Set the task's project and it's sent again."
   } else {
+    const body = backupFormBody(task, task.cb_email.trim(), team.cts_trainer)
     try {
       const formResponse = await fetchImpl(BACKUP_FORM_RESPONSE_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: backupFormBody(task, task.cb_email.trim(), team.cts_trainer),
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Accept-Language': 'en' },
+        body,
         redirect: 'manual',
       })
-      if (formResponse.status >= 400) error = `The Google Form refused it (${formResponse.status}).`
+      if (formResponse.status === 429) error = 'The Google Form is getting too many answers right now (429). It will be retried.'
+      else if (formResponse.status >= 400) {
+        const page = await formResponse.text().catch(() => '')
+        error =
+          describeRefusal(refusedQuestions(page), body) ??
+          (await refusalReason(body, fetchImpl)) ??
+          `The Google Form refused it (${formResponse.status}).`
+        console.error(`api/task-backup-form: task ${task.id} refused (${formResponse.status}): ${error}`)
+      }
     } catch (err) {
       console.error('api/task-backup-form: posting failed:', err)
       error = "The Google Form couldn't be reached."
@@ -172,12 +275,23 @@ async function send(
   await fetchImpl(`${url}/rest/v1/task_submissions?id=eq.${task.id}`, {
     method: 'PATCH',
     headers: { ...headers, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-    body: JSON.stringify(
-      error
-        ? { backup_form_error: error, backup_form_attempted_at: now }
-        : { backup_form_sent_at: now, backup_form_error: null, backup_form_attempted_at: now },
-    ),
+    body: JSON.stringify({
+      ...(error ? { backup_form_error: error } : { backup_form_sent_at: now, backup_form_error: null }),
+      backup_form_attempted_at: now,
+      backup_form_attempts: (task.backup_form_attempts ?? 0) + 1,
+    }),
   })
 
   return error ? json(502, { message: error }) : json(200, { sent: true })
+}
+
+// Reads the form's current choices to say which answer it refused. Null if the page can't be read.
+async function refusalReason(body: URLSearchParams, fetchImpl: typeof fetch): Promise<string | null> {
+  try {
+    const page = await fetchImpl(BACKUP_FORM_VIEW_URL)
+    const choices = page.ok ? formChoices(await page.text()) : null
+    return choices ? explainRefusal(body, choices) : null
+  } catch {
+    return null
+  }
 }

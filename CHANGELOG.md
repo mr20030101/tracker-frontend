@@ -14,6 +14,16 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Changed
+
+- **Every task needs a project.** Adding or editing a task (Task Log, your dashboard, Data Quality) no longer offers "None". Saving without a project highlights the Project field and says to choose one. The browser extension already required it. Bulk import is unchanged.
+
+### Fixed
+
+- **Tasks that didn't reach the Back Up Task Tracker form are sent again automatically.** Every 5 minutes, a finished task from today or yesterday whose last send failed is tried again, up to 5 tries. Editing the task still tries it straight away. Hovering "Not in backup form" shows why it failed and whether it's still being retried.
+- **Why some tasks never reached the backup form: they had no project.** The form requires a Project, so Google turned away every task logged without one. Such a task is no longer sent to be refused; "Not in backup form" says it needs a project, and setting the project on the task sends it.
+- **"Not in backup form" now says what the form refused.** When Google turns a task away, the reason names the question it rejected, Google's own message and what was sent, e.g. *The Google Form refused Project "…": …*. If the team's CTS trainer isn't one of the form's Support / Trainer choices, it says so. A busy form (too many answers at once) is reported as such and retried.
+
 ## 8.16.0 — 2026-11-10
 
 ### Added
