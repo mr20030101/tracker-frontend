@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.24.0 — 2026-11-11
+
 ### Added
 
 - **A team can keep its attendance off the Google Form.** Settings → Team has an "Attend. form" switch per lead's team, on by default. Off, that team's filed attendance stays in the Tracker only and isn't sent to the attendance Google Form, and the Attendance page doesn't show it as "Not sent". The lead or an admin can change it, and changes go in the Activity Log.
