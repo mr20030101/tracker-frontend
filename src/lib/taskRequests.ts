@@ -15,7 +15,7 @@ export type TaskRequestWithContext = TaskRequest & {
     status: string
     cb_email: string
     stage: Stage
-    project: { name: string } | null
+    project: { name: string; code: string | null } | null
   } | null
   requester: { id: string; name: string; email: string; remotasks_id: string | null } | null
   // Null while pending, or when the viewer isn't allowed to read the reviewer's profile.
@@ -34,7 +34,7 @@ export async function fetchTaskRequests(): Promise<TaskRequestWithContext[]> {
     .select(
       // The FK constraint keeps its pre-rename name (task_extension_requests_requested_by_fkey) —
       // renaming DB constraint names was deliberately left out of the table rename for minimal risk.
-      '*, task_submission:task_submissions(id, task_id, date, status, cb_email, stage, project:projects(name)), requester:profiles!task_extension_requests_requested_by_fkey(id, name, email, remotasks_id), reviewer:profiles!task_extension_requests_reviewed_by_fkey(id, name)',
+      '*, task_submission:task_submissions(id, task_id, date, status, cb_email, stage, project:projects(name, code)), requester:profiles!task_extension_requests_requested_by_fkey(id, name, email, remotasks_id), reviewer:profiles!task_extension_requests_reviewed_by_fkey(id, name)',
     )
     .order('requested_at', { ascending: false })
   if (error) throw error
@@ -335,7 +335,27 @@ export function buildExtensionRequestFormUrl(params: {
   return `${EXTENSION_REQUEST_FORM_URL}?${query.toString()}`
 }
 
-// RST teams' own extension form ("RST Task Extension Form"). No request type, level or Remotask ID.
+// Which form an extension or reclaim is filed on goes by the task's project:
+//   Aloha OTS Tasking (RST), Aloha-OTS_Tasking  → the RST Task Extension Form
+//   Octet Mind, octet-mind                      → the TASK ISSUES form
+//   Aloha OTS, aloha_data_collection_v1, others → the Scale Reclaim / Extend form
+export type TimeRequestForm = 'scale' | 'rst' | 'task_issues'
+
+const projectKey = (value: string | null | undefined) => (value ?? '').trim().toLowerCase().replace(/[\s_-]+/g, '')
+
+/** The form a task's extension or reclaim is filed on, from its project's code (or, without one, its name). */
+export function timeRequestFormFor(project: { name: string; code?: string | null } | null | undefined): TimeRequestForm {
+  const code = projectKey(project?.code)
+  if (code === 'alohaotstasking') return 'rst'
+  if (code === 'octetmind') return 'task_issues'
+  if (code) return 'scale'
+  const name = project?.name ?? ''
+  if (/octet/i.test(name)) return 'task_issues'
+  if (/tasking|\(rst\)/i.test(name)) return 'rst'
+  return 'scale'
+}
+
+// The "RST Task Extension Form". No request type, level or Remotask ID.
 const RST_EXTENSION_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSeURxoFjNqHdPiG5z1AkNfAcFJL5oSOuQqBdvYh-xBEA8zbsQ/viewform'
 const RST_EXTENSION_FORM_ENTRY = {
   cbEmail: 'entry.459544622',
@@ -397,4 +417,36 @@ export function buildBadVideoRequestFormUrl(params: {
   query.set(BAD_VIDEO_FORM_ENTRY.workforce, BAD_VIDEO_FORM_WORKFORCE)
   query.set(BAD_VIDEO_FORM_ENTRY.workforceName, BAD_VIDEO_FORM_WORKFORCE_NAME)
   return `${BAD_VIDEO_FORM_URL}?${query.toString()}`
+}
+
+// The Octet Mind "TASK ISSUES" form. The reason category is a dropdown the lead picks on the form;
+// the reason given on the request goes in its "Additional details".
+const TASK_ISSUES_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSdSToZndSe2yOh2bp2aGT07RByEwWsG-K_7Dih3J6oias5XRA/viewform'
+const TASK_ISSUES_FORM_ENTRY = {
+  sceneId: 'entry.386497914',
+  remotaskId: 'entry.673063933',
+  cbEmail: 'entry.899316383',
+  issue: 'entry.1173139433',
+  details: 'entry.1706519998',
+  location: 'entry.949669351',
+}
+// Must match the form's option exactly.
+const TASK_ISSUES_FORM_LOCATION = 'REMOTE - BOOTCAMP'
+
+/** A link to the TASK ISSUES form, prefilled. The task ID is its "Scene ID". */
+export function buildTaskIssuesFormUrl(params: {
+  requestType: 'Extend' | 'Reclaim'
+  taskId: string | null
+  cbEmail: string | null
+  remotaskId: string | null
+  reason: string | null
+}): string {
+  const query = new URLSearchParams({ usp: 'pp_url' })
+  if (params.taskId) query.set(TASK_ISSUES_FORM_ENTRY.sceneId, params.taskId)
+  if (params.remotaskId) query.set(TASK_ISSUES_FORM_ENTRY.remotaskId, params.remotaskId)
+  if (params.cbEmail) query.set(TASK_ISSUES_FORM_ENTRY.cbEmail, params.cbEmail)
+  query.set(TASK_ISSUES_FORM_ENTRY.issue, params.requestType)
+  if (params.reason) query.set(TASK_ISSUES_FORM_ENTRY.details, params.reason)
+  query.set(TASK_ISSUES_FORM_ENTRY.location, TASK_ISSUES_FORM_LOCATION)
+  return `${TASK_ISSUES_FORM_URL}?${query.toString()}`
 }

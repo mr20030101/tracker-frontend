@@ -29,6 +29,7 @@ import { useNow } from '../lib/useNow'
 import { remotasksDiffViewerUrl } from '../lib/remotasks'
 import {
   buildBadVideoRequestFormUrl,
+  timeRequestFormFor,
   editTaskRequest,
   reopenTaskRequest,
   requestExtension,
@@ -221,6 +222,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
         remotaskId: (request.type !== 'bad_video' ? request.remotasks_id : null) ?? data?.user?.remotasks_id ?? null,
         stage: submission?.stage ?? null,
         projectName: submission?.project?.name ?? null,
+        projectCode: submission?.project?.code ?? null,
         reason: request.reason,
       },
     })
@@ -798,6 +800,17 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                     // A bad video is only reportable same-day — the video isn't expected to still
                     // be reviewable once the day it was logged has passed.
                     const canReportBadVideo = row.date?.slice(0, 10) === toISODate(new Date())
+                    // The Bad Video form is for the Scale projects (Aloha OTS); RST and Octet Mind tasks have none.
+                    const hasBadVideoForm = timeRequestFormFor(row.project) === 'scale'
+                    const badVideoItems = !hasBadVideoForm
+                      ? []
+                      : [
+                          !canReportBadVideo
+                            ? { label: 'Report bad video', icon: Flag, disabled: true, title: 'Only reportable on the day it was logged.', onClick: () => {} }
+                            : badVideoPending
+                              ? { label: 'Bad video report pending', icon: Flag, disabled: true, onClick: () => {} }
+                              : { label: 'Report bad video', icon: Flag, onClick: () => setReportingBadVideoFor(row) },
+                        ]
                     return (
                     <tr key={row.id} className="hover:bg-gray-50">
                       <td className="whitespace-nowrap px-5 py-3 font-mono text-xs text-gray-500">
@@ -878,17 +891,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                               { label: 'Edit', icon: Pencil, onClick: () => setFormTarget(row) },
                               ...timeRequestItems('extension', extension),
                               ...timeRequestItems('reclaim', reclaim),
-                              !canReportBadVideo
-                                ? {
-                                    label: 'Report bad video',
-                                    icon: Flag,
-                                    disabled: true,
-                                    title: 'Only reportable on the day it was logged.',
-                                    onClick: () => {},
-                                  }
-                                : badVideoPending
-                                  ? { label: 'Bad video report pending', icon: Flag, disabled: true, onClick: () => {} }
-                                  : { label: 'Report bad video', icon: Flag, onClick: () => setReportingBadVideoFor(row) },
+                              ...badVideoItems,
                               {
                                 label: 'Delete',
                                 icon: Trash2,
