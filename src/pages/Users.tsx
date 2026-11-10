@@ -16,6 +16,7 @@ import { ActionsMenu } from '../components/ActionsMenu'
 import { Select } from '../components/Select'
 import { SearchInput, SegmentedTabs, TableToolbar, toolbarControlClass } from '../components/TableToolbar'
 import { TeamSettings } from '../components/TeamSettings'
+import { ProjectTags } from '../components/ProjectTags'
 import { BulkImportUsersModal } from '../components/BulkImportUsersModal'
 import { contributorPath } from '../lib/urlRef'
 import { usePageTitle } from '../lib/usePageTitle'
@@ -405,6 +406,22 @@ export function Users({ view = 'cbs' }: { view?: 'cbs' | 'leads' }) {
             } satisfies ColumnDef<User, any>,
           ]
         : []),
+      // Contributors' projects, from their lead's. Leads (on their own projects) and admins edit them.
+      ...(view === 'cbs'
+        ? [
+            {
+              id: 'projects',
+              header: 'Projects',
+              enableSorting: false,
+              cell: ({ row }) =>
+                row.original.role === 'contributor' ? (
+                  <ProjectTags user={row.original} canEdit={isAdmin || row.original.lead_id === currentUser?.id} />
+                ) : (
+                  <span className="text-xs text-gray-300">—</span>
+                ),
+            } satisfies ColumnDef<User, any>,
+          ]
+        : []),
       {
         id: 'status',
         accessorFn: (u) => Number(u.is_active),
@@ -478,7 +495,7 @@ export function Users({ view = 'cbs' }: { view?: 'cbs' | 'leads' }) {
         },
       },
     ],
-    [isAdmin, leadOptions, leadNameById, currentUser, roleMutation, leadMutation, toggleActiveMutation, deleteMutation],
+    [isAdmin, view, leadOptions, leadNameById, currentUser, roleMutation, leadMutation, toggleActiveMutation, deleteMutation],
   )
 
   const bulkBusy = bulkMutation.isPending

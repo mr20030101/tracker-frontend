@@ -5,8 +5,8 @@ const REQUEST_STATUS = {
   denied: { label: 'Denied', tone: 'danger' },
 }
 const REQUEST_HELP = {
-  extension: 'More time on a task before it’s marked expired.',
-  reclaim: 'Get a task back that was taken or expired.',
+  extension: 'More time on a task before it’s marked expired. Octet Mind: you file it yourself on the TASK ISSUES form, which opens next.',
+  reclaim: 'Get a task back that was taken or expired. Octet Mind: you file it yourself on the TASK ISSUES form, which opens next.',
 }
 const REASON_PLACEHOLDERS = {
   extension: 'Why do you need more time?',
@@ -320,8 +320,11 @@ $('request').addEventListener('submit', (event) => {
   act(event.submitter, async () => {
     const taskId = requestTaskId()
     if (!taskId) throw new Error('Paste the task ID to request for.')
-    await call({ type: 'send-request', taskId, requestType: checkedValue('request-type'), reason: $('request-reason').value })
+    const result = await call({ type: 'send-request', taskId, requestType: checkedValue('request-type'), reason: $('request-reason').value })
     $('request-reason').value = ''
+    $('request-sent').textContent = result?.selfFiled
+      ? 'Recorded. The TASK ISSUES form opened in a new tab: pick the reason category there and submit it.'
+      : 'Request sent to your lead.'
     $('request-sent').hidden = false
   })
 })

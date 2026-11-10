@@ -59,6 +59,7 @@ import { TIME_REQUEST_LABELS, TimeRequestReasonModal, type TimeRequestMode, type
 import { confirmDialog } from '../lib/dialog'
 import { WORKING_DAYS } from '../lib/quotas'
 import { dailyHoursFor, formatHours, hoursRendered } from '../lib/hoursTarget'
+import { fetchAssignments } from '../lib/cbProjects'
 
 const TREND_DAYS = 30
 const MANAGER_ROLES = ['admin', 'lead']
@@ -153,6 +154,12 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
       return rows as { project_id: number; lead_id: string }[]
     },
     enabled: Boolean(leadId),
+  })
+  const cbId = data?.user?.id ?? null
+  const { data: cbAssignments = [] } = useQuery({
+    queryKey: ['cb-project-assignments', cbId],
+    queryFn: () => fetchAssignments([cbId!]),
+    enabled: Boolean(cbId),
   })
 
   // Keyed by the joined id list (not the array itself) so this doesn't refetch every time
@@ -391,7 +398,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
   // The goal is in hours rendered: Hours / day on their projects times the working days shown,
   // against the time on their task timers in the range.
   const workingDaysInView = viewMode === 'day' ? 1 : viewMode === 'week' ? WORKING_DAYS : WORKING_DAYS * 4
-  const rangeHoursTarget = dailyHoursFor(leadId, allProjects, leadProjects) * workingDaysInView
+  const rangeHoursTarget = dailyHoursFor(cbId ?? '', leadId, allProjects, leadProjects, cbAssignments) * workingDaysInView
   const hoursInRange = hoursRendered(visibleSubmissions)
   const submittedInRange = visibleSubmissions.filter((row) => row.status === 'submitted').length
   const rangeProgress = rangeHoursTarget > 0 ? hoursInRange / rangeHoursTarget : 0

@@ -6,6 +6,7 @@ import { fetchAllPages } from './fetchAll'
 import { sanitiseOrTerm } from './sanitiseOrTerm'
 import { WORKING_DAYS, fetchDailyQuotas, fetchWeeklyTargets } from './quotas'
 import { dailyHoursFor, hoursRendered } from './hoursTarget'
+import { fetchAssignments } from './cbProjects'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim() || DEFAULT_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() || DEFAULT_SUPABASE_ANON_KEY
@@ -124,7 +125,7 @@ async function dashboard(params: Record<string, unknown>): Promise<DashboardSumm
   targetWeekStart.setUTCDate(targetWeekStart.getUTCDate() - ((targetWeekStart.getUTCDay() - 2 + 7) % 7))
   const targetWeekStartIso = targetWeekStart.toISOString().slice(0, 10)
 
-  const [{ data: users }, { data: submissions }, targetByUser, projectList, { data: projectLeads }] = await Promise.all([
+  const [{ data: users }, { data: submissions }, targetByUser, projectList, { data: projectLeads }, assignments] = await Promise.all([
     supabase.from('profiles').select('*').eq('role', 'contributor').order('name'),
     // Paged: a month of submissions is well over the 1,000 rows one request returns (see fetchAll).
     fetchAllPages<{
@@ -148,6 +149,7 @@ async function dashboard(params: Record<string, unknown>): Promise<DashboardSumm
     fetchWeeklyTargets(targetWeekStartIso),
     projects(),
     supabase.from('project_leads').select('project_id, lead_id'),
+    fetchAssignments(),
   ])
   const projectId = params.project_id ? Number(params.project_id) : null
   // On one project, the target is that project's daily quota for each person's level there.
@@ -169,7 +171,7 @@ async function dashboard(params: Record<string, unknown>): Promise<DashboardSumm
     const rendered = hoursRendered(entries.map((entry) => ({ timer_elapsed_seconds: entry.timer_elapsed_seconds ?? 0, timer_started_at: entry.timer_started_at })))
     const dailyHours = projectId
       ? Number((projectList ?? []).find((project) => project.id === projectId)?.daily_hours ?? 0)
-      : dailyHoursFor(user.lead_id ?? null, projectList ?? [], projectLeads ?? [])
+      : dailyHoursFor(user.id, user.lead_id ?? null, projectList ?? [], projectLeads ?? [], assignments)
     const hoursTarget = dailyHours * WORKING_DAYS * multiplier
     return {
       user_id: user.id,

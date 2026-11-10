@@ -30,6 +30,9 @@ profile.
   your lead's shift, and only for your own task while it's In Progress or Expired. The requests
   already sent for that task are listed below the form. Bad video reports are still sent from the
   tracker.
+  **Octet Mind** tasks are filed by you, not your lead, on the TASK ISSUES form: Send records the
+  request and opens the form in a new tab with your details filled in, at any time of day. Pick
+  the reason category there and submit it.
 
 Nothing is read from or sent to Remotasks: the extension only talks to the tracker.
 
