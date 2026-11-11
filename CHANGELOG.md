@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.26.0 — 2026-11-11
+
 ### Added
 
 - **Unclaim in the browser extension (Octet Mind):** the Requests tab offers Unclaim next to
