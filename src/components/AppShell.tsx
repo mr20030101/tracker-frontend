@@ -322,6 +322,40 @@ export function AppShell({ children }: { children: ReactNode }) {
     }
   }, [location.pathname])
 
+  // On desktop the sidebar leaves the page's flow on Messages and comes back after, which would
+  // otherwise pop it in and out. It slides, whole, off and on the left edge; the page fades in at
+  // its new width like any page change, so nothing squeezes or re-wraps mid-way.
+  const asideRef = useRef<HTMLElement>(null)
+  const wasOnMessages = useRef(onMessages)
+  useLayoutEffect(() => {
+    const was = wasOnMessages.current
+    wasOnMessages.current = onMessages
+    const aside = asideRef.current
+    if (was === onMessages || !isDesktop || !aside || prefersReducedMotion()) return
+    const timing = { duration: 320, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }
+    // The docked panel's or rail's width (w-64 / w-18); it sits 12px (m-3) in from the edges.
+    const width = collapsed ? 72 : 256
+    // The panel's own width/slide transitions would also run on this switch (288px menu ↔ 256px
+    // panel) and shift the page; this animation is the whole move.
+    aside.style.transition = 'none'
+    const slide = onMessages
+      ? aside.animate(
+          [
+            { translate: '12px 0', width: `${width}px`, top: '12px', bottom: '12px' },
+            { translate: '-100% 0', width: `${width}px`, top: '12px', bottom: '12px' },
+          ],
+          timing,
+        )
+      : aside.animate([{ translate: 'calc(-100% - 12px) 0' }, { translate: '0 0' }], timing)
+    const restore = () => aside.style.removeProperty('transition')
+    slide.onfinish = restore
+    return () => {
+      slide.cancel()
+      restore()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs on the switch only; collapsed is read as it was
+  }, [onMessages, isDesktop])
+
   const navListRef = useRef<HTMLDivElement>(null)
   const activePill = useStretchyPill(navListRef, 'a[aria-current="page"]', 'y', [location.pathname, rail, docked, menuOpen])
 
@@ -356,6 +390,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div className="fixed inset-0 z-40 bg-black/40" aria-hidden="true" onClick={() => setMenuOpen(false)} />
           )}
           <aside
+            ref={asideRef}
             id="app-menu"
             inert={!navOpen && !rail}
             onClick={(e) => {
@@ -399,7 +434,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 aria-expanded={docked}
                 aria-controls="app-menu"
                 {...edgeTipProps(rail ? 'Expand menu' : 'Collapse menu')}
-                className="absolute -right-3.5 top-7 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-card ring-4 ring-gray-50 transition-colors duration-100 after:absolute after:-inset-2 hover:bg-accent-bg"
+                className="absolute -right-3.5 top-7 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-card ring-4 ring-gray-50 transition-colors duration-100 after:absolute after:-inset-2 hover:bg-accent-hover"
               >
                 {rail ? <ChevronRight className="h-4 w-4" aria-hidden /> : <ChevronLeft className="h-4 w-4" aria-hidden />}
               </button>
