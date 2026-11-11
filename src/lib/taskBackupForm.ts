@@ -242,12 +242,18 @@ async function send(
     : []
   if (!team?.backup_form_enabled) return json(200, { sent: false, reason: 'off for this team' })
 
+  const attempts = (task.backup_form_attempts ?? 0) + 1
+  let claimedAt: number | null = null
   let error: string | null = null
   if (!team.cts_trainer) {
     error = "The team has no trainer set (Leads page → CTS trainer), and the form requires one."
   } else if (!task.project) {
     error = "This task has no project, and the backup form requires one. Set the task's project and it's sent again."
   } else {
+    claimedAt = Date.now()
+    if (!(await claim(task, attempts, new Date(claimedAt), headers, url, fetchImpl))) {
+      return json(200, { sent: false, reason: 'already being sent' })
+    }
     const body = backupFormBody(task, task.cb_email.trim(), team.cts_trainer)
     try {
       const formResponse = await fetchImpl(BACKUP_FORM_RESPONSE_URL, {
@@ -271,18 +277,54 @@ async function send(
     }
   }
 
-  const now = new Date().toISOString()
+  // A new attempted_at on every sender write tells task_backup_form_notify the write is the
+  // sender's own, so it doesn't ask for another send.
+  const now = new Date(Math.max(Date.now(), (claimedAt ?? 0) + 1)).toISOString()
   await fetchImpl(`${url}/rest/v1/task_submissions?id=eq.${task.id}`, {
     method: 'PATCH',
     headers: { ...headers, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
     body: JSON.stringify({
       ...(error ? { backup_form_error: error } : { backup_form_sent_at: now, backup_form_error: null }),
       backup_form_attempted_at: now,
-      backup_form_attempts: (task.backup_form_attempts ?? 0) + 1,
+      backup_form_attempts: attempts,
     }),
   })
 
   return error ? json(502, { message: error }) : json(200, { sent: true })
+}
+
+// A send that hasn't written back after this long is taken to have died, and can be claimed again.
+export const SEND_STALE_MS = 10 * 60 * 1000
+
+/**
+ * Marks the task as being sent, unless another call already is (or already sent it). Several
+ * calls can arrive for one task at once (an edit, the retry job, a status change), and each would
+ * otherwise post its own answer to the form. One conditional update decides: the task must be
+ * unsent, not in the middle of a send (an in-flight send has no error yet), and still on the try
+ * count this call read. The update that changes no row loses.
+ */
+async function claim(
+  task: TaskRow,
+  attempts: number,
+  at: Date,
+  headers: Record<string, string>,
+  url: string,
+  fetchImpl: typeof fetch,
+): Promise<boolean> {
+  const stale = new Date(at.getTime() - SEND_STALE_MS).toISOString()
+  const filters = [
+    `id=eq.${task.id}`,
+    'backup_form_sent_at=is.null',
+    `backup_form_attempts=eq.${task.backup_form_attempts ?? 0}`,
+    `or=${encodeURIComponent(`(backup_form_attempted_at.is.null,backup_form_error.not.is.null,backup_form_attempted_at.lt."${stale}")`)}`,
+  ]
+  const response = await fetchImpl(`${url}/rest/v1/task_submissions?${filters.join('&')}&select=id`, {
+    method: 'PATCH',
+    headers: { ...headers, 'Content-Type': 'application/json', Prefer: 'return=representation' },
+    body: JSON.stringify({ backup_form_attempted_at: at.toISOString(), backup_form_attempts: attempts, backup_form_error: null }),
+  })
+  if (!response.ok) throw new Error(`Claiming the task failed (${response.status}): ${(await response.text()).slice(0, 300)}`)
+  return ((await response.json()) as unknown[]).length > 0
 }
 
 // Reads the form's current choices to say which answer it refused. Null if the page can't be read.
