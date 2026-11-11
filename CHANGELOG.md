@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.32.0 — 2026-11-11
+
 ### Changed
 
 - **New light theme colours: Bone White, Charcoal Black and Barber Red.** The light theme's yellow
