@@ -43,6 +43,11 @@ export const AUDIT_CATEGORIES: { value: string; label: string; actions: string[]
   },
   { value: 'announcements', label: 'Announcements', actions: ['announcement_posted'] },
   { value: 'settings', label: 'Settings', actions: ['setting_changed'] },
+  {
+    value: 'billing',
+    label: 'Billing',
+    actions: ['billing_month_started', 'billing_month_updated', 'bill_amount_changed', 'bill_paid', 'bill_unpaid', 'bill_removed', 'billing_exempt_changed'],
+  },
 ]
 
 export function auditCategory(action: string): string {

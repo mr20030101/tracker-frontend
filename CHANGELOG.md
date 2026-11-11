@@ -14,6 +14,18 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Added
+
+- **Billing page for admins** (Team → Billing): start each month with what Supabase charged and it's
+  split equally across the leads who pay. Each lead's share shows Paid, Unpaid, or Overdue after the
+  7th. Mark a share paid with an optional note (e.g. a GCash reference), change a share, or add or
+  remove a lead for the month. Shares still unpaid from earlier months are listed at the top, and
+  "Who pays" sets which leads are billed. "Open the bill in Supabase" goes straight to the
+  organization's billing page. Every change is recorded in the Activity Log.
+- **Upload the Supabase invoice PDF** when starting a month (or later, from Edit): the amount due,
+  currency, invoice number and billing period are read from it and filled in, and the PDF is kept
+  with the month (admins only) so it can be opened again from the bill.
+
 ## 8.27.0 — 2026-11-11
 
 ### Added
