@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.25.0 — 2026-11-11
+
 ### Added
 
 - **A report on each contributor's profile, for leads and admins.** Pick Today, This week, Last week or This month to see three plain numbers: Attendance (days present of days so far), Submitted (tasks, with any rejected or expired) and Hours rendered (against the goal for the days present), then one line per day with attendance, tasks submitted and hours. Export CSV downloads the same per-day lines.
