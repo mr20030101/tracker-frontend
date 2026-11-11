@@ -69,7 +69,8 @@ function navSections(
       label: 'Overview',
       items: [
         { to: '/', label: 'Dashboard', icon: LayoutDashboard },
-        ...(attendanceEnabled ? [{ to: '/attendance', label: 'Attendance', icon: CalendarCheck }] : []),
+        // Leads and admins only: contributors file from their Dashboard and the attendance countdown.
+        ...(isManager && attendanceEnabled ? [{ to: '/attendance', label: 'Attendance', icon: CalendarCheck }] : []),
         { to: '/leaderboard', label: 'Leaderboard', icon: Trophy },
         { to: '/rewards', label: 'Rewards', icon: Gift },
       ],

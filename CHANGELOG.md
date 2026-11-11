@@ -14,6 +14,15 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Changed
+
+- **Contributors no longer have the Attendance page.** It's gone from their menu, and the address takes them to their Dashboard. They file attendance as before, from the Dashboard button and the attendance countdown. Leads and admins keep the page.
+- **A leaner contributor Dashboard.** It now shows the top bar (attendance, add a task, CTS form), the day's goal (hours and tasks submitted) and the onboarding checklist for new contributors. The streak warning, team pulse, rewards spotlight, badges, submission trend, stage and project breakdowns and project levels are gone from it; badges and history are still on their profile.
+- **Four simple tiles on the contributor Dashboard.** Hours today, the day's goal (with how much of it is done), tasks submitted today, and hours this week against the week's goal, in place of the goal ring.
+- **Task Log opens on today, with more filters.** It loads only today's tasks by default (pick other dates, or empty both, to see more). Next to search, Stage and dates there are now Status and Project filters, and for admins a Team filter; Clear filters goes back to today. The CSV export follows the filters.
+- **The Leaderboard is cached for contributors.** What it loaded (the board, the team's weekly history, streaks and badges) is reused for 10 minutes and isn't fetched again on switching tabs or coming back to the page, so it barely touches the server for them. Leads and admins still see it live.
+- **The contributor Dashboard asks the server for less.** It loads only this week's tasks instead of the contributor's whole history (one small request instead of several large ones), and no longer loads the whole team's weekly history; the weekly recap pop-up that used it is gone.
+
 ## 8.24.3 — 2026-11-11
 
 ### Changed
