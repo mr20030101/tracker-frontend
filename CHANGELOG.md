@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.24.2 — 2026-11-11
+
 ### Changed
 
 - **The Leads page shows each lead's team.** The Lead column, empty for leads, is replaced by CBs (how many contributors are on their team, how many are online now and any disabled, linking to that team on the Contributors page) and Projects (the projects the lead runs).
