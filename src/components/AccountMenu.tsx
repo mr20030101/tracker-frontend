@@ -63,7 +63,7 @@ export function AccountMenu() {
             <div className="min-w-0">
               <div className="truncate text-sm font-semibold text-gray-900">{user.name}</div>
               <div className="truncate text-xs text-gray-500">{user.email}</div>
-              <span className="mt-1 inline-block rounded-full bg-accent-bg px-2 py-0.5 text-[10px] font-semibold capitalize text-accent-foreground">
+              <span className="mt-1 inline-block rounded-full bg-accent-bg px-2 py-0.5 text-[10px] font-semibold capitalize text-accent-on-bg">
                 {user.role}
               </span>
             </div>

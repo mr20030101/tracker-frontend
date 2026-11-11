@@ -334,7 +334,7 @@ export function Projects() {
                         {assignedLeadIds.map((leadId) => (
                           <span
                             key={leadId}
-                            className="flex items-center gap-1 rounded-full bg-accent-bg px-2 py-0.5 text-xs font-medium text-accent-foreground"
+                            className="flex items-center gap-1 rounded-full bg-accent-bg px-2 py-0.5 text-xs font-medium text-accent-on-bg"
                           >
                             {leadNameById.get(leadId) ?? 'Unknown'}
                             <button

@@ -75,7 +75,7 @@ function Card({
           {application.notes && (
             <span
               title={application.notes}
-              className="inline-flex items-center gap-1 rounded-full bg-accent-bg px-2 py-0.5 text-[11px] font-semibold text-accent-foreground"
+              className="inline-flex items-center gap-1 rounded-full bg-accent-bg px-2 py-0.5 text-[11px] font-semibold text-accent-on-bg"
             >
               <StickyNote className="h-3 w-3" />
               Notes

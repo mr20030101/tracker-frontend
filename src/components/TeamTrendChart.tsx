@@ -16,6 +16,8 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip,
 // One line per team across the same weeks, for comparing them on one measure (Team Reports).
 // Colours repeat after ten teams; the legend and tooltip still name each line.
 const PALETTE = ['#d4a017', '#0284c7', '#16a34a', '#db2777', '#7c3aed', '#ea580c', '#0d9488', '#dc2626', '#4f46e5', '#65a30d']
+// Light theme leads with barber red; the red further down becomes honey so no two teams share a red.
+const LIGHT_PALETTE = ['#b3261e', '#0284c7', '#16a34a', '#db2777', '#7c3aed', '#ea580c', '#0d9488', '#d4a017', '#4f46e5', '#65a30d']
 
 export interface TeamSeries {
   label: string
@@ -26,14 +28,15 @@ export function TeamTrendChart({ labels, series, unitLabel }: { labels: string[]
   const { mode: theme } = useTheme()
   const tickColor = theme === 'dark' ? '#7a8190' : '#9ca3af'
   const gridColor = theme === 'dark' ? '#2b2f39' : '#f3f4f6'
+  const palette = theme === 'dark' ? PALETTE : LIGHT_PALETTE
 
   const data = {
     labels,
     datasets: series.map((team, index) => ({
       label: team.label,
       data: team.values,
-      borderColor: PALETTE[index % PALETTE.length],
-      backgroundColor: PALETTE[index % PALETTE.length],
+      borderColor: palette[index % palette.length],
+      backgroundColor: palette[index % palette.length],
       borderWidth: 2,
       pointRadius: 3,
       tension: 0.25,

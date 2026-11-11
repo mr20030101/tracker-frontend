@@ -29,7 +29,7 @@ export function NotFound() {
       <div className="mt-8 flex flex-wrap items-center gap-3">
         <Link
           to="/"
-          className="inline-flex h-11 items-center gap-1.5 rounded-full bg-accent px-5 text-sm font-semibold text-accent-foreground transition-colors duration-100 hover:bg-accent-bg"
+          className="inline-flex h-11 items-center gap-1.5 rounded-full bg-accent px-5 text-sm font-semibold text-accent-foreground transition-colors duration-100 hover:bg-accent-hover"
         >
           <LayoutDashboard className="h-4 w-4" aria-hidden />
           Go to the dashboard

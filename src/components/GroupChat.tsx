@@ -214,7 +214,7 @@ export function GroupChatPane({ group, onBack, onGone }: { group: ChatGroupSumma
         <button
           type="submit"
           disabled={!draft.trim() || sendMutation.isPending}
-          className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground transition-colors duration-100 hover:bg-accent-bg disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground transition-colors duration-100 hover:bg-accent-hover disabled:opacity-50"
         >
           <Send className="h-4 w-4" aria-hidden />
           Send

@@ -137,7 +137,7 @@ function Toolbar({ editor }: { editor: Editor }) {
             // Keeps the editor's selection: a plain click would blur it before the command runs.
             onMouseDown={(e) => e.preventDefault()}
             onClick={run}
-            className={`rounded-md p-1.5 disabled:opacity-30 ${active ? 'bg-accent-bg text-accent-foreground' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-800'}`}
+            className={`rounded-md p-1.5 disabled:opacity-30 ${active ? 'bg-accent-bg text-accent-on-bg' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-800'}`}
           >
             <Icon className="h-4 w-4" />
           </button>

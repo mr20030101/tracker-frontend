@@ -112,7 +112,7 @@ function Section({ id, icon: Icon, title, description, children }: { id: string;
   return (
     <section id={id} className="scroll-mt-4 card">
       <header className="flex items-start gap-3 border-b border-gray-100 px-5 py-4">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent-bg text-accent-foreground">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent-bg text-accent-on-bg">
           <Icon className="h-4 w-4" />
         </span>
         <div>
@@ -480,7 +480,7 @@ function PasswordSection() {
 }
 
 // Fixed colours for the theme pictures, so each shows its own theme whatever the page is in now.
-const LIGHT_PALETTE = { page: '#f3f4f6', header: '#ffffff', card: '#ffffff', line: '#e5e7eb', text: '#d1d5db', accent: '#d4a017' }
+const LIGHT_PALETTE = { page: '#ede6d8', header: '#fbf8f2', card: '#fbf8f2', line: '#d9d0be', text: '#c7bdaa', accent: '#b3261e' }
 const DARK_PALETTE = { page: '#12141a', header: '#1a1d24', card: '#1a1d24', line: '#2b2f39', text: '#3c4150', accent: '#d4a017' }
 const BLACK_PALETTE = { page: '#000000', header: '#0a0a0a', card: '#0a0a0a', line: '#262626', text: '#3a3a3a', accent: '#d4a017' }
 const NEON_PALETTE = { page: '#050706', header: '#0e120f', card: '#0e120f', line: '#1e2620', text: '#2d382f', accent: '#39ff14' }
