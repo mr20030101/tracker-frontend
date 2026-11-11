@@ -20,6 +20,9 @@ export interface LeadBill {
   amount: number
   paidAt: string | null
   note: string | null
+  // The lead said they paid (PayPal transaction ID) and it's waiting for an admin to confirm.
+  reportedPaidAt: string | null
+  reportedRef: string | null
 }
 
 export interface BillingLead {
@@ -31,7 +34,7 @@ export interface BillingLead {
   exempt: boolean
 }
 
-export type BillStatus = 'paid' | 'unpaid' | 'overdue'
+export type BillStatus = 'paid' | 'reported' | 'unpaid' | 'overdue'
 
 /** Supabase's billing page for the Tracker's organization: the upcoming bill and past invoices. */
 export const SUPABASE_BILLING_URL = 'https://supabase.com/dashboard/org/kaieubnplqplakvnzgbu/billing'
@@ -64,8 +67,9 @@ export function dueDate(month: string): string {
   return `${month.slice(0, 8)}${String(DUE_DAY).padStart(2, '0')}`
 }
 
-export function billStatus(bill: Pick<LeadBill, 'month' | 'paidAt'>, today: string): BillStatus {
+export function billStatus(bill: Pick<LeadBill, 'month' | 'paidAt' | 'reportedPaidAt'>, today: string): BillStatus {
   if (bill.paidAt) return 'paid'
+  if (bill.reportedPaidAt) return 'reported'
   return today > dueDate(bill.month) ? 'overdue' : 'unpaid'
 }
 
@@ -117,7 +121,7 @@ export async function fetchBillingMonths(): Promise<BillingMonth[]> {
 }
 
 export async function fetchLeadBills(): Promise<LeadBill[]> {
-  const { data, error } = await supabase.from('lead_bills').select('month, lead_id, amount, paid_at, note')
+  const { data, error } = await supabase.from('lead_bills').select('month, lead_id, amount, paid_at, note, reported_paid_at, reported_ref')
   if (error) throw error
   return (data ?? []).map((row) => ({
     month: row.month,
@@ -125,6 +129,8 @@ export async function fetchLeadBills(): Promise<LeadBill[]> {
     amount: Number(row.amount),
     paidAt: row.paid_at,
     note: row.note,
+    reportedPaidAt: row.reported_paid_at,
+    reportedRef: row.reported_ref,
   }))
 }
 
@@ -176,6 +182,8 @@ export interface MyBill {
   amount: number
   currency: BillingCurrency
   paidAt: string | null
+  reportedPaidAt: string | null
+  reportedRef: string | null
   supabaseAmount: number
   leads: number
 }
@@ -224,7 +232,7 @@ export async function fetchMyBilling(): Promise<MyBilling> {
     exempt: boolean
     paypal_me?: string | null
     how_to_pay?: string | null
-    bills: { month: string; amount: number; currency: BillingCurrency; paid_at: string | null; supabase_amount: number; leads: number }[]
+    bills: { month: string; amount: number; currency: BillingCurrency; paid_at: string | null; reported_paid_at: string | null; reported_ref: string | null; supabase_amount: number; leads: number }[]
   }
   return {
     exempt: raw.exempt,
@@ -235,8 +243,22 @@ export async function fetchMyBilling(): Promise<MyBilling> {
       amount: Number(b.amount),
       currency: b.currency,
       paidAt: b.paid_at,
+      reportedPaidAt: b.reported_paid_at ?? null,
+      reportedRef: b.reported_ref ?? null,
       supabaseAmount: Number(b.supabase_amount),
       leads: b.leads,
     })),
   }
+}
+
+/** A PayPal transaction ID as typed or pasted (spaces dropped, upper case). Null if it can't be one. */
+export function paypalRef(text: string): string | null {
+  const ref = text.replace(/\s/g, '').toUpperCase()
+  return /^[A-Z0-9-]{6,40}$/.test(ref) ? ref : null
+}
+
+/** A lead reports paying their own share, with PayPal's transaction ID. */
+export async function reportBillPaid(month: string, ref: string): Promise<void> {
+  const { error } = await supabase.rpc('report_bill_paid', { p_month: month, p_ref: ref })
+  if (error) throw error
 }

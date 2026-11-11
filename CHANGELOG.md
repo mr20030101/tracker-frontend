@@ -14,6 +14,15 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.30.0 — 2026-11-11
+
+### Added
+
+- **"I've paid" on the leads' Billing page:** after paying through PayPal, a lead reports it with
+  PayPal's transaction ID and the share shows **Awaiting confirmation** (it no longer turns
+  Overdue). Admins see the payments to confirm at the top of Billing and as a number on the Billing
+  link, check the ID in PayPal, and click **Confirm paid**, or **Not received** to clear the report.
+
 ## 8.29.0 — 2026-11-11
 
 ### Added
