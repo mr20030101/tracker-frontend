@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Check, ChevronLeft, ExternalLink, FileText, Upload, ChevronRight, CircleAlert, Pencil, Plus, ReceiptText, Trash2, Undo2, X } from 'lucide-react'
 import { FoldText } from '../components/FoldText'
 import { Avatar } from '../components/Avatar'
+import { BillStatusBadge } from '../components/BillStatusBadge'
 import { Modal } from '../components/Modal'
 import { Switch } from '../components/Switch'
 import { Combobox } from '../components/Combobox'
@@ -27,19 +28,23 @@ import {
   dueDate,
   fetchBillingLeads,
   fetchBillingMonths,
+  fetchHowToPay,
   fetchLeadBills,
   formatMoney,
+  formatPaidOn,
   manilaToday,
   monthLabel,
   monthOf,
   parseAmount,
+  paypalLink,
+  paypalMeName,
+  setHowToPay,
   removeLeadBill,
   setBillingExempt,
   setLeadBillAmount,
   setLeadBillPaid,
   shiftMonth,
   startBillingMonth,
-  type BillStatus,
   type BillingCurrency,
   type BillingLead,
   type LeadBill,
@@ -200,21 +205,6 @@ const primaryButton =
   'inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground'
 const secondaryButton =
   'inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50'
-
-const STATUS_PILL: Record<BillStatus, { label: string; className: string }> = {
-  paid: { label: 'Paid', className: 'bg-status-success-bg text-status-success-text' },
-  unpaid: { label: 'Unpaid', className: 'bg-status-neutral-bg text-status-neutral-text' },
-  overdue: { label: 'Overdue', className: 'bg-status-danger-bg text-status-danger-text' },
-}
-
-function StatusBadge({ status }: { status: BillStatus }) {
-  const { label, className } = STATUS_PILL[status]
-  return <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${className}`}>{label}</span>
-}
-
-function formatPaidOn(paidAt: string): string {
-  return new Date(paidAt).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric', year: 'numeric' })
-}
 
 type Editing =
   | { kind: 'month' }
@@ -459,7 +449,7 @@ export function Billing() {
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums text-gray-900">{formatMoney(bill.amount, currency)}</td>
                       <td className="px-4 py-3">
-                        <StatusBadge status={billStatus(bill, today)} />
+                        <BillStatusBadge status={billStatus(bill, today)} />
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-gray-600">{bill.paidAt ? formatPaidOn(bill.paidAt) : '—'}</td>
                       <td className="max-w-56 px-4 py-3 text-gray-600">
@@ -497,8 +487,10 @@ export function Billing() {
         </>
       )}
 
+      {!loading && <HowToPayCard />}
+
       {!loading && leads.length > 0 && (
-        <div className="mt-8 card p-5">
+        <div className="mt-4 card p-5">
           <p className="text-sm font-semibold text-gray-700">Who pays</p>
           <p className="mb-3 text-xs text-gray-400">Leads switched off here aren't billed when a new month is started. Months already started don't change.</p>
           <ul className="divide-y divide-gray-100">
@@ -887,5 +879,96 @@ function PaidModal({
         <ModalButtons onClose={onClose} pending={mutation.isPending} label={bill.paidAt ? 'Save' : 'Mark paid'} icon={Check} />
       </form>
     </Modal>
+  )
+}
+
+/** The admin's PayPal.Me name and a note, shown to the billed leads on their Billing page. */
+function HowToPayCard() {
+  const queryClient = useQueryClient()
+  const { data, isLoading } = useQuery({ queryKey: ['billing', 'how-to-pay'], queryFn: fetchHowToPay })
+  const [draft, setDraft] = useState<{ paypal: string; note: string } | null>(null)
+  const [error, setError] = useState('')
+  const [saved, setSaved] = useState(false)
+  const paypal = draft?.paypal ?? data?.paypalMe ?? ''
+  const note = draft?.note ?? data?.note ?? ''
+  const name = paypalMeName(paypal)
+
+  const mutation = useMutation({
+    mutationFn: () => setHowToPay(name ?? '', note),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['billing', 'how-to-pay'] })
+      setDraft(null)
+      setSaved(true)
+    },
+    onError: (err) => setError(errorMessage(err, 'Could not save.')),
+  })
+
+  function submit(e: FormEvent) {
+    e.preventDefault()
+    if (mutation.isPending) return
+    setSaved(false)
+    if (paypal.trim() && !name) {
+      setError("That isn't a PayPal.Me name. Enter the part after paypal.me/, e.g. paypal.me/yourname → yourname.")
+      document.getElementById('paypal-me')?.focus()
+      return
+    }
+    setError('')
+    mutation.mutate()
+  }
+
+  if (isLoading) return null
+  return (
+    <form onSubmit={submit} className="mt-8 card p-5" noValidate>
+      <p className="text-sm font-semibold text-gray-700">How leads pay</p>
+      <p className="mb-3 text-xs text-gray-400">
+        Billed leads see a Pay with PayPal button on their Billing page with their share filled in, plus your note.
+      </p>
+      <label htmlFor="paypal-me" className="mb-1 block text-sm font-medium text-gray-700">
+        PayPal.Me name
+      </label>
+      <div className="flex items-center rounded-lg border border-gray-200 focus-within:border-accent">
+        <span className="pl-3 text-sm text-gray-400">paypal.me/</span>
+        <input
+          id="paypal-me"
+          value={paypal}
+          onChange={(e) => {
+            setDraft({ paypal: e.target.value, note })
+            setSaved(false)
+          }}
+          placeholder="yourname"
+          autoComplete="off"
+          className="w-full bg-transparent px-1 py-2 text-sm outline-none"
+        />
+      </div>
+      {name && (
+        <a href={paypalLink(name, 1, 'USD')} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-1 text-xs text-gray-500 underline">
+          Test the link ($1.00, nothing is charged until you confirm)
+          <ExternalLink className="h-3 w-3" aria-hidden />
+        </a>
+      )}
+      <label htmlFor="pay-note" className="mb-1 mt-3 block text-sm font-medium text-gray-700">
+        Note <span className="font-normal text-gray-400">(optional)</span>
+      </label>
+      <textarea
+        id="pay-note"
+        value={note}
+        maxLength={1000}
+        rows={2}
+        onChange={(e) => {
+          setDraft({ paypal, note: e.target.value })
+          setSaved(false)
+        }}
+        placeholder="e.g. Send as Friends and Family. Message me after paying."
+        className={inputClass}
+      />
+      {error && <p className="mt-2 text-sm text-status-danger-text">{error}</p>}
+      <div className="mt-3 flex items-center gap-3">
+        <button type="submit" aria-busy={mutation.isPending} className={primaryButton}>
+          <Check className="h-4 w-4" aria-hidden />
+          {mutation.isPending ? 'Saving...' : 'Save'}
+        </button>
+        {saved && <span className="text-sm text-status-success-text">Saved</span>}
+      </div>
+    </form>
   )
 }

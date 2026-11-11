@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { billStatus, dueDate, manilaToday, monthOf, parseAmount, shiftMonth } from './billing'
+import { billStatus, dueDate, manilaToday, monthOf, parseAmount, paypalLink, paypalMeName, shiftMonth } from './billing'
 
 describe('billing months', () => {
   it('shifts across year boundaries', () => {
@@ -40,5 +40,21 @@ describe('parseAmount', () => {
     expect(parseAmount('1.234')).toBeNull()
     expect(parseAmount('abc')).toBeNull()
     expect(parseAmount('2000000')).toBeNull()
+  })
+})
+
+describe('PayPal', () => {
+  it('reads the PayPal.Me name however it is typed', () => {
+    expect(paypalMeName('sheanm')).toBe('sheanm')
+    expect(paypalMeName('@sheanm')).toBe('sheanm')
+    expect(paypalMeName('https://www.paypal.me/sheanm/5')).toBe('sheanm')
+    expect(paypalMeName('paypal.me/sheanm')).toBe('sheanm')
+    expect(paypalMeName('not a name')).toBeNull()
+    expect(paypalMeName('https://evil.example/x')).toBeNull()
+  })
+
+  it('fills in the amount', () => {
+    expect(paypalLink('sheanm', 4.67, 'USD')).toBe('https://paypal.me/sheanm/4.67USD')
+    expect(paypalLink('sheanm', 250, 'PHP')).toBe('https://paypal.me/sheanm/250.00PHP')
   })
 })
