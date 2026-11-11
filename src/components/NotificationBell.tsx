@@ -137,7 +137,7 @@ export function NotificationBell() {
   })
 
   useEffect(() => {
-    if (!isManager) return
+    if (!isLead) return
     supabase
       .from('profiles')
       .select('id, email, name')
@@ -150,13 +150,14 @@ export function NotificationBell() {
       .from('projects')
       .select('id, name')
       .then(({ data }) => setProjectNames(new Map((data ?? []).map((p) => [p.id as number, p.name as string]))))
-  }, [isManager])
+  }, [isLead])
 
-  // The live feeds stay connected all the time, idle tab or not, so nothing waits for a reload.
+  // The live feeds are for leads only (admins don't get them), and stay connected all the time,
+  // idle tab or not, so nothing waits for a reload.
   const queryClient = useQueryClient()
 
   useEffect(() => {
-    if (!isManager) return
+    if (!isLead) return
 
     function addSubmissionAlert(row: TaskSubmissionRow) {
       const { profileNames, projectNames } = lookups.current
@@ -190,10 +191,10 @@ export function NotificationBell() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [isManager])
+  }, [isLead])
 
   useEffect(() => {
-    if (!isManager) return
+    if (!isLead) return
 
     function addRequestAlert(row: TaskRequestRow) {
       const { profilesById, refetchPending } = lookups.current
@@ -223,7 +224,7 @@ export function NotificationBell() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [isManager, user?.id, queryClient])
+  }, [isLead, user?.id, queryClient])
 
   // Deliberately hard to ignore: the alert sound plays on repeat, the bell shakes and the tab title
   // flashes, and none of it stops until the request has been seen.
