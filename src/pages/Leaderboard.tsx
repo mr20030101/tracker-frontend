@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import { FoldText } from '../components/FoldText'
 import { CalendarDays, ChevronLeft, ChevronRight, Download, UserCheck, UserMinus, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
+import { TOP_PLACES, topWithMine } from '../lib/topPlaces'
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, yearMonth, toISODate, fromISODate, formatRange } from '../lib/week'
 import type { DashboardSummary, LeaderboardRow, Project } from '../types'
 import { Avatar } from '../components/Avatar'
@@ -48,6 +49,14 @@ export function Leaderboard() {
   return isManager ? <ManagerLeaderboard /> : <ContributorLeaderboard />
 }
 
+function YourPlaceDivider() {
+  return (
+    <li aria-hidden className="bg-gray-50 px-5 py-1.5 text-xs font-semibold uppercase tracking-wider text-gray-400">
+      Your place
+    </li>
+  )
+}
+
 function ContributorLeaderboard() {
   const { user } = useAuth()
   const [period, setPeriod] = useState<Period | 'improved'>('week')
@@ -65,8 +74,10 @@ function ContributorLeaderboard() {
 
   const rows = data ?? []
   const topScore = rows[0]?.tasks_submitted ?? 0
-  const { data: achievements } = useAchievements(rows.map((r) => r.user_id), LONG_CACHE)
-  const { data: featuredBadges } = useFeaturedBadges(rows.map((r) => r.user_id), LONG_CACHE)
+  const { top, mine } = topWithMine(rows, (row) => row.user_id === user?.id)
+  const shown = mine ? [...top, mine.item] : top
+  const { data: achievements } = useAchievements(shown.map((r) => r.user_id), LONG_CACHE)
+  const { data: featuredBadges } = useFeaturedBadges(shown.map((r) => r.user_id), LONG_CACHE)
   const periodLabel = period === 'week' ? 'this week' : period === 'month' ? 'this month' : 'all time'
   const teamPct = team.target > 0 ? Math.min(100, (team.submitted / team.target) * 100) : 0
 
@@ -79,7 +90,7 @@ function ContributorLeaderboard() {
         <p className="text-sm text-gray-500">
           {period === 'improved'
             ? 'Who stepped up most: last week compared with each person’s average over the four weeks before.'
-            : `See who on your team has submitted the most tasks ${periodLabel}.`}
+            : `The top ${TOP_PLACES} on your team by tasks submitted ${periodLabel}, and your place.`}
         </p>
       </div>
 
@@ -122,12 +133,14 @@ function ContributorLeaderboard() {
           )}
           {!isLoading && rows.length > 0 && (
             <Reveal as="ul" className="divide-y divide-gray-100" step={45}>
-              {rows.map((row, index) => {
+              {[...top.map((row, index) => ({ row, index })), ...(mine ? [{ row: mine.item, index: mine.index }] : [])].map(({ row, index }) => {
                 const isMe = row.user_id === user?.id
                 const barPct = topScore ? Math.round((row.tasks_submitted / topScore) * 100) : 0
 
                 return (
-                  <li key={row.user_id}>
+                  <Fragment key={row.user_id}>
+                  {index >= TOP_PLACES && <YourPlaceDivider />}
+                  <li>
                     <Link
                       to={contributorPathById(row.user_id)}
                       className={`flex items-center gap-3 px-5 py-3 hover:bg-gray-50 ${isMe ? 'bg-accent-bg/40' : ''}`}
@@ -145,7 +158,7 @@ function ContributorLeaderboard() {
                           {isMe && <span className="ml-0.5 shrink-0 text-xs font-semibold text-accent-text">You</span>}
                         </div>
                         <div className="mt-1 h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-gray-100">
-                          <GrowBar className="h-full rounded-full bg-accent" pct={barPct} delay={300 + index * 45} />
+                          <GrowBar className="h-full rounded-full bg-accent" pct={barPct} delay={300 + Math.min(index, TOP_PLACES) * 45} />
                         </div>
                       </div>
                       <span className="shrink-0 text-sm font-semibold text-gray-900">
@@ -153,6 +166,7 @@ function ContributorLeaderboard() {
                       </span>
                     </Link>
                   </li>
+                  </Fragment>
                 )
               })}
             </Reveal>
@@ -165,17 +179,21 @@ function ContributorLeaderboard() {
 
 function MostImprovedList({ rows, meId }: { rows: TeamWeekRow[]; meId: string | undefined }) {
   const list = mostImproved(rows)
+  const { top, mine } = topWithMine(list, ({ row }) => row.user_id === meId)
+  const shown = [...top.map((item, index) => ({ item, index })), ...(mine ? [mine] : [])]
   if (list.length === 0) {
     return <div className="card px-5 py-6 text-center text-gray-400">Not enough weeks yet to compare.</div>
   }
   return (
     <div className="overflow-hidden card">
       <Reveal as="ul" className="divide-y divide-gray-100" step={45}>
-        {list.map(({ row, average, change }, index) => {
+        {shown.map(({ item: { row, average, change }, index }) => {
           const isMe = row.user_id === meId
           const up = Math.round(change)
           return (
-            <li key={row.user_id}>
+            <Fragment key={row.user_id}>
+            {index >= TOP_PLACES && <YourPlaceDivider />}
+            <li>
               <Link
                 to={contributorPathById(row.user_id)}
                 className={`flex items-center gap-3 px-5 py-3 hover:bg-gray-50 ${isMe ? 'bg-accent-bg/40' : ''}`}
@@ -196,6 +214,7 @@ function MostImprovedList({ rows, meId }: { rows: TeamWeekRow[]; meId: string | 
                 </span>
               </Link>
             </li>
+            </Fragment>
           )
         })}
       </Reveal>
