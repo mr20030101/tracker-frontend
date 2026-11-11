@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.28.0 — 2026-11-11
+
 ### Added
 
 - **Billing page for admins** (Team → Billing): start each month with what Supabase charged and it's
