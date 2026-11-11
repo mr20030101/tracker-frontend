@@ -14,6 +14,18 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.29.0 — 2026-11-11
+
+### Added
+
+- **Billing page for leads** (Team → Billing): your share of each month's Supabase bill, what you
+  still owe and when it's due (by the 7th), and the months already marked paid. The Billing link
+  shows how many bills are unpaid, and turns red once one is overdue. Leads only see their own
+  shares, never the other leads'.
+- **Pay with PayPal:** an admin sets their PayPal.Me name (and an optional note) under How leads
+  pay on the Billing page. Leads get a Pay with PayPal button with what they owe filled in; the
+  admin still marks the share paid once it arrives.
+
 ## 8.28.0 — 2026-11-11
 
 ### Added

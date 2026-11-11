@@ -46,7 +46,7 @@ export const AUDIT_CATEGORIES: { value: string; label: string; actions: string[]
   {
     value: 'billing',
     label: 'Billing',
-    actions: ['billing_month_started', 'billing_month_updated', 'bill_amount_changed', 'bill_paid', 'bill_unpaid', 'bill_removed', 'billing_exempt_changed'],
+    actions: ['billing_month_started', 'billing_month_updated', 'bill_amount_changed', 'bill_paid', 'bill_unpaid', 'bill_removed', 'billing_exempt_changed', 'billing_how_to_pay_changed'],
   },
 ]
 
