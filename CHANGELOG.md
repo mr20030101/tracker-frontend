@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.30.0 — 2026-11-11
+
 ### Added
 
 - **"I've paid" on the leads' Billing page:** after paying through PayPal, a lead reports it with
