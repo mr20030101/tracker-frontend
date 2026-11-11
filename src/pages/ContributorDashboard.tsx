@@ -1,16 +1,12 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowRight, CalendarDays, Check, ClipboardCheck, ClipboardList, Flame, MessageCircle, MessageSquare, Plus, Trophy } from 'lucide-react'
+import { ArrowRight, CalendarDays, Check, ClipboardCheck, ClipboardList, Flame, MessageCircle, MessageSquare, Plus } from 'lucide-react'
 import { api, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useMessaging } from '../lib/messagingContext'
-import { toISODate, todayIso, weekStartIso } from '../lib/week'
+import { todayIso, weekStartIso } from '../lib/week'
 import { useNow } from '../lib/useNow'
-import type { ContributorProfile, ContributorProjectLevel, Project, ProjectLevel } from '../types'
-import { ProgressRing } from '../components/ProgressRing'
-import { LineChart } from '../components/LineChart'
-import { CountUp } from '../components/CountUp'
-import { GrowBar } from '../components/GrowBar'
+import type { ContributorProfile, Project } from '../types'
 import { Reveal } from '../components/Reveal'
 import { CtsFormModal } from '../components/CtsFormModal'
 import { AttendanceFormModal } from '../components/AttendanceFormModal'
@@ -19,38 +15,20 @@ import { useAttendanceClosesMin } from '../lib/useAttendanceClosesMin'
 import { useTeamFeatures } from '../lib/teamFeatures'
 import { TaskSubmissionForm } from '../components/TaskSubmissionForm'
 import { NoSubmissionNudge } from '../components/NoSubmissionNudge'
-import { LevelPill } from '../components/LevelPill'
-import { WORKING_DAYS, projectQuota } from '../lib/quotas'
+import { WORKING_DAYS } from '../lib/quotas'
 import { dailyHoursFor, formatHours, hoursRendered } from '../lib/hoursTarget'
 import { fetchAssignments } from '../lib/cbProjects'
 import { Modal } from '../components/Modal'
 import { OnboardingChecklist } from '../components/OnboardingChecklist'
-import { AchievementsCard } from '../components/Achievements'
-import { StreakRiskCard, TeamPulseCard, WeeklyRecap, type RecapStats } from '../components/DashboardMotivation'
 import { SpotlightDialog } from '../components/SpotlightDialog'
-import { RewardsSpotlight } from '../components/RewardsSpotlight'
 import { useAchievements } from '../lib/achievements'
 import { useCelebrations } from '../lib/celebrations'
-import { rankWeek, standingFor, teamGoal, useTeamWeeks, weekStarts } from '../lib/teamWeeks'
 import { DashboardHero } from '../components/DashboardHero'
 import { usePageTitle } from '../lib/usePageTitle'
 import { fetchRequestShift, shiftLabel } from '../lib/taskRequests'
 
-const TREND_DAYS = 30
-
 // Cleared when the browser tab/session ends, so the warning comes back the next time they sign in fresh.
 const WARNING_DISMISSED_KEY = 'dashboard-week-warning-dismissed'
-
-// The week whose recap someone last saw, so it shows once at the start of each week.
-const recapSeenKey = (userId: string) => `weekly-recap-seen:${userId}`
-
-function readRecapSeen(userId: string): string | null {
-  try {
-    return localStorage.getItem(recapSeenKey(userId))
-  } catch {
-    return null
-  }
-}
 
 export function ContributorDashboard() {
   usePageTitle('Dashboard')
@@ -87,11 +65,12 @@ export function ContributorDashboard() {
   }
 
   const { data, isLoading } = useQuery({
-    queryKey: ['contributor', email, thisWeekIso],
+    // This week only: everything here is today or this week, so their full history isn't fetched.
+    queryKey: ['contributor', email, thisWeekIso, 'week'],
     queryFn: async () =>
       (
         await api.get<ContributorProfile>('/contributor', {
-          params: { email, week_start: thisWeekIso },
+          params: { email, week_start: thisWeekIso, week_only: true },
         })
       ).data,
     enabled: Boolean(email),
@@ -110,17 +89,6 @@ export function ContributorDashboard() {
 
   const { data: achievementsById } = useAchievements(contributorId ? [contributorId] : [])
   const achievements = contributorId ? achievementsById?.get(contributorId) : undefined
-  const { data: teamRows = [] } = useTeamWeeks()
-
-  const [recapSeen, setRecapSeen] = useState<string | null>(() => (user ? readRecapSeen(user.id) : null))
-  function closeRecap() {
-    setRecapSeen(thisWeekIso)
-    try {
-      if (user) localStorage.setItem(recapSeenKey(user.id), thisWeekIso)
-    } catch {
-      // Not remembering only means it shows again next visit.
-    }
-  }
 
   const submittedToday = (data?.all_submissions ?? []).filter((r) => r.date?.slice(0, 10) === today && r.status === 'submitted').length
   const dayTarget = Math.round((data?.weekly_target ?? 0) / WORKING_DAYS)
@@ -159,65 +127,14 @@ export function ContributorDashboard() {
     enabled: Boolean(cbId),
   })
 
-  // A contributor's project list is exactly whichever projects their lead runs.
-  const { data: leadProjectIds = [] } = useQuery({
-    queryKey: ['project-leads-for-lead', contributorLeadId],
-    queryFn: async () => {
-      const { data: rows, error } = await supabase
-        .from('project_leads')
-        .select('project_id')
-        .eq('lead_id', contributorLeadId!)
-      if (error) throw error
-      return rows.map((row) => row.project_id as number)
-    },
-    enabled: Boolean(contributorLeadId),
-  })
-
-  const { data: projectLevels = [] } = useQuery({
-    queryKey: ['contributor-project-levels', contributorId],
-    queryFn: async () => {
-      const { data: rows, error } = await supabase
-        .from('contributor_project_levels')
-        .select('*')
-        .eq('user_id', contributorId!)
-      if (error) throw error
-      return rows as ContributorProjectLevel[]
-    },
-    enabled: Boolean(contributorId),
-  })
-
   if (isLoading || !data) {
     return <div className="text-gray-400">Loading...</div>
   }
-
-  const levelByProjectId = new Map(projectLevels.map((row) => [row.project_id, row.level]))
-  const levelProjects = leadProjectIds
-    .map((id) => allProjects.find((project) => project.id === id))
-    .filter((project): project is Project => Boolean(project))
-    .map((project) => ({ project, level: levelByProjectId.get(project.id) ?? ('contributor' as ProjectLevel) }))
 
   const lead = contributorLeadId ? usersById.get(contributorLeadId) : undefined
 
   const loggedToday = data.all_submissions.filter((r) => r.date?.slice(0, 10) === today).length
 
-  // Where they stand on the team's board, this week and last (for the recap).
-  const [historyWeek, lastWeek] = weekStarts(teamRows)
-  const ranked = historyWeek === thisWeekIso ? rankWeek(teamRows, thisWeekIso) : []
-  const standing = contributorId ? standingFor(ranked, contributorId) : undefined
-  const lastRanked = lastWeek ? rankWeek(teamRows, lastWeek) : []
-  const lastIndex = lastRanked.findIndex((r) => r.user_id === contributorId)
-  const recapStats: RecapStats | undefined =
-    lastIndex >= 0 && achievements
-      ? {
-          submitted: lastRanked[lastIndex].submitted,
-          target: lastRanked[lastIndex].target,
-          rank: lastIndex + 1,
-          of: lastRanked.length,
-          streak: achievements.current_streak,
-          nextTarget: data.weekly_target,
-        }
-      : undefined
-  const showRecap = Boolean(recapStats) && recapSeen !== thisWeekIso
   // Days left in the business week, today included (Tuesday is 7, Monday is 1).
   const daysLeft = 7 - Math.round((Date.parse(today) - Date.parse(thisWeekIso)) / 86_400_000)
   // Goals in hours rendered: time on their task timers against Hours / day on their projects.
@@ -227,18 +144,6 @@ export function ContributorDashboard() {
   const hoursThisWeek = hoursRendered(data.week_submissions)
   const dayProgress = dayHoursTarget > 0 ? hoursToday / dayHoursTarget : 0
   const goalText = (hours: number, target: number) => (target > 0 ? `${formatHours(hours)} / ${formatHours(target)}` : 'Not set')
-
-  const stages = Object.entries(data.stage_breakdown) as [string, number][]
-  const maxStageTotal = Math.max(1, ...stages.map(([, total]) => total))
-  const maxProjectTotal = Math.max(1, ...data.project_breakdown.map((p) => p.total))
-
-  const trendData = Array.from({ length: TREND_DAYS }, (_, i) => {
-    const d = new Date()
-    d.setDate(d.getDate() - (TREND_DAYS - 1 - i))
-    const iso = toISODate(d)
-    const value = data.all_submissions.filter((r) => r.date?.slice(0, 10) === iso && r.status === 'submitted').length
-    return { date: iso, value }
-  })
 
   // Today's, not already submitted to CTS, and not still in progress — same as the CTS Form on the profile page.
   const todaysSubmissions = data.all_submissions.filter(
@@ -365,23 +270,10 @@ export function ContributorDashboard() {
         </Modal>
       )}
 
-      {/* One pop-up at a time, none over the submission form: the week's recap, then anything to
-          celebrate, then the no-submissions nudge (which the recap already covers when it shows). */}
+      {/* One pop-up at a time, none over the submission form: anything to celebrate, then the
+          no-submissions nudge. */}
       {!submitting &&
-        (showRecap && recapStats ? (
-          <WeeklyRecap
-            stats={recapStats}
-            onSubmit={() => {
-              closeRecap()
-              dismissWarning()
-              setSubmitting(true)
-            }}
-            onClose={() => {
-              closeRecap()
-              dismissWarning()
-            }}
-          />
-        ) : celebration.current ? (
+        (celebration.current ? (
           <SpotlightDialog
             icon={celebration.current.icon}
             title={celebration.current.title}
@@ -416,135 +308,33 @@ export function ContributorDashboard() {
         />
       )}
 
-      {achievements && (
-        <StreakRiskCard
-          streak={achievements.current_streak}
-          submitted={data.submitted_this_week}
-          target={data.weekly_target}
-          daysLeft={daysLeft}
-          onSubmit={() => setSubmitting(true)}
-        />
-      )}
-
       {showCtsModal && <CtsFormModal email={email} submissions={todaysSubmissions} trainer={ctsTrainer} onClose={() => setShowCtsModal(false)} />}
 
-      {ranked.length > 0 && <TeamPulseCard standing={standing} team={teamGoal(ranked)} />}
-
-      {contributorId && <RewardsSpotlight meId={contributorId} />}
-
-      <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="flex items-center gap-5 card p-5 lg:col-span-1">
-          <ProgressRing value={dayProgress} label="Day Goal" sublabel={goalText(hoursToday, dayHoursTarget)} />
-          <div className="flex flex-col gap-3">
-            <div>
-              <div className="text-xs font-medium uppercase tracking-wider text-gray-400">Hours (Day)</div>
-              <div className="text-xl font-bold tabular-nums text-gray-900">{formatHours(hoursToday)}</div>
-            </div>
-            <div>
-              <div className="text-xs font-medium uppercase tracking-wider text-gray-400">Submitted (Day)</div>
-              <div className="text-xl font-bold text-gray-900">
-                <CountUp value={submittedToday} />
-              </div>
-            </div>
-            <div className="text-xs text-gray-400">
-              {dayHoursTarget > 0
-                ? 'Hours are the time on your task timers. The goal is a minimum, with no upper limit.'
-                : 'No Hours / day is set on your projects yet, so there’s no goal to show.'}
-            </div>
+      {/* Kept minimal: today's numbers and the week so far; history and badges are on the profile. */}
+      <dl className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {[
+          { label: 'Hours today', value: formatHours(hoursToday) },
+          {
+            label: 'Goal',
+            value: dayHoursTarget > 0 ? formatHours(dayHoursTarget) : 'Not set',
+            extra: dayHoursTarget > 0 ? `${Math.round(Math.min(1, dayProgress) * 100)}%` : undefined,
+          },
+          { label: 'Submitted today', value: String(submittedToday) },
+          {
+            label: 'This week',
+            value: formatHours(hoursThisWeek),
+            extra: weekHoursTarget > 0 ? `/ ${formatHours(weekHoursTarget)}` : undefined,
+          },
+        ].map((tile) => (
+          <div key={tile.label} className="card px-4 py-3">
+            <dt className="text-xs text-gray-500">{tile.label}</dt>
+            <dd className="mt-1 text-2xl font-semibold tabular-nums text-gray-900">
+              {tile.value}
+              {tile.extra && <span className="ml-1.5 text-sm font-normal text-gray-400">{tile.extra}</span>}
+            </dd>
           </div>
-        </div>
-
-        <div className="card p-5 lg:col-span-2">
-          <div className="mb-3 flex items-center justify-between">
-            <div className="font-display text-lg text-gray-900">Submission trend</div>
-            <span className="text-xs text-gray-400">last {TREND_DAYS} days</span>
-          </div>
-          <LineChart data={trendData} color="#e0a91f" unitLabel="submitted" />
-        </div>
-      </div>
-
-      {contributorId && <AchievementsCard userId={contributorId} title="Your streak & badges" canFeature />}
-
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="card p-5">
-          <div className="mb-4 font-display text-lg text-gray-900">By stage <span className="text-sm text-gray-500">all-time</span></div>
-          <div className="flex flex-col gap-3">
-            {stages.length === 0 && <div className="text-sm text-gray-400">No submissions yet.</div>}
-            {stages.map(([stage, total], index) => (
-              <div key={stage} className="flex items-center gap-3 text-sm">
-                <span className="w-16 shrink-0 uppercase text-gray-600">{stage}</span>
-                <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-100">
-                  <GrowBar
-                    className="h-full rounded-full bg-accent"
-                    pct={Math.max(4, (total / maxStageTotal) * 100)}
-                    delay={400 + index * 80}
-                  />
-                </div>
-                <span className="w-8 shrink-0 text-right font-medium text-gray-900">{total}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="card p-5">
-          <div className="mb-4 font-display text-lg text-gray-900">By project <span className="text-sm text-gray-500">all-time</span></div>
-          <div className="flex flex-col gap-3">
-            {data.project_breakdown.length === 0 && <div className="text-sm text-gray-400">No submissions yet.</div>}
-            {data.project_breakdown.map((p, index) => (
-              <div key={p.name} className="flex items-center gap-3 text-sm">
-                <span className="w-32 shrink-0 truncate text-gray-600" title={p.name}>
-                  {p.name}
-                </span>
-                <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-100">
-                  <GrowBar
-                    className="h-full rounded-full bg-ink"
-                    pct={Math.max(4, (p.total / maxProjectTotal) * 100)}
-                    delay={400 + index * 80}
-                  />
-                </div>
-                <span className="w-8 shrink-0 text-right font-medium text-gray-900">{p.total}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {levelProjects.length > 0 && (
-        <div className="mt-6 card p-5">
-          <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-700">
-            <Trophy className="h-4 w-4 text-gray-500" />
-            Project Levels
-          </div>
-          <div className="divide-y divide-gray-100">
-            {levelProjects.map(({ project, level }) => {
-              // Each project's quota is tracked on its own: today's submitted tasks on it against the
-              // quota it sets for their level.
-              const quota = projectQuota(project, level)
-              const done = data.all_submissions.filter((r) => r.project_id === project.id && r.date?.slice(0, 10) === today && r.status === 'submitted').length
-              return (
-                <div key={project.id} className="py-3 text-sm first:pt-0 last:pb-0">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="font-medium uppercase tracking-wide text-gray-700">{project.name}</span>
-                    <LevelPill level={level} />
-                  </div>
-                  {quota !== null && (
-                    <div className="mt-2 flex items-center gap-3">
-                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-100">
-                        <div
-                          className={`h-full rounded-full ${done >= quota ? 'bg-ink' : 'bg-accent'}`}
-                          style={{ width: `${quota > 0 ? Math.min(100, (done / quota) * 100) : 100}%` }}
-                        />
-                      </div>
-                      <span className="shrink-0 text-xs text-gray-500">
-                        <span className="font-semibold text-gray-900">{done}</span> / {quota} today
-                      </span>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
+        ))}
+      </dl>
     </Reveal>
   )
 }

@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { FoldText } from '../components/FoldText'
-import { Link } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../lib/auth'
 import {
@@ -8,12 +8,9 @@ import {
   SUPPORT_HOURS,
   ATTENDANCE_CLOSES_MIN_RANGE,
   attendanceTimeLabel,
-  attendanceWindow,
   fetchAttendanceCloseTimes,
   fetchAttendanceForDate,
-  fetchAttendanceHistory,
   fetchAttendanceRoster,
-  fetchTeamAttendanceForDate,
   minutesToTimeInput,
   sentToGoogleForm,
   setAttendanceClosesMin,
@@ -37,9 +34,8 @@ import { Switch } from '../components/Switch'
 import { downloadCsv } from '../lib/csv'
 import { compareAttendanceOrder } from '../lib/attendanceOrder'
 import { contributorPath } from '../lib/urlRef'
-import { formatTime, fromISODate, todayIso } from '../lib/week'
+import { formatTime, todayIso } from '../lib/week'
 import { useNow } from '../lib/useNow'
-import { useAttendanceClosesMin } from '../lib/useAttendanceClosesMin'
 import { usePageTitle } from '../lib/usePageTitle'
 import { useAttendancePhoto } from '../lib/useAttendancePhoto'
 import { fetchTeamFeaturesList, useTeamFeatures } from '../lib/teamFeatures'
@@ -72,19 +68,17 @@ function NotFiled() {
   )
 }
 
-function formatDay(iso: string) {
-  return fromISODate(iso).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'Asia/Singapore' })
-}
-
 export function Attendance() {
   usePageTitle('Attendance')
   const { user } = useAuth()
   const isManager = Boolean(user && MANAGER_ROLES.includes(user.role))
   // Until we know, nothing; a team with attendance switched off (Leads / Team settings page) just gets a note.
-  const { attendanceEnabled, attendancePublic, loaded } = useTeamFeatures(user?.id)
+  const { attendanceEnabled, loaded } = useTeamFeatures(user?.id)
+  // Leads and admins only: contributors file from their Dashboard and the attendance countdown.
+  if (user && !isManager) return <Navigate to="/" replace />
   if (!loaded) return null
   if (!attendanceEnabled) return <AttendanceOff isManager={isManager} />
-  return isManager ? <TeamAttendance /> : <MyAttendance teamPublic={attendancePublic} />
+  return <TeamAttendance />
 }
 
 function AttendanceOff({ isManager }: { isManager: boolean }) {
@@ -563,184 +557,3 @@ function EmptyCard({ children }: { children: ReactNode }) {
   return <div className="card px-5 py-10 text-center text-sm text-gray-400">{children}</div>
 }
 
-type ContributorTab = 'mine' | 'team'
-
-/** Contributors: today's filing and their own history, and the team's day when the team's attendance is public. */
-function MyAttendance({ teamPublic }: { teamPublic: boolean }) {
-  const { user } = useAuth()
-  const now = useNow(60_000)
-  const today = todayIso(now)
-  const { closesMin, closesLabel } = useAttendanceClosesMin()
-  const windowState = attendanceWindow(new Date(now), closesMin)
-  const [filing, setFiling] = useState(false)
-  const [viewingPhoto, setViewingPhoto] = useState<string | null>(null)
-  const [tab, setTab] = useState<ContributorTab>('mine')
-  const showTeam = teamPublic && tab === 'team'
-
-  const { data: history = [], isLoading } = useQuery({
-    queryKey: ['attendance', 'history', user?.id],
-    queryFn: () => fetchAttendanceHistory(user!.id),
-    enabled: Boolean(user),
-  })
-  const todays = history.find((e) => e.date === today) ?? null
-
-  return (
-    <div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-medium sm:text-4xl text-gray-900"><FoldText text="Attendance" /></h1>
-          <p className="text-sm text-gray-500">
-            File your attendance once a day, between 6:00 AM and {closesLabel}. If you can't, your lead files it for you.
-          </p>
-        </div>
-        <div className="flex flex-col items-end gap-1">
-          <button
-            onClick={() => windowState === 'open' && setFiling(true)}
-            aria-disabled={windowState !== 'open'}
-            aria-describedby={windowState === 'open' ? undefined : 'attendance-window-note'}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold pointer-coarse:min-h-11 ${
-              windowState === 'open' ? 'bg-accent text-accent-foreground' : 'cursor-not-allowed border border-gray-300 bg-gray-100 text-gray-700'
-            }`}
-          >
-            {todays ? <Pencil className="h-4 w-4" aria-hidden /> : <FilePlus className="h-4 w-4" aria-hidden />}
-            {todays ? "Edit today's attendance" : "File today's attendance"}
-          </button>
-          {windowState !== 'open' && (
-            <p id="attendance-window-note" className="text-xs text-gray-600">
-              {windowState === 'not-open' ? 'Opens at 6:00 AM.' : `Closed at ${closesLabel}. Your lead can file it for you.`}
-            </p>
-          )}
-        </div>
-      </div>
-
-      {teamPublic && (
-        <div className="mb-3">
-          <SegmentedTabs
-            aria-label="Whose attendance"
-            value={tab}
-            onChange={setTab}
-            options={[
-              { value: 'mine', label: 'Mine' },
-              { value: 'team', label: 'Team' },
-            ]}
-          />
-        </div>
-      )}
-
-      {showTeam ? (
-        <TeammatesAttendance today={today} />
-      ) : isLoading ? (
-        <EmptyCard>Loading...</EmptyCard>
-      ) : history.length === 0 ? (
-        <EmptyCard>No attendance filed yet.</EmptyCard>
-      ) : (
-        <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {history.map((entry) => (
-            <li key={entry.id} className="flex flex-col gap-3 card p-4 text-sm">
-              <div className="flex items-start justify-between gap-3">
-                <div className="font-semibold text-gray-900">{formatDay(entry.date)}</div>
-                {hoursStatus(entry.hours)}
-              </div>
-              <EntryDetails entry={entry} />
-              <div className="mt-auto flex items-center justify-between border-t border-gray-100 pt-2 text-xs text-gray-400">
-                <span>
-                  Filed {formatTime(entry.updated_at)}
-                  {entry.filed_by !== entry.user_id && <> by {entry.filer?.name ?? 'your lead'}</>}
-                </span>
-                {entry.photo_ref && <PhotoButton onClick={() => setViewingPhoto(entry.photo_ref)} />}
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {filing && user && (
-        <AttendanceFormModal person={{ id: user.id, name: user.name, email: user.email }} date={today} existing={todays} onClose={() => setFiling(false)} />
-      )}
-      {viewingPhoto && user && <PhotoModal photoRef={viewingPhoto} name={user.name} onClose={() => setViewingPhoto(null)} />}
-    </div>
-  )
-}
-
-/** A public team's day, as its contributors see it: who filed, their hours and status, and their photo. */
-function TeammatesAttendance({ today }: { today: string }) {
-  const { user } = useAuth()
-  const [date, setDate] = useState(today)
-  const [filter, setFilter] = useState<FilterTab>('all')
-  const [viewingPhoto, setViewingPhoto] = useState<{ ref: string; name: string } | null>(null)
-  const { data: team = [], isLoading } = useQuery({
-    queryKey: ['attendance', 'team', date],
-    queryFn: () => fetchTeamAttendanceForDate(date),
-    refetchInterval: date === today ? 5 * 60_000 : false,
-  })
-
-  const filed = team.filter((t) => t.hours)
-  const countOf = (t: FilterTab) => (t === 'all' ? team.length : t === 'filed' ? filed.length : team.length - filed.length)
-  const visible = team.filter((t) => (filter === 'all' ? true : filter === 'filed' ? t.hours : !t.hours))
-
-  return (
-    <>
-      <TableToolbar standalone>
-        <input
-          type="date"
-          value={date}
-          max={today}
-          onChange={(e) => setDate(e.target.value || today)}
-          aria-label="Day"
-          className={toolbarControlClass}
-        />
-        <SegmentedTabs
-          aria-label="Filter by filed"
-          value={filter}
-          onChange={setFilter}
-          options={(['all', 'filed', 'missing'] as FilterTab[]).map((t) => ({ value: t, label: TAB_LABELS[t], count: countOf(t) }))}
-        />
-      </TableToolbar>
-
-      {isLoading ? (
-        <EmptyCard>Loading...</EmptyCard>
-      ) : visible.length === 0 ? (
-        <EmptyCard>{filter === 'missing' ? 'Everyone has filed.' : filter === 'filed' ? 'Nobody has filed yet.' : 'No teammates.'}</EmptyCard>
-      ) : (
-        <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {visible.map((mate) => (
-            <li
-              key={mate.user_id}
-              className={`flex items-start gap-3 card p-4 text-sm ${mate.hours ? '' : 'border-status-danger-text/50 bg-status-danger-bg'}`}
-            >
-              {mate.photo_ref ? (
-                <button
-                  type="button"
-                  onClick={() => setViewingPhoto({ ref: mate.photo_ref!, name: mate.name })}
-                  aria-label={`See ${mate.name}'s attendance photo`}
-                  className="shrink-0 rounded-full"
-                >
-                  <AttendanceAvatar name={mate.name} avatarUrl={mate.avatar_url} photoRef={mate.photo_ref} size={48} />
-                </button>
-              ) : (
-                <AttendanceAvatar name={mate.name} avatarUrl={mate.avatar_url} photoRef={null} size={48} />
-              )}
-              <div className="min-w-0 flex-1">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="truncate font-semibold text-gray-900">
-                    {mate.name}
-                    {mate.user_id === user?.id && <span className="ml-1 font-normal text-gray-400">(you)</span>}
-                  </div>
-                  {mate.hours ? (
-                    hoursStatus(mate.hours)
-                  ) : (
-                    <NotFiled />
-                  )}
-                </div>
-                {mate.tasking_status && <div className="mt-1 text-gray-700">{mate.tasking_status}</div>}
-                {mate.filed_at && <div className="mt-1 text-xs text-gray-400">Filed {formatTime(mate.filed_at)}</div>}
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {viewingPhoto && <PhotoModal photoRef={viewingPhoto.ref} name={viewingPhoto.name} onClose={() => setViewingPhoto(null)} />}
-    </>
-  )
-}

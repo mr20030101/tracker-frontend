@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Award, Crown, Flame, Ghost, Medal, Rocket, Sparkles, Target, TrendingUp, Zap, type LucideIcon } from 'lucide-react'
 import { supabase } from './api'
+import type { CacheOptions } from './queryCache'
 import type { Achievements } from '../types'
 
 export async function fetchAchievements(userIds: string[]): Promise<Achievements[]> {
@@ -20,13 +21,14 @@ export async function fetchAchievements(userIds: string[]): Promise<Achievements
 }
 
 // Keyed by user id. Sorted into the key so the same people in another order share the cache.
-export function useAchievements(userIds: string[]) {
+export function useAchievements(userIds: string[], cache: CacheOptions = {}) {
   const ids = [...userIds].sort()
   return useQuery({
     queryKey: ['achievements', ids],
     queryFn: async () => new Map((await fetchAchievements(ids)).map((a) => [a.user_id, a])),
     enabled: ids.length > 0,
     staleTime: 60_000,
+    ...cache,
   })
 }
 
@@ -160,7 +162,7 @@ export function badgeById(id: string | null | undefined): Badge | undefined {
 
 // Featured badge (supabase/migrations/20261002_featured_badge.sql): one earned badge a
 // contributor pins, shown next to their name. Keyed by user id, like useAchievements.
-export function useFeaturedBadges(userIds: string[]) {
+export function useFeaturedBadges(userIds: string[], cache: CacheOptions = {}) {
   const ids = [...userIds].sort()
   return useQuery({
     queryKey: ['featured-badges', ids],
@@ -171,6 +173,7 @@ export function useFeaturedBadges(userIds: string[]) {
     },
     enabled: ids.length > 0,
     staleTime: 60_000,
+    ...cache,
   })
 }
 

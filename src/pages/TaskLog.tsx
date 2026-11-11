@@ -3,7 +3,7 @@ import { FoldText } from '../components/FoldText'
 import { Link } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, Download, Eye, FileUp, Image, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api, supabase } from '../lib/api'
+import { api, supabase, teamMemberIds } from '../lib/api'
 import { sanitiseOrTerm } from '../lib/sanitiseOrTerm'
 import { useAuth } from '../lib/auth'
 import { formatTime, toISODate } from '../lib/week'
@@ -75,14 +75,22 @@ function ContributorTaskLog() {
 
 // The global, filterable, multi-contributor log — for a lead/admin reviewing everyone's work.
 function ManagerTaskLog() {
+  const { user: me } = useAuth()
+  const isAdmin = me?.role === 'admin'
   // Contributors' names and photos, from the directory the app already loads.
   const { usersById } = useMessaging()
   const { user } = useAuth()
   const isManager = Boolean(user && MANAGER_ROLES.includes(user.role))
   const [stage, setStage] = useState<Stage | ''>('')
   const [search, setSearch] = useState('')
-  const [dateFrom, setDateFrom] = useState('')
-  const [dateTo, setDateTo] = useState('')
+  const [status, setStatus] = useState<SubmissionStatus | ''>('')
+  const [projectId, setProjectId] = useState('')
+  const [leadId, setLeadId] = useState('')
+  // Today only by default, so the log opens with one day's tasks instead of everything; leads pick
+  // other dates (or empty both for all of them) when they need more.
+  const today = toISODate(new Date())
+  const [dateFrom, setDateFrom] = useState(today)
+  const [dateTo, setDateTo] = useState(today)
   const [page, setPage] = useState(1)
   const [formTarget, setFormTarget] = useState<'new' | TaskSubmission | null>(null)
   const [editingStatusId, setEditingStatusId] = useState<number | null>(null)
@@ -97,8 +105,20 @@ function ManagerTaskLog() {
     queryFn: async () => (await api.get<Project[]>('/projects')).data,
   })
 
+  // Admins can narrow it to one lead's team; a lead only sees their own anyway.
+  const { data: leads = [] } = useQuery({
+    queryKey: ['task-log-leads'],
+    queryFn: async () => {
+      const { data: rows, error } = await supabase.from('profiles').select('id, name').eq('role', 'lead').eq('is_active', true).order('name')
+      if (error) throw error
+      return rows as { id: string; name: string }[]
+    },
+    enabled: isAdmin,
+    staleTime: 10 * 60_000,
+  })
+
   const { data, isLoading } = useQuery({
-    queryKey: ['task-submissions', stage, search, dateFrom, dateTo, page, sort],
+    queryKey: ['task-submissions', stage, search, dateFrom, dateTo, status, projectId, leadId, page, sort],
     queryFn: async () =>
       (
         await api.get<Paginated<TaskSubmission>>('/task-submissions', {
@@ -107,6 +127,9 @@ function ManagerTaskLog() {
             search: search || undefined,
             date_from: dateFrom || undefined,
             date_to: dateTo || undefined,
+            status: status || undefined,
+            project_id: projectId || undefined,
+            lead_id: leadId || undefined,
             page,
             sort: sort.key,
             sort_dir: sort.dir,
@@ -128,6 +151,7 @@ function ManagerTaskLog() {
     try {
       // A fresh query per page, fetched in pages: the whole log is more than the 1,000 rows one
       // request returns, so a plain query exported only part of it (see fetchAll).
+      const teamIds = leadId ? await teamMemberIds(leadId) : null
       const pageOf = (from: number, to: number) => {
         let query = supabase
           .from('task_submissions')
@@ -141,6 +165,9 @@ function ManagerTaskLog() {
         }
         if (dateFrom) query = query.gte('date', dateFrom)
         if (dateTo) query = query.lte('date', dateTo)
+        if (status) query = query.eq('status', status)
+        if (projectId) query = query.eq('project_id', Number(projectId))
+        if (teamIds) query = query.in('user_id', teamIds)
         return query.range(from, to)
       }
       const rows = await fetchAllPages(pageOf)
@@ -247,13 +274,48 @@ function ManagerTaskLog() {
                 setPage(1)
               }}
             />
-            {(stage || search || dateFrom || dateTo) && (
+            <Select
+              aria-label="Status"
+              value={status}
+              onChange={(value) => {
+                setStatus(value as SubmissionStatus | '')
+                setPage(1)
+              }}
+              options={[{ value: '', label: 'All Statuses' }, ...STATUS_OPTIONS]}
+              className={toolbarControlClass}
+            />
+            <Select
+              aria-label="Project"
+              value={projectId}
+              onChange={(value) => {
+                setProjectId(value)
+                setPage(1)
+              }}
+              options={[{ value: '', label: 'All Projects' }, ...(projects ?? []).map((p) => ({ value: String(p.id), label: p.name }))]}
+              className={toolbarControlClass}
+            />
+            {isAdmin && (
+              <Select
+                aria-label="Team"
+                value={leadId}
+                onChange={(value) => {
+                  setLeadId(value)
+                  setPage(1)
+                }}
+                options={[{ value: '', label: 'All Teams' }, ...leads.map((l) => ({ value: l.id, label: `${l.name}'s team` }))]}
+                className={toolbarControlClass}
+              />
+            )}
+            {(stage || search || status || projectId || leadId || dateFrom !== today || dateTo !== today) && (
               <button
                 onClick={() => {
                   setStage('')
                   setSearch('')
-                  setDateFrom('')
-                  setDateTo('')
+                  setStatus('')
+                  setProjectId('')
+                  setLeadId('')
+                  setDateFrom(today)
+                  setDateTo(today)
                   setPage(1)
                 }}
                 className="inline-flex items-center gap-1.5 px-1 text-sm font-medium text-sky-700 hover:underline"

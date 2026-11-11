@@ -81,6 +81,14 @@ async function projects(): Promise<Project[]> {
 
 const SORTABLE_COLUMNS = new Set(['cb_email', 'task_id', 'stage', 'status', 'date', 'project_id'])
 
+/** The ids of a lead's contributors (an empty team matches nothing). */
+export async function teamMemberIds(leadId: string): Promise<string[]> {
+  const { data, error } = await supabase.from('profiles').select('id').eq('lead_id', leadId)
+  if (error) throw error
+  const ids = (data ?? []).map((row) => row.id as string)
+  return ids.length > 0 ? ids : ['00000000-0000-0000-0000-000000000000']
+}
+
 async function submissions(params: Record<string, unknown> = {}): Promise<Paginated<TaskSubmission>> {
   const profile = await currentProfile()
   const sortColumn = typeof params.sort === 'string' && SORTABLE_COLUMNS.has(params.sort) ? params.sort : 'date'
@@ -94,6 +102,10 @@ async function submissions(params: Record<string, unknown> = {}): Promise<Pagina
   }
   if (params.date_from) query = query.gte('date', params.date_from)
   if (params.date_to) query = query.lte('date', params.date_to)
+  if (params.status) query = query.eq('status', params.status)
+  if (params.project_id) query = query.eq('project_id', Number(params.project_id))
+  // One lead's team: their contributors' tasks.
+  if (params.lead_id) query = query.in('user_id', await teamMemberIds(String(params.lead_id)))
   const page = Number(params.page ?? 1)
   const from = (page - 1) * 25
   const to = from + 24
@@ -312,11 +324,15 @@ async function contributor(params: Record<string, unknown>): Promise<Contributor
   // Case-insensitive, like the dashboard, leaderboard and rewards: a row logged as "Jane.Doe@…" for
   // jane.doe@… counts there, so it has to count here too. ilike needs LIKE's _ and % escaped.
   const emailPattern = email.replace(/[\\%_]/g, (char) => `\\${char}`)
+  // `week_only`: just the week's rows (the contributor's own Dashboard needs nothing older), one
+  // small request instead of their whole history.
+  const weekOnly = Boolean(params.week_only)
   const [{ data: rows }, targetByUser] = await Promise.all([
     // Paged: one contributor's whole history can pass 1,000 rows.
-    fetchAllPages<TaskSubmission>((from, to) =>
-      supabase.from('task_submissions').select('*').ilike('cb_email', emailPattern).order('date', { ascending: false }).order('id').range(from, to),
-    ).then((data) => ({ data })),
+    fetchAllPages<TaskSubmission>((from, to) => {
+      const query = supabase.from('task_submissions').select('*').ilike('cb_email', emailPattern)
+      return (weekOnly ? query.gte('date', weekStart) : query).order('date', { ascending: false }).order('id').range(from, to)
+    }).then((data) => ({ data })),
     user ? fetchWeeklyTargets(weekStart, [user.id]) : new Map<string, number>(),
   ])
   const submissions = withProject((rows ?? []) as TaskSubmission[], await projects())

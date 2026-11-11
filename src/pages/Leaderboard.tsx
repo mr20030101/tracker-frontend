@@ -19,6 +19,7 @@ import { downloadCsv } from '../lib/csv'
 import { contributorPath, contributorPathById } from '../lib/urlRef'
 import { FeaturedBadgeChip, StreakChip } from '../components/Achievements'
 import { useAchievements, useFeaturedBadges } from '../lib/achievements'
+import { LONG_CACHE } from '../lib/queryCache'
 import { usePageTitle } from '../lib/usePageTitle'
 import { mostImproved, rankWeek, teamGoal, useTeamWeeks, type TeamWeekRow } from '../lib/teamWeeks'
 
@@ -56,14 +57,16 @@ function ContributorLeaderboard() {
   const { data, isLoading } = useQuery({
     queryKey: ['leaderboard', start, end],
     queryFn: async () => (await api.get<LeaderboardRow[]>('/leaderboard', { params: { range_start: start, range_end: end } })).data,
+    // Contributors get the board cached (lib/queryCache.ts): it doesn't need to be live for them.
+    ...LONG_CACHE,
   })
-  const { data: teamRows = [] } = useTeamWeeks()
+  const { data: teamRows = [] } = useTeamWeeks(LONG_CACHE)
   const team = teamGoal(rankWeek(teamRows, start))
 
   const rows = data ?? []
   const topScore = rows[0]?.tasks_submitted ?? 0
-  const { data: achievements } = useAchievements(rows.map((r) => r.user_id))
-  const { data: featuredBadges } = useFeaturedBadges(rows.map((r) => r.user_id))
+  const { data: achievements } = useAchievements(rows.map((r) => r.user_id), LONG_CACHE)
+  const { data: featuredBadges } = useFeaturedBadges(rows.map((r) => r.user_id), LONG_CACHE)
   const periodLabel = period === 'week' ? 'this week' : period === 'month' ? 'this month' : 'all time'
   const teamPct = team.target > 0 ? Math.min(100, (team.submitted / team.target) * 100) : 0
 

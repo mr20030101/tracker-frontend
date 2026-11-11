@@ -1,3 +1,4 @@
+import type { CacheOptions } from './queryCache'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from './api'
 
@@ -19,7 +20,7 @@ export interface TeamWeekRow {
 /** Six weeks: this week, last week, and the four before it that "Most improved" averages. */
 const HISTORY_WEEKS = 6
 
-export function useTeamWeeks() {
+export function useTeamWeeks(cache: CacheOptions = {}) {
   return useQuery({
     queryKey: ['team-weeks', HISTORY_WEEKS],
     queryFn: async () => {
@@ -28,6 +29,7 @@ export function useTeamWeeks() {
       return (data ?? []) as TeamWeekRow[]
     },
     staleTime: 60_000,
+    ...cache,
     // Before the migration is applied the function is missing; the cards that use it just don't show.
     retry: false,
   })
