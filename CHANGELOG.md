@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.33.0 — 2026-11-11
+
 ### Added
 
 - **Log in as (admins).** On the Contributors and Leads pages, an admin can pick **Log in as** in a
