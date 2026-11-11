@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { FoldText } from '../components/FoldText'
 import { createPortal } from 'react-dom'
 import { Navigate, useParams, Link } from 'react-router-dom'
-import { ChevronDown, ChevronLeft, Eye, MessageCircle, Pencil, Sparkles, Trophy, X } from 'lucide-react'
+import { ChevronDown, ChevronLeft, Eye, MessageCircle, Pencil, Sparkles, X } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, functionErrorMessage, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
@@ -12,13 +12,11 @@ import { isUserId, messagePath, parseContributorRef } from '../lib/urlRef'
 import type { ContributorProfile, ContributorProjectLevel, Project, ProjectLevel } from '../types'
 import { Avatar } from '../components/Avatar'
 import { LevelPill, LEVEL_TIERS } from '../components/LevelPill'
-import { projectQuota } from '../lib/quotas'
 import { assignedProjectIds } from '../lib/cbProjects'
 import { ContributorWorkPanel } from '../components/ContributorWorkPanel'
+import { CbReport } from '../components/CbReport'
 import { Reveal } from '../components/Reveal'
 import { AchievementsCard, FeaturedBadgeChip } from '../components/Achievements'
-import { OnboardingProgress } from '../components/OnboardingChecklist'
-import { useOnboardingStatus } from '../lib/onboarding'
 import { recordProfileView, useProfileViewCount } from '../lib/profileViews'
 import { useFeaturedBadges } from '../lib/achievements'
 import { usePageTitle } from '../lib/usePageTitle'
@@ -203,9 +201,6 @@ export function CbProfile() {
     enabled: Boolean(contributorId),
   })
 
-  // Null unless the viewer is this contributor's lead or an admin (the database leaves anyone else out).
-  const isManagerViewer = Boolean(currentUser && MANAGER_ROLES.includes(currentUser.role))
-  const { data: onboarding } = useOnboardingStatus(isManagerViewer && !isOwnProfile ? contributorId : null)
 
   const levelMutation = useMutation({
     mutationFn: async ({ projectId, level }: { projectId: number; level: ProjectLevel }) => {
@@ -302,6 +297,21 @@ export function CbProfile() {
             )}
             {contributorId && <FeaturedBadgeChip badgeId={featuredBadges?.get(contributorId)} />}
           </div>
+          {/* Their projects and level on each, in the header; a lead or admin changes a level here. */}
+          {isContributorRole && !isOwnProfile && levelProjects.length > 0 && (
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              {levelProjects.map(({ project, level }) => (
+                <span key={project.id} className="inline-flex items-center gap-1.5 text-xs">
+                  <span className="font-medium uppercase tracking-wide text-gray-600">{project.name}</span>
+                  {canManageLevels ? (
+                    <LevelBadgePicker level={level} onChange={(next) => levelMutation.mutate({ projectId: project.id, level: next })} />
+                  ) : (
+                    <LevelPill level={level} />
+                  )}
+                </span>
+              ))}
+            </div>
+          )}
           {decodedEmail && <p className="text-sm text-gray-500">{decodedEmail}</p>}
           {(isOwnProfile ? currentUser?.bio : data.user?.bio) && (
             <p className="mt-1 max-w-xl text-sm text-gray-600">{isOwnProfile ? currentUser?.bio : data.user?.bio}</p>
@@ -370,40 +380,13 @@ export function CbProfile() {
         </div>
       )}
 
-      {isContributorRole && !isOwnProfile && onboarding && onboarding.done < onboarding.total && (
-        <OnboardingProgress status={onboarding} hasLead={Boolean(contributorLeadId)} />
+      {/* A plain report for the lead or an admin: attendance, submissions and hours for a week or month. */}
+      {canManageLevels && isContributorRole && !isOwnProfile && contributorId && (
+        <CbReport userId={contributorId} email={data.user?.email ?? decodedEmail} leadId={contributorLeadId} name={displayName} />
       )}
 
-      {isContributorRole && contributorId && <AchievementsCard userId={contributorId} canFeature={isOwnProfile} />}
-
-      {/* Same for Project Levels — a CB sees their own on the Dashboard now; this stays only
-          for a lead/admin reviewing someone else. */}
-      {isContributorRole && !isOwnProfile && levelProjects.length > 0 && (
-        <div className="mb-6 card p-5">
-          <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-700">
-            <Trophy className="h-4 w-4 text-amber-500" />
-            Project Levels
-          </div>
-          <div className="divide-y divide-gray-100">
-            {levelProjects.map(({ project, level }) => (
-              <div key={project.id} className="flex items-center justify-between gap-3 py-3 text-sm first:pt-0 last:pb-0">
-                <span className="font-medium uppercase tracking-wide text-gray-700">{project.name}</span>
-                <span className="ml-auto text-xs text-gray-500">
-                  {projectQuota(project, level) !== null ? `${projectQuota(project, level)}/day quota` : 'No quota at this level'}
-                </span>
-                {canManageLevels ? (
-                  <LevelBadgePicker
-                    level={level}
-                    onChange={(next) => levelMutation.mutate({ projectId: project.id, level: next })}
-                  />
-                ) : (
-                  <LevelPill level={level} />
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Leads and admins see tasking and attendance here, not the onboarding checklist or badges. */}
+      {isContributorRole && contributorId && !canManageLevels && <AchievementsCard userId={contributorId} canFeature={isOwnProfile} />}
 
       {isOwnProfile && data.user?.role === 'lead' && (
         <div className="mt-6 card p-5">
@@ -443,7 +426,7 @@ export function CbProfile() {
       {/* A contributor's own graphs/table live on their own Task Log now; this page keeps them
           only for someone else reviewing this contributor (a lead/admin, or a public view). */}
       {isContributorRole && !isOwnProfile && decodedEmail && (
-        <ContributorWorkPanel email={decodedEmail} contributorName={displayName} canEdit={canEdit} showGraphsToggle={false} />
+        <ContributorWorkPanel email={decodedEmail} contributorName={displayName} canEdit={canEdit} showGraphsToggle={false} hideGraphs={canManageLevels} />
       )}
     </Reveal>
   )

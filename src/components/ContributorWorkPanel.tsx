@@ -80,6 +80,8 @@ interface Props {
    * table) wants them collapsed by default; a profile page (a quick glance at someone's work) wants
    * them always visible, with no toggle to hide them. Defaults to collapsible for that reason. */
   showGraphsToggle?: boolean
+  /** Leave out the stats, goal ring and charts altogether (a lead's view has the Report instead). */
+  hideGraphs?: boolean
 }
 
 /**
@@ -88,14 +90,14 @@ interface Props {
  * Shared by the profile page (for a lead/admin reviewing someone else) and Task Log (for a
  * contributor's own submissions).
  */
-export function ContributorWorkPanel({ email, contributorName, canEdit, showGraphsToggle = true }: Props) {
+export function ContributorWorkPanel({ email, contributorName, canEdit, showGraphsToggle = true, hideGraphs = false }: Props) {
   const queryClient = useQueryClient()
   const { user: currentUser } = useAuth()
   const isManager = Boolean(currentUser && MANAGER_ROLES.includes(currentUser.role))
   const isOwnProfile = currentUser?.email.toLowerCase() === email.toLowerCase()
   // Collapsed by default when a toggle is offered; always visible otherwise (see showGraphsToggle).
   const [graphsToggledOn, setGraphsToggledOn] = useState(false)
-  const showGraphs = showGraphsToggle ? graphsToggledOn : true
+  const showGraphs = !hideGraphs && (showGraphsToggle ? graphsToggledOn : true)
   const [viewMode, setViewMode] = useState<ViewMode>('day')
   const [anchorDate, setAnchorDate] = useState(() => new Date())
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'date', dir: 'desc' })
@@ -126,15 +128,29 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
   const now = useNow(60_000)
   const thisWeekIso = weekStartIso(now)
 
+  // Only the rows this view needs: the chosen day/week/month, and the last 30 days for the trend and
+  // the CTS form (its all-time totals are counted on the server). Not the whole history.
+  const fetchFrom = useMemo(() => {
+    const start =
+      viewMode === 'day' ? toISODate(anchorDate) : viewMode === 'week' ? toISODate(startOfWeek(anchorDate)) : toISODate(startOfMonth(anchorDate))
+    const recent = toISODate(new Date(now - 30 * 86_400_000))
+    return start < recent ? start : recent
+  }, [viewMode, anchorDate, now])
+  const fetchTo = useMemo(() => {
+    const end = viewMode === 'day' ? toISODate(anchorDate) : viewMode === 'week' ? toISODate(endOfWeek(anchorDate)) : toISODate(endOfMonth(anchorDate))
+    const today = toISODate(new Date(now))
+    return end > today ? end : today
+  }, [viewMode, anchorDate, now])
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ['contributor', email, thisWeekIso],
+    queryKey: ['contributor', email, thisWeekIso, fetchFrom, fetchTo],
     queryFn: async () =>
       (
         await api.get<ContributorProfile>('/contributor', {
-          params: { email, week_start: thisWeekIso },
+          params: { email, week_start: thisWeekIso, date_from: fetchFrom, date_to: fetchTo },
         })
       ).data,
     enabled: Boolean(email),
+    placeholderData: (previous) => previous,
   })
   // The CTS Form and column only for a team that still sends its tasks to CTS.
   const { ctsEnabled, ctsTrainer } = useTeamFeatures(data?.user?.id)
@@ -527,7 +543,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
         </div>
       )}
 
-      {showGraphsToggle && (
+      {showGraphsToggle && !hideGraphs && (
         <button
           type="button"
           onClick={() => setGraphsToggledOn((v) => !v)}
@@ -698,20 +714,26 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
               CTS Form
             </button>
             )}
-            <button
-              onClick={() => setBulkImporting(true)}
-              className={`${ctsEnabled ? '' : 'ml-auto '}inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50`}
-            >
-              <FileUp className="h-4 w-4" aria-hidden />
-              Bulk Import
-            </button>
-            <button
-              onClick={() => setFormTarget('new')}
-              className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
-            >
-              <Plus className="h-4 w-4" aria-hidden />
-              Add Submission
-            </button>
+            {/* A lead or admin reviewing someone's profile keeps only the CTS Form here; they add and
+                import tasks from the Task Log. */}
+            {!(isManager && !isOwnProfile) && (
+              <>
+                <button
+                  onClick={() => setBulkImporting(true)}
+                  className={`${ctsEnabled ? '' : 'ml-auto '}inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50`}
+                >
+                  <FileUp className="h-4 w-4" aria-hidden />
+                  Bulk Import
+                </button>
+                <button
+                  onClick={() => setFormTarget('new')}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
+                >
+                  <Plus className="h-4 w-4" aria-hidden />
+                  Add Submission
+                </button>
+              </>
+            )}
           </div>
 
           <div className="overflow-hidden card">
