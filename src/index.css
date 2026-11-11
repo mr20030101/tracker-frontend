@@ -849,6 +849,19 @@ main h1 {
   @apply pointer-events-none float-left h-0 text-gray-400;
 }
 
+/* A filter in a FilterBar (components/TableToolbar) fills its grid cell, and a segmented control
+   shares the cell's width between its options so it lines up with the dropdowns beside it. */
+.filter-field > :not(label, span) {
+  width: 100%;
+}
+.filter-field [role='tablist'] {
+  display: flex;
+}
+.filter-field [role='tablist'] > button {
+  flex: 1 0 auto;
+  padding-inline: 0.5rem;
+}
+
 /* The app's surface: a soft warm panel with a hairline highlight, used for every content card. */
 @utility card {
   border-radius: var(--radius-3xl);

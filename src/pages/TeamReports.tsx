@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { FoldText } from '../components/FoldText'
 import { useQuery } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import { Download } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { downloadCsv } from '../lib/csv'
 import { TEAM_METRICS, fetchTeamReports, type TeamMetric } from '../lib/teamReports'
 import { TeamTrendChart } from '../components/TeamTrendChart'
-import { SegmentedTabs, toolbarControlClass } from '../components/TableToolbar'
+import { FilterBar, FilterField, SegmentedTabs, toolbarControlClass } from '../components/TableToolbar'
+import { Select } from '../components/Select'
 import { usePageTitle } from '../lib/usePageTitle'
 
 // Team Reports: each lead's team compared week by week. An admin sees every team; a lead sees
@@ -70,28 +72,26 @@ export function TeamReports() {
         </button>
       </div>
 
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <SegmentedTabs
-          aria-label="Measure"
-          value={metric}
-          onChange={setMetric}
-          options={TEAM_METRICS.map((m) => ({ value: m.metric, label: m.label, title: m.description }))}
-        />
-        <label className="flex items-center gap-2 text-sm text-gray-600">
-          Weeks
-          <select
-            value={weekCount}
-            onChange={(e) => setWeekCount(Number(e.target.value))}
+      <FilterBar>
+        <FilterField label="Measure" wide>
+          <SegmentedTabs
+            aria-label="Measure"
+            value={metric}
+            onChange={setMetric}
+            options={TEAM_METRICS.map((m) => ({ value: m.metric, label: m.label, title: m.description }))}
+          />
+        </FilterField>
+        <FilterField label="Weeks" id="team-reports-weeks">
+          <Select
+            id="team-reports-weeks"
+            fullWidth
+            value={String(weekCount)}
+            onChange={(value) => setWeekCount(Number(value))}
+            options={WEEK_OPTIONS.map((n) => ({ value: String(n), label: `Last ${n}` }))}
             className={toolbarControlClass}
-          >
-            {WEEK_OPTIONS.map((n) => (
-              <option key={n} value={n}>
-                Last {n}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
+          />
+        </FilterField>
+      </FilterBar>
 
       {error && (
         <div role="alert" className="mb-4 rounded-lg bg-status-danger-bg px-4 py-2.5 text-sm text-status-danger-text">
@@ -140,7 +140,13 @@ export function TeamReports() {
                   return (
                     <tr key={team.leadId ?? 'none'}>
                       <td className="px-4 py-3">
-                        <div className="font-medium text-gray-900">{team.leadName}</div>
+                        {isAdmin && team.leadId ? (
+                          <Link to={`/leads/${team.leadId}`} title={`View ${team.leadName}'s team`} className="font-medium text-gray-900 hover:underline">
+                            {team.leadName}
+                          </Link>
+                        ) : (
+                          <div className="font-medium text-gray-900">{team.leadName}</div>
+                        )}
                         <div className="text-xs text-gray-400">
                           {team.contributors} contributor{team.contributors === 1 ? '' : 's'}
                         </div>

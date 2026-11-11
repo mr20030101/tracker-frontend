@@ -1,6 +1,6 @@
 import { Fragment, useMemo, useState } from 'react'
 import { FoldText } from '../components/FoldText'
-import { CalendarDays, ChevronLeft, ChevronRight, Download, UserCheck, UserMinus, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Download, UserCheck, UserMinus } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
@@ -12,7 +12,7 @@ import { Avatar } from '../components/Avatar'
 import { ProgressBar } from '../components/ProgressBar'
 import { formatHours } from '../lib/hoursTarget'
 import { Select } from '../components/Select'
-import { SearchInput, SegmentedTabs, TableCard, TableToolbar, toolbarControlClass } from '../components/TableToolbar'
+import { FilterAction, FilterBar, FilterField, SearchInput, SegmentedTabs, TableCard, toolbarControlClass } from '../components/TableToolbar'
 import { Reveal } from '../components/Reveal'
 import { GrowBar } from '../components/GrowBar'
 import { SortableHeader } from '../components/SortableHeader'
@@ -336,98 +336,21 @@ function ManagerLeaderboard() {
         <p className="text-sm text-gray-500">Filter, sort, and manage contributor progress.</p>
       </div>
 
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <SegmentedTabs
-          aria-label="Period"
-          value={viewMode}
-          onChange={setViewMode}
-          options={[
-            { value: 'day', label: 'Day' },
-            { value: 'week', label: 'Week' },
-            { value: 'month', label: 'Month' },
-          ]}
-        />
-        <div className="flex h-9 items-center rounded-lg border border-gray-200 bg-white">
-          <button
-            onClick={() => shiftRange(-1)}
-            aria-label="Previous period"
-            className="flex h-full items-center rounded-l-lg px-2.5 text-gray-500 hover:bg-gray-50 hover:text-gray-800"
-          >
-            <ChevronLeft size={16} />
-          </button>
-          <span className="min-w-44 border-x border-gray-200 px-3 text-center text-sm font-medium text-gray-700">{rangeLabel()}</span>
-          <button
-            onClick={() => shiftRange(1)}
-            aria-label="Next period"
-            className="flex h-full items-center rounded-r-lg px-2.5 text-gray-500 hover:bg-gray-50 hover:text-gray-800"
-          >
-            <ChevronRight size={16} />
-          </button>
-        </div>
-        {!isCurrentRange && (
-          <button onClick={() => setAnchorDate(new Date())} className="inline-flex items-center gap-1.5 px-1 text-sm font-medium text-sky-700 hover:underline">
-            <CalendarDays className="h-4 w-4" aria-hidden />
-            Back to {periodPhrase}
-          </button>
-        )}
-        <input
-          type="date"
-          aria-label="Jump to date"
-          value={toISODate(anchorDate)}
-          onChange={(e) => {
-            if (e.target.value) setAnchorDate(fromISODate(e.target.value))
-          }}
-          className={`ml-auto ${toolbarControlClass}`}
-        />
-      </div>
-
       <TableCard
         toolbar={
-          <TableToolbar>
-            <SearchInput placeholder="Search by name or email..." value={search} onChange={setSearch} />
-            <Select
-              value={projectId}
-              onChange={setProjectId}
-              options={[{ value: '', label: 'All Projects' }, ...(projects ?? []).map((p) => ({ value: String(p.id), label: p.name }))]}
-              className={toolbarControlClass}
-            />
-            <Select
-              value={activityFilter}
-              onChange={(value) => setActivityFilter(value as ActivityFilter)}
-              options={[
-                { value: 'all', label: 'All Activity' },
-                { value: 'submitted', label: `Submitted ${viewLabel === 'Day' ? 'Today' : `This ${viewLabel}`}` },
-                { value: 'no_submissions', label: 'No Submissions' },
-              ]}
-              className={toolbarControlClass}
-            />
-            <Select
-              value={statusFilter}
-              onChange={(value) => setStatusFilter(value as StatusFilter)}
-              options={[
-                { value: 'all', label: 'All Statuses' },
-                { value: 'active', label: 'Active' },
-                { value: 'disabled', label: 'Disabled' },
-              ]}
-              className={toolbarControlClass}
-            />
-            {(search || projectId || statusFilter !== 'all' || activityFilter !== 'all') && (
-              <button
-                onClick={() => {
-                  setSearch('')
-                  setProjectId('')
-                  setStatusFilter('all')
-                  setActivityFilter('all')
-                }}
-                className="inline-flex items-center gap-1.5 px-1 text-sm font-medium text-sky-700 hover:underline"
-              >
-                <X className="h-4 w-4" aria-hidden />
-                Clear filters
-              </button>
-            )}
-            <button
-              onClick={() =>
-                downloadCsv(
+          <FilterBar
+            active={[!isCurrentRange, search, projectId, statusFilter !== 'all', activityFilter !== 'all'].filter(Boolean).length}
+            onReset={() => {
+              setAnchorDate(new Date())
+              setSearch('')
+              setProjectId('')
+              setStatusFilter('all')
+              setActivityFilter('all')
+            }}
+            actions={
+              <FilterAction
+                onClick={() =>
+                  downloadCsv(
                   `leaderboard-${rangeStart}-to-${rangeEnd}.csv`,
                   rows.map((r) => ({
                     name: r.name,
@@ -440,14 +363,98 @@ function ManagerLeaderboard() {
                     is_active: r.is_active,
                   })),
                 )
-              }
-              disabled={rows.length === 0}
-              className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-            >
-              <Download className="h-4 w-4" aria-hidden />
-              Export CSV
-            </button>
-          </TableToolbar>
+                }
+                disabled={rows.length === 0}
+              >
+                <Download className="h-3.5 w-3.5" aria-hidden />
+                Export CSV
+              </FilterAction>
+            }
+          >
+            <FilterField label="Period">
+              <SegmentedTabs
+                aria-label="Period"
+                value={viewMode}
+                onChange={setViewMode}
+                options={[
+                  { value: 'day', label: 'Day' },
+                  { value: 'week', label: 'Week' },
+                  { value: 'month', label: 'Month' },
+                ]}
+              />
+            </FilterField>
+            <FilterField label="Range">
+              <div className="flex h-10 pointer-coarse:h-11 items-center rounded-full border border-gray-200 bg-white">
+                <button
+                  onClick={() => shiftRange(-1)}
+                  aria-label="Previous period"
+                  className="flex h-full items-center rounded-l-full pl-3 pr-2 text-gray-500 transition-colors duration-100 hover:bg-gray-50 hover:text-gray-800"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <span className="min-w-0 flex-1 truncate text-center text-sm font-medium text-gray-700">{rangeLabel()}</span>
+                <button
+                  onClick={() => shiftRange(1)}
+                  aria-label="Next period"
+                  className="flex h-full items-center rounded-r-full pl-2 pr-3 text-gray-500 transition-colors duration-100 hover:bg-gray-50 hover:text-gray-800"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </FilterField>
+            <FilterField label="Jump to date" id="leaderboard-date">
+              <input
+                id="leaderboard-date"
+                type="date"
+                value={toISODate(anchorDate)}
+                onChange={(e) => {
+                  if (e.target.value) setAnchorDate(fromISODate(e.target.value))
+                }}
+                className={toolbarControlClass}
+              />
+            </FilterField>
+            <FilterField label="Search" id="leaderboard-search" set={Boolean(search)}>
+              <SearchInput id="leaderboard-search" placeholder="Name or email" value={search} onChange={setSearch} />
+            </FilterField>
+            <FilterField label="Project" id="leaderboard-project" set={Boolean(projectId)}>
+              <Select
+                id="leaderboard-project"
+                fullWidth
+                value={projectId}
+                onChange={setProjectId}
+                options={[{ value: '', label: 'All Projects' }, ...(projects ?? []).map((p) => ({ value: String(p.id), label: p.name }))]}
+                className={toolbarControlClass}
+              />
+            </FilterField>
+            <FilterField label="Activity" id="leaderboard-activity" set={activityFilter !== 'all'}>
+              <Select
+                id="leaderboard-activity"
+                fullWidth
+                value={activityFilter}
+                onChange={(value) => setActivityFilter(value as ActivityFilter)}
+                options={[
+                  { value: 'all', label: 'All Activity' },
+                  { value: 'submitted', label: `Submitted ${viewLabel === 'Day' ? 'Today' : `This ${viewLabel}`}` },
+                  { value: 'no_submissions', label: 'No Submissions' },
+                ]}
+                className={toolbarControlClass}
+              />
+            </FilterField>
+            <FilterField label="Status" id="leaderboard-status" set={statusFilter !== 'all'}>
+              <Select
+                id="leaderboard-status"
+                fullWidth
+                value={statusFilter}
+                onChange={(value) => setStatusFilter(value as StatusFilter)}
+                options={[
+                  { value: 'all', label: 'All Statuses' },
+                  { value: 'active', label: 'Active' },
+                  { value: 'disabled', label: 'Disabled' },
+                ]}
+                className={toolbarControlClass}
+              />
+            </FilterField>
+          </FilterBar>
         }
       >
         <table className="w-full min-w-[36rem] text-left text-sm">
