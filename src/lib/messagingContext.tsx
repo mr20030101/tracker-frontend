@@ -64,7 +64,8 @@ export function MessagingProvider({ children }: { children: ReactNode }) {
     queryKey: ['messages', myId, 'summary'],
     queryFn: fetchConversationSummaries,
     enabled: chatOn,
-    refetchInterval: 5 * 60_000,
+    // New messages arrive live (the channel below); this only catches anything missed.
+    refetchInterval: 15 * 60_000,
   })
   // Turned off with a tab open: what was already loaded is hidden too.
   const recentMessages = useMemo(() => (chatOn ? summaries.flatMap((s) => s.recent) : []), [summaries, chatOn])
@@ -73,7 +74,8 @@ export function MessagingProvider({ children }: { children: ReactNode }) {
     queryKey: ['directory'],
     queryFn: fetchDirectory,
     enabled: Boolean(myId),
-    staleTime: 60_000,
+    // Names and avatars: loaded once, then at most every 10 minutes when the tab is focused again.
+    staleTime: 10 * 60_000,
   })
 
   const usersById = useMemo(() => new Map(directory.map((d) => [d.id, d])), [directory])
@@ -124,7 +126,7 @@ export function MessagingProvider({ children }: { children: ReactNode }) {
     queryKey: ['group-chats', myId],
     queryFn: fetchGroupSummaries,
     enabled: chatOn,
-    refetchInterval: 5 * 60_000,
+    refetchInterval: 15 * 60_000,
   })
 
   const groups = chatOn ? groupData : NO_GROUPS

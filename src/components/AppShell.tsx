@@ -34,7 +34,6 @@ import { AccountMenu } from './AccountMenu'
 import { Logo } from './Logo'
 import { NotificationBell } from './NotificationBell'
 import { MessagesButton } from './MessagesButton'
-import { OnlineUsers } from './OnlineUsers'
 import { AttendanceBomb } from './AttendanceBomb'
 import { GlobalSearch } from './GlobalSearch'
 import { contributorPath } from '../lib/urlRef'
@@ -264,8 +263,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     queryFn: fetchPendingRequestCount,
     enabled: isManager,
     refetchInterval: 2 * 60_000,
-    // Notification badges keep counting while the tab is idle or hidden.
-    refetchIntervalInBackground: true,
   })
   // Of those, the ones waiting past OVERDUE_HOURS — what turns the badge red as a reminder.
   const { data: overdueRequests = 0 } = useQuery({
@@ -273,8 +270,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     queryFn: fetchOverdueRequestCount,
     enabled: isManager,
     refetchInterval: 5 * 60_000,
-    // Notification badges keep counting while the tab is idle or hidden.
-    refetchIntervalInBackground: true,
   })
 
   // Feedback reports waiting for a lead to check them. Refreshed after every check on the Feedback
@@ -284,8 +279,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     queryFn: fetchPendingFeedbackCount,
     enabled: isManager,
     refetchInterval: 2 * 60_000,
-    // Notification badges keep counting while the tab is idle or hidden.
-    refetchIntervalInBackground: true,
   })
 
   // New announcements addressed to you. Cleared when the Announcements page marks them seen (it
@@ -295,8 +288,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     queryFn: fetchUnreadAnnouncementCount,
     enabled: Boolean(user),
     refetchInterval: 5 * 60_000,
-    // Notification badges keep counting while the tab is idle or hidden.
-    refetchIntervalInBackground: true,
   })
 
   // A lead's own unpaid Supabase bills, for the Billing link's number.
@@ -359,7 +350,6 @@ export function AppShell({ children }: { children: ReactNode }) {
       <CallProvider>
         <CallBar />
         <div className="relative isolate flex h-screen overflow-hidden">
-          {user && !onMessages && <OnlineUsers />}
           {/* Contributors: the countdown to today's attendance closing, until they've filed. */}
           {user && <AttendanceBomb />}
           {menuOpen && !docked && (
@@ -523,7 +513,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </header>
 
             <main
-              className={`relative flex-1 overflow-y-auto px-3 py-4 [scrollbar-width:none] sm:px-6 sm:py-6 [&::-webkit-scrollbar]:hidden ${user && !onMessages && messagingEnabled ? 'lg:pr-20' : ''}`}
+              className={`relative flex-1 overflow-y-auto px-3 py-4 [scrollbar-width:none] sm:px-6 sm:py-6 [&::-webkit-scrollbar]:hidden`}
             >
               {/* Tasks saved on this device while offline, until they're sent. */}
               <OfflineQueueBanner />

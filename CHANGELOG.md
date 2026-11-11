@@ -14,6 +14,29 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Removed
+
+- **Running tasks card on the leads' and admins' Dashboard.** Tasks in progress are still in the
+  Task Log (Status: In Progress), with their timers.
+- **Daily submission report table on the Dashboard.** The same numbers are still in the charts
+  above it and in Export → Daily report.
+- **Chat heads down the right edge** (the online people's bubbles, the "..." menu and the compose
+  button). Messages are still under Team → Messages and the chat button at the top. Pages no
+  longer re-download everyone's profile every two minutes for them, which keeps the Tracker lighter
+  on the database.
+- **"X submitted a task" pop-ups in leads' notifications.** Submissions are in the Task Log and on
+  the Dashboard. New requests still ring straight away.
+
+### Changed
+
+- **The Tracker asks the server for much less in the background:**
+  - The "online" check-in is every 3 minutes instead of every minute, so someone shows as online for
+    up to 6 minutes after they last had the Tracker open.
+  - Menu badges (Requests, Feedback, Announcements) stop refreshing while the tab is hidden or idle
+    and catch up when you come back.
+  - Team settings and the attendance closing time are re-read every 30 minutes instead of 5, and
+    the messages inbox every 15 (new messages still arrive instantly).
+
 ## 8.30.0 — 2026-11-11
 
 ### Added

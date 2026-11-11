@@ -125,7 +125,7 @@ const ALL_FEATURES_OFF: TeamFeatures = {
 
 /**
  * The features of `userId`'s team. Until it loads, everything is hidden, so a team that has
- * something off doesn't see it flash up first. Re-read every few minutes, so a lead's change is
+ * something off doesn't see it flash up first. Re-read every half hour, so a lead's change is
  * picked up without a reload. `loaded` says whether it's the real answer yet.
  */
 export function useTeamFeatures(userId: string | null | undefined): TeamFeatures & { loaded: boolean } {
@@ -134,7 +134,7 @@ export function useTeamFeatures(userId: string | null | undefined): TeamFeatures
     queryFn: () => fetchTeamFeaturesFor(userId!),
     enabled: Boolean(userId),
     staleTime: 60_000,
-    refetchInterval: 5 * 60_000,
+    refetchInterval: 30 * 60_000,
   })
   return { ...(data ?? ALL_FEATURES_OFF), loaded: isSuccess }
 }
