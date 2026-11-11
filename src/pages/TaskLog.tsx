@@ -9,6 +9,7 @@ import { useAuth } from '../lib/auth'
 import { formatTime, toISODate } from '../lib/week'
 import type { Paginated, Project, Stage, SubmissionStatus, TaskSubmission } from '../types'
 import { BackupFormFailed, StatusPill } from '../components/StatusPill'
+import { TaskTimer } from '../components/TaskTimer'
 import { Avatar } from '../components/Avatar'
 import { ActionsMenu } from '../components/ActionsMenu'
 import { Select } from '../components/Select'
@@ -314,6 +315,7 @@ function ManagerTaskLog() {
                 dir={sort.dir}
                 onClick={() => toggleSort('status')}
               />
+              <th className="px-5 py-3">Time</th>
               <SortableHeader
                 label="Date"
                 active={sort.key === 'date'}
@@ -326,7 +328,7 @@ function ManagerTaskLog() {
           <tbody className="divide-y divide-gray-100">
             {isLoading && (
               <tr>
-                <td colSpan={4} className="px-5 py-6 text-center text-gray-400">
+                <td colSpan={5} className="px-5 py-6 text-center text-gray-400">
                   Loading...
                 </td>
               </tr>
@@ -365,6 +367,10 @@ function ManagerTaskLog() {
                     )}
                     <BackupFormFailed task={row} />
                   </div>
+                </td>
+                {/* Time on the task's timer, ticking while it runs. Started and paused from the task itself, not here. */}
+                <td className="px-5 py-3">
+                  <TaskTimer task={row} canControl={false} />
                 </td>
                 <td className="px-5 py-3 text-gray-500">
                   {row.date?.slice(0, 10) ?? '—'}
