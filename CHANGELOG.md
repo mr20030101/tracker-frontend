@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.27.0 — 2026-11-11
+
 ### Added
 
 - **Terms and Conditions page** at /terms, linked from the footer next to Privacy: accounts, logging
