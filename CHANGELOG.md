@@ -14,6 +14,19 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.32.0 — 2026-11-11
+
+### Changed
+
+- **New light theme colours: Bone White, Charcoal Black and Barber Red.** The light theme's yellow
+  is now barber red (#B3261E) for buttons, the selected menu item, links, highlights and chart
+  lines; pages are bone white (#EDE6D8) and text and the sidebar are charcoal (#1C1C1C). Dark,
+  Black and Neon themes are unchanged.
+- **The sidebar slides in and out around Messages.** On a computer, going to Messages slides the
+  sidebar off the left edge, and leaving Messages slides it back in, instead of it popping in and
+  out. It keeps its size while it moves, and the page fades in at its new width as on any page
+  change, so nothing squeezes or re-wraps mid-way.
+
 ## 8.31.1 — 2026-11-11
 
 ### Fixed

@@ -301,7 +301,7 @@ export function Dashboard() {
                 </div>
                 <LineChart
                   data={dailyReport.map((day) => ({ date: day.date, value: day.tasks_submitted }))}
-                  color="#e0a91f"
+                  color="accent"
                   unitLabel="submitted tasks"
                 />
               </div>

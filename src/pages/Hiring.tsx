@@ -65,9 +65,9 @@ const STATUS_LABELS = {
 } as Record<StatusFilter, string>
 const STAGE_STYLES: Record<PipelineStage, string> = {
   pending: 'bg-status-warning-bg text-status-warning-text',
-  to_email: 'bg-accent-bg text-accent-foreground',
-  needs_account: 'bg-accent-bg text-accent-foreground',
-  onboarding: 'bg-accent-bg text-accent-foreground',
+  to_email: 'bg-accent-bg text-accent-on-bg',
+  needs_account: 'bg-accent-bg text-accent-on-bg',
+  onboarding: 'bg-accent-bg text-accent-on-bg',
   onboarded: 'bg-status-success-bg text-status-success-text',
   denied: 'bg-status-danger-bg text-status-danger-text',
 }

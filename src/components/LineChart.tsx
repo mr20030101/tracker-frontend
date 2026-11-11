@@ -20,16 +20,18 @@ interface Point {
 
 interface Props {
   data: Point[]
-  // A hex colour, or 'ink' for the theme's text colour (near-black, or near-white on dark).
+  // A hex colour, 'ink' for the theme's text colour (near-black, or near-white on dark), or
+  // 'accent' for the theme's accent (barber red, or honey on dark).
   color: string
   unitLabel: string
 }
 
 export function LineChart({ data, color: colorProp, unitLabel }: Props) {
   const { mode: theme } = useTheme()
-  const color = colorProp === 'ink' ? (theme === 'dark' ? '#f4f2ec' : '#1d1d1b') : colorProp
-  const tickColor = theme === 'dark' ? '#8f8c83' : '#858177'
-  const gridColor = theme === 'dark' ? '#36352f' : '#efece4'
+  const color =
+    colorProp === 'ink' ? (theme === 'dark' ? '#f4f2ec' : '#1c1c1c') : colorProp === 'accent' ? (theme === 'dark' ? '#e0a91f' : '#b3261e') : colorProp
+  const tickColor = theme === 'dark' ? '#8f8c83' : '#7d766a'
+  const gridColor = theme === 'dark' ? '#36352f' : '#e4dccc'
   const labels = data.map((p) => p.date.slice(5))
 
   const chartData = {
@@ -43,7 +45,7 @@ export function LineChart({ data, color: colorProp, unitLabel }: Props) {
         pointRadius: 0,
         pointHoverRadius: 4,
         pointHoverBackgroundColor: color,
-        pointHoverBorderColor: theme === 'dark' ? '#252523' : '#fffdf8',
+        pointHoverBorderColor: theme === 'dark' ? '#252523' : '#fbf8f2',
         pointHoverBorderWidth: 1.5,
         borderWidth: 2,
       },

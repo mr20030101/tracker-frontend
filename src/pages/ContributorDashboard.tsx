@@ -188,7 +188,7 @@ export function ContributorDashboard() {
               <button
                 type="button"
                 onClick={() => setSubmitting(true)}
-                className="inline-flex h-11 items-center gap-1.5 rounded-full bg-accent px-5 text-sm font-semibold text-accent-foreground transition-colors duration-100 hover:bg-accent-bg"
+                className="inline-flex h-11 items-center gap-1.5 rounded-full bg-accent px-5 text-sm font-semibold text-accent-foreground transition-colors duration-100 hover:bg-accent-hover"
               >
                 <Plus className="h-4 w-4" aria-hidden />
                 Submit a Task

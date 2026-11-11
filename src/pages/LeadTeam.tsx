@@ -181,7 +181,7 @@ export function LeadTeam() {
               <h1 className="flex items-center gap-2 text-3xl font-medium sm:text-4xl text-gray-900">
                 <FoldText text={lead.name} />
               </h1>
-              <span className="rounded-full bg-accent-bg px-2.5 py-0.5 text-xs font-semibold capitalize text-accent-foreground">
+              <span className="rounded-full bg-accent-bg px-2.5 py-0.5 text-xs font-semibold capitalize text-accent-on-bg">
                 {lead.role}
               </span>
               {!lead.is_active && (

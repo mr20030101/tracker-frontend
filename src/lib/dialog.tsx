@@ -112,7 +112,7 @@ function Dialog({ request, onDone }: { request: DialogRequest; onDone: (confirme
       >
         <div
           className={`mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full ${
-            request.danger ? 'bg-status-danger-bg text-status-danger-text' : 'bg-accent-bg text-accent-foreground'
+            request.danger ? 'bg-status-danger-bg text-status-danger-text' : 'bg-accent-bg text-accent-on-bg'
           }`}
         >
           <Icon className="h-6 w-6" />

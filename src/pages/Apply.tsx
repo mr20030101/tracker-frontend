@@ -213,7 +213,7 @@ function PersonalStep({
           className={`${FULL_ROW} rounded-xl px-3 py-2 text-center text-sm ${
             highlightSignup
               ? 'login-shake bg-status-warning-bg font-medium text-status-warning-text ring-2 ring-status-warning-text'
-              : 'bg-accent-bg/60 text-accent-foreground'
+              : 'bg-accent-bg/60 text-accent-on-bg'
           }`}
         >
           No Remotasks account yet?{' '}

@@ -29,7 +29,7 @@ export function BrowserExtensionCard() {
   return (
     <section className="mb-6 overflow-hidden card">
       <div className="flex flex-wrap items-center gap-4 px-5 py-4">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent-bg text-accent-foreground">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent-bg text-accent-on-bg">
           <Puzzle className="h-5 w-5" aria-hidden />
         </div>
         <div className="min-w-0 flex-1">

@@ -27,38 +27,41 @@
 
   --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
 
-  /* Warm neutrals: every gray-* and white in the app takes these, so pages repaint without class changes. */
-  --color-white: #fffdf8;
-  --color-gray-50: #f5f3ee;
-  --color-gray-100: #efece4;
-  --color-gray-200: #e3dfd4;
-  --color-gray-300: #d2cdc1;
-  --color-gray-400: #858177;
-  --color-gray-500: #75726a;
-  --color-gray-600: #5c5a54;
-  --color-gray-700: #45433e;
-  --color-gray-800: #2e2d2a;
-  --color-gray-900: #1d1d1b;
+  /* Light palette: Bone White (#ede6d8) page, Charcoal Black (#1c1c1c) text, Barber Red accent.
+     Every gray-* and white in the app takes these, so pages repaint without class changes. */
+  --color-white: #fbf8f2;
+  --color-gray-50: #ede6d8;
+  --color-gray-100: #e4dccc;
+  --color-gray-200: #d9d0be;
+  --color-gray-300: #c7bdaa;
+  --color-gray-400: #7d766a;
+  --color-gray-500: #6c665c;
+  --color-gray-600: #55514a;
+  --color-gray-700: #3f3c37;
+  --color-gray-800: #2a2927;
+  --color-gray-900: #1c1c1c;
 
-  /* Links: honey-brown instead of blue, so the only colour on the page is the accent family. */
-  --color-sky-100: #fbefc9;
-  --color-sky-600: #8a6206;
-  --color-sky-700: #74520a;
-  --color-sky-800: #5a4306;
+  /* Links: barber red instead of blue, so the only colour on the page is the accent family. */
+  --color-sky-100: #f9e1de;
+  --color-sky-600: #b3261e;
+  --color-sky-700: #951f19;
+  --color-sky-800: #771913;
 
   /* Strong neutral fill (dark buttons, selected tabs, the hero's dark meter): near-black on light, soft cream on dark. */
-  --color-ink: #1d1d1b;
-  --color-ink-foreground: #f5f3ee;
+  --color-ink: #1c1c1c;
+  --color-ink-foreground: #ede6d8;
 
-  --color-night: #252523;
-  --color-night-2: #34332f;
+  --color-night: #1c1c1c;
+  --color-night-2: #2c2b29;
   --color-night-ink: #f4f2ec;
   --color-night-dim: #a9a69c;
 
-  --color-accent: #f6c343;
-  --color-accent-foreground: #4a3705;
-  --color-accent-bg: #fbe29a;
-  --color-accent-text: #8a6206;
+  --color-accent: #b3261e;
+  --color-accent-foreground: #fffdf8;
+  --color-accent-bg: #f6d6d2;
+  --color-accent-text: #b3261e;
+  --color-accent-hover: #951f19;
+  --color-accent-on-bg: #8f1d17;
 
   --color-status-success-bg: #e6f0e4;
   --color-status-success-text: #3f7f52;
@@ -66,7 +69,7 @@
   --color-status-warning-text: #a35e10;
   --color-status-danger-bg: #f9e7e1;
   --color-status-danger-text: #b03a24;
-  --color-status-neutral-bg: #efece4;
+  --color-status-neutral-bg: #e4dccc;
   --color-status-neutral-text: #5c5a54;
 
   --shadow-card: 0 1px 2px #3c32140f, 0 10px 22px -12px #3c321438;
@@ -92,7 +95,7 @@ body {
 }
 
 :root {
-  --app-glow: #fbeec0;
+  --app-glow: #e9cfc3;
 }
 
 :root[data-theme='dark'] {
@@ -146,7 +149,10 @@ main h1 {
     --color-night-2: #2c2b28;
 
     --color-accent: #f6c343;
+    --color-accent-foreground: #4a3705;
     --color-accent-bg: #f2c64e;
+    --color-accent-hover: #f2c64e;
+    --color-accent-on-bg: #4a3705;
     --color-accent-text: #f6c343;
 
     --color-status-success-bg: #18241a;
@@ -187,7 +193,10 @@ main h1 {
   --color-night-2: #2c2b28;
 
   --color-accent: #f6c343;
+  --color-accent-foreground: #4a3705;
   --color-accent-bg: #f2c64e;
+  --color-accent-hover: #f2c64e;
+  --color-accent-on-bg: #4a3705;
   --color-accent-text: #f6c343;
 
   --color-status-success-bg: #18241a;
@@ -264,6 +273,8 @@ main h1 {
   --color-accent: #39ff14;
   --color-accent-foreground: #041a00;
   --color-accent-bg: #39ff14;
+  --color-accent-hover: #39ff14;
+  --color-accent-on-bg: #041a00;
   --color-accent-text: #39ff14;
   --color-status-neutral-bg: #151b16;
   --color-status-neutral-text: #bcc7bd;

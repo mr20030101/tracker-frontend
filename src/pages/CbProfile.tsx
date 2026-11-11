@@ -284,7 +284,7 @@ export function CbProfile() {
               <FoldText text={displayName} />
             </h1>
             {data.user && (
-              <span className="rounded-full bg-accent-bg px-3 py-1 text-xs font-medium capitalize text-accent-foreground">
+              <span className="rounded-full bg-accent-bg px-3 py-1 text-xs font-medium capitalize text-accent-on-bg">
                 {data.user.role}
               </span>
             )}

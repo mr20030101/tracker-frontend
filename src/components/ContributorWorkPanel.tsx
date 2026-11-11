@@ -621,7 +621,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                 <div className="text-sm font-semibold text-gray-700">Submission Trend</div>
                 <span className="text-xs text-gray-400">last {TREND_DAYS} days</span>
               </div>
-              <LineChart data={trendData} color="#e0a91f" unitLabel="submitted" />
+              <LineChart data={trendData} color="accent" unitLabel="submitted" />
             </div>
           </div>
 

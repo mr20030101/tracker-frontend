@@ -126,7 +126,7 @@ export function SubmitButton({
       type="submit"
       aria-busy={pending}
       onClick={(e) => pending && e.preventDefault()}
-      className="mt-2 inline-flex h-12 items-center justify-center gap-1.5 rounded-full bg-accent px-5 text-sm font-semibold text-accent-foreground transition-colors duration-150 hover:bg-accent-bg"
+      className="mt-2 inline-flex h-12 items-center justify-center gap-1.5 rounded-full bg-accent px-5 text-sm font-semibold text-accent-foreground transition-colors duration-150 hover:bg-accent-hover"
     >
       {Icon && <Icon className="h-4 w-4" aria-hidden />}
       {pending ? pendingLabel : label}
