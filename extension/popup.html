@@ -138,10 +138,11 @@
       <!-- Requests -->
       <main id="tab-requests" class="panel stack" hidden>
         <form id="request" class="card stack">
-          <div class="card-title">Extension or reclaim</div>
+          <div class="card-title">Task request</div>
           <div class="chips chips-wide" role="radiogroup">
             <label class="chip"><input type="radio" name="request-type" value="extension" checked /> Extension</label>
             <label class="chip"><input type="radio" name="request-type" value="reclaim" /> Reclaim</label>
+            <label id="request-unclaim" class="chip" hidden><input type="radio" name="request-type" value="unclaim" /> Unclaim</label>
           </div>
           <p id="request-help" class="muted small"></p>
           <label class="field">

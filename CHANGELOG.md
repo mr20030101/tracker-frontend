@@ -14,6 +14,14 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Added
+
+- **Unclaim in the browser extension (Octet Mind):** the Requests tab offers Unclaim next to
+  Extension and Reclaim when the task is an Octet Mind one. Send records it and opens the TASK
+  ISSUES form with **Other: Unclaim** picked as the issue and your details filled in. Leads see it
+  in Requests as Unclaim, already filed. Extension v1.6.0. Needs
+  `20261111_unclaim_request.sql`.
+
 ## 8.25.0 — 2026-11-11
 
 ### Added

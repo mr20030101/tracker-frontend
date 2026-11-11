@@ -56,11 +56,12 @@ const STATUS_STYLES: Record<RequestStatus, string> = {
   denied: 'bg-status-danger-bg text-status-danger-text',
 }
 
-const TYPE_FILTERS: TypeFilter[] = ['all', 'extension', 'reclaim', 'bad_video']
-const TYPE_LABELS: Record<TypeFilter, string> = { all: 'All types', extension: 'Extension', reclaim: 'Reclaim', bad_video: 'Bad Video' }
+const TYPE_FILTERS: TypeFilter[] = ['all', 'extension', 'reclaim', 'unclaim', 'bad_video']
+const TYPE_LABELS: Record<TypeFilter, string> = { all: 'All types', extension: 'Extension', reclaim: 'Reclaim', unclaim: 'Unclaim', bad_video: 'Bad Video' }
 const TYPE_STYLES: Record<RequestType, string> = {
   extension: 'bg-sky-100 text-sky-700',
   reclaim: 'bg-amber-100 text-amber-700',
+  unclaim: 'bg-gray-100 text-gray-700',
   bad_video: 'bg-violet-100 text-violet-700',
 }
 
@@ -261,7 +262,7 @@ export function Requests() {
           </>
         ) : (
           <>
-            {request.type !== 'bad_video' && (
+            {(request.type === 'extension' || request.type === 'reclaim') && (
               <button
                 onClick={() => {
                   setRevisingRequest({ request, mode: 'edit' })
@@ -288,7 +289,7 @@ export function Requests() {
         ))}
         {/* A denied extension/reclaim can be sent again, unless a newer one for that task is already waiting. */}
         {request.status === 'denied' &&
-          request.type !== 'bad_video' &&
+          (request.type === 'extension' || request.type === 'reclaim') &&
           request.requested_by === user?.id &&
           !requests.some((r) => r.task_submission_id === request.task_submission_id && r.type === request.type && r.status === 'pending') && (
             <button

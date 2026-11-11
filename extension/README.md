@@ -32,7 +32,8 @@ profile.
   tracker.
   **Octet Mind** tasks are filed by you, not your lead, on the TASK ISSUES form: Send records the
   request and opens the form in a new tab with your details filled in, at any time of day. Pick
-  the reason category there and submit it.
+  the reason category there and submit it. Octet Mind tasks also get **Unclaim**, which fills the
+  form's issue as **Other: Unclaim**.
 
 Nothing is read from or sent to Remotasks: the extension only talks to the tracker.
 

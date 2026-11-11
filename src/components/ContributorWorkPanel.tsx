@@ -451,10 +451,12 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                             ? 'bg-sky-100 text-sky-700'
                             : request.type === 'reclaim'
                               ? 'bg-amber-100 text-amber-700'
-                              : 'bg-violet-100 text-violet-700'
+                              : request.type === 'unclaim'
+                                ? 'bg-gray-100 text-gray-700'
+                                : 'bg-violet-100 text-violet-700'
                         }`}
                       >
-                        {request.type === 'extension' ? 'Extension' : request.type === 'reclaim' ? 'Reclaim' : 'Bad Video'}
+                        {request.type === 'extension' ? 'Extension' : request.type === 'reclaim' ? 'Reclaim' : request.type === 'unclaim' ? 'Unclaim' : 'Bad Video'}
                       </span>
                       <span className="font-mono font-medium text-gray-900">
                         {submission?.task_id ?? `Submission #${request.task_submission_id}`}
@@ -516,7 +518,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                         </>
                       ) : (
                         <>
-                          {request.type !== 'bad_video' && submission && (
+                          {(request.type === 'extension' || request.type === 'reclaim') && submission && (
                             <button
                               onClick={() => setRequestingExtensionFor({ submission, type: request.type, mode: 'edit', request })}
                               className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50"

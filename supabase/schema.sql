@@ -142,7 +142,7 @@ create or replace function public.task_requests_require_reason()
 returns trigger language plpgsql set search_path = public
 as $$
 begin
-  if new.type in ('extension', 'reclaim') and trim(coalesce(new.reason, '')) = '' then
+  if new.type in ('extension', 'reclaim', 'unclaim') and trim(coalesce(new.reason, '')) = '' then
     raise exception 'Please give a reason for this request.';
   end if;
   return new;
@@ -158,7 +158,7 @@ create trigger task_requests_require_reason before insert on public.task_request
 -- Replaced explicitly because `add column if not exists` above won't touch an existing check.
 alter table public.task_requests drop constraint if exists task_requests_type_check;
 alter table public.task_requests add constraint task_requests_type_check
-  check (type in ('extension', 'reclaim', 'bad_video'));
+  check (type in ('extension', 'reclaim', 'unclaim', 'bad_video'));
 
 -- Only one open request per submission *per type* at a time — resolve (or withdraw) the current
 -- one before asking again. Scoped by type (not just submission) so a pending extension request

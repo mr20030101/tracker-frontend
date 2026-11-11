@@ -326,13 +326,20 @@ async function taskRequests(input) {
   const found = await findOwnRow(taskId, profile.id)
   if (found.taken) return { requests: [], note: 'This task was logged by someone else.' }
   if (!found.row) return { requests: [], note: 'This task isn’t in the tracker yet. Start it on the Timer tab first.' }
-  const requests = await rest(
-    `task_requests?task_submission_id=eq.${found.row.id}&type=in.(extension,reclaim)&select=id,type,status,reason,requested_at&order=requested_at.desc`,
-  )
-  return { requests }
+  const [requests, project] = await Promise.all([
+    rest(`task_requests?task_submission_id=eq.${found.row.id}&type=in.(extension,reclaim,unclaim)&select=id,type,status,reason,requested_at&order=requested_at.desc`),
+    projectOf(found.row),
+  ])
+  return { requests, selfFiles: selfFilesRequests(project) }
 }
 
-// Octet Mind's extensions and reclaims are filed by the contributor on its TASK ISSUES form, not
+async function projectOf(row) {
+  if (!row.project_id) return null
+  const [project] = await rest(`projects?id=eq.${row.project_id}&select=name,code`)
+  return project ?? null
+}
+
+// Octet Mind's extensions, reclaims and unclaims are filed by the contributor on its TASK ISSUES form, not
 // sent to the lead: the same rule as timeRequestFormFor() in the tracker (src/lib/taskRequests.ts).
 const TASK_ISSUES_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSdSToZndSe2yOh2bp2aGT07RByEwWsG-K_7Dih3J6oias5XRA/viewform'
 
@@ -347,20 +354,26 @@ function taskIssuesFormUrl({ type, taskId, email, remotasksId, reason }) {
   if (taskId) query.set('entry.386497914', taskId)
   if (remotasksId) query.set('entry.673063933', remotasksId)
   if (email) query.set('entry.899316383', email)
-  query.set('entry.1173139433', type === 'reclaim' ? 'Reclaim' : 'Extend')
+  if (type === 'unclaim') {
+    query.set('entry.1173139433', '__other_option__')
+    query.set('entry.1173139433.other_option_response', 'Unclaim')
+  } else {
+    query.set('entry.1173139433', type === 'reclaim' ? 'Reclaim' : 'Extend')
+  }
   if (reason) query.set('entry.1706519998', reason)
   query.set('entry.949669351', 'REMOTE - BOOTCAMP')
   return `${TASK_ISSUES_FORM_URL}?${query}`
 }
 
 async function sendRequest(input, type, reason) {
-  if (!['extension', 'reclaim'].includes(type)) throw new Error('Choose Extension or Reclaim.')
+  if (!['extension', 'reclaim', 'unclaim'].includes(type)) throw new Error('Choose Extension, Reclaim or Unclaim.')
   if (!String(reason ?? '').trim()) throw new Error('Give a reason.')
   const { profile, row } = await requestableRow(input)
   if (!REQUESTABLE_STATUSES.includes(row.status)) throw new Error('Requests are only for tasks that are in progress or expired.')
 
-  const [project] = row.project_id ? await rest(`projects?id=eq.${row.project_id}&select=name,code`) : []
-  if (selfFilesRequests(project)) {
+  const selfFiles = selfFilesRequests(await projectOf(row))
+  if (type === 'unclaim' && !selfFiles) throw new Error('Unclaim is only for Octet Mind tasks.')
+  if (selfFiles) {
     // Recorded first (file_own_task_request in 20261110_self_filed_task_issues.sql), then the form
     // opens in a new tab, which closes this popup.
     await rest('rpc/file_own_task_request', { method: 'POST', body: { p_submission_id: row.id, p_type: type, p_reason: reason.trim() } })

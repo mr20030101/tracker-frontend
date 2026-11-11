@@ -7,10 +7,13 @@ const REQUEST_STATUS = {
 const REQUEST_HELP = {
   extension: 'More time on a task before it’s marked expired. Octet Mind: you file it yourself on the TASK ISSUES form, which opens next.',
   reclaim: 'Get a task back that was taken or expired. Octet Mind: you file it yourself on the TASK ISSUES form, which opens next.',
+  unclaim: 'Release an Octet Mind task from your queue. You file it yourself on the TASK ISSUES form, which opens next.',
 }
+const REQUEST_LABELS = { extension: 'Extension', reclaim: 'Reclaim', unclaim: 'Unclaim' }
 const REASON_PLACEHOLDERS = {
   extension: 'Why do you need more time?',
   reclaim: 'Why does this task need to be reclaimed?',
+  unclaim: 'Why are you unclaiming this task?',
 }
 // Minutes a task has on Remotasks before it expires, from when it was started: the countdown on the task card.
 const EXPIRY_MINUTES = { attempt: 90, l1: 90, l10: 90, l0: 120 }
@@ -192,7 +195,13 @@ async function renderRequests() {
   }
   // A slower earlier load mustn't overwrite the list for the ID now in the box.
   if (taskId !== requestTaskId()) return
-  const { requests, note } = result
+  const { requests, note, selfFiles } = result
+  // Unclaim is Octet Mind only: offered once the task is known to be one.
+  $('request-unclaim').hidden = !selfFiles
+  if (!selfFiles && checkedValue('request-type') === 'unclaim') {
+    document.querySelector('input[name="request-type"][value="extension"]').checked = true
+    renderRequestType()
+  }
   if (requests.length === 0) {
     const li = document.createElement('li')
     li.className = 'list-empty'
@@ -207,7 +216,7 @@ async function renderRequests() {
       main.className = 'list-main'
       const title = Object.assign(document.createElement('div'), {
         className: 'list-title',
-        textContent: r.type === 'reclaim' ? 'Reclaim' : 'Extension',
+        textContent: REQUEST_LABELS[r.type] ?? r.type,
       })
       const when = new Date(r.requested_at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
       const meta = Object.assign(document.createElement('div'), { className: 'muted small truncate', textContent: `${when} · ${r.reason ?? ''}` })
