@@ -14,6 +14,18 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.35.0 — 2026-11-12
+
+### Added
+
+- Team Reports has an **Hours rendered** measure: each team's task-timer hours, week by week, in the chart, the table and the CSV export.
+- A contributor's profile Report shows a bar chart of hours rendered per day for the week or month, with a dashed line at their daily-hours goal (their lead or an admin).
+
+### Changed
+
+- A profile's shift and Meet link are small chips in the header, next to the profile views, instead of a full-width card. A blank shift isn't shown.
+- Buttons in confirm pop-ups keep their label on one line ("Log in as them" no longer wraps).
+
 ## 8.34.0 — 2026-11-12
 
 ### Changed

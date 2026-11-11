@@ -8,6 +8,7 @@ import { downloadCsv } from '../lib/csv'
 import { dailyHoursFor, formatHours, hoursRendered } from '../lib/hoursTarget'
 import { endOfMonth, endOfWeek, fromISODate, startOfMonth, startOfWeek, toISODate } from '../lib/week'
 import type { AttendanceHours, Project } from '../types'
+import { DailyHoursChart } from './DailyHoursChart'
 import { SegmentedTabs } from './TableToolbar'
 
 type Period = 'today' | 'week' | 'last-week' | 'month'
@@ -97,7 +98,8 @@ export function CbReport({ userId, email, leadId, name }: { userId: string; emai
   const rejected = tasks.filter((t) => t.status === 'rejected').length
   const expired = tasks.filter((t) => t.status === 'expired').length
   const hours = hoursRendered(tasks.map((t) => ({ timer_elapsed_seconds: t.timer_elapsed_seconds ?? 0, timer_started_at: t.timer_started_at })))
-  const goal = dailyHoursFor(userId, leadId, projects, projectLeads, assignments) * presentDays
+  const dailyHours = dailyHoursFor(userId, leadId, projects, projectLeads, assignments)
+  const goal = dailyHours * presentDays
   const loading = tasksLoading || attendanceLoading
 
   const rows = days.map((day) => {
@@ -165,6 +167,22 @@ export function CbReport({ userId, email, leadId, name }: { userId: string; emai
               <dd className="text-xs text-gray-500">{goal > 0 ? `${Math.round((hours / goal) * 100)}% of the goal for the days present` : 'No Hours / day set on their projects'}</dd>
             </div>
           </dl>
+
+          {rows.length > 1 && (
+            <div className="mt-4 rounded-lg border border-gray-200 px-4 py-3">
+              <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+                <p className="text-xs text-gray-500">Hours rendered per day</p>
+                {dailyHours > 0 && <p className="text-xs text-gray-400">Dashed line: {formatHours(dailyHours)} goal</p>}
+              </div>
+              <DailyHoursChart
+                days={[...rows].reverse().map((r) => ({
+                  label: fromISODate(r.day).toLocaleDateString(undefined, period === 'month' ? { day: 'numeric' } : { weekday: 'short' }),
+                  hours: r.hours,
+                }))}
+                target={dailyHours}
+              />
+            </div>
+          )}
 
           <div className="mt-4 overflow-x-auto">
             <table className="w-full min-w-[28rem] text-left text-sm">

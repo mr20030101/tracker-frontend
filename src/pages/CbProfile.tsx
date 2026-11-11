@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { FoldText } from '../components/FoldText'
 import { createPortal } from 'react-dom'
 import { Navigate, useParams, Link } from 'react-router-dom'
-import { ChevronDown, ChevronLeft, CircleDashed, Eye, MessageCircle, Pencil, Sparkles } from 'lucide-react'
+import { ChevronDown, ChevronLeft, CircleDashed, Clock, Eye, MessageCircle, Pencil, Sparkles, Video } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, functionErrorMessage, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
@@ -315,15 +315,37 @@ export function CbProfile() {
           {(isOwnProfile ? currentUser?.bio : data.user?.bio) && (
             <p className="mt-1 max-w-xl text-sm text-gray-600">{isOwnProfile ? currentUser?.bio : data.user?.bio}</p>
           )}
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+          {(leadShift || (!isOwnProfile && data.user?.shift?.trim())) && (
+            <span
+              className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600"
+              title={leadShift ? 'Extension and reclaim requests can be sent during this shift' : undefined}
+            >
+              <Clock className="h-3.5 w-3.5" aria-hidden />
+              {leadShift ? shiftLabel(leadShift) : data.user?.shift?.trim()}
+            </span>
+          )}
+          {data.user?.meet_link && (
+            <a
+              href={data.user.meet_link}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-sky-700 hover:bg-gray-200"
+            >
+              <Video className="h-3.5 w-3.5" aria-hidden />
+              Meet link
+            </a>
+          )}
           {viewCount.data && (
             <p
-              className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600"
+              className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600"
               title={`${viewCount.data.viewers} ${viewCount.data.viewers === 1 ? 'person has' : 'different people have'} viewed this profile`}
             >
               <Eye className="h-3.5 w-3.5" />
               {viewCount.data.views.toLocaleString()} profile {viewCount.data.views === 1 ? 'view' : 'views'}
             </p>
           )}
+          </div>
         </div>
         <div className="ml-auto flex items-center gap-2">
           {!isOwnProfile && contributorId && (
@@ -348,21 +370,6 @@ export function CbProfile() {
       </div>
 
 
-
-      {(leadShift || (!isOwnProfile && data.user?.shift)) && (
-        <div className="mb-6 card px-5 py-4 text-sm text-gray-600">
-          <span className="font-medium text-gray-700">Shift:</span> {leadShift ? shiftLabel(leadShift) : data.user?.shift}
-          {leadShift && <span className="ml-2 text-xs text-gray-400">Extension and reclaim requests can be sent during this shift</span>}
-          {data.user?.meet_link && (
-            <>
-              <span className="mx-2 text-gray-300">|</span>
-              <a href={data.user.meet_link} target="_blank" rel="noreferrer" className="text-sky-700 hover:underline">
-                Meet link
-              </a>
-            </>
-          )}
-        </div>
-      )}
 
       {/* A plain report for the lead or an admin: attendance, submissions and hours for a week or month. */}
       {canManageLevels && isContributorRole && !isOwnProfile && contributorId && (

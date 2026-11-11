@@ -47,6 +47,7 @@ export function TeamReports() {
           week_start: week.weekStart,
           tasks_submitted: week.submitted,
           active_contributors: week.active,
+          hours_rendered: week.hours,
           bad_video_reports: week.bad_videos,
         })),
       ),
@@ -162,7 +163,7 @@ export function TeamReports() {
                           change === 0 ? 'text-gray-400' : better ? 'text-status-success-text' : 'text-status-danger-text'
                         }`}
                       >
-                        {change > 0 ? `+${change}` : change}
+                        {change > 0 ? `+${Number(change.toFixed(1))}` : Number(change.toFixed(1))}
                       </td>
                     </tr>
                   )

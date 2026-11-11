@@ -1,6 +1,7 @@
 import { supabase } from './api'
 import { startOfWeek, toISODate, WEEK_LENGTH_DAYS } from './week'
 import { fetchAllPages } from './fetchAll'
+import { hoursRendered } from './hoursTarget'
 
 // Team Reports: each lead's team, week by week (Tuesday–Monday, Singapore time, like the rest of
 // the app). Worked out from the same tables the dashboard reads, so the numbers agree with it.
@@ -8,11 +9,12 @@ import { fetchAllPages } from './fetchAll'
 // A contributor's team is their lead as it is now; someone who moved team counts for their
 // current one in every week shown.
 
-export type TeamMetric = 'submitted' | 'active' | 'bad_videos'
+export type TeamMetric = 'submitted' | 'active' | 'hours' | 'bad_videos'
 
 export const TEAM_METRICS: { metric: TeamMetric; label: string; description: string }[] = [
   { metric: 'submitted', label: 'Tasks submitted', description: 'Tasks marked submitted in the week.' },
   { metric: 'active', label: 'Active contributors', description: 'Contributors who submitted at least one task in the week.' },
+  { metric: 'hours', label: 'Hours rendered', description: "Time on the team's task timers, by the task's date." },
   { metric: 'bad_videos', label: 'Bad-video reports', description: "Bad-video reports filed in the week about the team's tasks." },
 ]
 
@@ -20,6 +22,7 @@ export interface TeamWeek {
   weekStart: string
   submitted: number
   active: number
+  hours: number
   bad_videos: number
 }
 
@@ -64,11 +67,18 @@ export async function fetchTeamReports(weekCount: number, onlyLeadId: string | n
     supabase.from('profiles').select('id, email, lead_id, is_active').eq('role', 'contributor'),
     supabase.from('profiles').select('id, name').in('role', ['lead', 'admin']),
     // Paged: weeks of submissions are far more than the 1,000 rows one request returns.
-    fetchAllPages<{ user_id: string | null; cb_email: string | null; date: string | null }>((start, end) =>
+    // Every status, not just submitted: time on a task that later expired still counts as hours.
+    fetchAllPages<{
+      user_id: string | null
+      cb_email: string | null
+      date: string | null
+      status: string
+      timer_elapsed_seconds: number | null
+      timer_started_at: string | null
+    }>((start, end) =>
       supabase
         .from('task_submissions')
-        .select('user_id, cb_email, date')
-        .eq('status', 'submitted')
+        .select('user_id, cb_email, date, status, timer_elapsed_seconds, timer_started_at')
         .gte('date', from)
         .lte('date', to)
         .order('id')
@@ -97,11 +107,11 @@ export async function fetchTeamReports(weekCount: number, onlyLeadId: string | n
   const teamKey = (person: Contributor | undefined) => (person ? (person.lead_id ?? '') : null)
 
   // team key ('' = no lead) -> week start -> tallies
-  const tallies = new Map<string, Map<string, { submitted: number; active: Set<string>; bad_videos: number }>>()
+  const tallies = new Map<string, Map<string, { submitted: number; active: Set<string>; seconds: number; bad_videos: number }>>()
   const cell = (team: string, week: string) => {
     if (!tallies.has(team)) tallies.set(team, new Map())
     const weeks = tallies.get(team)!
-    if (!weeks.has(week)) weeks.set(week, { submitted: 0, active: new Set(), bad_videos: 0 })
+    if (!weeks.has(week)) weeks.set(week, { submitted: 0, active: new Set(), seconds: 0, bad_videos: 0 })
     return weeks.get(week)!
   }
 
@@ -111,6 +121,8 @@ export async function fetchTeamReports(weekCount: number, onlyLeadId: string | n
     const week = row.date ? weekOf(row.date, weekStarts) : null
     if (team === null || !week || !person) continue
     const tally = cell(team, week)
+    tally.seconds += hoursRendered([{ timer_elapsed_seconds: row.timer_elapsed_seconds ?? 0, timer_started_at: row.timer_started_at }]) * 3600
+    if (row.status !== 'submitted') continue
     tally.submitted += 1
     tally.active.add(person.id)
   }
@@ -133,7 +145,13 @@ export async function fetchTeamReports(weekCount: number, onlyLeadId: string | n
       contributors: people.filter((p) => p.is_active && (p.lead_id ?? '') === key).length,
       weeks: weekStarts.map((weekStart) => {
         const tally = tallies.get(key)?.get(weekStart)
-        return { weekStart, submitted: tally?.submitted ?? 0, active: tally?.active.size ?? 0, bad_videos: tally?.bad_videos ?? 0 }
+        return {
+          weekStart,
+          submitted: tally?.submitted ?? 0,
+          active: tally?.active.size ?? 0,
+          hours: Number(((tally?.seconds ?? 0) / 3600).toFixed(1)),
+          bad_videos: tally?.bad_videos ?? 0,
+        }
       }),
     }))
     // Teams with a lead first, by name; "No lead" last.
