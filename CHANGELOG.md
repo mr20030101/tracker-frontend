@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.31.0 — 2026-11-11
+
 ### Removed
 
 - **Running tasks card on the leads' and admins' Dashboard.** Tasks in progress are still in the
