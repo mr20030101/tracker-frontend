@@ -98,7 +98,7 @@ export interface TaskSubmission {
   updated_at?: string
 }
 
-export type RequestType = 'extension' | 'reclaim' | 'bad_video'
+export type RequestType = 'extension' | 'reclaim' | 'unclaim' | 'bad_video'
 export type RequestStatus = 'pending' | 'approved' | 'denied'
 
 interface BaseTaskRequest {
@@ -127,6 +127,13 @@ export interface ReclaimTaskRequest extends BaseTaskRequest {
   remotasks_id: string | null
 }
 
+// An Octet Mind contributor releasing a task from their queue, filed by themselves on TASK ISSUES
+// from the browser extension. Recorded already approved; a lead never acts on it.
+export interface UnclaimTaskRequest extends BaseTaskRequest {
+  type: 'unclaim'
+  remotasks_id: string | null
+}
+
 // A lead/admin flagging a claimed task's video as bad, needing validation/removal
 // (the ALOHA | URSA | YAM QA flow) — same pending/approved/denied lifecycle as an
 // extension request, but not self-service and not tied to team attachment.
@@ -138,7 +145,7 @@ export interface BadVideoTaskRequest extends BaseTaskRequest {
   bad_video_workforce_name: string
 }
 
-export type TaskRequest = ExtensionTaskRequest | ReclaimTaskRequest | BadVideoTaskRequest
+export type TaskRequest = ExtensionTaskRequest | ReclaimTaskRequest | UnclaimTaskRequest | BadVideoTaskRequest
 
 // A contributor's report of the feedback they got on a task, which their lead checks and marks
 // valid (the feedback holds up) or invalid (it doesn't).

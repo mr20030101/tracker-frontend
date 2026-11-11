@@ -28,7 +28,7 @@ const REQUEST_SELECT =
 /** One page of requests (25), newest first, filtered by status and type on the server. */
 export async function fetchTaskRequestsPage(params: {
   status: RequestStatus | 'all'
-  type: 'extension' | 'reclaim' | 'bad_video' | 'all'
+  type: 'extension' | 'reclaim' | 'unclaim' | 'bad_video' | 'all'
   page: number
   pageSize: number
 }): Promise<{ rows: TaskRequestWithContext[]; total: number }> {
@@ -42,7 +42,7 @@ export async function fetchTaskRequestsPage(params: {
 }
 
 /** How many requests there are in each status (and overall), counted on the server without the rows. */
-export async function fetchRequestStatusCounts(type: 'extension' | 'reclaim' | 'bad_video' | 'all'): Promise<Record<RequestStatus | 'all', number>> {
+export async function fetchRequestStatusCounts(type: 'extension' | 'reclaim' | 'unclaim' | 'bad_video' | 'all'): Promise<Record<RequestStatus | 'all', number>> {
   const countFor = async (status: RequestStatus | 'all') => {
     let query = supabase.from('task_requests').select('id', { count: 'exact', head: true })
     if (status !== 'all') query = query.eq('status', status)
