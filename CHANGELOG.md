@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.24.4 — 2026-11-11
+
 ### Changed
 
 - **Contributors no longer have the Attendance page.** It's gone from their menu, and the address takes them to their Dashboard. They file attendance as before, from the Dashboard button and the attendance countdown. Leads and admins keep the page.
