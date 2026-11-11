@@ -14,6 +14,24 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.27.0 — 2026-11-11
+
+### Added
+
+- **Terms and Conditions page** at /terms, linked from the footer next to Privacy: accounts, logging
+  work honestly, forms filed for you, the browser extension, job applications and availability.
+- **The Apply form links the Terms and Privacy Policy** under Submit application.
+
+### Changed
+
+- **No more red "No submissions logged yet this week" banner on a contributor's profile.** Leads and
+  admins see a small grey "No tasks this week" tag next to the contributor's name instead.
+- **The Privacy Policy is up to date with the Tracker.** It now covers job applications (and the
+  Philippines-only and Turnstile checks), the on-device face check on attendance photos, the Google
+  Forms the team files work on (attendance, Back Up Task Tracker, request and report forms), the
+  browser extension, messages and voice calls, what's kept in your browser, and Cloudflare, Resend and
+  Vercel Speed Insights among the services.
+
 ## 8.26.1 — 2026-11-11
 
 ### Fixed
