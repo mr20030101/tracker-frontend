@@ -23,6 +23,7 @@ import { DataQuality } from './pages/DataQuality'
 import { Audits } from './pages/Audits'
 import { TeamReports } from './pages/TeamReports'
 import { ActivityLog } from './pages/ActivityLog'
+import { Billing } from './pages/Billing'
 import { Apply } from './pages/Apply'
 import { Hiring } from './pages/Hiring'
 import { Requests } from './pages/Requests'
@@ -76,6 +77,7 @@ function ProtectedLayout() {
         {isManager && <Route path="/audits" element={<Audits />} />}
         {isManager && <Route path="/team-reports" element={<TeamReports />} />}
         {isAdmin && <Route path="/activity-log" element={<ActivityLog />} />}
+        {isAdmin && <Route path="/billing" element={<Billing />} />}
         {isAdmin && <Route path="/leads/:leadId" element={<LeadTeam />} />}
         <Route path="*" element={<NotFound />} />
       </Routes>

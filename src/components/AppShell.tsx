@@ -22,6 +22,7 @@ import {
   X,
   type LucideIcon,
   UserCog,
+  ReceiptText,
 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { prefersReducedMotion } from '../lib/motion'
@@ -109,6 +110,7 @@ function navSections(
           { to: '/leads', label: isAdmin ? 'Leads' : 'Team settings', icon: UserCog },
           { to: '/projects', label: 'Projects', icon: FolderKanban },
           { to: '/hiring', label: 'Hiring', icon: UserPlus },
+          ...(isAdmin ? [{ to: '/billing', label: 'Billing', icon: ReceiptText }] : []),
         ]
         : [
           ...(messagingEnabled ? [{ to: '/messages', label: 'Messages', icon: MessageCircle }] : []),
@@ -161,6 +163,7 @@ const CRUMBS: Record<string, string> = {
   '/data-quality': 'Data Quality',
   '/team-reports': 'Team Reports',
   '/activity-log': 'Activity Log',
+  '/billing': 'Billing',
   '/resources': 'Resources',
   '/announcements': 'Announcements',
   '/users': 'Contributors',
