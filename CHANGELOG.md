@@ -14,6 +14,22 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.33.0 — 2026-11-11
+
+### Added
+
+- **Log in as (admins).** On the Contributors and Leads pages, an admin can pick **Log in as** in a
+  person's actions menu to see the Tracker exactly as they do. A bar at the bottom of every page
+  says who you're logged in as, with **Return to my account**; Log out does the same, and never
+  signs the person out on their own devices. Every use is recorded in the Activity Log (Accounts).
+  Admins can't be logged in as, nor can disabled accounts or ones still on a temporary password.
+
+### Changed
+
+- **Contributors' Leaderboard shows the top 10 and your place.** CBs now see the top 10 on their
+  team, and, if they're further down, a "Your place" row under it with their own rank. The same
+  goes for the Most Improved tab. Leads and admins still see the full board.
+
 ## 8.32.0 — 2026-11-11
 
 ### Changed

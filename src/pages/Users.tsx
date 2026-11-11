@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { FoldText } from '../components/FoldText'
 import { Link, useSearchParams } from 'react-router-dom'
-import { FileUp, KeyRound, Trash2, UserCheck, UserMinus, UserPlus, X, SlidersHorizontal } from 'lucide-react'
+import { FileUp, KeyRound, LogIn, Trash2, UserCheck, UserMinus, UserPlus, X, SlidersHorizontal } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ColumnDef, RowSelectionState } from '@tanstack/react-table'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
+import { alertDialog, confirmDialog } from '../lib/dialog'
+import { loginAs } from '../lib/loginAs'
 import { isOnline } from '../lib/presence'
 import type { Project, User } from '../types'
 import { Modal } from '../components/Modal'
@@ -549,6 +551,28 @@ export function Users({ view = 'cbs' }: { view?: 'cbs' | 'leads' }) {
                     icon: KeyRound,
                     onClick: () => openReset(u),
                   },
+                  ...(isAdmin && u.role !== 'admin' && !isSelf
+                    ? [
+                        {
+                          label: 'Log in as',
+                          icon: LogIn,
+                          disabled: !u.is_active,
+                          title: u.is_active ? undefined : 'Enable this account first.',
+                          onClick: async () => {
+                            const ok = await confirmDialog(
+                              `You'll see the Tracker exactly as ${u.name} does, and anything you do counts as them. It's recorded in the Activity Log. Use "Return to my account" at the bottom of the page to come back.`,
+                              { title: `Log in as ${u.name}?`, confirmLabel: 'Log in as them' },
+                            )
+                            if (!ok) return
+                            try {
+                              await loginAs(u.id)
+                            } catch (err) {
+                              await alertDialog(err instanceof Error ? err.message : "Couldn't log in as them.", { title: 'Not logged in' })
+                            }
+                          },
+                        },
+                      ]
+                    : []),
                   {
                     label: 'Delete',
                     icon: Trash2,

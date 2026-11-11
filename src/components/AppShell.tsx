@@ -35,6 +35,7 @@ import { Logo } from './Logo'
 import { NotificationBell } from './NotificationBell'
 import { MessagesButton } from './MessagesButton'
 import { AttendanceBomb } from './AttendanceBomb'
+import { LoginAsBar } from './LoginAsBar'
 import { GlobalSearch } from './GlobalSearch'
 import { contributorPath } from '../lib/urlRef'
 import { OVERDUE_HOURS, fetchOverdueRequestCount, fetchPendingRequestCount } from '../lib/taskRequests'
@@ -383,6 +384,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <MessagingProvider>
       <CallProvider>
         <CallBar />
+        <LoginAsBar />
         <div className="relative isolate flex h-screen overflow-hidden">
           {/* Contributors: the countdown to today's attendance closing, until they've filed. */}
           {user && <AttendanceBomb />}

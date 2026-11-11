@@ -18,6 +18,7 @@ export const AUDIT_CATEGORIES: { value: string; label: string; actions: string[]
       'role_changed',
       'lead_changed',
       'profile_renamed',
+      'logged_in_as',
     ],
   },
   { value: 'requests', label: 'Requests', actions: ['request_approved', 'request_denied'] },
