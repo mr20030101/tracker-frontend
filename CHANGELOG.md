@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.24.1 — 2026-11-11
+
 ### Added
 
 - **Task Log shows each task's time.** A Time column shows how long is on each task's timer, ticking while it runs.
