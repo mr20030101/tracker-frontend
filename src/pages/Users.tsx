@@ -7,7 +7,7 @@ import type { ColumnDef, RowSelectionState } from '@tanstack/react-table'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { isOnline } from '../lib/presence'
-import type { User } from '../types'
+import type { Project, User } from '../types'
 import { Modal } from '../components/Modal'
 import { Avatar } from '../components/Avatar'
 import { Combobox } from '../components/Combobox'
@@ -17,6 +17,7 @@ import { Select } from '../components/Select'
 import { SearchInput, SegmentedTabs, TableToolbar, toolbarControlClass } from '../components/TableToolbar'
 import { TeamSettings } from '../components/TeamSettings'
 import { ProjectTags } from '../components/ProjectTags'
+import { fetchProjectLeads } from '../lib/cbProjects'
 import { BulkImportUsersModal } from '../components/BulkImportUsersModal'
 import { contributorPath } from '../lib/urlRef'
 import { usePageTitle } from '../lib/usePageTitle'
@@ -91,6 +92,33 @@ export function Users({ view = 'cbs' }: { view?: 'cbs' | 'leads' }) {
   const leads = useMemo(() => (data ?? []).filter((u) => u.role === 'lead'), [data])
   const leadOptions = useMemo(() => leads.map((lead) => ({ value: lead.id, label: lead.name })), [leads])
   const leadNameById = useMemo(() => new Map((data ?? []).map((u) => [u.id, u.name])), [data])
+  // On the Leads page: each lead's contributors (active, online now, disabled) and projects.
+  const teamByLead = useMemo(() => {
+    const teams = new Map<string, { active: number; online: number; disabled: number }>()
+    for (const u of data ?? []) {
+      if (u.role !== 'contributor' || !u.lead_id) continue
+      const team = teams.get(u.lead_id) ?? { active: 0, online: 0, disabled: 0 }
+      if (u.is_active) team.active += 1
+      else team.disabled += 1
+      if (u.is_active && isOnline(u.last_seen_at)) team.online += 1
+      teams.set(u.lead_id, team)
+    }
+    return teams
+  }, [data])
+  const { data: allProjects = [] } = useQuery({
+    queryKey: ['projects'],
+    queryFn: async () => (await api.get<Project[]>('/projects')).data,
+    enabled: view === 'leads',
+  })
+  const { data: projectLeads = [] } = useQuery({ queryKey: ['project-leads', 'all'], queryFn: fetchProjectLeads, enabled: view === 'leads' })
+  const projectNamesByLead = useMemo(() => {
+    const names = new Map<string, string[]>()
+    for (const row of projectLeads) {
+      const name = allProjects.find((p) => p.id === row.project_id)?.name
+      if (name) names.set(row.lead_id, [...(names.get(row.lead_id) ?? []), name])
+    }
+    return names
+  }, [projectLeads, allProjects])
 
   // A lead only ever sees their own contributors, so the lead filter (and any stale ?lead= in the
   // URL) is admin-only, and only means something among CBs.
@@ -386,24 +414,68 @@ export function Users({ view = 'cbs' }: { view?: 'cbs' | 'leads' }) {
                 )
               },
             } satisfies ColumnDef<User, any>,
-            {
-              id: 'lead',
-              // Unassigned sorts first, so one click brings the logins that need a lead to the top.
-              accessorFn: (u: User) => (u.lead_id ? (leadNameById.get(u.lead_id) ?? '') : ''),
-              header: 'Lead',
-              cell: ({ row }) => {
-                const u = row.original
-                return (
-                  <Combobox
-                    value={u.lead_id ?? ''}
-                    onChange={(leadId) => leadMutation.mutate({ id: u.id, leadId: leadId || null })}
-                    options={leadOptions.filter((lead) => lead.value !== u.id)}
-                    placeholder="Search leads..."
-                    className="max-w-40"
-                  />
-                )
-              },
-            } satisfies ColumnDef<User, any>,
+            // A lead has no lead of their own: the Leads page shows their team instead.
+            ...(view === 'cbs'
+              ? [
+                {
+                  id: 'lead',
+                  // Unassigned sorts first, so one click brings the logins that need a lead to the top.
+                  accessorFn: (u: User) => (u.lead_id ? (leadNameById.get(u.lead_id) ?? '') : ''),
+                  header: 'Lead',
+                  cell: ({ row }) => {
+                    const u = row.original
+                    return (
+                      <Combobox
+                        value={u.lead_id ?? ''}
+                        onChange={(leadId) => leadMutation.mutate({ id: u.id, leadId: leadId || null })}
+                        options={leadOptions.filter((lead) => lead.value !== u.id)}
+                        placeholder="Search leads..."
+                        className="max-w-40"
+                      />
+                    )
+                  },
+                } satisfies ColumnDef<User, any>,
+                ]
+              : [
+                  {
+                    id: 'team',
+                    accessorFn: (u: User) => teamByLead.get(u.id)?.active ?? -1,
+                    header: 'CBs',
+                    cell: ({ row }) => {
+                      const team = row.original.role === 'lead' ? teamByLead.get(row.original.id) : undefined
+                      if (!team) return <span className="text-xs text-gray-300">—</span>
+                      return (
+                        <div className="text-sm">
+                          <Link to={`/users?lead=${row.original.id}`} className="font-medium text-gray-900 hover:underline">
+                            {team.active} {team.active === 1 ? 'CB' : 'CBs'}
+                          </Link>
+                          <div className="text-xs text-gray-500">
+                            {team.online} online{team.disabled > 0 ? ` · ${team.disabled} disabled` : ''}
+                          </div>
+                        </div>
+                      )
+                    },
+                  } satisfies ColumnDef<User, any>,
+                  {
+                    id: 'lead-projects',
+                    header: 'Projects',
+                    enableSorting: false,
+                    cell: ({ row }) => {
+                      const names = row.original.role === 'lead' ? (projectNamesByLead.get(row.original.id) ?? []) : null
+                      if (!names) return <span className="text-xs text-gray-300">—</span>
+                      if (names.length === 0) return <span className="text-xs text-gray-400">No projects</span>
+                      return (
+                        <div className="flex max-w-64 flex-wrap gap-1">
+                          {names.map((name) => (
+                            <span key={name} className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700">
+                              {name}
+                            </span>
+                          ))}
+                        </div>
+                      )
+                    },
+                  } satisfies ColumnDef<User, any>,
+                ]),
           ]
         : []),
       // Contributors' projects, from their lead's. Leads (on their own projects) and admins edit them.
@@ -495,7 +567,7 @@ export function Users({ view = 'cbs' }: { view?: 'cbs' | 'leads' }) {
         },
       },
     ],
-    [isAdmin, view, leadOptions, leadNameById, currentUser, roleMutation, leadMutation, toggleActiveMutation, deleteMutation],
+    [isAdmin, view, leadOptions, leadNameById, teamByLead, projectNamesByLead, currentUser, roleMutation, leadMutation, toggleActiveMutation, deleteMutation],
   )
 
   const bulkBusy = bulkMutation.isPending
