@@ -45,7 +45,7 @@ import { AppFooter } from './AppFooter'
 import { LogTabs } from './LogTabs'
 import { OfflineQueueBanner } from './OfflineQueueBanner'
 import { useTeamFeatures } from '../lib/teamFeatures'
-import { billStatus, fetchMyBilling, manilaToday } from '../lib/billing'
+import { billStatus, fetchLeadBills, fetchMyBilling, manilaToday } from '../lib/billing'
 
 const MANAGER_ROLES = ['admin', 'lead']
 
@@ -63,6 +63,8 @@ function navSections(
   // A lead's own unpaid Supabase bills, and whether any is past its due date.
   unpaidBills: number,
   overdueBills: boolean,
+  // For an admin, `unpaidBills` is the reported payments waiting to be confirmed.
+  billsAreReports: boolean,
 ): {
   label: string
   // `urgent`: the badge turns red with `badgeTitle` explaining why (overdue requests).
@@ -120,7 +122,11 @@ function navSections(
             icon: ReceiptText,
             badge: unpaidBills,
             urgent: overdueBills,
-            badgeTitle: overdueBills ? 'Your Supabase share is overdue' : `${unpaidBills} unpaid Supabase bill${unpaidBills === 1 ? '' : 's'}`,
+            badgeTitle: billsAreReports
+              ? `${unpaidBills} payment${unpaidBills === 1 ? '' : 's'} to confirm`
+              : overdueBills
+                ? 'Your Supabase share is overdue'
+                : `${unpaidBills} unpaid Supabase bill${unpaidBills === 1 ? '' : 's'}`,
           },
         ]
         : [
@@ -301,9 +307,18 @@ export function AppShell({ children }: { children: ReactNode }) {
     staleTime: 60_000,
     refetchInterval: 30 * 60_000,
   })
-  const unpaidBills = myBilling?.bills.filter((bill) => !bill.paidAt) ?? []
+  const unpaidBills = myBilling?.bills.filter((bill) => !bill.paidAt && !bill.reportedPaidAt) ?? []
   const today = manilaToday()
   const overdueBills = unpaidBills.some((bill) => billStatus(bill, today) === 'overdue')
+  // For an admin: payments leads reported that are waiting to be confirmed.
+  const { data: billsToConfirm = 0 } = useQuery({
+    queryKey: ['billing', 'bills'],
+    queryFn: fetchLeadBills,
+    enabled: isAdmin,
+    staleTime: 60_000,
+    refetchInterval: 10 * 60_000,
+    select: (bills) => bills.filter((bill) => !bill.paidAt && bill.reportedPaidAt).length,
+  })
 
   // Fade the page area in on each route change. Opacity only: a transform here
   // would become the containing block for the page's position: fixed modals.
@@ -321,7 +336,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const ownProfilePath = user ? contributorPath(user.email) : '/'
   const { attendanceEnabled, messagingEnabled } = useTeamFeatures(user?.id)
-  const sections = navSections(isManager, isAdmin, attendanceEnabled, messagingEnabled, pendingRequests, overdueRequests, pendingFeedback, unreadAnnouncements, unpaidBills.length, overdueBills)
+  const sections = navSections(isManager, isAdmin, attendanceEnabled, messagingEnabled, pendingRequests, overdueRequests, pendingFeedback, unreadAnnouncements, isAdmin ? billsToConfirm : unpaidBills.length, overdueBills, isAdmin)
   const isCurrent = (item: { to: string; match?: string[] }) => (item.match ?? [item.to]).includes(location.pathname)
   const searchPages = [
     ...sections.flatMap((section) =>

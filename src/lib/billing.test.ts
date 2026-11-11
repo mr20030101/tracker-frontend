@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { billStatus, dueDate, manilaToday, monthOf, parseAmount, paypalLink, paypalMeName, shiftMonth } from './billing'
+import { billStatus, dueDate, manilaToday, monthOf, parseAmount, paypalLink, paypalMeName, paypalRef, shiftMonth } from './billing'
 
 describe('billing months', () => {
   it('shifts across year boundaries', () => {
@@ -21,9 +21,14 @@ describe('billing months', () => {
 
 describe('billStatus', () => {
   it('is unpaid through the 7th and overdue after', () => {
-    expect(billStatus({ month: '2026-12-01', paidAt: null }, '2026-12-07')).toBe('unpaid')
-    expect(billStatus({ month: '2026-12-01', paidAt: null }, '2026-12-08')).toBe('overdue')
-    expect(billStatus({ month: '2026-12-01', paidAt: '2026-12-09T01:00:00Z' }, '2026-12-10')).toBe('paid')
+    expect(billStatus({ month: '2026-12-01', paidAt: null, reportedPaidAt: null }, '2026-12-07')).toBe('unpaid')
+    expect(billStatus({ month: '2026-12-01', paidAt: null, reportedPaidAt: null }, '2026-12-08')).toBe('overdue')
+    expect(billStatus({ month: '2026-12-01', paidAt: '2026-12-09T01:00:00Z', reportedPaidAt: null }, '2026-12-10')).toBe('paid')
+  })
+
+  it('waits for confirmation once the lead reports paying, even past the due date', () => {
+    expect(billStatus({ month: '2026-12-01', paidAt: null, reportedPaidAt: '2026-12-09T01:00:00Z' }, '2026-12-20')).toBe('reported')
+    expect(billStatus({ month: '2026-12-01', paidAt: '2026-12-10T01:00:00Z', reportedPaidAt: '2026-12-09T01:00:00Z' }, '2026-12-20')).toBe('paid')
   })
 })
 
@@ -56,5 +61,18 @@ describe('PayPal', () => {
   it('fills in the amount', () => {
     expect(paypalLink('sheanm', 4.67, 'USD')).toBe('https://paypal.me/sheanm/4.67USD')
     expect(paypalLink('sheanm', 250, 'PHP')).toBe('https://paypal.me/sheanm/250.00PHP')
+  })
+})
+
+describe('paypalRef', () => {
+  it('cleans up a pasted transaction ID', () => {
+    expect(paypalRef(' 5ty05013rg002845m ')).toBe('5TY05013RG002845M')
+    expect(paypalRef('5TY0 5013 RG00 2845M')).toBe('5TY05013RG002845M')
+  })
+
+  it('rejects anything that cannot be one', () => {
+    expect(paypalRef('')).toBeNull()
+    expect(paypalRef('abc')).toBeNull()
+    expect(paypalRef('<script>')).toBeNull()
   })
 })

@@ -236,6 +236,9 @@ export function Billing() {
   const billed = bills.reduce((sum, bill) => sum + bill.amount, 0)
   const collected = bills.reduce((sum, bill) => sum + (bill.paidAt ? bill.amount : 0), 0)
   const unpaidCount = bills.filter((bill) => !bill.paidAt).length
+  const toConfirm = allBills
+    .filter((bill) => !bill.paidAt && bill.reportedPaidAt)
+    .sort((a, b) => (a.reportedPaidAt ?? '').localeCompare(b.reportedPaidAt ?? ''))
 
   const earlierUnpaid = useMemo(() => {
     const byMonth = new Map<string, string[]>()
@@ -259,10 +262,15 @@ export function Billing() {
 
   async function markUnpaid(bill: LeadBill) {
     const name = leadById.get(bill.leadId)?.name ?? 'this lead'
-    const ok = await confirmDialog(`Mark ${name}'s ${monthLabel(bill.month)} bill as unpaid? The paid date and note are cleared.`, {
-      title: 'Mark as unpaid?',
-      confirmLabel: 'Mark unpaid',
-    })
+    const ok = await confirmDialog(
+      bill.reportedPaidAt && !bill.paidAt
+        ? `${name} reported paying ${monthLabel(bill.month)} (PayPal ${bill.reportedRef}). If it isn't in your PayPal, mark it not received: their report is cleared and the share shows unpaid again.`
+        : `Mark ${name}'s ${monthLabel(bill.month)} bill as unpaid? The paid date, note and any PayPal report are cleared.`,
+      {
+        title: bill.reportedPaidAt && !bill.paidAt ? 'Payment not received?' : 'Mark as unpaid?',
+        confirmLabel: bill.reportedPaidAt && !bill.paidAt ? 'Not received' : 'Mark unpaid',
+      },
+    )
     if (!ok) return
     try {
       await setLeadBillPaid(bill.month, bill.leadId, false, '')
@@ -335,6 +343,27 @@ export function Billing() {
       {(loadError || actionError) && (
         <div role="alert" className="mb-4 rounded-lg bg-status-danger-bg px-4 py-2.5 text-sm text-status-danger-text">
           {actionError || errorMessage(loadError, 'Could not load billing.')}
+        </div>
+      )}
+
+      {toConfirm.length > 0 && (
+        <div className="mb-4 rounded-lg bg-status-warning-bg px-4 py-3 text-sm text-status-warning-text">
+          <p className="flex items-center gap-1.5 font-semibold">
+            <CircleAlert className="h-4 w-4" aria-hidden />
+            {toConfirm.length} payment{toConfirm.length === 1 ? '' : 's'} to confirm
+          </p>
+          <p className="mt-0.5">Check each transaction ID in your PayPal activity, then click Confirm paid.</p>
+          <ul className="mt-1 space-y-0.5">
+            {toConfirm.map((bill) => (
+              <li key={`${bill.month}-${bill.leadId}`}>
+                {leadById.get(bill.leadId)?.name ?? 'A removed lead'},{' '}
+                <button type="button" onClick={() => setMonth(bill.month)} className="font-medium underline">
+                  {monthLabel(bill.month)}
+                </button>
+                : <span className="font-mono">{bill.reportedRef}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
@@ -451,7 +480,18 @@ export function Billing() {
                       <td className="px-4 py-3">
                         <BillStatusBadge status={billStatus(bill, today)} />
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-gray-600">{bill.paidAt ? formatPaidOn(bill.paidAt) : '—'}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-gray-600">
+                        {bill.paidAt ? (
+                          formatPaidOn(bill.paidAt)
+                        ) : bill.reportedPaidAt ? (
+                          <>
+                            <div>Reported {formatPaidOn(bill.reportedPaidAt)}</div>
+                            <div className="font-mono text-xs text-gray-500">PayPal {bill.reportedRef}</div>
+                          </>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
                       <td className="max-w-56 px-4 py-3 text-gray-600">
                         <span className="line-clamp-2 break-words">{bill.note ?? '—'}</span>
                       </td>
@@ -465,7 +505,7 @@ export function Billing() {
                           ) : (
                             <button type="button" onClick={() => setEditing({ kind: 'paid', bill })} className={`${primaryButton} whitespace-nowrap px-3 py-1.5`}>
                               <Check className="h-4 w-4" aria-hidden />
-                              Mark paid
+                              {bill.reportedPaidAt ? 'Confirm paid' : 'Mark paid'}
                             </button>
                           )}
                           <ActionsMenu
@@ -473,6 +513,7 @@ export function Billing() {
                             items={[
                               { label: 'Change share', icon: Pencil, onClick: () => setEditing({ kind: 'amount', bill }) },
                               ...(bill.paidAt ? [{ label: 'Edit note', icon: ReceiptText, onClick: () => setEditing({ kind: 'paid', bill }) }] : []),
+                              ...(!bill.paidAt && bill.reportedPaidAt ? [{ label: 'Not received', icon: Undo2, onClick: () => markUnpaid(bill) }] : []),
                               { label: 'Remove from this month', icon: Trash2, variant: 'danger' as const, onClick: () => remove(bill) },
                             ]}
                           />
@@ -837,7 +878,7 @@ function PaidModal({
   onClose: () => void
   onSaved: () => void
 }) {
-  const [note, setNote] = useState(bill.note ?? '')
+  const [note, setNote] = useState(bill.note ?? (bill.reportedRef ? `PayPal ${bill.reportedRef}` : ''))
   const [error, setError] = useState('')
   const mutation = useMutation({
     mutationFn: () => setLeadBillPaid(bill.month, bill.leadId, true, note),
@@ -854,11 +895,20 @@ function PaidModal({
   }
 
   return (
-    <Modal title={bill.paidAt ? `Edit note — ${leadName}` : `Mark paid — ${leadName}`} onClose={onClose}>
+    <Modal title={bill.paidAt ? `Edit note — ${leadName}` : `${bill.reportedRef ? 'Confirm paid' : 'Mark paid'} — ${leadName}`} onClose={onClose}>
       <form onSubmit={submit} className="flex flex-col gap-3" noValidate>
         {!bill.paidAt && (
           <p className="text-sm text-gray-600">
-            {leadName} paid {amountLabel} for {monthLabel(bill.month)}.
+            {bill.reportedRef ? (
+              <>
+                {leadName} reported paying {amountLabel} for {monthLabel(bill.month)} with PayPal transaction{' '}
+                <span className="font-mono">{bill.reportedRef}</span>. Check it's in your PayPal activity first.
+              </>
+            ) : (
+              <>
+                {leadName} paid {amountLabel} for {monthLabel(bill.month)}.
+              </>
+            )}
           </p>
         )}
         <div>
@@ -876,7 +926,7 @@ function PaidModal({
           />
         </div>
         {error && <div className="text-sm text-status-danger-text">{error}</div>}
-        <ModalButtons onClose={onClose} pending={mutation.isPending} label={bill.paidAt ? 'Save' : 'Mark paid'} icon={Check} />
+        <ModalButtons onClose={onClose} pending={mutation.isPending} label={bill.paidAt ? 'Save' : bill.reportedRef ? 'Confirm paid' : 'Mark paid'} icon={Check} />
       </form>
     </Modal>
   )
