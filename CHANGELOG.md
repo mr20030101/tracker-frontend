@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.24.3 — 2026-11-11
+
 ### Changed
 
 - **Live submission and request alerts are for leads only.** Admins no longer get the live feeds behind the bell's pop-up alerts; leads still do. The badges on Requests and the other pages still update for everyone.
