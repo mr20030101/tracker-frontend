@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.31.1 — 2026-11-11
+
 ### Fixed
 
 - **A task could reach the Back Up Task Tracker form twice.** When two sends for the same task
