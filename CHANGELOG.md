@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.35.0 — 2026-11-12
+
 ### Added
 
 - Team Reports has an **Hours rendered** measure: each team's task-timer hours, week by week, in the chart, the table and the CSV export.
