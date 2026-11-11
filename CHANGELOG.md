@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.34.0 — 2026-11-12
+
 ### Changed
 
 - Filters look the same on every page: their own card above the table, each with its label above it, four to a row, with Export and Reset on a header row. Past the first four, the rest fold behind "More filters", which opens by itself while one of them is set. Covers the Task Log, Leaderboard, Requests, Hiring, Audits, Contributors, Attendance, Activity Log, Feedback and Team Reports; the status and step tabs on Requests, Hiring, Contributors and Attendance moved into the card too.
