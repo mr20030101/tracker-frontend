@@ -129,7 +129,7 @@ function Dialog({ request, onDone }: { request: DialogRequest; onDone: (confirme
               ref={cancelRef}
               type="button"
               onClick={() => onDone(false)}
-              className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
+              className="inline-flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
             >
               <X className="h-4 w-4 shrink-0" aria-hidden />
               {request.cancelLabel}
@@ -140,7 +140,7 @@ function Dialog({ request, onDone }: { request: DialogRequest; onDone: (confirme
             type="button"
             onClick={() => onDone(true)}
             // Explicit hex text: the dark theme remaps --color-white to a dark colour.
-            className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg px-4 py-2.5 text-sm font-semibold ${
+            className={`inline-flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-4 py-2.5 text-sm font-semibold ${
               request.danger ? 'bg-red-600 text-[#ffffff] hover:bg-red-700' : 'bg-accent text-accent-foreground hover:opacity-90'
             }`}
           >
