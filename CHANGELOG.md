@@ -14,6 +14,12 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Fixed
+
+- **Browser extension:** the task card shows the task's own project. Before, changing the project
+  under Start a task relabelled the task already running (only the label changed; the task in
+  the tracker kept its project). Extension v1.6.1.
+
 ## 8.26.0 — 2026-11-11
 
 ### Added

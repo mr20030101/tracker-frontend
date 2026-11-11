@@ -106,8 +106,8 @@ function renderTask() {
   $('task-status').className = `pill ${status[1]}`
   if ($('copy-task').textContent !== 'Copied') $('copy-task').textContent = current.taskId
   $('timer').textContent = formatTimer(timerSeconds(row))
-  const project = state.projects?.find((p) => p.id === state.settings?.projectId)
-  $('task-meta').textContent = [STAGE_LABELS[row.stage], current.created ? project?.name : null].filter(Boolean).join(' · ')
+  const project = state.projects?.find((p) => p.id === row.project_id)
+  $('task-meta').textContent = [STAGE_LABELS[row.stage], project?.name].filter(Boolean).join(' · ')
 
   // How long until it expires, from when it was started.
   $('expiry').hidden = !inProgress || !row.created_at
