@@ -4,7 +4,8 @@ import { api, logActivity, supabase, touchPresence } from './api'
 import { useIsActive } from './idle'
 import type { User } from '../types'
 
-const PRESENCE_INTERVAL_MS = 60_000
+// Every 3 minutes; someone counts as online for 6 (ONLINE_THRESHOLD_MS), so one late ping doesn't flicker them offline.
+const PRESENCE_INTERVAL_MS = 3 * 60_000
 
 interface AuthContextValue {
   user: User | null

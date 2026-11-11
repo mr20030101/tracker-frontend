@@ -12,7 +12,6 @@ import { useMessaging } from '../lib/messagingContext'
 import type { DashboardSummary } from '../types'
 import { LineChart } from '../components/LineChart'
 import { DashboardHero } from '../components/DashboardHero'
-import { RunningTasksCard } from '../components/RunningTasksCard'
 import { OVERDUE_HOURS, fetchOverdueRequestCount } from '../lib/taskRequests'
 import { usePageTitle } from '../lib/usePageTitle'
 
@@ -289,8 +288,6 @@ export function Dashboard() {
         )}
       </div>
 
-      <RunningTasksCard />
-
       {isLoading && <div className="text-gray-400">Loading...</div>}
 
       {!isLoading && (
@@ -322,37 +319,6 @@ export function Dashboard() {
               </div>
             </div>
           )}
-
-          <div className="overflow-hidden card">
-            <div className="border-b border-gray-200 px-5 py-4">
-              <h2 className="font-display text-lg text-gray-900">Daily submission report</h2>
-              <p className="mt-1 text-xs text-gray-500">Team activity for the selected {viewMode}.</p>
-            </div>
-            <div className="max-h-[50vh] overflow-auto">
-              <table className="w-full min-w-[680px] text-left text-sm">
-                <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
-                  <tr>
-                    <th className="px-5 py-3">Date</th>
-                    <th className="px-5 py-3">Submitted</th>
-                    <th className="px-5 py-3">Logged</th>
-                    <th className="px-5 py-3">Contributors Submitted</th>
-                    <th className="px-5 py-3">No Submissions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {dailyReport.map((day) => (
-                    <tr key={day.date} className={day.contributors_without_submissions > 0 ? 'bg-status-danger-bg/30' : ''}>
-                      <td className="px-5 py-3 font-medium text-gray-900">{day.date}</td>
-                      <td className="px-5 py-3 font-semibold text-gray-900">{day.tasks_submitted}</td>
-                      <td className="px-5 py-3 text-gray-600">{day.tasks_logged}</td>
-                      <td className="px-5 py-3 text-gray-600">{day.contributors_submitted}</td>
-                      <td className="px-5 py-3 font-medium text-status-danger-text">{day.contributors_without_submissions}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
         </>
       )}
     </div>

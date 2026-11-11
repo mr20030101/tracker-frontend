@@ -9,19 +9,19 @@ import { liveChannelName } from '../lib/idle'
 import { ALERT_NOTIFICATION_SOUND, loopSound } from '../lib/sound'
 import { Avatar } from './Avatar'
 import { RequestAlarm } from './RequestAlarm'
-import { contributorPath } from '../lib/urlRef'
 import { fetchPendingRequestsForAlarm, type PendingRequestAlarmRow } from '../lib/taskRequests'
 
 const MANAGER_ROLES = ['admin', 'lead']
-const MAX_SUBMISSION_ALERTS = 20
+const MAX_REQUEST_ALERTS = 20
 const PANEL_WIDTH = 320
 const EDGE_GAP = 8
 // Above Modal's z-50, so a panel opened inside a modal isn't covered by it.
 const PANEL_Z_INDEX = 60
 // How often the tab title flips while a new request is ringing.
 const TITLE_FLASH_MS = 1000
-// How often the alarm checks for pending requests, in case a live event was missed.
-const PENDING_POLL_MS = 2 * 60_000
+// How often the alarm checks for pending requests, in case a live event was missed. New requests
+// normally ring straight away through the live feed below; this is only the safety net.
+const PENDING_POLL_MS = 5 * 60_000
 // One shared empty list, so having no pending requests yet doesn't hand the effects below a new
 // array every render (which re-marked them seen on every render on the Requests page, forever).
 const NO_PENDING: PendingRequestAlarmRow[] = []
@@ -49,20 +49,6 @@ function writeSeen(userId: string, ids: number[]) {
   }
 }
 
-interface SubmissionAlert {
-  id: string
-  name: string
-  email: string
-  project: string | null
-}
-
-interface TaskSubmissionRow {
-  id: number
-  cb_email: string
-  status: string
-  project_id: number | null
-}
-
 interface RequestAlert {
   id: string
   name: string
@@ -87,7 +73,7 @@ export function NotificationBell() {
   // Leads only (admins keep the quiet bell): rings, on whatever page they're on, while any pending
   // request they haven't looked at yet is waiting, until they look by opening the bell, the
   // Requests page or the alarm's own buttons. It goes by the pending requests themselves (checked
-  // every two minutes, and at once on a live event) rather than by live events alone, so a missed
+  // every five minutes, and at once on a live event) rather than by live events alone, so a missed
   // event, a sleeping tab or a request sent before they signed in still sets it off.
   const isLead = user?.role === 'lead'
   const onRequestsPage = pathname.startsWith('/requests')
@@ -124,16 +110,13 @@ export function NotificationBell() {
     })
   }, [open])
 
-  const [submissionAlerts, setSubmissionAlerts] = useState<SubmissionAlert[]>([])
   const [requestAlerts, setRequestAlerts] = useState<RequestAlert[]>([])
-  const [profileNames, setProfileNames] = useState<Map<string, string>>()
   const [profilesById, setProfilesById] = useState<Map<string, { name: string; email: string }>>()
-  const [projectNames, setProjectNames] = useState<Map<number, string>>()
-  // Read through refs so the live subscriptions below don't restart when these load: restarting one
+  // Read through refs so the live subscription below doesn't restart when these load: restarting one
   // left it dead (see liveChannelName).
-  const lookups = useRef({ profileNames, profilesById, projectNames, refetchPending })
+  const lookups = useRef({ profilesById, refetchPending })
   useEffect(() => {
-    lookups.current = { profileNames, profilesById, projectNames, refetchPending }
+    lookups.current = { profilesById, refetchPending }
   })
 
   useEffect(() => {
@@ -143,55 +126,14 @@ export function NotificationBell() {
       .select('id, email, name')
       .then(({ data }) => {
         const rows = data ?? []
-        setProfileNames(new Map(rows.map((p) => [p.email.toLowerCase(), p.name as string])))
         setProfilesById(new Map(rows.map((p) => [p.id as string, { name: p.name as string, email: p.email as string }])))
       })
-    supabase
-      .from('projects')
-      .select('id, name')
-      .then(({ data }) => setProjectNames(new Map((data ?? []).map((p) => [p.id as number, p.name as string]))))
   }, [isLead])
 
-  // The live feeds are for leads only (admins don't get them), and stay connected all the time,
-  // idle tab or not, so nothing waits for a reload.
+  // The live request feed is for leads only (admins don't get it), and stays connected all the
+  // time, idle tab or not, so a new request rings without waiting for a reload. There's no live
+  // feed of task submissions: it sent every task change to every lead, for a pop-up nobody needed.
   const queryClient = useQueryClient()
-
-  useEffect(() => {
-    if (!isLead) return
-
-    function addSubmissionAlert(row: TaskSubmissionRow) {
-      const { profileNames, projectNames } = lookups.current
-      const name = profileNames?.get(row.cb_email.toLowerCase()) ?? row.cb_email
-      const project = row.project_id != null ? (projectNames?.get(row.project_id) ?? null) : null
-      const id = `${row.id}-${Date.now()}`
-      setSubmissionAlerts((prev) => [{ id, name, email: row.cb_email, project }, ...prev].slice(0, MAX_SUBMISSION_ALERTS))
-    }
-
-    const channel = supabase
-      .channel(liveChannelName('task-submissions-live'))
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'task_submissions' },
-        (payload) => {
-          const row = payload.new as TaskSubmissionRow
-          if (row.status === 'submitted') addSubmissionAlert(row)
-        },
-      )
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'task_submissions' },
-        (payload) => {
-          const row = payload.new as TaskSubmissionRow
-          const old = payload.old as Partial<TaskSubmissionRow>
-          if (row.status === 'submitted' && old.status !== 'submitted') addSubmissionAlert(row)
-        },
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [isLead])
 
   useEffect(() => {
     if (!isLead) return
@@ -201,7 +143,7 @@ export function NotificationBell() {
       const profile = profilesById?.get(row.requested_by)
       const id = `${row.id}-${Date.now()}`
       setRequestAlerts((prev) =>
-        [{ id, name: profile?.name ?? 'Someone', email: profile?.email ?? '', type: row.type }, ...prev].slice(0, MAX_SUBMISSION_ALERTS),
+        [{ id, name: profile?.name ?? 'Someone', email: profile?.email ?? '', type: row.type }, ...prev].slice(0, MAX_REQUEST_ALERTS),
       )
       // Ring now rather than at the next check, and bring the Requests badge and list up to date.
       refetchPending()
@@ -250,15 +192,11 @@ export function NotificationBell() {
     }
   }, [ringing])
 
-  function dismissSubmissionAlert(id: string) {
-    setSubmissionAlerts((prev) => prev.filter((a) => a.id !== id))
-  }
-
   function dismissRequestAlert(id: string) {
     setRequestAlerts((prev) => prev.filter((a) => a.id !== id))
   }
 
-  const count = isManager ? submissionAlerts.length + requestAlerts.length : 0
+  const count = isManager ? requestAlerts.length : 0
 
   function close() {
     setOpen(false)
@@ -311,10 +249,7 @@ export function NotificationBell() {
                 <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Notifications</span>
                 {count > 0 && (
                   <button
-                    onClick={() => {
-                      setSubmissionAlerts([])
-                      setRequestAlerts([])
-                    }}
+                    onClick={() => setRequestAlerts([])}
                     className="inline-flex items-center gap-1.5 text-xs font-medium text-sky-700 hover:underline"
                   >
                     <X className="h-3.5 w-3.5" aria-hidden />
@@ -345,28 +280,6 @@ export function NotificationBell() {
                     </Link>
                     <button
                       onClick={() => dismissRequestAlert(alert.id)}
-                      className="shrink-0 rounded p-1 text-gray-300 hover:bg-gray-200 hover:text-gray-600"
-                      aria-label="Dismiss"
-                    >
-                      <X className="h-4 w-4" aria-hidden />
-                    </button>
-                  </div>
-                ))}
-                {submissionAlerts.map((alert) => (
-                  <div key={alert.id} className="group flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-gray-50">
-                    <Link
-                      to={contributorPath(alert.email)}
-                      onClick={close}
-                      className="flex min-w-0 flex-1 items-center gap-2 text-sm"
-                    >
-                      <Avatar name={alert.name || alert.email} size={28} />
-                      <div className="min-w-0">
-                        <div className="truncate font-medium text-gray-900">{alert.name} submitted a task</div>
-                        {alert.project && <div className="truncate text-xs text-gray-400">{alert.project}</div>}
-                      </div>
-                    </Link>
-                    <button
-                      onClick={() => dismissSubmissionAlert(alert.id)}
                       className="shrink-0 rounded p-1 text-gray-300 hover:bg-gray-200 hover:text-gray-600"
                       aria-label="Dismiss"
                     >
