@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { FoldText } from '../components/FoldText'
 import { createPortal } from 'react-dom'
 import { Navigate, useParams, Link } from 'react-router-dom'
-import { ChevronDown, ChevronLeft, Eye, MessageCircle, Pencil, Sparkles, X } from 'lucide-react'
+import { ChevronDown, ChevronLeft, CircleDashed, Eye, MessageCircle, Pencil, Sparkles } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, functionErrorMessage, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
@@ -118,13 +118,6 @@ export function CbProfile() {
 
   const isOwnProfile = targetIsId ? currentUser?.id === target : currentUser?.email.toLowerCase() === target.toLowerCase()
 
-  const [showWarning, setShowWarning] = useState(true)
-
-  useEffect(() => {
-    setShowWarning(true)
-    const timer = setTimeout(() => setShowWarning(false), 10000)
-    return () => clearTimeout(timer)
-  }, [target])
 
   const now = useNow(60_000)
   const thisWeekIso = weekStartIso(now)
@@ -296,6 +289,12 @@ export function CbProfile() {
               </span>
             )}
             {contributorId && <FeaturedBadgeChip badgeId={featuredBadges?.get(contributorId)} />}
+            {canEdit && isContributorRole && !isOwnProfile && data.submitted_this_week === 0 && (!data.user || data.user.is_active) && (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 px-2.5 py-0.5 text-xs font-medium text-gray-500">
+                <CircleDashed className="h-3.5 w-3.5" aria-hidden />
+                No tasks this week
+              </span>
+            )}
           </div>
           {/* Their projects and level on each, in the header; a lead or admin changes a level here. */}
           {isContributorRole && !isOwnProfile && levelProjects.length > 0 && (
@@ -349,21 +348,6 @@ export function CbProfile() {
       </div>
 
 
-      {/* A CB's own "no submissions yet" nudge lives on their Dashboard now; keep it here only
-          for a lead/admin reviewing someone else. */}
-      {canEdit && isContributorRole && !isOwnProfile && showWarning && data.submitted_this_week === 0 && (!data.user || data.user.is_active) && (
-        <div className="mb-6 flex items-center gap-3 rounded-xl border-2 border-status-danger-text bg-status-danger-text px-5 py-4 text-sm font-semibold text-white shadow-sm">
-          <span className="animate-heartbeat text-lg leading-none">⚠</span>
-          <span>WARNING: No submissions logged yet this week.</span>
-          <button
-            onClick={() => setShowWarning(false)}
-            className="ml-auto text-lg leading-none text-white/80 hover:text-white"
-            aria-label="Dismiss"
-          >
-            <X className="h-4 w-4" aria-hidden />
-          </button>
-        </div>
-      )}
 
       {(leadShift || (!isOwnProfile && data.user?.shift)) && (
         <div className="mb-6 card px-5 py-4 text-sm text-gray-600">

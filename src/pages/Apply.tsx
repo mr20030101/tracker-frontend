@@ -361,6 +361,17 @@ function ComputerStep({
             <SubmitButton pending={pending} label="Submit application" pendingLabel="Submitting..." icon={Send} />
           </div>
         </div>
+        <p className={`${FULL_ROW} text-xs text-gray-500`}>
+          By submitting, you agree to the{' '}
+          <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-700">
+            Terms and Conditions
+          </a>{' '}
+          and{' '}
+          <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-700">
+            Privacy Policy
+          </a>
+          .
+        </p>
       </form>
     </div>
   )

@@ -96,6 +96,10 @@ export function AppFooter({ className = '', releaseNotes = false }: { className?
       <a href="/privacy" className="hover:text-gray-700 hover:underline">
         Privacy
       </a>
+      <span aria-hidden="true">&bull;</span>
+      <a href="/terms" className="hover:text-gray-700 hover:underline">
+        Terms
+      </a>
       {/* Portaled, so a footer inside a transformed or clipped container can't trap it. */}
       {releaseNotes && showNotes && createPortal(<WhatsNew onClose={() => setShowNotes(false)} />, document.body)}
     </footer>
