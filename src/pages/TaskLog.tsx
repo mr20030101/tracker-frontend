@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { FoldText } from '../components/FoldText'
 import { Link } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, Download, Eye, FileUp, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Download, Eye, FileUp, Image, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, supabase } from '../lib/api'
 import { sanitiseOrTerm } from '../lib/sanitiseOrTerm'
@@ -24,6 +24,9 @@ import { contributorPath } from '../lib/urlRef'
 import { confirmDialog, alertDialog } from '../lib/dialog'
 import { fetchAllPages } from '../lib/fetchAll'
 import { usePageTitle } from '../lib/usePageTitle'
+import { remotasksDiffViewerUrl } from '../lib/remotasks'
+import { STAGE_LABELS } from '../lib/taskAudits'
+import { useMessaging } from '../lib/messagingContext'
 
 const MANAGER_ROLES = ['admin', 'lead']
 
@@ -72,6 +75,8 @@ function ContributorTaskLog() {
 
 // The global, filterable, multi-contributor log — for a lead/admin reviewing everyone's work.
 function ManagerTaskLog() {
+  // Contributors' names and photos, from the directory the app already loads.
+  const { usersById } = useMessaging()
   const { user } = useAuth()
   const isManager = Boolean(user && MANAGER_ROLES.includes(user.role))
   const [stage, setStage] = useState<Stage | ''>('')
@@ -300,7 +305,7 @@ function ManagerTaskLog() {
           )
         }
       >
-        <table className="w-full min-w-[36rem] text-left text-sm">
+        <table className="w-full min-w-[64rem] text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
             <tr>
               <SortableHeader
@@ -309,6 +314,9 @@ function ManagerTaskLog() {
                 dir={sort.dir}
                 onClick={() => toggleSort('cb_email')}
               />
+              <th className="px-5 py-3">Task ID</th>
+              <th className="px-5 py-3">Project</th>
+              <th className="px-5 py-3">Stage</th>
               <SortableHeader
                 label="Status"
                 active={sort.key === 'status'}
@@ -328,7 +336,7 @@ function ManagerTaskLog() {
           <tbody className="divide-y divide-gray-100">
             {isLoading && (
               <tr>
-                <td colSpan={5} className="px-5 py-6 text-center text-gray-400">
+                <td colSpan={8} className="px-5 py-6 text-center text-gray-400">
                   Loading...
                 </td>
               </tr>
@@ -341,10 +349,33 @@ function ManagerTaskLog() {
                     onClick={(e) => e.stopPropagation()}
                     className="flex items-center gap-3 hover:underline"
                   >
-                    <Avatar name={row.cb_email} size={28} />
-                    <span className="truncate">{row.cb_email}</span>
+                    <Avatar name={usersById.get(row.user_id ?? '')?.name ?? row.cb_email} photoUrl={usersById.get(row.user_id ?? '')?.avatar_url} size={28} />
+                    <span className="min-w-0">
+                      {usersById.get(row.user_id ?? '')?.name && (
+                        <span className="block truncate font-medium text-gray-900">{usersById.get(row.user_id ?? '')?.name}</span>
+                      )}
+                      <span className="block truncate text-xs text-gray-500">{row.cb_email}</span>
+                    </span>
                   </Link>
                 </td>
+                <td className="whitespace-nowrap px-5 py-3 font-mono text-xs" onClick={(e) => e.stopPropagation()}>
+                  <span className="inline-flex items-center gap-1.5">
+                    {row.task_id ? (
+                      <a href={remotasksDiffViewerUrl(row.task_id)} target="_blank" rel="noreferrer" className="text-sky-700 hover:underline">
+                        {row.task_id}
+                      </a>
+                    ) : (
+                      <span className="text-gray-400">—</span>
+                    )}
+                    {row.snipboard_url && (
+                      <a href={row.snipboard_url} target="_blank" rel="noreferrer" title="View screenshot" className="text-gray-400 hover:text-sky-700">
+                        <Image className="h-3.5 w-3.5" aria-label="Screenshot" />
+                      </a>
+                    )}
+                  </span>
+                </td>
+                <td className="px-5 py-3 text-gray-700">{row.project?.name ?? <span className="text-gray-400">—</span>}</td>
+                <td className="whitespace-nowrap px-5 py-3 text-gray-600">{STAGE_LABELS[row.stage] ?? row.stage}</td>
                 <td className="px-5 py-3" onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center gap-2">
                     {editingStatusId === row.id ? (

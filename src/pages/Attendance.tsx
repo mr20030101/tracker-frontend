@@ -283,8 +283,13 @@ function TeamAttendance() {
   const countOf = (t: FilterTab) => (t === 'all' ? scoped.length : t === 'filed' ? filed.length : scoped.length - filed.length)
   const visible = scoped
     .filter((r) => (tab === 'all' ? true : tab === 'filed' ? r.entry : !r.entry))
-    // The team's fixed order; the missing ones stand out in red instead of moving.
-    .sort((a, b) => compareAttendanceOrder(a.person, b.person))
+    // Newest first: whoever filed most recently at the top. Those who haven't filed come after, in
+    // the team's fixed order.
+    .sort((a, b) => {
+      if (a.entry && b.entry) return Date.parse(b.entry.created_at) - Date.parse(a.entry.created_at)
+      if (a.entry || b.entry) return a.entry ? -1 : 1
+      return compareAttendanceOrder(a.person, b.person)
+    })
 
   const hoursSummary = (Object.keys(HOURS_LABELS) as AttendanceHours[])
     .map((h) => ({ hours: h, count: filed.filter((r) => r.entry!.hours === h).length }))

@@ -14,6 +14,12 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Changed
+
+- **Live submission and request alerts are for leads only.** Admins no longer get the live feeds behind the bell's pop-up alerts; leads still do. The badges on Requests and the other pages still update for everyone.
+- **Attendance lists the newest first.** Whoever filed most recently is at the top; people who haven't filed yet come after, in the team's usual order.
+- **Task Log shows more of each task.** Each row now has the contributor's name and photo above their email, the Task ID (linking to the task on Remotasks, with the screenshot icon when there's one), the Project and the Stage.
+
 ## 8.24.2 — 2026-11-11
 
 ### Changed
