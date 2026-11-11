@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import { useQueryClient } from '@tanstack/react-query'
 import { api, logActivity, supabase, touchPresence } from './api'
 import { useIsActive } from './idle'
+import { loginAsReturn, returnToOwnAccount } from './loginAs'
 import type { User } from '../types'
 
 // Every 3 minutes; someone counts as online for 6 (ONLINE_THRESHOLD_MS), so one late ping doesn't flicker them offline.
@@ -76,6 +77,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function logout() {
+    // Logged in as someone else: Log out goes back to the admin, and never signs the person out.
+    if (user && loginAsReturn()?.target_id === user.id) return returnToOwnAccount()
     if (user) logActivity('logout', user.id)
     await supabase.auth.signOut()
     setUser(null)
