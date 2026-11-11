@@ -398,12 +398,10 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
     const d = row.date?.slice(0, 10)
     return d && d >= rangeStart && d <= rangeEnd
   })
-  // Any not-yet-submitted task from today or the last 3 days can go to CTS now, not just today's
-  // — a CB can catch up on a short backlog without reaching arbitrarily far back — sorted
-  // most-recent-first so today's work is what they see (and CtsFormModal pre-selects) first.
-  const ctsCutoffIso = toISODate(new Date(Date.now() - 3 * 24 * 60 * 60 * 1000))
+  // Every loaded task not yet sent to CTS, however old, most recent first so today's work is what
+  // they see (and CtsFormModal pre-selects) first.
   const ctsEligibleSubmissions = data.all_submissions
-    .filter((row) => row.status !== 'in_progress' && !row.cts_submitted_at && (row.date?.slice(0, 10) ?? '') >= ctsCutoffIso)
+    .filter((row) => row.status !== 'in_progress' && !row.cts_submitted_at)
     .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
 
   const sortedSubmissions = [...visibleSubmissions].sort((a, b) => {

@@ -8,7 +8,7 @@ import { AUDIT_CATEGORIES, auditCategory, fetchAuditLogs } from '../lib/auditLog
 import type { ActivityEvent, ActivityLog, AuditLog } from '../types'
 import { Avatar } from '../components/Avatar'
 import { Select } from '../components/Select'
-import { SearchInput, SegmentedTabs, TableToolbar, toolbarControlClass } from '../components/TableToolbar'
+import { FilterBar, FilterField, SearchInput, SegmentedTabs, toolbarControlClass } from '../components/TableToolbar'
 import { DataTable } from '../components/DataTable'
 import { Modal } from '../components/Modal'
 import { usePageTitle } from '../lib/usePageTitle'
@@ -135,16 +135,27 @@ function AuditTrail() {
       ) : (
         <DataTable
           toolbar={
-            <TableToolbar>
-              <SearchInput value={search} onChange={setSearch} aria-label="Search admin actions" />
-              <Select
-                value={category}
-                onChange={setCategory}
-                aria-label="Filter by action"
-                options={[{ value: 'all', label: 'All actions' }, ...AUDIT_CATEGORIES.map((c) => ({ value: c.value, label: c.label }))]}
-                className={toolbarControlClass}
-              />
-            </TableToolbar>
+            <FilterBar
+              active={[search, category !== 'all'].filter(Boolean).length}
+              onReset={() => {
+                setSearch('')
+                setCategory('all')
+              }}
+            >
+              <FilterField label="Search" id="audit-search">
+                <SearchInput id="audit-search" value={search} onChange={setSearch} aria-label="Search admin actions" />
+              </FilterField>
+              <FilterField label="Action" id="audit-category">
+                <Select
+                  id="audit-category"
+                  fullWidth
+                  value={category}
+                  onChange={setCategory}
+                  options={[{ value: 'all', label: 'All actions' }, ...AUDIT_CATEGORIES.map((c) => ({ value: c.value, label: c.label }))]}
+                  className={toolbarControlClass}
+                />
+              </FilterField>
+            </FilterBar>
           }
           columns={columns}
           data={rows}
@@ -242,20 +253,23 @@ function SignInLog() {
 
       <DataTable
         toolbar={
-          <TableToolbar>
-            <Select
-              value={eventFilter}
-              onChange={(value) => setEventFilter(value as ActivityEvent | 'all')}
-              aria-label="Filter by event"
-              options={[
-                { value: 'all', label: 'All events' },
-                { value: 'login', label: 'Signed in' },
-                { value: 'login_failed', label: 'Sign-in failed' },
-                { value: 'logout', label: 'Signed out' },
-              ]}
-              className={toolbarControlClass}
-            />
-          </TableToolbar>
+          <FilterBar active={eventFilter === 'all' ? 0 : 1} onReset={() => setEventFilter('all')}>
+            <FilterField label="Event" id="activity-event">
+              <Select
+                id="activity-event"
+                fullWidth
+                value={eventFilter}
+                onChange={(value) => setEventFilter(value as ActivityEvent | 'all')}
+                options={[
+                  { value: 'all', label: 'All events' },
+                  { value: 'login', label: 'Signed in' },
+                  { value: 'login_failed', label: 'Sign-in failed' },
+                  { value: 'logout', label: 'Signed out' },
+                ]}
+                className={toolbarControlClass}
+              />
+            </FilterField>
+          </FilterBar>
         }
         columns={columns}
         data={rows}

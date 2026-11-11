@@ -20,7 +20,7 @@ import type { FeedbackStatus } from '../types'
 import { contributorPath } from '../lib/urlRef'
 import { confirmDialog } from '../lib/dialog'
 import { downloadCsv } from '../lib/csv'
-import { SearchInput, SegmentedTabs, TableCard, TableToolbar } from '../components/TableToolbar'
+import { FilterAction, FilterBar, FilterField, SearchInput, SegmentedTabs, TableCard } from '../components/TableToolbar'
 import { usePageTitle } from '../lib/usePageTitle'
 
 const MANAGER_ROLES = ['admin', 'lead']
@@ -121,19 +121,22 @@ export function Feedback() {
 
       <TableCard
         toolbar={
-          <TableToolbar>
-            <SearchInput value={search} onChange={setSearch} placeholder={isManager ? 'Search task ID or contributor...' : 'Search task ID...'} />
-            {isManager && (
-              <button
-                onClick={exportRows}
-                disabled={rows.length === 0}
-                className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-              >
-                <Download className="h-4 w-4" aria-hidden />
-                Export
-              </button>
-            )}
-          </TableToolbar>
+          <FilterBar
+            active={search ? 1 : 0}
+            onReset={() => setSearch('')}
+            actions={
+              isManager && (
+                <FilterAction onClick={exportRows} disabled={rows.length === 0}>
+                  <Download className="h-3.5 w-3.5" aria-hidden />
+                  Export
+                </FilterAction>
+              )
+            }
+          >
+            <FilterField label="Search" id="feedback-search">
+              <SearchInput id="feedback-search" value={search} onChange={setSearch} placeholder={isManager ? 'Task ID or contributor' : 'Task ID'} />
+            </FilterField>
+          </FilterBar>
         }
       >
         <table className="w-full min-w-[48rem] text-left text-sm">

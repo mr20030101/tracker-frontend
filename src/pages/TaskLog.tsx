@@ -1,19 +1,19 @@
 import { useState } from 'react'
 import { FoldText } from '../components/FoldText'
 import { Link } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, Download, Eye, FileUp, Image, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Download, Eye, FileUp, Image, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, supabase, teamMemberIds } from '../lib/api'
 import { sanitiseOrTerm } from '../lib/sanitiseOrTerm'
 import { useAuth } from '../lib/auth'
-import { formatTime, toISODate } from '../lib/week'
+import { toISODate } from '../lib/week'
 import type { Paginated, Project, Stage, SubmissionStatus, TaskSubmission } from '../types'
 import { BackupFormFailed, StatusPill } from '../components/StatusPill'
 import { TaskTimer } from '../components/TaskTimer'
 import { Avatar } from '../components/Avatar'
 import { ActionsMenu } from '../components/ActionsMenu'
 import { Select } from '../components/Select'
-import { DateRangeInput, SearchInput, TableCard, TableToolbar, toolbarControlClass } from '../components/TableToolbar'
+import { DateRangeInput, FilterAction, FilterBar, FilterField, SearchInput, TableCard, toolbarControlClass } from '../components/TableToolbar'
 import { SubmissionDetailsModal } from '../components/SubmissionDetailsModal'
 import { TaskSubmissionForm } from '../components/TaskSubmissionForm'
 import { SortableHeader } from '../components/SortableHeader'
@@ -241,100 +241,110 @@ function ManagerTaskLog() {
 
       <TableCard
         toolbar={
-          <TableToolbar>
+          <FilterBar
+            active={[stage, search, status, projectId, leadId].filter(Boolean).length + (dateFrom !== today || dateTo !== today ? 1 : 0)}
+            onReset={() => {
+              setStage('')
+              setSearch('')
+              setStatus('')
+              setProjectId('')
+              setLeadId('')
+              setDateFrom(today)
+              setDateTo(today)
+              setPage(1)
+            }}
+            actions={
+              isManager && (
+                <FilterAction onClick={handleExport} disabled={exporting}>
+                  <Download className="h-3.5 w-3.5" aria-hidden />
+                  {exporting ? 'Exporting...' : 'Export CSV'}
+                </FilterAction>
+              )
+            }
+          >
             {isManager && (
-              <SearchInput
-                placeholder="Search by CB email or Task ID..."
-                value={search}
-                onChange={(value) => {
-                  setSearch(value)
+              <FilterField label="Search" id="tasklog-search">
+                <SearchInput
+                  id="tasklog-search"
+                  placeholder="CB email or Task ID"
+                  value={search}
+                  onChange={(value) => {
+                    setSearch(value)
+                    setPage(1)
+                  }}
+                />
+              </FilterField>
+            )}
+            <FilterField label="Date" id="tasklog-from">
+              <DateRangeInput
+                id="tasklog-from"
+                from={dateFrom}
+                to={dateTo}
+                onFromChange={(value) => {
+                  setDateFrom(value)
+                  setPage(1)
+                }}
+                onToChange={(value) => {
+                  setDateTo(value)
                   setPage(1)
                 }}
               />
-            )}
-            <Select
-              value={stage}
-              onChange={(value) => {
-                setStage(value as Stage | '')
-                setPage(1)
-              }}
-              options={STAGES}
-              aria-label="Filter by stage"
-              className={toolbarControlClass}
-            />
-            <DateRangeInput
-              from={dateFrom}
-              to={dateTo}
-              onFromChange={(value) => {
-                setDateFrom(value)
-                setPage(1)
-              }}
-              onToChange={(value) => {
-                setDateTo(value)
-                setPage(1)
-              }}
-            />
-            <Select
-              aria-label="Status"
-              value={status}
-              onChange={(value) => {
-                setStatus(value as SubmissionStatus | '')
-                setPage(1)
-              }}
-              options={[{ value: '', label: 'All Statuses' }, ...STATUS_OPTIONS]}
-              className={toolbarControlClass}
-            />
-            <Select
-              aria-label="Project"
-              value={projectId}
-              onChange={(value) => {
-                setProjectId(value)
-                setPage(1)
-              }}
-              options={[{ value: '', label: 'All Projects' }, ...(projects ?? []).map((p) => ({ value: String(p.id), label: p.name }))]}
-              className={toolbarControlClass}
-            />
-            {isAdmin && (
+            </FilterField>
+            <FilterField label="Stage" id="tasklog-stage" set={Boolean(stage)}>
               <Select
-                aria-label="Team"
-                value={leadId}
+                id="tasklog-stage"
+                fullWidth
+                value={stage}
                 onChange={(value) => {
-                  setLeadId(value)
+                  setStage(value as Stage | '')
                   setPage(1)
                 }}
-                options={[{ value: '', label: 'All Teams' }, ...leads.map((l) => ({ value: l.id, label: `${l.name}'s team` }))]}
+                options={STAGES}
                 className={toolbarControlClass}
               />
-            )}
-            {(stage || search || status || projectId || leadId || dateFrom !== today || dateTo !== today) && (
-              <button
-                onClick={() => {
-                  setStage('')
-                  setSearch('')
-                  setStatus('')
-                  setProjectId('')
-                  setLeadId('')
-                  setDateFrom(today)
-                  setDateTo(today)
+            </FilterField>
+            <FilterField label="Status" id="tasklog-status" set={Boolean(status)}>
+              <Select
+                id="tasklog-status"
+                fullWidth
+                value={status}
+                onChange={(value) => {
+                  setStatus(value as SubmissionStatus | '')
                   setPage(1)
                 }}
-                className="inline-flex items-center gap-1.5 px-1 text-sm font-medium text-sky-700 hover:underline"
-              >
-                <X className="h-4 w-4" aria-hidden />
-                Clear filters
-              </button>
+                options={[{ value: '', label: 'All Statuses' }, ...STATUS_OPTIONS]}
+                className={toolbarControlClass}
+              />
+            </FilterField>
+            <FilterField label="Project" id="tasklog-project" set={Boolean(projectId)}>
+              <Select
+                id="tasklog-project"
+                fullWidth
+                value={projectId}
+                onChange={(value) => {
+                  setProjectId(value)
+                  setPage(1)
+                }}
+                options={[{ value: '', label: 'All Projects' }, ...(projects ?? []).map((p) => ({ value: String(p.id), label: p.name }))]}
+                className={toolbarControlClass}
+              />
+            </FilterField>
+            {isAdmin && (
+              <FilterField label="Team" id="tasklog-team" set={Boolean(leadId)}>
+                <Select
+                  id="tasklog-team"
+                  fullWidth
+                  value={leadId}
+                  onChange={(value) => {
+                    setLeadId(value)
+                    setPage(1)
+                  }}
+                  options={[{ value: '', label: 'All Teams' }, ...leads.map((l) => ({ value: l.id, label: `${l.name}'s team` }))]}
+                  className={toolbarControlClass}
+                />
+              </FilterField>
             )}
-            {isManager && (
-              <button
-                onClick={handleExport}
-                disabled={exporting}
-                className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-              >
-                <Download className="h-4 w-4" aria-hidden />
-                {exporting ? 'Exporting...' : 'Export CSV'}
-              </button>
-            )}
-          </TableToolbar>
+          </FilterBar>
         }
         footer={
           data && (
@@ -367,7 +377,7 @@ function ManagerTaskLog() {
           )
         }
       >
-        <table className="w-full min-w-[64rem] text-left text-sm">
+        <table className="w-full min-w-[56rem] text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
             <tr>
               <SortableHeader
@@ -386,26 +396,20 @@ function ManagerTaskLog() {
                 onClick={() => toggleSort('status')}
               />
               <th className="px-5 py-3">Time</th>
-              <SortableHeader
-                label="Date"
-                active={sort.key === 'date'}
-                dir={sort.dir}
-                onClick={() => toggleSort('date')}
-              />
               <th className="px-5 py-3 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {isLoading && (
               <tr>
-                <td colSpan={8} className="px-5 py-6 text-center text-gray-400">
+                <td colSpan={7} className="px-5 py-6 text-center text-gray-400">
                   Loading...
                 </td>
               </tr>
             )}
             {data?.data.map((row) => (
               <tr key={row.id} onClick={() => setViewingId(row.id)} className="cursor-pointer hover:bg-gray-50">
-                <td className="px-5 py-3">
+                <td className="max-w-64 px-5 py-3">
                   <Link
                     to={contributorPath(row.cb_email)}
                     onClick={(e) => e.stopPropagation()}
@@ -436,9 +440,9 @@ function ManagerTaskLog() {
                     )}
                   </span>
                 </td>
-                <td className="px-5 py-3 text-gray-700">{row.project?.name ?? <span className="text-gray-400">—</span>}</td>
+                <td className="whitespace-nowrap px-5 py-3 text-gray-700">{row.project?.name ?? <span className="text-gray-400">—</span>}</td>
                 <td className="whitespace-nowrap px-5 py-3 text-gray-600">{STAGE_LABELS[row.stage] ?? row.stage}</td>
-                <td className="px-5 py-3" onClick={(e) => e.stopPropagation()}>
+                <td className="whitespace-nowrap px-5 py-3" onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center gap-2">
                     {editingStatusId === row.id ? (
                       <Select
@@ -462,21 +466,18 @@ function ManagerTaskLog() {
                   </div>
                 </td>
                 {/* Time on the task's timer, ticking while it runs. Started and paused from the task itself, not here. */}
-                <td className="px-5 py-3">
+                <td className="whitespace-nowrap px-5 py-3">
                   <TaskTimer task={row} canControl={false} />
                 </td>
-                <td className="px-5 py-3 text-gray-500">
-                  {row.date?.slice(0, 10) ?? '—'}
-                  {row.date && <span className="ml-1.5 text-xs text-gray-400">{formatTime(row.created_at)}</span>}
-                </td>
-                <td className="px-5 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                <td className="whitespace-nowrap px-5 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center justify-end gap-2">
                     <button
                       onClick={() => setViewingId(row.id)}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+                      aria-label="Details"
+                      title="Details"
+                      className="inline-flex h-8 w-8 pointer-coarse:h-11 pointer-coarse:w-11 items-center justify-center rounded-lg border border-gray-200 text-gray-600 transition-colors duration-100 hover:bg-gray-50 hover:text-gray-900"
                     >
-                      <Eye className="h-3.5 w-3.5" aria-hidden />
-                      Details
+                      <Eye className="h-4 w-4" aria-hidden />
                     </button>
                     <ActionsMenu
                       items={[

@@ -44,7 +44,7 @@ import { DataTable } from '../components/DataTable'
 import { downloadCsv } from '../lib/csv'
 import { Modal } from '../components/Modal'
 import { Select } from '../components/Select'
-import { SearchInput, SegmentedTabs, TableToolbar, toolbarControlClass } from '../components/TableToolbar'
+import { FilterAction, FilterBar, FilterField, SearchInput, SegmentedTabs, toolbarControlClass } from '../components/TableToolbar'
 import { contributorPath } from '../lib/urlRef'
 import { fetchOnboardingStatus, ONBOARDING_STEPS } from '../lib/onboarding'
 import { usePageTitle } from '../lib/usePageTitle'
@@ -793,28 +793,38 @@ export function Hiring() {
     : ''
 
   // Search and the lead filter apply to both the list and the board.
-  const sharedFilters = (
+  const filterFields = (
     <>
-      <SearchInput
-        placeholder="Search by name, email or ID..."
-        aria-label="Search applicants"
-        value={search}
-        onChange={(value) => {
-          setSearch(value)
-          setRowSelection({})
-        }}
-      />
-      {isAdmin && (
-        <Select
-          value={leadFilter}
-          aria-label="Filter by lead"
-          onChange={(value) => setFilter('lead', value)}
-          options={[{ value: '', label: 'All Leads' }, ...leadOptions]}
-          className={toolbarControlClass}
+      <FilterField label="Search" id="hiring-search" set={Boolean(search)}>
+        <SearchInput
+          id="hiring-search"
+          placeholder="Name, email or ID"
+          value={search}
+          onChange={(value) => {
+            setSearch(value)
+            setRowSelection({})
+          }}
         />
+      </FilterField>
+      {isAdmin && (
+        <FilterField label="Lead" id="hiring-lead" set={Boolean(leadFilter)}>
+          <Select
+            id="hiring-lead"
+            fullWidth
+            value={leadFilter}
+            onChange={(value) => setFilter('lead', value)}
+            options={[{ value: '', label: 'All Leads' }, ...leadOptions]}
+            className={toolbarControlClass}
+          />
+        </FilterField>
       )}
     </>
   )
+  const filtersSet = [search, leadFilter].filter(Boolean).length
+  function resetFilters() {
+    setSearch('')
+    setFilter('lead', '')
+  }
 
   return (
     <div>
@@ -921,7 +931,9 @@ export function Hiring() {
 
       {isBoard ? (
         <>
-          <TableToolbar standalone>{sharedFilters}</TableToolbar>
+          <FilterBar active={filtersSet} onReset={resetFilters}>
+            {filterFields}
+          </FilterBar>
           <HiringBoard
             applications={boardRows}
             duplicates={duplicates}
@@ -931,15 +943,28 @@ export function Hiring() {
         </>
       ) : (
         <>
-      {/* The steps sit above the card, so the table's own toolbar is just search and filters. */}
-      <div className="mb-3 overflow-x-auto">
-        <SegmentedTabs
-          aria-label="Filter by step"
-          value={statusFilter}
-          onChange={(status) => setFilter('status', status === 'pending' ? '' : status)}
-          options={STATUS_FILTERS.map((status) => ({ value: status, label: STATUS_LABELS[status], count: countOf(status) }))}
-        />
-      </div>
+      <FilterBar
+        active={filtersSet}
+        onReset={resetFilters}
+        actions={
+          <FilterAction onClick={() => exportApplications(rows, `hiring-${statusFilter}-${todayStamp()}.csv`)} disabled={rows.length === 0}>
+            <Download className="h-3.5 w-3.5" aria-hidden />
+            Export all
+          </FilterAction>
+        }
+      >
+        <FilterField label="Step" full>
+          <div className="overflow-x-auto">
+            <SegmentedTabs
+              aria-label="Filter by step"
+              value={statusFilter}
+              onChange={(status) => setFilter('status', status === 'pending' ? '' : status)}
+              options={STATUS_FILTERS.map((status) => ({ value: status, label: STATUS_LABELS[status], count: countOf(status) }))}
+            />
+          </div>
+        </FilterField>
+        {filterFields}
+      </FilterBar>
       {selected.length > 0 && (
         <div className="sticky top-0 z-10 mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 shadow-sm">
           <span className="text-sm font-medium text-gray-700">{selected.length} selected</span>
@@ -1017,20 +1042,6 @@ export function Hiring() {
       {selected.length === 0 && rows.length > 0 && <p className="mb-3 text-xs text-gray-400">{STAGE_TIPS[statusFilter]}</p>}
 
       <DataTable
-        toolbar={
-          <TableToolbar>
-            {sharedFilters}
-            <button
-              type="button"
-              onClick={() => exportApplications(rows, `hiring-${statusFilter}-${todayStamp()}.csv`)}
-              disabled={rows.length === 0}
-              className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-            >
-              <Download className="h-4 w-4" aria-hidden />
-              Export all
-            </button>
-          </TableToolbar>
-        }
         columns={columns}
         data={rows}
         getRowId={(a) => String(a.id)}

@@ -39,7 +39,7 @@ interface DataTableProps<TData> {
   onRowClick?: (row: TData) => void
   /** Skip the outer rounded border/background, for embedding inside a card that already has one. */
   bare?: boolean
-  /** Filters shown in a strip across the top of the table card, usually a <TableToolbar>. */
+  /** Filters shown above the table card, usually a <FilterBar>. */
   toolbar?: ReactNode
 }
 
@@ -106,8 +106,9 @@ export function DataTable<TData>({
   const to = Math.min(total, from + pagination.pageSize - 1)
 
   return (
+    <>
+    {toolbar}
     <div className={bare ? '' : 'card'}>
-      {toolbar}
       <div className="overflow-x-auto">
         <table className="w-full min-w-[36rem] text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
@@ -231,5 +232,6 @@ export function DataTable<TData>({
         </div>
       )}
     </div>
+    </>
   )
 }

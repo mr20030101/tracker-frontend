@@ -17,7 +17,7 @@ import { Avatar } from '../components/Avatar'
 import { DataTable } from '../components/DataTable'
 import { Select } from '../components/Select'
 import { CopyButton } from '../components/SubmissionDetailsModal'
-import { SearchInput, SegmentedTabs, TableToolbar, toolbarControlClass } from '../components/TableToolbar'
+import { FilterBar, FilterField, SearchInput, SegmentedTabs, toolbarControlClass } from '../components/TableToolbar'
 
 type AuditFilter = 'all' | 'errors' | 'low'
 
@@ -341,20 +341,33 @@ export function Audits() {
               : 'No audits match these filters.'
         }
         toolbar={
-          <TableToolbar>
-            <SegmentedTabs
-              aria-label="Show"
-              value={filter}
-              onChange={setFilter}
-              options={[
-                { value: 'all', label: 'All', count: teamRows.length },
-                { value: 'errors', label: 'With errors', count: withErrors.length },
-                { value: 'low', label: 'Score 3 or lower', count: low.length },
-              ]}
-            />
-            <Select value={cbFilter} onChange={setCbFilter} options={cbOptions} aria-label="CB" className={toolbarControlClass} />
-            <SearchInput value={search} onChange={setSearch} placeholder="Search task ID, CB or errors..." />
-          </TableToolbar>
+          <FilterBar
+            active={[filter !== 'all', cbFilter, search].filter(Boolean).length}
+            onReset={() => {
+              setFilter('all')
+              setCbFilter('')
+              setSearch('')
+            }}
+          >
+            <FilterField label="Search" id="audits-search">
+              <SearchInput id="audits-search" value={search} onChange={setSearch} placeholder="Task ID, CB or errors" />
+            </FilterField>
+            <FilterField label="Show" wide>
+              <SegmentedTabs
+                aria-label="Show"
+                value={filter}
+                onChange={setFilter}
+                options={[
+                  { value: 'all', label: 'All', count: teamRows.length },
+                  { value: 'errors', label: 'With errors', count: withErrors.length },
+                  { value: 'low', label: 'Score 3 or lower', count: low.length },
+                ]}
+              />
+            </FilterField>
+            <FilterField label="CB" id="audits-cb">
+              <Select id="audits-cb" fullWidth value={cbFilter} onChange={setCbFilter} options={cbOptions} className={toolbarControlClass} />
+            </FilterField>
+          </FilterBar>
         }
       />
     </div>

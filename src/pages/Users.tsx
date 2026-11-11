@@ -16,7 +16,7 @@ import { Combobox } from '../components/Combobox'
 import { DataTable } from '../components/DataTable'
 import { ActionsMenu } from '../components/ActionsMenu'
 import { Select } from '../components/Select'
-import { SearchInput, SegmentedTabs, TableToolbar, toolbarControlClass } from '../components/TableToolbar'
+import { FilterBar, FilterField, SearchInput, SegmentedTabs, toolbarControlClass } from '../components/TableToolbar'
 import { TeamSettings } from '../components/TeamSettings'
 import { ProjectTags } from '../components/ProjectTags'
 import { fetchProjectLeads } from '../lib/cbProjects'
@@ -332,7 +332,6 @@ export function Users({ view = 'cbs' }: { view?: 'cbs' | 'leads' }) {
   const visibleIds = new Set(rows.map((u) => u.id))
   const selectedIds = Object.keys(rowSelection).filter((id) => rowSelection[id] && visibleIds.has(id))
 
-  const hasActiveFilters = Boolean(search || statusFilter || leadFilter)
 
   const activeCount = people.filter((u) => u.is_active).length
   const statusTabs: { value: StatusFilter; label: string; count: number }[] = [
@@ -447,7 +446,7 @@ export function Users({ view = 'cbs' }: { view?: 'cbs' | 'leads' }) {
                       const team = row.original.role === 'lead' ? teamByLead.get(row.original.id) : undefined
                       if (!team) return <span className="text-xs text-gray-300">—</span>
                       return (
-                        <div className="text-sm">
+                        <div className="whitespace-nowrap text-sm">
                           <Link to={`/users?lead=${row.original.id}`} className="font-medium text-gray-900 hover:underline">
                             {team.active} {team.active === 1 ? 'CB' : 'CBs'}
                           </Link>
@@ -662,9 +661,45 @@ export function Users({ view = 'cbs' }: { view?: 'cbs' | 'leads' }) {
         </div>
       )}
 
-      <div className="mb-3 overflow-x-auto">
-        <SegmentedTabs aria-label="Filter by status" value={statusFilter} onChange={(value) => setFilter('status', value)} options={statusTabs} />
-      </div>
+      <FilterBar
+        active={[search, statusFilter, leadFilter].filter(Boolean).length}
+        onReset={clearFilters}
+        actions={
+          !isLoading && (
+            <span className="px-2 text-xs text-gray-400">
+              {rows.length === people.length ? plural(people.length, 'login') : `${rows.length} of ${plural(people.length, 'login')}`}
+            </span>
+          )
+        }
+      >
+        <FilterField label="Status">
+          <SegmentedTabs aria-label="Filter by status" value={statusFilter} onChange={(value) => setFilter('status', value)} options={statusTabs} />
+        </FilterField>
+        <FilterField label="Search" id="users-search">
+          <SearchInput
+            id="users-search"
+            placeholder="Name or email"
+            aria-label="Search logins"
+            value={search}
+            onChange={(value) => {
+              setSearch(value)
+              setRowSelection({})
+            }}
+          />
+        </FilterField>
+        {isAdmin && view === 'cbs' && (
+          <FilterField label="Lead" id="users-lead">
+            <Select
+              id="users-lead"
+              fullWidth
+              value={leadFilter}
+              onChange={(value) => setFilter('lead', value)}
+              options={[{ value: '', label: 'All Leads' }, { value: 'none', label: 'No Lead Assigned' }, ...leadOptions]}
+              className={toolbarControlClass}
+            />
+          </FilterField>
+        )}
+      </FilterBar>
 
       {selectedIds.length > 0 && (
         <div className="sticky top-0 z-10 mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 shadow-sm">
@@ -727,43 +762,6 @@ export function Users({ view = 'cbs' }: { view?: 'cbs' | 'leads' }) {
       )}
 
       <DataTable
-        toolbar={
-          <TableToolbar>
-            <SearchInput
-              placeholder="Search by name or email..."
-              aria-label="Search logins"
-              value={search}
-              onChange={(value) => {
-                setSearch(value)
-                setRowSelection({})
-              }}
-            />
-            {isAdmin && (
-              <>
-                {view === 'cbs' && (
-                <Select
-                  value={leadFilter}
-                  aria-label="Filter by lead"
-                  onChange={(value) => setFilter('lead', value)}
-                  options={[{ value: '', label: 'All Leads' }, { value: 'none', label: 'No Lead Assigned' }, ...leadOptions]}
-                  className={toolbarControlClass}
-                />
-                )}
-              </>
-            )}
-            {hasActiveFilters && (
-              <button onClick={clearFilters} className="inline-flex items-center gap-1.5 px-1 text-sm font-medium text-sky-700 hover:underline">
-                <X className="h-4 w-4" aria-hidden />
-                Clear filters
-              </button>
-            )}
-            {!isLoading && (
-              <span className="ml-auto text-xs text-gray-400">
-                {rows.length === people.length ? plural(people.length, 'login') : `${rows.length} of ${plural(people.length, 'login')}`}
-              </span>
-            )}
-          </TableToolbar>
-        }
         columns={columns}
         data={rows}
         getRowId={(u) => u.id}

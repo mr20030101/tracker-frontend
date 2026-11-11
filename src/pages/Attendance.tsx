@@ -18,7 +18,7 @@ import {
   type AttendanceWithFiler,
 } from '../lib/attendance'
 import { AttendanceFormModal } from '../components/AttendanceFormModal'
-import { SearchInput, SegmentedTabs, TableToolbar, toolbarControlClass } from '../components/TableToolbar'
+import { FilterAction, FilterBar, FilterField, SearchInput, SegmentedTabs, toolbarControlClass } from '../components/TableToolbar'
 import { AttendanceAvatar } from '../components/AttendanceAvatar'
 import { Modal } from '../components/Modal'
 import { Camera, Check, CircleSlash, Clock, Download, FilePlus, Pencil, RotateCcw, RotateCw, Save, TriangleAlert, X, type LucideIcon } from 'lucide-react'
@@ -325,13 +325,50 @@ function TeamAttendance() {
         </p>
       </div>
 
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <SegmentedTabs
-          aria-label="Filter by filed"
-          value={tab}
-          onChange={setTab}
-          options={(['all', 'filed', 'missing'] as FilterTab[]).map((t) => ({ value: t, label: TAB_LABELS[t], count: countOf(t) }))}
-        />
+      <FilterBar
+        active={[tab !== 'all', date !== today, team !== ALL_TEAMS, search].filter(Boolean).length}
+        onReset={() => {
+          setTab('all')
+          setDate(today)
+          setTeam(ALL_TEAMS)
+          setSearch('')
+        }}
+        actions={
+          <FilterAction onClick={exportRows} disabled={visible.length === 0}>
+            <Download className="h-3.5 w-3.5" aria-hidden />
+            Export
+          </FilterAction>
+        }
+      >
+        <FilterField label="Show" wide>
+          <SegmentedTabs
+            aria-label="Filter by filed"
+            value={tab}
+            onChange={setTab}
+            options={(['all', 'filed', 'missing'] as FilterTab[]).map((t) => ({ value: t, label: TAB_LABELS[t], count: countOf(t) }))}
+          />
+        </FilterField>
+        <FilterField label="Day" id="attendance-day" set={date !== today}>
+          <input
+            id="attendance-day"
+            type="date"
+            value={date}
+            max={today}
+            onChange={(e) => setDate(e.target.value || today)}
+            className={toolbarControlClass}
+          />
+        </FilterField>
+        {isAdmin && (
+          <FilterField label="Team" id="attendance-team" set={team !== ALL_TEAMS}>
+            <Select id="attendance-team" fullWidth value={team} onChange={setTeam} options={teamOptions} className={toolbarControlClass} />
+          </FilterField>
+        )}
+        <FilterField label="Search" id="attendance-search" set={Boolean(search)}>
+          <SearchInput id="attendance-search" value={search} onChange={setSearch} placeholder="Contributor" />
+        </FilterField>
+      </FilterBar>
+
+      <div className="mb-4 flex flex-wrap items-center gap-x-5 gap-y-3">
         {hoursSummary.length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5 text-xs text-gray-500">
             {hoursSummary.map((s) => (
@@ -341,30 +378,11 @@ function TeamAttendance() {
             ))}
           </div>
         )}
+        <div className="ml-auto flex flex-wrap items-center gap-x-5 gap-y-2">
+          <CloseTimeSetting key={closeTimeLead ?? 'default'} leadId={closeTimeLead} />
+          {isAdmin && <PhotoRequiredSetting />}
+        </div>
       </div>
-
-      <TableToolbar standalone>
-        <input
-          type="date"
-          value={date}
-          max={today}
-          onChange={(e) => setDate(e.target.value || today)}
-          aria-label="Day"
-          className={toolbarControlClass}
-        />
-        {isAdmin && <Select value={team} onChange={setTeam} options={teamOptions} aria-label="Filter by team" className={toolbarControlClass} />}
-        <SearchInput value={search} onChange={setSearch} placeholder="Search contributor..." />
-        <CloseTimeSetting key={closeTimeLead ?? 'default'} leadId={closeTimeLead} />
-        {isAdmin && <PhotoRequiredSetting />}
-        <button
-          onClick={exportRows}
-          disabled={visible.length === 0}
-          className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-        >
-          <Download className="h-4 w-4" aria-hidden />
-          Export
-        </button>
-      </TableToolbar>
 
       {isLoading ? (
         <EmptyCard>Loading...</EmptyCard>

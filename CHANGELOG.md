@@ -14,6 +14,18 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.34.0 — 2026-11-12
+
+### Changed
+
+- Filters look the same on every page: their own card above the table, each with its label above it, four to a row, with Export and Reset on a header row. Past the first four, the rest fold behind "More filters", which opens by itself while one of them is set. Covers the Task Log, Leaderboard, Requests, Hiring, Audits, Contributors, Attendance, Activity Log, Feedback and Team Reports; the status and step tabs on Requests, Hiring, Contributors and Attendance moved into the card too.
+- The Leaderboard's Day / Week / Month, date range and date picker now sit in the filter card, and Reset takes it back to the current period.
+- The Task Log table no longer has a Date column (the Date filter covers it), and its rows stay on one line, so the table fits without running off the right edge.
+- The Leads page's CBs column keeps "30 CBs" and "4 online" on one line each.
+- Team Reports: each lead's name in the table opens their team page (admins).
+- The Details button on the Task Log and Requests is now just the eye icon.
+- The CTS Form offers every task not yet sent to CTS, not only those from the last 3 days.
+
 ## 8.33.0 — 2026-11-11
 
 ### Added

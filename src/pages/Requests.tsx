@@ -38,7 +38,7 @@ import type { RequestStatus, RequestType } from '../types'
 import { contributorPath } from '../lib/urlRef'
 import { useNow } from '../lib/useNow'
 import { confirmDialog } from '../lib/dialog'
-import { SegmentedTabs, TableCard } from '../components/TableToolbar'
+import { FilterBar, FilterField, SegmentedTabs, TableCard } from '../components/TableToolbar'
 import { usePageTitle } from '../lib/usePageTitle'
 
 const MANAGER_ROLES = ['admin', 'lead']
@@ -450,20 +450,30 @@ export function Requests() {
         </div>
       )}
 
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <SegmentedTabs
-          aria-label="Filter by status"
-          value={statusFilter}
-          onChange={setStatus}
-          options={STATUS_FILTERS.map((status) => ({ value: status, label: STATUS_LABELS[status], count: countOf(status) }))}
-        />
-        <SegmentedTabs
-          aria-label="Filter by type"
-          value={typeFilter}
-          onChange={setType}
-          options={TYPE_FILTERS.map((type) => ({ value: type, label: TYPE_LABELS[type] }))}
-        />
-      </div>
+      <FilterBar
+        active={[statusFilter !== 'pending', typeFilter !== 'all'].filter(Boolean).length}
+        onReset={() => {
+          setStatus('pending')
+          setType('all')
+        }}
+      >
+        <FilterField label="Status" wide>
+          <SegmentedTabs
+            aria-label="Filter by status"
+            value={statusFilter}
+            onChange={setStatus}
+            options={STATUS_FILTERS.map((status) => ({ value: status, label: STATUS_LABELS[status], count: countOf(status) }))}
+          />
+        </FilterField>
+        <FilterField label="Type" wide>
+          <SegmentedTabs
+            aria-label="Filter by type"
+            value={typeFilter}
+            onChange={setType}
+            options={TYPE_FILTERS.map((type) => ({ value: type, label: TYPE_LABELS[type] }))}
+          />
+        </FilterField>
+      </FilterBar>
 
       {selected.length > 0 && (
         <div className="sticky top-0 z-10 mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 shadow-sm">
@@ -595,10 +605,11 @@ export function Requests() {
                   <div className="flex flex-wrap items-center justify-end gap-2">
                     <button
                       onClick={() => setViewingId(request.id)}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+                      aria-label="Details"
+                      title="Details"
+                      className="inline-flex h-8 w-8 pointer-coarse:h-11 pointer-coarse:w-11 items-center justify-center rounded-lg border border-gray-200 text-gray-600 transition-colors duration-100 hover:bg-gray-50 hover:text-gray-900"
                     >
-                      <Eye className="h-3.5 w-3.5" aria-hidden />
-                      Details
+                      <Eye className="h-4 w-4" aria-hidden />
                     </button>
                     {actionButtons(request)}
                   </div>
