@@ -111,11 +111,15 @@ function fakeFetch({
   formPage = 'ok',
   attempts = 0,
   project = TASK.project as BackupFormTask['project'],
+  claimed = true,
 } = {}) {
   return vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
     const url = String(input)
     if (badSelect(url)) return Response.json({ code: '42703', message: 'column does not exist' }, { status: 400 })
-    if (url.includes('/rest/v1/task_submissions?') && init?.method === 'PATCH') return new Response(null, { status: 204 })
+    if (url.includes('/rest/v1/task_submissions?') && init?.method === 'PATCH') {
+      if (url.includes('backup_form_sent_at=is.null')) return Response.json(claimed ? [{ id: 42 }] : [])
+      return new Response(null, { status: 204 })
+    }
     if (url.includes('/rest/v1/task_submissions?')) {
       return Response.json([{ id: 42, ...TASK, project, status, cb_email: 'cb_one@example.com', backup_form_sent_at: sentAt, backup_form_attempts: attempts }])
     }
@@ -128,8 +132,9 @@ function fakeFetch({
 }
 
 const posted = (fetchImpl: ReturnType<typeof fakeFetch>) => fetchImpl.mock.calls.find(([url]) => String(url) === BACKUP_FORM_RESPONSE_URL)
-const patchBody = (fetchImpl: ReturnType<typeof fakeFetch>) =>
-  JSON.parse(String(fetchImpl.mock.calls.find(([, init]) => init?.method === 'PATCH')?.[1]?.body))
+const patches = (fetchImpl: ReturnType<typeof fakeFetch>) => fetchImpl.mock.calls.filter(([, init]) => init?.method === 'PATCH')
+const claimCall = (fetchImpl: ReturnType<typeof fakeFetch>) => patches(fetchImpl).find(([url]) => String(url).includes('backup_form_sent_at=is.null'))
+const patchBody = (fetchImpl: ReturnType<typeof fakeFetch>) => JSON.parse(String(patches(fetchImpl).at(-1)?.[1]?.body))
 
 describe('handleSendTaskToBackupForm', () => {
   it("posts the task with the CB's email and records it as sent", async () => {
@@ -236,6 +241,32 @@ describe('handleSendTaskToBackupForm', () => {
     const fetchImpl = fakeFetch({ formStatus: 429 })
     await handleSendTaskToBackupForm(request(), ENV, fetchImpl)
     expect(patchBody(fetchImpl).backup_form_error).toContain('429')
+  })
+
+  it('claims the task before posting, so a second call at the same time posts nothing', async () => {
+    const fetchImpl = fakeFetch({ attempts: 1 })
+    await handleSendTaskToBackupForm(request(), ENV, fetchImpl)
+    const order = fetchImpl.mock.calls.map(([url, init]) => (init?.method === 'PATCH' ? 'patch' : String(url)))
+    expect(order.indexOf('patch')).toBeLessThan(order.indexOf(BACKUP_FORM_RESPONSE_URL))
+    const claimUrl = decodeURIComponent(String(claimCall(fetchImpl)?.[0]))
+    expect(claimUrl).toContain('backup_form_attempts=eq.1')
+    expect(claimUrl).toContain('backup_form_error.not.is.null')
+    expect(JSON.parse(String(claimCall(fetchImpl)?.[1]?.body))).toMatchObject({ backup_form_attempts: 2, backup_form_error: null })
+  })
+
+  it("doesn't post when another call is already sending the task", async () => {
+    const fetchImpl = fakeFetch({ claimed: false })
+    const response = await handleSendTaskToBackupForm(request(), ENV, fetchImpl)
+    expect(await response.json()).toEqual({ sent: false, reason: 'already being sent' })
+    expect(posted(fetchImpl)).toBeUndefined()
+    expect(patches(fetchImpl)).toHaveLength(1)
+  })
+
+  it("writes back with a newer attempted_at than the claim, so the trigger ignores the sender's own write", async () => {
+    const fetchImpl = fakeFetch()
+    await handleSendTaskToBackupForm(request(), ENV, fetchImpl)
+    const claimedAt = JSON.parse(String(claimCall(fetchImpl)?.[1]?.body)).backup_form_attempted_at
+    expect(Date.parse(patchBody(fetchImpl).backup_form_attempted_at)).toBeGreaterThan(Date.parse(claimedAt))
   })
 
   it('counts every try, sent or not, so the retry job can stop', async () => {

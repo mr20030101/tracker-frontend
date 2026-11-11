@@ -14,6 +14,13 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Fixed
+
+- **A task could reach the Back Up Task Tracker form twice.** When two sends for the same task
+  overlapped (editing a task whose last send failed while the 5-minute retry was already sending
+  it, or a status change mid-send), both posted to the Google Form before either had marked the
+  task sent. The tracker now claims the task first, so only one send posts it and the other stops.
+
 ## 8.31.0 — 2026-11-11
 
 ### Removed
