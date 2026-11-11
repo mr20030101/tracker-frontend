@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.29.0 — 2026-11-11
+
 ### Added
 
 - **Billing page for leads** (Team → Billing): your share of each month's Supabase bill, what you
