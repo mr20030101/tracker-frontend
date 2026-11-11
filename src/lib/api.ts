@@ -326,14 +326,27 @@ async function contributor(params: Record<string, unknown>): Promise<Contributor
   const emailPattern = email.replace(/[\\%_]/g, (char) => `\\${char}`)
   // `week_only`: just the week's rows (the contributor's own Dashboard needs nothing older), one
   // small request instead of their whole history.
+  // `date_from` / `date_to`: just the rows in that span (a profile's chosen period plus the last 30
+  // days for its trend and CTS form), with the all-time totals counted on the server instead.
   const weekOnly = Boolean(params.week_only)
-  const [{ data: rows }, targetByUser] = await Promise.all([
+  const dateFrom = weekOnly ? weekStart : typeof params.date_from === 'string' ? params.date_from : null
+  const dateTo = typeof params.date_to === 'string' ? params.date_to : null
+  const countTotal = async (submittedOnly: boolean) => {
+    let query = supabase.from('task_submissions').select('id', { count: 'exact', head: true }).ilike('cb_email', emailPattern)
+    if (submittedOnly) query = query.eq('status', 'submitted')
+    const { count } = await query
+    return count ?? 0
+  }
+  const [{ data: rows }, targetByUser, totals] = await Promise.all([
     // Paged: one contributor's whole history can pass 1,000 rows.
     fetchAllPages<TaskSubmission>((from, to) => {
-      const query = supabase.from('task_submissions').select('*').ilike('cb_email', emailPattern)
-      return (weekOnly ? query.gte('date', weekStart) : query).order('date', { ascending: false }).order('id').range(from, to)
+      let query = supabase.from('task_submissions').select('*').ilike('cb_email', emailPattern)
+      if (dateFrom) query = query.gte('date', dateFrom)
+      if (dateTo) query = query.lte('date', dateTo)
+      return query.order('date', { ascending: false }).order('id').range(from, to)
     }).then((data) => ({ data })),
     user ? fetchWeeklyTargets(weekStart, [user.id]) : new Map<string, number>(),
+    dateFrom ? Promise.all([countTotal(true), countTotal(false)]) : Promise.resolve(null),
   ])
   const submissions = withProject((rows ?? []) as TaskSubmission[], await projects())
   const weekRows = submissions.filter((row) => row.date && row.date >= weekStart && row.date <= weekEnd)
@@ -342,7 +355,7 @@ async function contributor(params: Record<string, unknown>): Promise<Contributor
     const name = row.project?.name ?? 'Unassigned'
     return { ...counts, [name]: (counts[name] ?? 0) + 1 }
   }, {})
-  return { user: user as User | null, cb_email: email, week_start: weekStart, week_end: weekEnd, weekly_target: (user && targetByUser.get(user.id)) ?? DEFAULT_WEEKLY_TARGET, submitted_this_week: weekRows.filter((row) => row.status === 'submitted').length, total_submitted: submissions.filter((row) => row.status === 'submitted').length, total_logged: submissions.length, stage_breakdown: stageBreakdown, project_breakdown: Object.entries(projectBreakdown).map(([name, total]) => ({ name, total })), week_submissions: weekRows, recent_submissions: submissions.slice(0, 10), all_submissions: submissions, is_public_view: false }
+  return { user: user as User | null, cb_email: email, week_start: weekStart, week_end: weekEnd, weekly_target: (user && targetByUser.get(user.id)) ?? DEFAULT_WEEKLY_TARGET, submitted_this_week: weekRows.filter((row) => row.status === 'submitted').length, total_submitted: totals ? totals[0] : submissions.filter((row) => row.status === 'submitted').length, total_logged: totals ? totals[1] : submissions.length, stage_breakdown: stageBreakdown, project_breakdown: Object.entries(projectBreakdown).map(([name, total]) => ({ name, total })), week_submissions: weekRows, recent_submissions: submissions.slice(0, 10), all_submissions: submissions, is_public_view: false }
 }
 
 async function leaderboard(params: Record<string, unknown>): Promise<LeaderboardRow[]> {

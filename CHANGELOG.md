@@ -14,6 +14,20 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.25.0 — 2026-11-11
+
+### Added
+
+- **A report on each contributor's profile, for leads and admins.** Pick Today, This week, Last week or This month to see three plain numbers: Attendance (days present of days so far), Submitted (tasks, with any rejected or expired) and Hours rendered (against the goal for the days present), then one line per day with attendance, tasks submitted and hours. Export CSV downloads the same per-day lines.
+- **Leads see a focused contributor profile.** On a contributor's profile, leads and admins no longer see the onboarding checklist or the achievements and badges, only the report, tasking and attendance. The All-time / This week / Streak / Best day numbers, goal ring, submission trend and stage and project charts are gone from it too.
+- **Project levels sit under the contributor's name.** On a profile, each project and the contributor's level on it show as a small row in the header (a lead or admin changes a level from there), instead of a separate Project Levels card. The old daily-quota note is gone.
+- **Leads keep only the CTS Form on a contributor's task list.** Bulk Import and Add Submission are no longer shown there for leads and admins; they're still on the Task Log.
+
+### Changed
+
+- **Requests and Feedback load a page at a time.** Each shows 25 at a time with Previous / Next, filtered and searched on the server; the tab counts and the overdue count are counted there without downloading the rows. Before, every request and report ever made was downloaded, and past 1,000 the oldest silently dropped off.
+- **A contributor's task list loads only the period shown.** The chosen day, week or month, plus the last 30 days for the trend and CTS form, instead of their whole history; the all-time totals are counted on the server.
+
 ## 8.24.4 — 2026-11-11
 
 ### Changed

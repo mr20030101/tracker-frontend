@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { PAGE_SIZE, PageFooter } from '../components/PageFooter'
 import { FoldText } from '../components/FoldText'
 import { Link } from 'react-router-dom'
 import { Ban, Check, ClipboardCheck, Download, ExternalLink, Eye, Flag, Send, Trash2, Undo2, X } from 'lucide-react'
@@ -7,7 +8,8 @@ import { useAuth } from '../lib/auth'
 import { errorMessage } from '../lib/api'
 import {
   deleteTaskFeedback,
-  fetchTaskFeedback,
+  fetchTaskFeedbackPage,
+  fetchFeedbackStatusCounts,
   fileTaskFeedback,
   reviewTaskFeedback,
   type TaskFeedbackWithPeople,
@@ -47,21 +49,29 @@ export function Feedback() {
   const [newReport, setNewReport] = useState(false)
   const [viewingId, setViewingId] = useState<number | null>(null)
 
-  const { data: reports = [], isLoading } = useQuery({
-    queryKey: ['task-feedback', 'all'],
-    queryFn: fetchTaskFeedback,
+  // One page at a time from the server, filtered and searched there; the tab counts are count-only.
+  const [page, setPage] = useState(1)
+  // Searched once typing pauses, not on every key.
+  const [searchTerm, setSearchTerm] = useState(search)
+  useEffect(() => {
+    const timer = setTimeout(() => setSearchTerm(search.trim()), 300)
+    return () => clearTimeout(timer)
+  }, [search])
+  useEffect(() => setPage(1), [statusFilter, searchTerm])
+  const { data: pageData, isLoading } = useQuery({
+    queryKey: ['task-feedback', 'page', statusFilter, searchTerm, page],
+    queryFn: () => fetchTaskFeedbackPage({ status: statusFilter, search: searchTerm, page, pageSize: PAGE_SIZE }),
+    refetchInterval: 2 * 60_000,
+    placeholderData: (previous) => previous,
+  })
+  const { data: statusCounts } = useQuery({
+    queryKey: ['task-feedback', 'counts', searchTerm],
+    queryFn: () => fetchFeedbackStatusCounts(searchTerm),
     refetchInterval: 2 * 60_000,
   })
-
-  const term = search.trim().toLowerCase()
-  const matchesSearch = (r: TaskFeedbackWithPeople) =>
-    !term ||
-    r.task_id.toLowerCase().includes(term) ||
-    Boolean(r.contributor?.name.toLowerCase().includes(term)) ||
-    Boolean(r.contributor?.email.toLowerCase().includes(term))
-  const searched = reports.filter(matchesSearch)
-  const countOf = (status: StatusFilter) => (status === 'all' ? searched.length : searched.filter((r) => r.status === status).length)
-  const rows = searched.filter((r) => statusFilter === 'all' || r.status === statusFilter)
+  const reports = pageData?.rows ?? []
+  const countOf = (status: StatusFilter) => statusCounts?.[status] ?? 0
+  const rows = reports
   const columnCount = isManager ? 6 : 5
   // Looked up by id each render, so the modal follows the report if it's checked while open.
   const viewing = viewingId === null ? null : (reports.find((r) => r.id === viewingId) ?? null)
@@ -213,6 +223,7 @@ export function Feedback() {
             ))}
           </tbody>
         </table>
+        {pageData && <PageFooter page={page} total={pageData.total} onPage={setPage} />}
       </TableCard>
 
       {viewing && (

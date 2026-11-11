@@ -22,23 +22,37 @@ export type TaskRequestWithContext = TaskRequest & {
   reviewer: { id: string; name: string } | null
 }
 
-/**
- * Every request (extension, reclaim or bad video) the caller can see: RLS scopes this to their own (a
- * contributor's extension requests), their attached contributors' (a lead), whichever task's
- * contributor they're attached to (a bad video report about that contributor's work), or
- * everyone's (an admin).
- */
-export async function fetchTaskRequests(): Promise<TaskRequestWithContext[]> {
-  const { data, error } = await supabase
-    .from('task_requests')
-    .select(
-      // The FK constraint keeps its pre-rename name (task_extension_requests_requested_by_fkey) —
-      // renaming DB constraint names was deliberately left out of the table rename for minimal risk.
-      '*, task_submission:task_submissions(id, task_id, date, status, cb_email, stage, project:projects(name, code)), requester:profiles!task_extension_requests_requested_by_fkey(id, name, email, remotasks_id), reviewer:profiles!task_extension_requests_reviewed_by_fkey(id, name)',
-    )
-    .order('requested_at', { ascending: false })
+const REQUEST_SELECT =
+  '*, task_submission:task_submissions(id, task_id, date, status, cb_email, stage, project:projects(name, code)), requester:profiles!task_extension_requests_requested_by_fkey(id, name, email, remotasks_id), reviewer:profiles!task_extension_requests_reviewed_by_fkey(id, name)'
+
+/** One page of requests (25), newest first, filtered by status and type on the server. */
+export async function fetchTaskRequestsPage(params: {
+  status: RequestStatus | 'all'
+  type: 'extension' | 'reclaim' | 'bad_video' | 'all'
+  page: number
+  pageSize: number
+}): Promise<{ rows: TaskRequestWithContext[]; total: number }> {
+  let query = supabase.from('task_requests').select(REQUEST_SELECT, { count: 'exact' })
+  if (params.status !== 'all') query = query.eq('status', params.status)
+  if (params.type !== 'all') query = query.eq('type', params.type)
+  const from = (params.page - 1) * params.pageSize
+  const { data, error, count } = await query.order('requested_at', { ascending: false }).order('id', { ascending: false }).range(from, from + params.pageSize - 1)
   if (error) throw error
-  return data as TaskRequestWithContext[]
+  return { rows: data as TaskRequestWithContext[], total: count ?? 0 }
+}
+
+/** How many requests there are in each status (and overall), counted on the server without the rows. */
+export async function fetchRequestStatusCounts(type: 'extension' | 'reclaim' | 'bad_video' | 'all'): Promise<Record<RequestStatus | 'all', number>> {
+  const countFor = async (status: RequestStatus | 'all') => {
+    let query = supabase.from('task_requests').select('id', { count: 'exact', head: true })
+    if (status !== 'all') query = query.eq('status', status)
+    if (type !== 'all') query = query.eq('type', type)
+    const { count, error } = await query
+    if (error) throw error
+    return count ?? 0
+  }
+  const [all, pending, approved, denied] = await Promise.all([countFor('all'), countFor('pending'), countFor('approved'), countFor('denied')])
+  return { all, pending, approved, denied }
 }
 
 /**

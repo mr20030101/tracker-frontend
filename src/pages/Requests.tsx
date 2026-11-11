@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { PAGE_SIZE, PageFooter } from '../components/PageFooter'
 import { FoldText } from '../components/FoldText'
 import { Link } from 'react-router-dom'
 import { Ban, ExternalLink, Eye, Filter, Pencil, Plus, RotateCcw, RotateCw, Trash2, Undo2, X } from 'lucide-react'
@@ -10,7 +11,9 @@ import {
   timeRequestFormFor,
   deleteTaskRequestsBulk,
   editTaskRequest,
-  fetchTaskRequests,
+  fetchTaskRequestsPage,
+  fetchRequestStatusCounts,
+  fetchOverdueRequestCount,
   reopenTaskRequest,
   requestExtension,
   reviewTaskRequest,
@@ -81,10 +84,26 @@ export function Requests() {
   // The requester's own extension/reclaim they're editing (pending) or resending (denied).
   const [revisingRequest, setRevisingRequest] = useState<{ request: TimeRequest; mode: Extract<TimeRequestMode, 'edit' | 'resend'> } | null>(null)
 
-  const { data: requests = [], isLoading } = useQuery({
-    queryKey: ['task-requests', 'all'],
-    queryFn: fetchTaskRequests,
+  // One page at a time from the server, filtered there; the tab counts are count-only queries.
+  const [page, setPage] = useState(1)
+  useEffect(() => setPage(1), [statusFilter, typeFilter])
+  const { data: pageData, isLoading } = useQuery({
+    queryKey: ['task-requests', 'page', statusFilter, typeFilter, page],
+    queryFn: () => fetchTaskRequestsPage({ status: statusFilter, type: typeFilter, page, pageSize: PAGE_SIZE }),
     refetchInterval: 2 * 60_000,
+    placeholderData: (previous) => previous,
+  })
+  const requests = pageData?.rows ?? []
+  const { data: statusCounts } = useQuery({
+    queryKey: ['task-requests', 'counts', typeFilter],
+    queryFn: () => fetchRequestStatusCounts(typeFilter),
+    refetchInterval: 2 * 60_000,
+  })
+  const { data: overdueCount = 0 } = useQuery({
+    queryKey: ['task-requests', 'overdue-count'],
+    queryFn: fetchOverdueRequestCount,
+    enabled: isManager,
+    refetchInterval: 5 * 60_000,
   })
   // A contributor can only send a request during their lead's shift (the database checks it too).
   const { data: requestShift = null } = useQuery({ queryKey: ['request-shift'], queryFn: fetchRequestShift, enabled: !isManager })
@@ -350,13 +369,12 @@ export function Requests() {
     setSelectedIds((prev) => (rows.every((r) => prev.has(r.id)) ? new Set() : new Set(rows.map((r) => r.id))))
   }
 
-  const countOf = (status: StatusFilter) => (status === 'all' ? requests.length : requests.filter((r) => r.status === status).length)
+  const countOf = (status: StatusFilter) => statusCounts?.[status] ?? 0
   // Re-read every minute, so a request crosses into Overdue without a reload.
   const now = useNow(60_000)
-  const overdueCount = requests.filter((r) => isOverdue(r, now)).length
   const outsideShift = !isManager && requestShift !== null && !inShift(requestShift, now)
   const outsideShiftHint = outsideShift ? `Extension and reclaim requests open during ${requestShift.leadName}'s shift, ${shiftLabel(requestShift)}.` : undefined
-  const rows = requests.filter((r) => (statusFilter === 'all' || r.status === statusFilter) && (typeFilter === 'all' || r.type === typeFilter))
+  const rows = requests
   const selected = rows.filter((r) => selectedIds.has(r.id))
   const allVisibleSelected = rows.length > 0 && rows.every((r) => selectedIds.has(r.id))
   const columnCount = isManager ? 6 : 5
@@ -588,6 +606,7 @@ export function Requests() {
             ))}
           </tbody>
         </table>
+        {pageData && <PageFooter page={page} total={pageData.total} onPage={setPage} />}
       </TableCard>
 
       {viewing && (
