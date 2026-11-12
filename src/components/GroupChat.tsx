@@ -1,10 +1,9 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import { linkify } from '../lib/linkify'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Check, ChevronUp, LogOut, Pencil, Plus, Send, Settings, Trash2, UserMinus, UserPlus, Users, X } from 'lucide-react'
+import { ArrowLeft, Check, ChevronUp, LogOut, Pencil, Plus, Settings, Trash2, UserMinus, UserPlus, Users, X } from 'lucide-react'
 import { api, errorMessage, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
-import { convertEmoticons } from '../lib/emoticons'
+import { renderChatText } from '../lib/mentions'
 import {
   addGroupMembers,
   createGroup,
@@ -20,7 +19,8 @@ import { useMessaging } from '../lib/messagingContext'
 import { formatTime } from '../lib/week'
 import type { ChatGroupSummary, GroupMessage, Project } from '../types'
 import { Avatar } from './Avatar'
-import { EmojiPickerButton } from './EmojiPickerButton'
+import { ChatComposer, type ChatSendPayload } from './ChatComposer'
+import { ChatImages } from './ChatImages'
 import { Modal } from './Modal'
 import { confirmDialog } from '../lib/dialog'
 import { groupSeenStatus } from '../lib/seen'
@@ -80,6 +80,9 @@ export function GroupChatPane({ group, onBack, onGone }: { group: ChatGroupSumma
   const seenStatus = groupSeenStatus(messages, group.members, myId)
   const typerIds = useTypingIndicator(groupTypingKey(group.id), myId, draft)
   const typingLabel = typingNames(typerIds.map((id) => membersById.get(id)?.name.split(' ')[0] ?? 'Someone'))
+  const memberNames = useMemo(() => group.members.map((m) => m.name), [group.members])
+  const myName = myId ? membersById.get(myId)?.name : null
+  const mentionCandidates = useMemo(() => group.members.filter((m) => m.id !== myId), [group.members, myId])
 
   useEffect(() => {
     if (group.unread_count > 0) {
@@ -93,9 +96,8 @@ export function GroupChatPane({ group, onBack, onGone }: { group: ChatGroupSumma
   }, [group.id, newestId, typingLabel])
 
   const sendMutation = useMutation({
-    mutationFn: (text: string) => sendGroupMessage(group.id, myId!, text),
-    onSuccess: (_data, sent) => {
-      setDraft((d) => (d.trim() === sent ? '' : d))
+    mutationFn: ({ body, imageRefs }: ChatSendPayload) => sendGroupMessage(group.id, myId!, body, imageRefs),
+    onSuccess: () => {
       setSendError(null)
       queryClient.invalidateQueries({ queryKey: ['group-chats', myId] })
     },
@@ -104,12 +106,6 @@ export function GroupChatPane({ group, onBack, onGone }: { group: ChatGroupSumma
       setTimeout(() => setSendError(null), 6000)
     },
   })
-
-  function handleSend(e: FormEvent) {
-    e.preventDefault()
-    if (!draft.trim() || sendMutation.isPending) return
-    sendMutation.mutate(draft.trim())
-  }
 
   return (
     <>
@@ -173,12 +169,19 @@ export function GroupChatPane({ group, onBack, onGone }: { group: ChatGroupSumma
                     {!mine && firstOfRun && (
                       <span className="mb-0.5 px-2 text-[11px] text-gray-400">{sender?.name ?? 'Former member'}</span>
                     )}
-                    <div
-                      title={formatTime(m.created_at)}
-                      className={`rounded-3xl px-3.5 py-2 text-sm ${mine ? 'bg-accent text-accent-foreground' : 'bg-gray-100 text-gray-800'}`}
-                    >
-                      <div className="whitespace-pre-wrap wrap-break-word">{linkify(convertEmoticons(m.body))}</div>
-                    </div>
+                    {m.image_refs && m.image_refs.length > 0 && (
+                      <div className="mb-0.5" title={formatTime(m.created_at)}>
+                        <ChatImages refs={m.image_refs} mine={mine} />
+                      </div>
+                    )}
+                    {m.body.trim() && (
+                      <div
+                        title={formatTime(m.created_at)}
+                        className={`rounded-3xl px-3.5 py-2 text-sm ${mine ? 'bg-accent text-accent-foreground' : 'bg-gray-100 text-gray-800'}`}
+                      >
+                        <div className="whitespace-pre-wrap wrap-break-word">{renderChatText(m.body, memberNames, myName, mine)}</div>
+                      </div>
+                    )}
                     {seenStatus?.messageId === m.id && (
                       <span className="mt-0.5 px-1 text-[11px] text-gray-400">{seenStatus.label}</span>
                     )}
@@ -202,24 +205,14 @@ export function GroupChatPane({ group, onBack, onGone }: { group: ChatGroupSumma
           {sendError}
         </div>
       )}
-      <form onSubmit={handleSend} className="flex items-center gap-2 border-t border-gray-100 p-3">
-        <input
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder={`Message ${group.name}`}
-          maxLength={2000}
-          className="flex-1 rounded-full border border-gray-200 bg-gray-50 px-4 py-2 text-sm outline-none focus:border-accent"
-        />
-        <EmojiPickerButton onSelect={(emoji) => setDraft((d) => d + emoji)} />
-        <button
-          type="submit"
-          disabled={!draft.trim() || sendMutation.isPending}
-          className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground transition-colors duration-100 hover:bg-accent-hover disabled:opacity-50"
-        >
-          <Send className="h-4 w-4" aria-hidden />
-          Send
-        </button>
-      </form>
+      <ChatComposer
+        value={draft}
+        onChange={setDraft}
+        onSend={(payload) => sendMutation.mutateAsync(payload)}
+        placeholder={`Message ${group.name}`}
+        mentionCandidates={mentionCandidates}
+        className="border-t border-gray-100"
+      />
 
       {settingsOpen && <GroupSettingsModal group={group} onClose={() => setSettingsOpen(false)} onGone={onGone} />}
     </>

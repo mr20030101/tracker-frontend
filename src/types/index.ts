@@ -256,6 +256,8 @@ export interface Message {
   sender_id: string
   recipient_id: string
   body: string
+  // Drive refs of photos sent with it (see lib/chatImages.ts); missing on rows from before photos.
+  image_refs?: string[]
   read_at: string | null
   deleted_by_sender: boolean
   deleted_by_recipient: boolean
@@ -401,6 +403,7 @@ export interface GroupMessage {
   group_id: number
   sender_id: string
   body: string
+  image_refs?: string[]
   created_at: string
 }
 

@@ -367,7 +367,7 @@ export function MessagesButton() {
                         </div>
                         <div className="truncate text-xs text-gray-500">
                           {g.last_message
-                            ? `${g.last_message.sender_id === myId ? 'You' : (g.members.find((m) => m.id === g.last_message!.sender_id)?.name.split(' ')[0] ?? 'Someone')}: ${g.last_message.body}`
+                            ? `${g.last_message.sender_id === myId ? 'You' : (g.members.find((m) => m.id === g.last_message!.sender_id)?.name.split(' ')[0] ?? 'Someone')}: ${g.last_message.body.trim() || 'sent a photo'}`
                             : `${g.members.length} members`}
                         </div>
                       </div>
@@ -399,7 +399,7 @@ export function MessagesButton() {
                             {typingUserIds.has(c.otherUserId) ? (
                               <span className="font-medium text-status-success-text">Typing…</span>
                             ) : (
-                              messagePreview(c.lastMessage.body, c.lastMessage.sender_id === myId)
+                              messagePreview(c.lastMessage.body, c.lastMessage.sender_id === myId, c.lastMessage.image_refs?.length)
                             )}
                           </div>
                         </div>

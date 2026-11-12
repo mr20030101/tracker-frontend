@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { linkify } from '../lib/linkify'
 import { Check, Phone, PhoneMissed, Trash2 } from 'lucide-react'
 import { callLogTitle, formatCallDuration, parseCallLog, type CallLog } from '../lib/callLog'
-import { convertEmoticons } from '../lib/emoticons'
+import { renderChatText } from '../lib/mentions'
 import { formatBotMessage } from '../lib/formatBotMessage'
 import { ActionsMenu } from './ActionsMenu'
 import { Avatar } from './Avatar'
+import { ChatImages } from './ChatImages'
 import type { Message } from '../types'
 
 // Messenger's own send-bubble blue — kept local to this component (an arbitrary value, not a
@@ -28,6 +28,8 @@ export function MessageBubble({
   onDelete,
   onCallBack,
   status,
+  mentionNames = [],
+  myName,
 }: {
   message: Message
   mine: boolean
@@ -42,9 +44,12 @@ export function MessageBubble({
   onCallBack?: () => void
   // "Sent" / "Seen …" under your latest message (see lib/seen.ts); always shown, unlike the time.
   status?: string
+  mentionNames?: string[]
+  myName?: string | null
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const callLog = isBot ? null : parseCallLog(message.body)
+  const imageRefs = message.image_refs ?? []
 
   return (
     <div className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
@@ -62,12 +67,18 @@ export function MessageBubble({
           ) : (
             <div
               onClick={selectable ? onToggleSelect : undefined}
-              className={`max-w-lg rounded-3xl px-3.5 py-2 text-sm ${mine ? 'bg-accent text-accent-foreground' : 'bg-gray-100 text-gray-800'
-                } ${selectable ? 'cursor-pointer' : ''} ${selected ? 'ring-2 ring-accent ring-offset-1' : ''}`}
+              className={`flex max-w-lg flex-col gap-1 ${mine ? 'items-end' : 'items-start'} ${selectable ? 'cursor-pointer' : ''} ${
+                selected ? 'rounded-3xl ring-2 ring-accent ring-offset-1' : ''
+              }`}
             >
-              <div className="whitespace-pre-wrap wrap-break-word">
-                {isBot ? formatBotMessage(message.body) : linkify(convertEmoticons(message.body))}
-              </div>
+              {imageRefs.length > 0 && <ChatImages refs={imageRefs} mine={mine} />}
+              {message.body.trim() && (
+                <div className={`rounded-3xl px-3.5 py-2 text-sm ${mine ? 'bg-accent text-accent-foreground' : 'bg-gray-100 text-gray-800'}`}>
+                  <div className="whitespace-pre-wrap wrap-break-word">
+                    {isBot ? formatBotMessage(message.body) : renderChatText(message.body, mentionNames, myName, mine)}
+                  </div>
+                </div>
+              )}
             </div>
           )}
           {selectable ? (

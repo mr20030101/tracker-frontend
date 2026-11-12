@@ -75,11 +75,13 @@ export async function deleteConversationForMe(myId: string, otherUserId: string)
 
 // Doesn't ask for the stored row back: when someone spams the bot the database drops the message
 // (and has the bot post a reminder instead), so there may be no row to return.
-export async function sendMessage(recipientId: string, body: string): Promise<void> {
+export async function sendMessage(recipientId: string, body: string, imageRefs: string[] = []): Promise<void> {
   const { data: authData } = await supabase.auth.getUser()
   const senderId = authData.user?.id
   if (!senderId) throw new Error('Unauthenticated')
-  const { error } = await supabase.from('messages').insert({ sender_id: senderId, recipient_id: recipientId, body })
+  // image_refs only when there are photos, so a text message never depends on that column.
+  const row = { sender_id: senderId, recipient_id: recipientId, body, ...(imageRefs.length ? { image_refs: imageRefs } : {}) }
+  const { error } = await supabase.from('messages').insert(row)
   // Refused by row-level security: messaging is off for your team or theirs (20261110_team_messaging.sql).
   if (error?.code === '42501') throw new Error('Messaging is turned off for your team or theirs, so this can’t be sent.')
   if (error) throw error

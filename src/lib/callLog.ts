@@ -43,8 +43,9 @@ export function callLogPreview(log: CallLog, mine: boolean): string {
 }
 
 // The conversation list's preview of a last message: a call line, or the text ("You: ..." if yours).
-export function messagePreview(body: string, mine: boolean): string {
+export function messagePreview(body: string, mine: boolean, imageCount = 0): string {
   const log = parseCallLog(body)
   if (log) return callLogPreview(log, mine)
+  if (!body.trim() && imageCount > 0) return `${mine ? 'You' : 'They'} sent ${imageCount === 1 ? 'a photo' : `${imageCount} photos`}`
   return `${mine ? 'You: ' : ''}${convertEmoticons(body)}`
 }
