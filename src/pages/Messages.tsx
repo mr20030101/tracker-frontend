@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, ChevronUp, Info, Plus, Search, Send, Trash2, X } from 'lucide-react'
+import { ArrowLeft, ChevronUp, Info, Plus, Search, Trash2, X } from 'lucide-react'
 import { useMessaging } from '../lib/messagingContext'
 import { deleteConversationForMe, deleteMessageForMe, deleteMessagesForMe, markThreadRead, sendMessage } from '../lib/messages'
 import { formatActiveStatus } from '../lib/presence'
@@ -16,7 +16,7 @@ import { ConversationInfoPanel } from '../components/ConversationInfoPanel'
 import { CallButton } from '../components/CallBar'
 import { MessageBubble } from '../components/MessageBubble'
 import { TypingIndicator } from '../components/TypingIndicator'
-import { EmojiPickerButton } from '../components/EmojiPickerButton'
+import { ChatComposer, type ChatSendPayload } from '../components/ChatComposer'
 import { useBotTyping } from '../lib/useBotTyping'
 import { useThread } from '../lib/useThread'
 import { messagePreview } from '../lib/callLog'
@@ -122,13 +122,11 @@ function MessagesPage() {
 
   const [sendError, setSendError] = useState<string | null>(null)
   const sendMutation = useMutation({
-    mutationFn: async (text: string) => {
+    mutationFn: async ({ body, imageRefs }: ChatSendPayload) => {
       if (!selectedUserId) return
-      return sendMessage(selectedUserId, text)
+      return sendMessage(selectedUserId, body, imageRefs)
     },
-    onSuccess: (_data, sent) => {
-      // A quick-reply chip sends without touching the box, so only clear what was actually sent.
-      setDraft((d) => (d.trim() === sent ? '' : d))
+    onSuccess: () => {
       setSendError(null)
       queryClient.invalidateQueries({ queryKey: ['messages', myId] })
     },
@@ -139,11 +137,13 @@ function MessagesPage() {
     },
   })
 
-  function handleSend(e: FormEvent) {
-    e.preventDefault()
-    if (!draft.trim() || sendMutation.isPending) return
-    sendMutation.mutate(draft.trim())
-  }
+  const sendText = (body: string) => sendMutation.mutate({ body, imageRefs: [] })
+  const me = myId ? usersById.get(myId) : undefined
+  const mentionNames = useMemo(() => [selectedUser?.name ?? '', me?.name ?? ''], [selectedUser?.name, me?.name])
+  const mentionCandidates = useMemo(
+    () => (selectedUser && !selectedUser.is_bot ? [{ id: selectedUser.id, name: selectedUser.name, avatar_url: selectedUser.avatar_url }] : []),
+    [selectedUser],
+  )
 
   const showQuickReplies = Boolean(selectedUser?.is_bot) && !selectMode
   // The bot never opens its messages, so a "Sent" there would never turn into "Seen".
@@ -266,7 +266,7 @@ function MessagesPage() {
                           )}
                         </div>
                         <div className={`truncate text-xs ${isSelected ? 'text-accent-foreground/80' : 'text-gray-500'}`}>
-                          {last ? `${lastSender ?? 'Someone'}: ${last.body}` : `${g.members.length} members`}
+                          {last ? `${lastSender ?? 'Someone'}: ${last.body.trim() || 'sent a photo'}` : `${g.members.length} members`}
                         </div>
                       </div>
                       {g.unread_count > 0 && (
@@ -311,7 +311,7 @@ function MessagesPage() {
 {typingUserIds.has(c.otherUserId) ? (
                             <span className="font-medium text-status-success-text">Typing…</span>
                           ) : (
-                            messagePreview(c.lastMessage.body, c.lastMessage.sender_id === myId)
+                            messagePreview(c.lastMessage.body, c.lastMessage.sender_id === myId, c.lastMessage.image_refs?.length)
                           )}
                         </div>
                       </div>
@@ -398,7 +398,7 @@ function MessagesPage() {
               {selectedUser?.is_bot && (
                 <div className="ml-auto">
                   <GrammarCheckButton
-                    onClick={() => sendMutation.mutate(GRAMMAR_CHECK_MESSAGE)}
+                    onClick={() => sendText(GRAMMAR_CHECK_MESSAGE)}
                     disabled={sendMutation.isPending || botTyping || selectMode}
                   />
                 </div>
@@ -452,6 +452,8 @@ function MessagesPage() {
                         : undefined
                     }
                     status={seenStatus?.messageId === m.id ? seenStatus.label : undefined}
+                    mentionNames={mentionNames}
+                    myName={me?.name}
                   />
                 ))}
               </div>
@@ -469,7 +471,7 @@ function MessagesPage() {
               </div>
             )}
             {showQuickReplies && (
-              <BotQuickReplies onPick={(text) => sendMutation.mutate(text)} disabled={sendMutation.isPending || botTyping} />
+              <BotQuickReplies onPick={sendText} disabled={sendMutation.isPending || botTyping} />
             )}
             {selectMode ? (
               <div className="flex items-center gap-2 border-t border-gray-100 p-3">
@@ -496,23 +498,14 @@ function MessagesPage() {
                 </button>
               </div>
             ) : (
-              <form onSubmit={handleSend} className={`flex items-center gap-2 p-3 ${showQuickReplies ? '' : 'border-t border-gray-100'}`}>
-                <input
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  placeholder="Aa"
-                  className="flex-1 rounded-full border border-gray-200 bg-gray-50 px-4 py-2 text-sm outline-none focus:border-accent"
-                />
-                <EmojiPickerButton onSelect={(emoji) => setDraft((d) => d + emoji)} />
-                <button
-                  type="submit"
-                  disabled={!draft.trim() || sendMutation.isPending}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground transition-colors duration-100 hover:bg-accent-hover disabled:opacity-50"
-                >
-                  <Send className="h-4 w-4" aria-hidden />
-                  Send
-                </button>
-              </form>
+              <ChatComposer
+                value={draft}
+                onChange={setDraft}
+                onSend={(payload) => sendMutation.mutateAsync(payload)}
+                mentionCandidates={mentionCandidates}
+                allowImages={!selectedUser?.is_bot}
+                className={showQuickReplies ? '' : 'border-t border-gray-100'}
+              />
             )}
           </>
         ) : (
