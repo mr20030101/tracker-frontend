@@ -28,7 +28,13 @@ export async function fetchGroupPage(groupId: number, beforeId?: number): Promis
 export async function sendGroupMessage(groupId: number, senderId: string, body: string, imageRefs: string[] = []): Promise<void> {
   const row = { group_id: groupId, sender_id: senderId, body, ...(imageRefs.length ? { image_refs: imageRefs } : {}) }
   const { error } = await supabase.from('group_messages').insert(row)
-  if (error?.code === '42501') throw new Error('This can’t be sent: messaging is off for your team, or you’re no longer in this group.')
+  if (error?.code === '42501') {
+    throw new Error(
+      imageRefs.length
+        ? 'This can’t be sent: the photo couldn’t be attached, messaging is off for your team, or you’re no longer in this group.'
+        : 'This can’t be sent: messaging is off for your team, or you’re no longer in this group.',
+    )
+  }
   if (error) throw error
 }
 
