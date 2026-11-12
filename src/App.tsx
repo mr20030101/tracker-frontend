@@ -1,38 +1,47 @@
+import { lazy, Suspense, type ComponentType } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
-import { NotFound } from './pages/NotFound'
 import { useAuth } from './lib/auth'
 import { AppShell } from './components/AppShell'
 import { RemotasksIdGate } from './components/RemotasksIdGate'
 import { isValidRemotasksId } from './lib/remotasks'
-import { Login } from './pages/Login'
-import { Privacy } from './pages/Privacy'
-import { Terms } from './pages/Terms'
-import { ForcePasswordChange } from './pages/ForcePasswordChange'
-import { Dashboard } from './pages/Dashboard'
-import { ContributorDashboard } from './pages/ContributorDashboard'
-import { Leaderboard } from './pages/Leaderboard'
-import { Rewards } from './pages/Rewards'
-import { TaskLog } from './pages/TaskLog'
-import { Resources } from './pages/Resources'
-import { Messages } from './pages/Messages'
-import { CbProfile } from './pages/CbProfile'
-import { Users } from './pages/Users'
-import { LeadTeam } from './pages/LeadTeam'
-import { Projects } from './pages/Projects'
-import { DataQuality } from './pages/DataQuality'
-import { Audits } from './pages/Audits'
-import { TeamReports } from './pages/TeamReports'
-import { ActivityLog } from './pages/ActivityLog'
-import { Billing } from './pages/Billing'
-import { MyBilling } from './pages/MyBilling'
-import { Apply } from './pages/Apply'
-import { Hiring } from './pages/Hiring'
-import { Requests } from './pages/Requests'
-import { Feedback } from './pages/Feedback'
-import { Support } from './pages/Support'
-import { Attendance } from './pages/Attendance'
-import { Announcements } from './pages/Announcements'
-import { Settings } from './pages/Settings'
+
+// Each page is its own download, fetched the first time it's opened.
+function page<K extends string>(load: () => Promise<Record<K, ComponentType<any>>>, name: K) {
+  return lazy(() => load().then((m) => ({ default: m[name] })))
+}
+
+const NotFound = page(() => import('./pages/NotFound'), 'NotFound')
+const Login = page(() => import('./pages/Login'), 'Login')
+const Privacy = page(() => import('./pages/Privacy'), 'Privacy')
+const Terms = page(() => import('./pages/Terms'), 'Terms')
+const ForcePasswordChange = page(() => import('./pages/ForcePasswordChange'), 'ForcePasswordChange')
+const Dashboard = page(() => import('./pages/Dashboard'), 'Dashboard')
+const ContributorDashboard = page(() => import('./pages/ContributorDashboard'), 'ContributorDashboard')
+const Leaderboard = page(() => import('./pages/Leaderboard'), 'Leaderboard')
+const Rewards = page(() => import('./pages/Rewards'), 'Rewards')
+const TaskLog = page(() => import('./pages/TaskLog'), 'TaskLog')
+const Resources = page(() => import('./pages/Resources'), 'Resources')
+const Messages = page(() => import('./pages/Messages'), 'Messages')
+const CbProfile = page(() => import('./pages/CbProfile'), 'CbProfile')
+const Users = page(() => import('./pages/Users'), 'Users')
+const LeadTeam = page(() => import('./pages/LeadTeam'), 'LeadTeam')
+const Projects = page(() => import('./pages/Projects'), 'Projects')
+const DataQuality = page(() => import('./pages/DataQuality'), 'DataQuality')
+const Audits = page(() => import('./pages/Audits'), 'Audits')
+const TeamReports = page(() => import('./pages/TeamReports'), 'TeamReports')
+const ActivityLog = page(() => import('./pages/ActivityLog'), 'ActivityLog')
+const Billing = page(() => import('./pages/Billing'), 'Billing')
+const MyBilling = page(() => import('./pages/MyBilling'), 'MyBilling')
+const Apply = page(() => import('./pages/Apply'), 'Apply')
+const Hiring = page(() => import('./pages/Hiring'), 'Hiring')
+const Requests = page(() => import('./pages/Requests'), 'Requests')
+const Feedback = page(() => import('./pages/Feedback'), 'Feedback')
+const Support = page(() => import('./pages/Support'), 'Support')
+const Attendance = page(() => import('./pages/Attendance'), 'Attendance')
+const Announcements = page(() => import('./pages/Announcements'), 'Announcements')
+const Settings = page(() => import('./pages/Settings'), 'Settings')
+
+const pageFallback = <div className="flex h-64 items-center justify-center text-gray-400">Loading...</div>
 
 const MANAGER_ROLES = ['admin', 'lead']
 
@@ -56,6 +65,7 @@ function ProtectedLayout() {
 
   return (
     <AppShell>
+      <Suspense fallback={pageFallback}>
       <Routes>
         <Route path="/" element={isManager ? <Dashboard /> : <ContributorDashboard />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
@@ -84,6 +94,7 @@ function ProtectedLayout() {
         {isAdmin && <Route path="/leads/:leadId" element={<LeadTeam />} />}
         <Route path="*" element={<NotFound />} />
       </Routes>
+      </Suspense>
       {/* Everyone needs a valid Remotask ID on file; this blocks the app until they've saved one. */}
       {!isValidRemotasksId(user.remotasks_id) && <RemotasksIdGate />}
     </AppShell>
@@ -95,9 +106,10 @@ export default function App() {
 
   // The reset-email session is a real login, so without this the dashboard would open and the
   // person would never be asked for a new password.
-  if (recovering) return <Login />
+  if (recovering) return <Suspense fallback={null}><Login /></Suspense>
 
   return (
+    <Suspense fallback={null}>
     <Routes>
       <Route path="/login" element={<Login />} />
       {/* Public: Google's sign-in consent screen links here. */}
@@ -108,5 +120,6 @@ export default function App() {
       {/* Public: donors don't need an account. */}
       <Route path="/*" element={<ProtectedLayout />} />
     </Routes>
+    </Suspense>
   )
 }
