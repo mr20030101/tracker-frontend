@@ -14,6 +14,12 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.37.2 — 2026-11-12
+
+### Changed
+
+- **One less font to download on every page.** Numbers and codes shown in monospace now use your device's built-in monospace font instead of Roboto Mono. Announcements written in the Monospace font still show Roboto Mono.
+
 ## 8.37.1 — 2026-11-12
 
 ### Changed
