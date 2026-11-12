@@ -14,6 +14,12 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.37.1 — 2026-11-12
+
+### Changed
+
+- **The tracker opens faster.** Each page now downloads the first time it's opened instead of all at once, so the sign-in page, the application form and dashboards load about 45% less code up front (455 KB → 251 KB). A tab left open across a release reloads itself once if it can't find the old page files.
+
 ## 8.37.0 — 2026-11-12
 
 ### Changed
