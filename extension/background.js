@@ -79,10 +79,26 @@ async function signIn(email, password) {
   await loadAccount(session.userId)
 }
 
+// Lists this sign-in as the extension on the tracker's signed-in devices (admins only). If an admin
+// signed it out, sign out here too. Any other failure is ignored.
+async function touchPresence() {
+  let stillSignedIn = true
+  try {
+    stillSignedIn = (await rest('rpc/touch_presence', { method: 'POST', body: { p_device: 'Browser extension' } })) !== false
+  } catch {
+    return
+  }
+  if (!stillSignedIn) {
+    await signOut()
+    throw new Error('This device was signed out. Sign in again.')
+  }
+}
+
 // Your profile and the projects to choose from, fresh from the tracker: the ones you're assigned
 // among your lead's (all of your lead's until you're assigned any; every project without a lead),
 // as on the tracker (src/lib/cbProjects.ts). The first is picked until you choose another.
 async function loadAccount(userId) {
+  await touchPresence()
   const [profile] = await rest(`profiles?id=eq.${userId}&select=id,name,email,role,remotasks_id,lead_id`)
   if (!profile) throw new Error('No tracker profile found for this account.')
   let projects
@@ -247,11 +263,15 @@ async function setScreenshot(input) {
   await save({ current: { ...current, row } })
 }
 
-// Marks it Submitted, which stops its timer, with the screenshot link if one was given.
-async function markSubmitted(screenshot) {
+// Marks it Submitted, Rejected/SBQ or Expired, which stops its timer, with the screenshot link if
+// one was given. Only Submitted records a submitted date.
+const FINISHED_STATUSES = ['submitted', 'rejected', 'expired']
+async function markStatus(status, screenshot) {
+  if (!FINISHED_STATUSES.includes(status)) throw new Error('Unknown status.')
   const current = await load('current')
   if (!current?.row) return
-  const body = { status: 'submitted', submitted_at: todaySG() }
+  const body = { status }
+  if (status === 'submitted') body.submitted_at = todaySG()
   if (screenshot !== undefined) body.snipboard_url = parseScreenshotUrl(screenshot)
   const [row] = await rest(`task_submissions?id=eq.${current.row.id}&status=eq.in_progress&select=${SUBMISSION_FIELDS}`, {
     method: 'PATCH',
@@ -436,8 +456,8 @@ async function handle(message) {
       return pauseOrResume(false)
     case 'resume':
       return pauseOrResume(true)
-    case 'mark-submitted':
-      return markSubmitted(message.screenshot)
+    case 'mark-status':
+      return markStatus(message.status, message.screenshot)
     case 'set-screenshot':
       return setScreenshot(message.screenshot)
     case 'reload':

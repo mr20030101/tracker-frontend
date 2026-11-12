@@ -48,6 +48,7 @@ import { GrowBar } from './GrowBar'
 import { BackupFormFailed, StatusPill } from './StatusPill'
 import { ActionsMenu } from './ActionsMenu'
 import { TaskTimer } from './TaskTimer'
+import { timeEditMode } from '../lib/taskTimer'
 import { SortableHeader } from './SortableHeader'
 import { CtsFormModal } from './CtsFormModal'
 import { useTeamFeatures } from '../lib/teamFeatures'
@@ -920,7 +921,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                         </div>
                       </td>
                       <td className="px-5 py-3">
-                        <TaskTimer task={row} canControl={canEdit} />
+                        <TaskTimer task={row} canControl={canEdit} editTime={canEdit ? timeEditMode(currentUser, row.user_id) : undefined} />
                       </td>
                       {ctsEnabled && (
                       <td className="px-5 py-3">

@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { supabase } from '../lib/api'
+import { takeSignedOutNotice } from '../lib/sessionDevices'
 import { ChevronLeft, KeyRound, Lock, LogIn, Mail, Send } from 'lucide-react'
 import { ErrorNote, LinkButton, PlayfulInput, RevealToggle, SubmitButton, SuccessNote } from '../components/PlayfulForm'
 import type { OwlMood } from '../components/LoginOwl'
@@ -35,7 +36,7 @@ export function Login() {
   const [newPassword, setNewPassword] = useState('')
   const [mode, setMode] = useState<'login' | 'forgot' | 'recovery'>(recovering ? 'recovery' : 'login')
   usePageTitle(mode === 'recovery' ? 'Reset password' : mode === 'forgot' ? 'Forgot password' : 'Sign in')
-  const [notice, setNotice] = useState<string | null>((location.state as { notice?: string } | null)?.notice ?? null)
+  const [notice, setNotice] = useState<string | null>(() => (location.state as { notice?: string } | null)?.notice ?? takeSignedOutNotice())
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [focused, setFocused] = useState<'email' | 'password' | null>(null)

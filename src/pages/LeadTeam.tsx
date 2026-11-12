@@ -10,6 +10,7 @@ import { isOnline } from '../lib/presence'
 import { startOfWeek, toISODate, formatRange } from '../lib/week'
 import type { User } from '../types'
 import { Avatar } from '../components/Avatar'
+import { SignedInDevices } from '../components/SignedInDevices'
 import { CountUp } from '../components/CountUp'
 import { DataTable } from '../components/DataTable'
 import { LineChart } from '../components/LineChart'
@@ -298,6 +299,8 @@ export function LeadTeam() {
           />
         </>
       )}
+
+      <SignedInDevices userId={lead.id} name={lead.name} />
     </div>
   )
 }

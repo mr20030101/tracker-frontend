@@ -40,3 +40,18 @@ export async function setTaskTimer(submissionId: number, running: boolean): Prom
     .eq('id', submissionId)
   if (error) throw error
 }
+
+/** Sets the time on a task's timer. Leads and admins can set any time; a contributor can only lower their own. */
+export async function setTaskTimerSeconds(submissionId: number, seconds: number): Promise<void> {
+  const { error } = await supabase.rpc('set_task_timer_seconds', { p_submission_id: submissionId, p_seconds: seconds })
+  if (error) throw error
+}
+
+/** How a viewer may correct a task's time, mirroring set_task_timer_seconds: the database has the final say. */
+export function timeEditMode(viewer: { id: string; role: string } | null | undefined, taskUserId: string | null): 'any' | 'lower' | undefined {
+  if (!viewer) return undefined
+  if (viewer.role === 'admin') return 'any'
+  if (taskUserId && taskUserId === viewer.id) return 'lower'
+  if (viewer.role === 'lead' && taskUserId) return 'any'
+  return undefined
+}

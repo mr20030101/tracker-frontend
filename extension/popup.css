@@ -596,6 +596,15 @@ textarea {
   margin-top: 12px;
 }
 
+.hero-actions-secondary {
+  margin-top: 8px;
+}
+
+.hero-actions-label {
+  font-size: 12px;
+  color: var(--hero-muted);
+}
+
 .hero-confirm {
   display: grid;
   gap: 10px;

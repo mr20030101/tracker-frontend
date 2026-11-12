@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatTimer, isTimerRunning, timerSeconds } from './taskTimer'
+import { formatTimer, isTimerRunning, timeEditMode, timerSeconds } from './taskTimer'
 
 describe('timerSeconds', () => {
   const start = '2026-10-24T01:00:00.000Z'
@@ -33,5 +33,21 @@ describe('formatTimer', () => {
     expect(formatTimer(0)).toBe('0:00')
     expect(formatTimer(75)).toBe('1:15')
     expect(formatTimer(3725)).toBe('1:02:05')
+  })
+})
+
+describe('timeEditMode', () => {
+  const lead = { id: 'lead', role: 'lead' }
+  it('lets an admin set any time, even on an unmatched task', () => {
+    expect(timeEditMode({ id: 'a', role: 'admin' }, null)).toBe('any')
+  })
+  it('lets a lead set any time on someone else, but only lower their own', () => {
+    expect(timeEditMode(lead, 'cb')).toBe('any')
+    expect(timeEditMode(lead, 'lead')).toBe('lower')
+  })
+  it('lets a contributor only lower their own time', () => {
+    expect(timeEditMode({ id: 'cb', role: 'contributor' }, 'cb')).toBe('lower')
+    expect(timeEditMode({ id: 'cb', role: 'contributor' }, 'other')).toBeUndefined()
+    expect(timeEditMode(null, 'cb')).toBeUndefined()
   })
 })
