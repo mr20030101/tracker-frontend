@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.39.0 — 2026-11-12
+
 ### Added
 
 - **Photos in chat.** Direct messages and group chats can now carry up to 4 photos, with or without text. Use the photo button, paste a screenshot, or drop a picture onto the message box. Each photo shows its upload progress and can be retried or removed before sending. Tap a photo in the chat to see it full size. Photos are kept in Google Drive, and only the people in that chat can open them. Photos can't be sent to the bot.
