@@ -565,36 +565,6 @@ textarea {
   font-size: 12px;
 }
 
-.hero-expiry {
-  display: grid;
-  gap: 5px;
-  margin-top: 10px;
-  color: var(--hero-muted);
-  font-size: 12px;
-}
-
-.expiry-bar {
-  height: 4px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--hero-line);
-}
-
-.expiry-fill {
-  height: 100%;
-  border-radius: inherit;
-  background: var(--beacon);
-  transition: width 1s linear;
-}
-
-.hero-expiry.is-late .expiry-fill {
-  background: #f87171;
-}
-
-.hero-expiry.is-late {
-  color: #f87171;
-}
-
 .hero-field {
   display: grid;
   gap: 5px;

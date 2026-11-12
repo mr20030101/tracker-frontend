@@ -15,8 +15,6 @@ const REASON_PLACEHOLDERS = {
   reclaim: 'Why does this task need to be reclaimed?',
   unclaim: 'Why are you unclaiming this task?',
 }
-// Minutes a task has on Remotasks before it expires, from when it was started: the countdown on the task card.
-const EXPIRY_MINUTES = { attempt: 90, l1: 90, l10: 90, l0: 120 }
 
 const $ = (id) => document.getElementById(id)
 
@@ -61,13 +59,6 @@ function timerSeconds(row) {
   return banked + Math.max(0, Math.floor((Date.now() - new Date(row.timer_started_at).getTime()) / 1000))
 }
 
-/** 4500 -> '1h 15m', 300 -> '5m'. */
-function formatLeft(seconds) {
-  const minutes = Math.ceil(seconds / 60)
-  const h = Math.floor(minutes / 60)
-  return h > 0 ? `${h}h ${minutes % 60}m` : `${minutes}m`
-}
-
 function initials(name) {
   const words = String(name ?? '').trim().split(/\s+/).filter(Boolean)
   return ((words[0]?.[0] ?? '') + (words.length > 1 ? words[words.length - 1][0] : '')).toUpperCase() || '?'
@@ -109,15 +100,6 @@ function renderTask() {
   const project = state.projects?.find((p) => p.id === row.project_id)
   $('task-meta').textContent = [STAGE_LABELS[row.stage], project?.name].filter(Boolean).join(' · ')
 
-  // How long until it expires, from when it was started.
-  $('expiry').hidden = !inProgress || !row.created_at
-  if (inProgress && row.created_at) {
-    const total = (EXPIRY_MINUTES[row.stage] ?? EXPIRY_MINUTES.attempt) * 60
-    const left = total - (Date.now() - new Date(row.created_at).getTime()) / 1000
-    $('expiry-fill').style.width = `${Math.min(100, Math.max(0, (1 - left / total) * 100))}%`
-    $('expiry').classList.toggle('is-late', left <= 10 * 60)
-    $('expiry-text').textContent = left > 0 ? `Expires in ${formatLeft(left)}` : 'Past its expiry time'
-  }
 
   // The saved link, unless one is being typed: the field follows the tracker until it's edited.
   const screenshot = $('screenshot')
