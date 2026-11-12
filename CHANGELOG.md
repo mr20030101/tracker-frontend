@@ -14,6 +14,15 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.36.0 — 2026-11-12
+
+### Added
+
+- **Support**, under Library: anyone can report a bug or request a feature, with up to three screenshots (pick, drop or paste them). Each screenshot shows its upload progress, and a failed one can be retried without picking it again.
+- "Report a problem" in the account menu opens a bug report from any page, and the report notes which page you were on, the app version and your browser.
+- Admins see every ticket, set it to New, In progress, Done or Won't do, and reply. Reporters see only their own tickets and the replies on them; a dot on Support marks a ticket with a reply or status change they haven't opened.
+- A reporter can withdraw a ticket while it's still New.
+
 ## 8.35.1 — 2026-11-12
 
 ### Fixed

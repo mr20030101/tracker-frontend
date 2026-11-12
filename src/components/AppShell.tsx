@@ -23,6 +23,7 @@ import {
   type LucideIcon,
   UserCog,
   ReceiptText,
+  LifeBuoy,
 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { prefersReducedMotion } from '../lib/motion'
@@ -41,6 +42,7 @@ import { contributorPath } from '../lib/urlRef'
 import { OVERDUE_HOURS, fetchOverdueRequestCount, fetchPendingRequestCount } from '../lib/taskRequests'
 import { fetchUnreadAnnouncementCount } from '../lib/announcements'
 import { fetchPendingFeedbackCount } from '../lib/taskFeedback'
+import { fetchSupportBadgeCount } from '../lib/support'
 import { AppFooter } from './AppFooter'
 import { LogTabs } from './LogTabs'
 import { OfflineQueueBanner } from './OfflineQueueBanner'
@@ -65,6 +67,8 @@ function navSections(
   overdueBills: boolean,
   // For an admin, `unpaidBills` is the reported payments waiting to be confirmed.
   billsAreReports: boolean,
+  // For an admin, new tickets; for anyone else, their tickets with a reply or status change they haven't opened.
+  supportBadge: number,
 ): {
   label: string
   // `urgent`: the badge turns red with `badgeTitle` explaining why (overdue requests).
@@ -104,7 +108,18 @@ function navSections(
     },
     {
       label: 'Library',
-      items: [{ to: '/resources', label: 'Resources', icon: BookOpen }],
+      items: [
+        { to: '/resources', label: 'Resources', icon: BookOpen },
+        {
+          to: '/support',
+          label: 'Support',
+          icon: LifeBuoy,
+          badge: supportBadge,
+          badgeTitle: isAdmin
+            ? `${supportBadge} new ticket${supportBadge === 1 ? '' : 's'}`
+            : `${supportBadge} ticket${supportBadge === 1 ? '' : 's'} with a new reply`,
+        },
+      ],
     },
     {
       label: 'Team',
@@ -176,6 +191,7 @@ const CRUMBS: Record<string, string> = {
   '/task-log': 'Task Log',
   '/requests': 'Requests',
   '/feedback': 'Feedback',
+  '/support': 'Support',
   '/audits': 'Audits',
   '/data-quality': 'Data Quality',
   '/team-reports': 'Team Reports',
@@ -291,6 +307,14 @@ export function AppShell({ children }: { children: ReactNode }) {
     refetchInterval: 5 * 60_000,
   })
 
+  // The Support link's number. Refreshed by the Support page (same ['support'] key prefix).
+  const { data: supportBadge = 0 } = useQuery({
+    queryKey: ['support', 'badge'],
+    queryFn: fetchSupportBadgeCount,
+    enabled: Boolean(user),
+    refetchInterval: 5 * 60_000,
+  })
+
   // A lead's own unpaid Supabase bills, for the Billing link's number.
   const { data: myBilling } = useQuery({
     queryKey: ['my-billing'],
@@ -362,7 +386,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const ownProfilePath = user ? contributorPath(user.email) : '/'
   const { attendanceEnabled, messagingEnabled } = useTeamFeatures(user?.id)
-  const sections = navSections(isManager, isAdmin, attendanceEnabled, messagingEnabled, pendingRequests, overdueRequests, pendingFeedback, unreadAnnouncements, isAdmin ? billsToConfirm : unpaidBills.length, overdueBills, isAdmin)
+  const sections = navSections(isManager, isAdmin, attendanceEnabled, messagingEnabled, pendingRequests, overdueRequests, pendingFeedback, unreadAnnouncements, isAdmin ? billsToConfirm : unpaidBills.length, overdueBills, isAdmin, supportBadge)
   const isCurrent = (item: { to: string; match?: string[] }) => (item.match ?? [item.to]).includes(location.pathname)
   const searchPages = [
     ...sections.flatMap((section) =>
