@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.36.0 — 2026-11-12
+
 ### Added
 
 - **Support**, under Library: anyone can report a bug or request a feature, with up to three screenshots (pick, drop or paste them). Each screenshot shows its upload progress, and a failed one can be retried without picking it again.
