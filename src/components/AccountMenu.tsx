@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
-import { ChevronDown, Download, LogOut, Settings, Share, SquarePlus, UserRound } from 'lucide-react'
+import { Bug, ChevronDown, Download, LogOut, Settings, Share, SquarePlus, UserRound } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { contributorPath } from '../lib/urlRef'
 import { Avatar } from './Avatar'
@@ -84,6 +84,14 @@ export function AccountMenu() {
             >
               <Settings className="h-4 w-4 text-gray-400" />
               Settings
+            </NavLink>
+            <NavLink
+              to={`/support?${new URLSearchParams({ new: 'bug', from: location.pathname + location.search })}`}
+              role="menuitem"
+              className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            >
+              <Bug className="h-4 w-4 text-gray-400" />
+              Report a problem
             </NavLink>
             {showInstall && (
               <button

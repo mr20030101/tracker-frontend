@@ -29,6 +29,7 @@ import { Apply } from './pages/Apply'
 import { Hiring } from './pages/Hiring'
 import { Requests } from './pages/Requests'
 import { Feedback } from './pages/Feedback'
+import { Support } from './pages/Support'
 import { Attendance } from './pages/Attendance'
 import { Announcements } from './pages/Announcements'
 import { Settings } from './pages/Settings'
@@ -62,6 +63,7 @@ function ProtectedLayout() {
         <Route path="/task-log" element={<TaskLog />} />
         <Route path="/requests" element={<Requests />} />
         <Route path="/feedback" element={<Feedback />} />
+        <Route path="/support" element={<Support />} />
         <Route path="/attendance" element={<Attendance />} />
         <Route path="/resources" element={<Resources />} />
         <Route path="/messages" element={<Messages />} />
