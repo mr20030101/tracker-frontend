@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.40.0 — 2026-11-13
+
 ### Added
 
 - **Edit a task's time.** The pencil next to a task's timer opens Edit time. Leads (for their own team) and admins can set any time up to 24 hours; a contributor can lower their own, for when they forgot to pause. A running timer keeps running from the new time.
