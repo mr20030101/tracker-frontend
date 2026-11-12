@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.38.0 — 2026-11-12
+
 ### Added
 
 - **Unclaim in the task list (Octet Mind).** An Octet Mind task's Actions menu now has **Request unclaim** next to the extension and reclaim. It opens the TASK ISSUES form with **Other: Unclaim** and your details filled in, and records it in the Tracker. The Requests column (was "Extension / Reclaim") shows it as Unclaim Approved.
