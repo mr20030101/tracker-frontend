@@ -23,11 +23,11 @@ export const FONT_SIZES = [
   { label: 'Huge', value: '1.75em' },
 ]
 
-// The extra Google Fonts behind FONTS (Roboto and Roboto Mono already load in index.html). Added
+// The Google Fonts behind FONTS. Added
 // only where announcements are read or written, and the browser downloads a font's files only
 // once some text actually uses it.
 const FONTS_STYLESHEET =
-  'https://fonts.googleapis.com/css2?family=Caveat:wght@400..700&family=Merriweather:wght@400;700&family=Montserrat:wght@400..700&family=Oswald:wght@400..700&family=Playfair+Display:wght@400..700&display=swap'
+  'https://fonts.googleapis.com/css2?family=Caveat:wght@400..700&family=Merriweather:wght@400;700&family=Montserrat:wght@400..700&family=Oswald:wght@400..700&family=Playfair+Display:wght@400..700&family=Roboto+Mono:wght@400..700&display=swap'
 
 export function loadRichTextFonts() {
   if (document.getElementById('rich-text-fonts')) return
