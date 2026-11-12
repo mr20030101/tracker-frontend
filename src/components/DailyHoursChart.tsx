@@ -1,8 +1,8 @@
-import { BarElement, CategoryScale, Chart as ChartJS, LinearScale, LineElement, PointElement, Tooltip, type ChartData, type ChartOptions } from 'chart.js'
+import { BarController, BarElement, CategoryScale, Chart as ChartJS, LinearScale, LineController, LineElement, PointElement, Tooltip, type ChartData, type ChartOptions } from 'chart.js'
 import { Chart } from 'react-chartjs-2'
 import { useTheme } from '../lib/theme'
 
-ChartJS.register(BarElement, CategoryScale, LinearScale, LineElement, PointElement, Tooltip)
+ChartJS.register(BarController, BarElement, CategoryScale, LinearScale, LineController, LineElement, PointElement, Tooltip)
 
 interface Props {
   days: { label: string; hours: number }[]
