@@ -4,9 +4,9 @@ import { Check, ExternalLink, RotateCw } from 'lucide-react'
 import { errorMessage } from '../lib/api'
 import { buildTaskIssuesFormUrl, fileOwnTaskRequest } from '../lib/taskRequests'
 import { Modal } from './Modal'
-import { TimeRequestReasonModal, type TimeRequestMode, type TimeRequestType } from './TimeRequestReasonModal'
+import { TimeRequestReasonModal, type SelfFileRequestType, type TimeRequestMode } from './TimeRequestReasonModal'
 
-// Octet Mind only: a contributor files their own extension or reclaim on the TASK ISSUES form,
+// Octet Mind only: a contributor files their own extension, reclaim or unclaim on the TASK ISSUES form,
 // without their lead. After the reason, the form opens in a new tab with their details filled in
 // and the request is recorded as filed (file_own_task_request), so their lead sees it without
 // having to act on it.
@@ -24,7 +24,7 @@ export function SelfFileTaskIssueModal({
   taskId: string | null
   cbEmail: string | null
   remotasksId: string | null
-  type: TimeRequestType
+  type: SelfFileRequestType
   mode: TimeRequestMode
   initialReason?: string
   onClose: () => void
@@ -48,7 +48,7 @@ export function SelfFileTaskIssueModal({
         selfFile
         onSubmit={(next) => {
           const reason = next.trim()
-          const url = buildTaskIssuesFormUrl({ requestType: type === 'reclaim' ? 'Reclaim' : 'Extend', taskId, cbEmail, remotaskId: remotasksId, reason })
+          const url = buildTaskIssuesFormUrl({ requestType: type === 'reclaim' ? 'Reclaim' : type === 'unclaim' ? 'Unclaim' : 'Extend', taskId, cbEmail, remotaskId: remotasksId, reason })
           // Opened straight from the click, so pop-up blockers let it through.
           window.open(url, '_blank', 'noopener,noreferrer')
           setOpened({ url, reason })

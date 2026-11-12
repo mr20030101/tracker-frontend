@@ -189,11 +189,11 @@ export async function requestExtension(
 }
 
 /**
- * Records an extension or reclaim the contributor filed themselves on the TASK ISSUES form (Octet
+ * Records an extension, reclaim or unclaim the contributor filed themselves on the TASK ISSUES form (Octet
  * Mind), already approved. Called once the form reports it was submitted. A pending or denied
  * request of the same type on the task becomes this one.
  */
-export async function fileOwnTaskRequest(submissionId: number, type: 'extension' | 'reclaim', reason: string): Promise<void> {
+export async function fileOwnTaskRequest(submissionId: number, type: 'extension' | 'reclaim' | 'unclaim', reason: string): Promise<void> {
   const { error } = await supabase.rpc('file_own_task_request', { p_submission_id: submissionId, p_type: type, p_reason: reason.trim() })
   if (error) throw error
 }
@@ -459,7 +459,7 @@ const TASK_ISSUES_FORM_LOCATION = 'REMOTE - BOOTCAMP'
 
 /** A link to the TASK ISSUES form, prefilled. The task ID is its "Scene ID". */
 export function buildTaskIssuesFormUrl(params: {
-  requestType: 'Extend' | 'Reclaim'
+  requestType: 'Extend' | 'Reclaim' | 'Unclaim'
   taskId: string | null
   cbEmail: string | null
   remotaskId: string | null
@@ -469,7 +469,13 @@ export function buildTaskIssuesFormUrl(params: {
   if (params.taskId) query.set(TASK_ISSUES_FORM_ENTRY.sceneId, params.taskId)
   if (params.remotaskId) query.set(TASK_ISSUES_FORM_ENTRY.remotaskId, params.remotaskId)
   if (params.cbEmail) query.set(TASK_ISSUES_FORM_ENTRY.cbEmail, params.cbEmail)
-  query.set(TASK_ISSUES_FORM_ENTRY.issue, params.requestType)
+  if (params.requestType === 'Unclaim') {
+    // Not one of the form's listed issues: filed under its "Other" option.
+    query.set(TASK_ISSUES_FORM_ENTRY.issue, '__other_option__')
+    query.set(`${TASK_ISSUES_FORM_ENTRY.issue}.other_option_response`, 'Unclaim')
+  } else {
+    query.set(TASK_ISSUES_FORM_ENTRY.issue, params.requestType)
+  }
   if (params.reason) query.set(TASK_ISSUES_FORM_ENTRY.details, params.reason)
   query.set(TASK_ISSUES_FORM_ENTRY.location, TASK_ISSUES_FORM_LOCATION)
   return `${TASK_ISSUES_FORM_URL}?${query.toString()}`

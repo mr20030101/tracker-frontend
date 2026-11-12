@@ -121,6 +121,7 @@ function render() {
   if (!signedIn) return
 
   const { profile, projects = [], settings = {} } = state
+  renderUnclaim()
   $('avatar').textContent = initials(profile.name ?? profile.email)
   $('name').textContent = profile.name ?? profile.email
   $('cb-email').textContent = profile.email
@@ -164,6 +165,19 @@ function renderRequestType() {
   $('request-reason').placeholder = REASON_PLACEHOLDERS[type]
 }
 
+// Unclaim is Octet Mind only. Shown from sign-in when you're tagged with Octet Mind; once a task
+// is looked up, its own project decides.
+let taskSelfFiles
+
+function renderUnclaim() {
+  const show = taskSelfFiles ?? Boolean(state?.canUnclaim)
+  $('request-unclaim').hidden = !show
+  if (!show && checkedValue('request-type') === 'unclaim') {
+    document.querySelector('input[name="request-type"][value="extension"]').checked = true
+    renderRequestType()
+  }
+}
+
 async function renderRequests() {
   const list = $('requests')
   const taskId = requestTaskId()
@@ -178,12 +192,8 @@ async function renderRequests() {
   // A slower earlier load mustn't overwrite the list for the ID now in the box.
   if (taskId !== requestTaskId()) return
   const { requests, note, selfFiles } = result
-  // Unclaim is Octet Mind only: offered once the task is known to be one.
-  $('request-unclaim').hidden = !selfFiles
-  if (!selfFiles && checkedValue('request-type') === 'unclaim') {
-    document.querySelector('input[name="request-type"][value="extension"]').checked = true
-    renderRequestType()
-  }
+  taskSelfFiles = selfFiles
+  renderUnclaim()
   if (requests.length === 0) {
     const li = document.createElement('li')
     li.className = 'list-empty'

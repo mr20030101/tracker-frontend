@@ -49,4 +49,11 @@ describe('buildTaskIssuesFormUrl', () => {
     expect(url.searchParams.has('entry.386497914')).toBe(false)
     expect(url.searchParams.get('entry.1173139433')).toBe('Extend')
   })
+
+  it('files an unclaim under the form’s Other option, as the extension does', () => {
+    const url = new URL(buildTaskIssuesFormUrl({ requestType: 'Unclaim', taskId: 'abc123', cbEmail: null, remotaskId: null, reason: 'Wrong queue' }))
+    expect(url.searchParams.get('entry.1173139433')).toBe('__other_option__')
+    expect(url.searchParams.get('entry.1173139433.other_option_response')).toBe('Unclaim')
+    expect(url.searchParams.get('entry.1706519998')).toBe('Wrong queue')
+  })
 })

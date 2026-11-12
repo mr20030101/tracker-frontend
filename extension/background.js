@@ -86,21 +86,24 @@ async function loadAccount(userId) {
   const [profile] = await rest(`profiles?id=eq.${userId}&select=id,name,email,role,remotasks_id,lead_id`)
   if (!profile) throw new Error('No tracker profile found for this account.')
   let projects
+  let assigned = []
   if (profile.lead_id) {
     const [leadRows, levels] = await Promise.all([
-      rest(`project_leads?lead_id=eq.${profile.lead_id}&select=project_id,projects(id,name)`),
+      rest(`project_leads?lead_id=eq.${profile.lead_id}&select=project_id,projects(id,name,code)`),
       rest(`contributor_project_levels?user_id=eq.${userId}&select=project_id`),
     ])
     const leadProjects = leadRows.map((row) => row.projects).filter(Boolean)
     const mine = new Set(levels.map((row) => row.project_id))
-    const assigned = leadProjects.filter((project) => mine.has(project.id))
+    assigned = leadProjects.filter((project) => mine.has(project.id))
     projects = assigned.length > 0 ? assigned : leadProjects
   }
-  if (!projects || projects.length === 0) projects = await rest('projects?select=id,name&order=name')
+  if (!projects || projects.length === 0) projects = await rest('projects?select=id,name,code&order=name')
   projects.sort((a, b) => a.name.localeCompare(b.name))
   const settings = (await load('settings')) ?? {}
   if (!projects.some((p) => p.id === settings.projectId)) settings.projectId = projects[0]?.id ?? null
-  await save({ profile, projects, settings: { stage: 'attempt', ...settings } })
+  // Tagged with an Octet Mind project: Unclaim is offered from sign-in, before any task is looked up.
+  const canUnclaim = assigned.some(selfFilesRequests)
+  await save({ profile, projects: projects.map(({ id, name }) => ({ id, name })), canUnclaim, settings: { stage: 'attempt', ...settings } })
 }
 
 // Reload: everything fresh from the tracker. A task that's done (submitted, expired, or no longer
@@ -123,7 +126,7 @@ async function reload() {
 }
 
 async function signOut() {
-  await chrome.storage.local.remove(['session', 'profile', 'projects', 'current'])
+  await chrome.storage.local.remove(['session', 'profile', 'projects', 'current', 'canUnclaim'])
   await updateBadge()
 }
 
@@ -446,7 +449,16 @@ async function handle(message) {
     case 'send-request':
       return sendRequest(message.taskId, message.requestType, message.reason)
     case 'get-state': {
-      const data = await chrome.storage.local.get(['session', 'profile', 'projects', 'settings', 'current'])
+      let data = await chrome.storage.local.get(['session', 'profile', 'projects', 'settings', 'current', 'canUnclaim'])
+      // Signed in before canUnclaim was stored: fetch the account once so Unclaim shows without a reload.
+      if (data.session && data.canUnclaim === undefined) {
+        try {
+          await loadAccount(data.session.userId)
+          data = await chrome.storage.local.get(['session', 'profile', 'projects', 'settings', 'current', 'canUnclaim'])
+        } catch (err) {
+          console.warn('Grey Owls Tracker: account refresh failed', err)
+        }
+      }
       return { ...data, session: Boolean(data.session) }
     }
   }

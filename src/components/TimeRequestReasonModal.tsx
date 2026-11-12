@@ -6,7 +6,9 @@ import { Modal } from './Modal'
 // The two self-service requests a contributor can send their lead — both end up on the same Scale
 // "Reclaim / Extend" form, just with a different request type.
 export type TimeRequestType = 'extension' | 'reclaim'
-export const TIME_REQUEST_LABELS: Record<TimeRequestType, { noun: string; title: string; description: (task: ReactNode) => ReactNode; placeholder: string }> = {
+// Octet Mind contributors can also release a task from their queue, filed by themselves.
+export type SelfFileRequestType = TimeRequestType | 'unclaim'
+export const TIME_REQUEST_LABELS: Record<SelfFileRequestType, { noun: string; title: string; description: (task: ReactNode) => ReactNode; placeholder: string }> = {
   extension: {
     noun: 'extension',
     title: 'Request an extension?',
@@ -18,6 +20,12 @@ export const TIME_REQUEST_LABELS: Record<TimeRequestType, { noun: string; title:
     title: 'Request a reclaim?',
     description: (task) => <>Asks your lead to reclaim {task} back for you.</>,
     placeholder: 'Why does this task need to be reclaimed?',
+  },
+  unclaim: {
+    noun: 'unclaim',
+    title: 'Request an unclaim?',
+    description: (task) => <>Releases {task} from your queue.</>,
+    placeholder: 'Why are you unclaiming this task?',
   },
 }
 
@@ -37,7 +45,7 @@ export function TimeRequestReasonModal({
   onClose,
   selfFile = false,
 }: {
-  type: TimeRequestType
+  type: SelfFileRequestType
   taskId: string | null
   mode: TimeRequestMode
   initialReason?: string

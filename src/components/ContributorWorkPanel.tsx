@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronUp,
+  CircleMinus,
   ClipboardCheck,
   Clock,
   ExternalLink,
@@ -55,7 +56,7 @@ import { BulkImportModal } from './BulkImportModal'
 import { BadVideoReportModal } from './BadVideoReportModal'
 import { FileTimeRequestModal, type TimeRequestFormFields } from './FileTimeRequestModal'
 import { SelfFileTaskIssueModal } from './SelfFileTaskIssueModal'
-import { TIME_REQUEST_LABELS, TimeRequestReasonModal, type TimeRequestMode, type TimeRequestType } from './TimeRequestReasonModal'
+import { TIME_REQUEST_LABELS, TimeRequestReasonModal, type SelfFileRequestType, type TimeRequestMode, type TimeRequestType } from './TimeRequestReasonModal'
 import { confirmDialog } from '../lib/dialog'
 import { WORKING_DAYS } from '../lib/quotas'
 import { dailyHoursFor, formatHours, hoursRendered } from '../lib/hoursTarget'
@@ -107,10 +108,10 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
   const [bulkImporting, setBulkImporting] = useState(false)
   // The reason form a contributor is filling in: a new request, a resend after a denial, or an edit
   // of a pending one (`request` is the earlier/pending one for the last two).
-  // An Octet Mind task's extension or reclaim the contributor is filing themselves (TASK ISSUES).
+  // An Octet Mind task's extension, reclaim or unclaim the contributor is filing themselves (TASK ISSUES).
   const [selfFiling, setSelfFiling] = useState<{
     submission: TaskSubmission
-    type: TimeRequestType
+    type: SelfFileRequestType
     mode: TimeRequestMode
     request?: TaskRequest
   } | null>(null)
@@ -200,7 +201,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
     enabled: submissionIds.length > 0,
   })
 
-  function timeRequestFor(submissionId: number, type: TimeRequestType): TaskRequest | undefined {
+  function timeRequestFor(submissionId: number, type: SelfFileRequestType): TaskRequest | undefined {
     return taskRequests.find((request) => request.task_submission_id === submissionId && request.type === type)
   }
 
@@ -750,7 +751,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                     <SortableHeader label="Status" active={sort.key === 'status'} dir={sort.dir} onClick={() => toggleSort('status')} />
                     <th className="px-5 py-3">Time</th>
                     {ctsEnabled && <th className="px-5 py-3">CTS</th>}
-                    <th className="px-5 py-3">Extension / Reclaim</th>
+                    <th className="px-5 py-3">Requests</th>
                     <SortableHeader label="Date" active={sort.key === 'date'} dir={sort.dir} onClick={() => toggleSort('date')} />
                     <th className="px-5 py-3 text-right">Actions</th>
                   </tr>
@@ -766,6 +767,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                   {pagedSubmissions.map((row) => {
                     const extension = timeRequestFor(row.id, 'extension')
                     const reclaim = timeRequestFor(row.id, 'reclaim')
+                    const unclaim = timeRequestFor(row.id, 'unclaim')
                     const canRequestExtension = !isManager && EXTENSION_ELIGIBLE_STATUSES.includes(row.status)
                     // Menu items for one extension/reclaim request on this row: a contributor sends,
                     // edits or withdraws their own, or resends one that was denied; a lead/admin files
@@ -862,6 +864,18 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                           : []),
                       ]
                     }
+                    // Octet Mind only, filed by the contributor themselves like the other two.
+                    const unclaimItems =
+                      selfFiles && canRequestExtension && unclaim?.status !== 'approved'
+                        ? [
+                            {
+                              label: 'Request unclaim',
+                              icon: CircleMinus,
+                              onClick: () =>
+                                setSelfFiling({ submission: row, type: 'unclaim', mode: unclaim?.status === 'denied' ? 'resend' : 'new', request: unclaim }),
+                            },
+                          ]
+                        : []
                     const badVideoPending = taskRequests.some(
                       (r) => r.task_submission_id === row.id && r.type === 'bad_video' && r.status === 'pending',
                     )
@@ -922,9 +936,9 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                       </td>
                       )}
                       <td className="px-5 py-3">
-                        {extension || reclaim ? (
+                        {extension || reclaim || unclaim ? (
                           <div className="flex flex-wrap gap-1">
-                            {[extension, reclaim].map(
+                            {[extension, reclaim, unclaim].map(
                               (request) =>
                                 request && (
                                   <span
@@ -939,6 +953,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                                     }`}
                                   >
                                     {request.type === 'reclaim' && 'Reclaim '}
+                                    {request.type === 'unclaim' && 'Unclaim '}
                                     {request.status === 'approved' ? 'Approved' : request.status === 'denied' ? 'Denied' : 'Pending'}
                                   </span>
                                 ),
@@ -959,6 +974,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                               { label: 'Edit', icon: Pencil, onClick: () => setFormTarget(row) },
                               ...timeRequestItems('extension', extension),
                               ...timeRequestItems('reclaim', reclaim),
+                              ...unclaimItems,
                               ...badVideoItems,
                               {
                                 label: 'Delete',
