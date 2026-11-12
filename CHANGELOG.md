@@ -14,6 +14,10 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Fixed
+
+- A contributor's profile no longer crashes on the hours-per-day chart.
+
 ## 8.35.0 — 2026-11-12
 
 ### Added
