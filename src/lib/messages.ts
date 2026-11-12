@@ -83,7 +83,13 @@ export async function sendMessage(recipientId: string, body: string, imageRefs: 
   const row = { sender_id: senderId, recipient_id: recipientId, body, ...(imageRefs.length ? { image_refs: imageRefs } : {}) }
   const { error } = await supabase.from('messages').insert(row)
   // Refused by row-level security: messaging is off for your team or theirs (20261110_team_messaging.sql).
-  if (error?.code === '42501') throw new Error('Messaging is turned off for your team or theirs, so this can’t be sent.')
+  if (error?.code === '42501') {
+    throw new Error(
+      imageRefs.length
+        ? 'This can’t be sent: the photo couldn’t be attached, or messaging is off for your team or theirs.'
+        : 'Messaging is turned off for your team or theirs, so this can’t be sent.',
+    )
+  }
   if (error) throw error
 }
 

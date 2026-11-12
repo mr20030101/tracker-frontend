@@ -14,6 +14,10 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Fixed
+
+- **Photos in chat and Support screenshots were refused when sent.** The database couldn't confirm the photo was yours, so the message showed "Messaging is turned off". Both now send. The error shown when a photo can't be attached now says so.
+
 ## 8.39.0 — 2026-11-12
 
 ### Added
