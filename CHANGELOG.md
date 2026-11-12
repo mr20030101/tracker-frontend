@@ -14,6 +14,16 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.37.0 — 2026-11-12
+
+### Changed
+
+- **The browser extension no longer shows an expiry countdown.** The "Expires in" bar on the task card is gone, since tasks no longer have a time limit in the tracker. Browser extension 1.7.0; download it again from Resources.
+
+### Fixed
+
+- **Segmented filters no longer spill over the filter beside them.** When the options (such as Measure on Team Reports) don't fit their space, they turn into a dropdown, and back into buttons once there's room. This applies on every page with these buttons.
+
 ## 8.36.0 — 2026-11-12
 
 ### Added

@@ -1,6 +1,7 @@
-import { Children, Fragment, isValidElement, useId, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from 'react'
+import { Children, Fragment, isValidElement, useId, useLayoutEffect, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from 'react'
 import { useStretchyPill } from '../lib/useStretchyPill'
 import { ChevronDown, Search, SlidersHorizontal } from 'lucide-react'
+import { Select } from './Select'
 
 /** Classes for a select or input in a filter bar, so every control lines up at the same height. */
 export const toolbarControlClass =
@@ -196,7 +197,17 @@ export function DateRangeInput({ from, to, onFromChange, onToChange, id }: DateR
   )
 }
 
-/** Segmented buttons for switching between a few views or statuses. */
+/** Room inside an element's padding. */
+function contentWidth(el: HTMLElement): number {
+  const style = getComputedStyle(el)
+  return el.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)
+}
+
+/**
+ * Segmented buttons for switching between a few views or statuses. When the options don't fit
+ * the space they're given, they turn into a dropdown instead of spilling over what's beside them,
+ * and turn back once there's room again.
+ */
 export function SegmentedTabs<T extends string>({
   value,
   onChange,
@@ -209,7 +220,50 @@ export function SegmentedTabs<T extends string>({
   'aria-label': string
 }) {
   const listRef = useRef<HTMLDivElement>(null)
-  const pill = useStretchyPill(listRef, '[aria-selected="true"]', 'x', [value, options.length])
+  const selectRef = useRef<HTMLDivElement>(null)
+  const needed = useRef(0)
+  const [compact, setCompact] = useState(false)
+  const pill = useStretchyPill(listRef, '[aria-selected="true"]', 'x', [value, options.length, compact])
+  const optionKey = options.map((option) => `${option.value}:${option.count ?? ''}`).join('|')
+
+  useLayoutEffect(() => {
+    const el = compact ? selectRef.current : listRef.current
+    const parent = el?.parentElement
+    if (!el || !parent) return
+    const check = () => {
+      if (compact) {
+        if (contentWidth(parent) >= needed.current) setCompact(false)
+        return
+      }
+      const overflows = el.scrollWidth > el.clientWidth + 1 || el.offsetWidth > contentWidth(parent) + 1
+      if (!overflows) return
+      needed.current = Math.max(el.scrollWidth, el.offsetWidth)
+      setCompact(true)
+    }
+    check()
+    const observer = new ResizeObserver(check)
+    observer.observe(parent)
+    return () => observer.disconnect()
+  }, [compact, optionKey])
+
+  if (compact) {
+    return (
+      <div ref={selectRef} className="w-full">
+        <Select
+          aria-label={ariaLabel}
+          fullWidth
+          value={value}
+          onChange={(next) => onChange(next as T)}
+          options={options.map((option) => ({
+            value: option.value,
+            label: `${typeof option.label === 'string' ? option.label : (option.title ?? option.value)}${option.count !== undefined ? ` (${option.count})` : ''}`,
+          }))}
+          className={toolbarControlClass}
+        />
+      </div>
+    )
+  }
+
   return (
     <div ref={listRef} role="tablist" aria-label={ariaLabel} className="relative inline-flex h-10 pointer-coarse:h-11 items-center rounded-full border border-gray-200 bg-white p-1">
       <span aria-hidden className="pointer-events-none rounded-full bg-ink" style={pill} />
