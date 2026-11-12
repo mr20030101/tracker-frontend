@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { api, logActivity, supabase, touchPresence } from './api'
 import { useIsActive } from './idle'
 import { loginAsReturn, returnToOwnAccount } from './loginAs'
+import { deviceLabel, leaveSignedOutNotice } from './sessionDevices'
 import type { User } from '../types'
 
 // Every 3 minutes; someone counts as online for 6 (ONLINE_THRESHOLD_MS), so one late ping doesn't flicker them offline.
@@ -59,8 +60,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const active = useIsActive()
   useEffect(() => {
     if (!user || !active) return
-    touchPresence()
-    const interval = setInterval(touchPresence, PRESENCE_INTERVAL_MS)
+    const device = deviceLabel(navigator.userAgent)
+    async function ping() {
+      if (await touchPresence(device)) return
+      // An admin signed this device out: the access token would keep working until it runs out.
+      leaveSignedOutNotice()
+      await supabase.auth.signOut({ scope: 'local' })
+      setUser(null)
+    }
+    ping()
+    const interval = setInterval(ping, PRESENCE_INTERVAL_MS)
     return () => clearInterval(interval)
   }, [user, active])
 

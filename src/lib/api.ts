@@ -394,10 +394,14 @@ export function logActivity(event: ActivityEvent, userId: string | null, email?:
     })
 }
 
-export function touchPresence() {
-  supabase.rpc('touch_presence').then(({ error }) => {
-    if (error) console.warn('Could not update presence:', error.message)
-  })
+/** Resolves false only once this sign-in has been signed out by an admin; any error counts as still signed in. */
+export async function touchPresence(device: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc('touch_presence', { p_device: device })
+  if (error) {
+    console.warn('Could not update presence:', error.message)
+    return true
+  }
+  return data !== false
 }
 
 export const api = {

@@ -89,7 +89,9 @@ function renderTask() {
       ? ['Submitted', 'pill-done']
       : row.status === 'expired'
         ? ['Expired', 'pill-expired']
-        : [row.status, 'pill-paused']
+        : row.status === 'rejected'
+          ? ['Rejected/SBQ', 'pill-expired']
+          : [row.status, 'pill-paused']
     : running
       ? ['Recording', 'pill-recording']
       : ['Paused', 'pill-paused']
@@ -109,6 +111,7 @@ function renderTask() {
   screenshot.dataset.saved = saved
 
   $('mark-submitted').hidden = !inProgress
+  $('finish-other').hidden = !inProgress
   $('pause').hidden = !inProgress || !running
   $('resume').hidden = !inProgress || running
   $('reset').hidden = !$('reset-confirm').hidden
@@ -284,10 +287,12 @@ $('screenshot-form').addEventListener('submit', (event) => {
   act($('screenshot-save'), () => call({ type: 'set-screenshot', screenshot: $('screenshot').value }))
 })
 
-// Submitted also saves the screenshot link typed in.
-$('mark-submitted').addEventListener('click', (event) =>
-  act(event.currentTarget, () => call({ type: 'mark-submitted', screenshot: $('screenshot').value })),
-)
+// Each also saves the screenshot link typed in.
+for (const [id, status] of [['mark-submitted', 'submitted'], ['mark-rejected', 'rejected'], ['mark-expired', 'expired']]) {
+  $(id).addEventListener('click', (event) =>
+    act(event.currentTarget, () => call({ type: 'mark-status', status, screenshot: $('screenshot').value })),
+  )
+}
 $('pause').addEventListener('click', (event) => act(event.currentTarget, () => call({ type: 'pause' })))
 $('resume').addEventListener('click', (event) => act(event.currentTarget, () => call({ type: 'resume' })))
 

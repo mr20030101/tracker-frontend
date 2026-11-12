@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { FoldText } from '../components/FoldText'
 import { Link, useSearchParams } from 'react-router-dom'
-import { FileUp, KeyRound, LogIn, Trash2, UserCheck, UserMinus, UserPlus, X, SlidersHorizontal } from 'lucide-react'
+import { FileUp, KeyRound, LogIn, Trash2, UserCheck, UserMinus, UserPlus, X, SlidersHorizontal, TriangleAlert } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ColumnDef, RowSelectionState } from '@tanstack/react-table'
 import { api } from '../lib/api'
@@ -9,6 +9,7 @@ import { useAuth } from '../lib/auth'
 import { alertDialog, confirmDialog } from '../lib/dialog'
 import { loginAs } from '../lib/loginAs'
 import { isOnline } from '../lib/presence'
+import { fetchSessionFlags, type SessionFlag } from '../lib/sessionDevices'
 import type { Project, User } from '../types'
 import { Modal } from '../components/Modal'
 import { Avatar } from '../components/Avatar'
@@ -113,6 +114,13 @@ export function Users({ view = 'cbs' }: { view?: 'cbs' | 'leads' }) {
     enabled: view === 'leads',
   })
   const { data: projectLeads = [] } = useQuery({ queryKey: ['project-leads', 'all'], queryFn: fetchProjectLeads, enabled: view === 'leads' })
+  const { data: sessionFlags = [] } = useQuery({
+    queryKey: ['session-flags'],
+    queryFn: fetchSessionFlags,
+    enabled: isAdmin,
+    refetchInterval: 60_000,
+  })
+  const sessionFlagById = useMemo(() => new Map(sessionFlags.map((flag) => [flag.user_id, flag])), [sessionFlags])
   const projectNamesByLead = useMemo(() => {
     const names = new Map<string, string[]>()
     for (const row of projectLeads) {
@@ -388,7 +396,10 @@ export function Users({ view = 'cbs' }: { view?: 'cbs' | 'leads' }) {
             >
               <Avatar name={u.name} photoUrl={u.avatar_url} size={28} />
               <div>
-                <div className="font-medium text-gray-900">{u.name}</div>
+                <div className="flex items-center gap-1.5 font-medium text-gray-900">
+                  {u.name}
+                  {sessionFlagById.get(u.id) && <SessionFlagChip flag={sessionFlagById.get(u.id)!} />}
+                </div>
                 <div className="text-xs text-gray-400">{u.email}</div>
               </div>
             </Link>
@@ -590,7 +601,7 @@ export function Users({ view = 'cbs' }: { view?: 'cbs' | 'leads' }) {
         },
       },
     ],
-    [isAdmin, view, leadOptions, leadNameById, teamByLead, projectNamesByLead, currentUser, roleMutation, leadMutation, toggleActiveMutation, deleteMutation],
+    [isAdmin, view, leadOptions, leadNameById, teamByLead, projectNamesByLead, sessionFlagById, currentUser, roleMutation, leadMutation, toggleActiveMutation, deleteMutation],
   )
 
   const bulkBusy = bulkMutation.isPending
@@ -956,5 +967,19 @@ export function Users({ view = 'cbs' }: { view?: 'cbs' | 'leads' }) {
         </Modal>
       )}
     </div>
+  )
+}
+
+function SessionFlagChip({ flag }: { flag: SessionFlag }) {
+  const text = flag.active_places >= 2 ? `${flag.active_places} places` : 'New device'
+  const title =
+    flag.active_places >= 2
+      ? `Active from ${flag.active_places} places right now (different device or IP). Open the profile to see the devices.`
+      : 'Signed in on a new device this week. Open the profile to see the devices.'
+  return (
+    <span title={title} className="inline-flex items-center gap-1 rounded-full bg-status-warning-bg px-2 py-0.5 text-xs font-medium text-status-warning-text">
+      <TriangleAlert className="h-3 w-3" aria-hidden />
+      {text}
+    </span>
   )
 }

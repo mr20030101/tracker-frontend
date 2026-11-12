@@ -97,6 +97,14 @@ export function Privacy() {
         </p>
       </LegalSection>
 
+      <LegalSection title="Signed-in devices">
+        <p>
+          While you're signed in, the Tracker keeps a record of each sign-in: the browser and system it's on (such as Chrome on Windows),
+          its IP address, when you signed in and when it was last active. Only admins can see it, to spot an account being used from more
+          than one place, and they can sign a device out. The record stays after you sign out, so a new device can be told apart.
+        </p>
+      </LegalSection>
+
       <LegalSection title="Messages and calls">
         <p>
           When messaging is on for your team, the messages you send, when they were read and a log of voice calls (who called whom, when and

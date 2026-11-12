@@ -10,6 +10,7 @@ import { toISODate } from '../lib/week'
 import type { Paginated, Project, Stage, SubmissionStatus, TaskSubmission } from '../types'
 import { BackupFormFailed, StatusPill } from '../components/StatusPill'
 import { TaskTimer } from '../components/TaskTimer'
+import { timeEditMode } from '../lib/taskTimer'
 import { Avatar } from '../components/Avatar'
 import { ActionsMenu } from '../components/ActionsMenu'
 import { Select } from '../components/Select'
@@ -467,7 +468,7 @@ function ManagerTaskLog() {
                 </td>
                 {/* Time on the task's timer, ticking while it runs. Started and paused from the task itself, not here. */}
                 <td className="whitespace-nowrap px-5 py-3">
-                  <TaskTimer task={row} canControl={false} />
+                  <TaskTimer task={row} canControl={false} editTime={timeEditMode(user, row.user_id)} />
                 </td>
                 <td className="whitespace-nowrap px-5 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center justify-end gap-2">

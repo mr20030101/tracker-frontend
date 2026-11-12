@@ -15,6 +15,7 @@ import { LevelPill, LEVEL_TIERS } from '../components/LevelPill'
 import { assignedProjectIds } from '../lib/cbProjects'
 import { ContributorWorkPanel } from '../components/ContributorWorkPanel'
 import { CbReport } from '../components/CbReport'
+import { SignedInDevices } from '../components/SignedInDevices'
 import { Reveal } from '../components/Reveal'
 import { AchievementsCard, FeaturedBadgeChip } from '../components/Achievements'
 import { recordProfileView, useProfileViewCount } from '../lib/profileViews'
@@ -418,6 +419,10 @@ export function CbProfile() {
           only for someone else reviewing this contributor (a lead/admin, or a public view). */}
       {isContributorRole && !isOwnProfile && decodedEmail && (
         <ContributorWorkPanel email={decodedEmail} contributorName={displayName} canEdit={canEdit} showGraphsToggle={false} hideGraphs={canManageLevels} />
+      )}
+
+      {currentUser?.role === 'admin' && contributorId && (
+        <SignedInDevices userId={contributorId} name={displayName} />
       )}
     </Reveal>
   )

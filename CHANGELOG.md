@@ -14,6 +14,17 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Added
+
+- **Edit a task's time.** The pencil next to a task's timer opens Edit time. Leads (for their own team) and admins can set any time up to 24 hours; a contributor can lower their own, for when they forgot to pause. A running timer keeps running from the new time.
+- **Expired and Rejected/SBQ in the browser extension.** Next to Submitted, an in-progress task can now be marked Expired or Rejected/SBQ. Browser extension 1.9.0: download it again from Resources.
+- **Signed-in devices, for admins.** Each person's profile (a lead's on their team page) lists where they're signed in: the browser and system, IP address, when they signed in and when they were last active. An account active from 2 places at once (a different device or IP) or on a new device this week is flagged there and on the Contributors and Leads lists. An admin can sign a device out; it goes to the sign-in screen within a few minutes. The extension is listed but never counted as another place. Your own devices are on your profile.
+
+### Changed
+
+- **Task time can only be changed through Edit time.** The time on a task can no longer be written directly, so it always follows the rules above.
+- **Privacy:** a new section says what's kept about signed-in devices and who can see it.
+
 ## 8.39.1 — 2026-11-12
 
 ### Fixed
