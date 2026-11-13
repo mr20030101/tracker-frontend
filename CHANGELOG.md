@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.40.1 — 2026-11-13
+
 ### Changed
 
 - **CTS Form takes finished work only.** Empty, Rejected/SBQ and Expired tasks no longer appear in Tasks Ready for CTS (In Progress already didn't). Their CTS column reads "Not for CTS" instead of Pending.
