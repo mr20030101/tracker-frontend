@@ -51,6 +51,7 @@ import { TaskTimer } from './TaskTimer'
 import { timeEditMode } from '../lib/taskTimer'
 import { SortableHeader } from './SortableHeader'
 import { CtsFormModal } from './CtsFormModal'
+import { goesToCts } from '../lib/cts'
 import { useTeamFeatures } from '../lib/teamFeatures'
 import { TaskSubmissionForm } from './TaskSubmissionForm'
 import { BulkImportModal } from './BulkImportModal'
@@ -403,7 +404,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
   // Every loaded task not yet sent to CTS, however old, most recent first so today's work is what
   // they see (and CtsFormModal pre-selects) first.
   const ctsEligibleSubmissions = data.all_submissions
-    .filter((row) => row.status !== 'in_progress' && !row.cts_submitted_at)
+    .filter((row) => goesToCts(row.status) && !row.cts_submitted_at)
     .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
 
   const sortedSubmissions = [...visibleSubmissions].sort((a, b) => {
@@ -929,9 +930,13 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                           <span className="inline-flex items-center rounded-full bg-status-success-bg px-2.5 py-0.5 text-xs font-medium text-status-success-text">
                             Sent
                           </span>
-                        ) : (
+                        ) : goesToCts(row.status) ? (
                           <span className="inline-flex items-center rounded-full bg-status-neutral-bg px-2.5 py-0.5 text-xs font-medium text-status-neutral-text">
                             Pending
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400" title="Empty, Rejected/SBQ, Expired and In Progress tasks don't go to CTS">
+                            Not for CTS
                           </span>
                         )}
                       </td>
