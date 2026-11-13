@@ -9,6 +9,7 @@ import { useNow } from '../lib/useNow'
 import type { ContributorProfile, Project } from '../types'
 import { Reveal } from '../components/Reveal'
 import { CtsFormModal } from '../components/CtsFormModal'
+import { goesToCts } from '../lib/cts'
 import { AttendanceFormModal } from '../components/AttendanceFormModal'
 import { attendanceWindow, fetchOwnAttendance } from '../lib/attendance'
 import { useAttendanceClosesMin } from '../lib/useAttendanceClosesMin'
@@ -145,9 +146,9 @@ export function ContributorDashboard() {
   const dayProgress = dayHoursTarget > 0 ? hoursToday / dayHoursTarget : 0
   const goalText = (hours: number, target: number) => (target > 0 ? `${formatHours(hours)} / ${formatHours(target)}` : 'Not set')
 
-  // Today's, not already submitted to CTS, and not still in progress — same as the CTS Form on the profile page.
+  // Today's finished tasks not already submitted to CTS, same as the CTS Form on the profile page.
   const todaysSubmissions = data.all_submissions.filter(
-    (row) => row.date?.slice(0, 10) === today && row.status !== 'in_progress' && !row.cts_submitted_at,
+    (row) => row.date?.slice(0, 10) === today && goesToCts(row.status) && !row.cts_submitted_at,
   )
 
   const attendanceState = attendanceWindow(new Date(now), closesMin)
