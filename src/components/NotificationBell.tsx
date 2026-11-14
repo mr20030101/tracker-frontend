@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useLocation } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { X } from 'lucide-react'
+import { Copy, X } from 'lucide-react'
 import { supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { liveChannelName } from '../lib/idle'
@@ -10,6 +10,7 @@ import { ALERT_NOTIFICATION_SOUND, loopSound } from '../lib/sound'
 import { Avatar } from './Avatar'
 import { RequestAlarm } from './RequestAlarm'
 import { fetchPendingRequestsForAlarm, type PendingRequestAlarmRow } from '../lib/taskRequests'
+import { fetchUnreadTaskOverlapAlerts, markTaskOverlapAlertsRead, teamLabel, type TaskOverlapAlert } from '../lib/taskOverlapAlerts'
 
 const MANAGER_ROLES = ['admin', 'lead']
 const MAX_REQUEST_ALERTS = 20
@@ -22,6 +23,8 @@ const TITLE_FLASH_MS = 1000
 // How often the alarm checks for pending requests, in case a live event was missed. New requests
 // normally ring straight away through the live feed below; this is only the safety net.
 const PENDING_POLL_MS = 5 * 60_000
+const OVERLAP_POLL_MS = 2 * 60_000
+const NO_OVERLAPS: TaskOverlapAlert[] = []
 // One shared empty list, so having no pending requests yet doesn't hand the effects below a new
 // array every render (which re-marked them seen on every render on the Requests page, forever).
 const NO_PENDING: PendingRequestAlarmRow[] = []
@@ -83,6 +86,12 @@ export function NotificationBell() {
     enabled: isLead,
     refetchInterval: PENDING_POLL_MS,
     refetchIntervalInBackground: true,
+  })
+  const { data: overlapAlerts = NO_OVERLAPS, refetch: refetchOverlaps } = useQuery({
+    queryKey: ['task-overlap-alerts', user?.id],
+    queryFn: fetchUnreadTaskOverlapAlerts,
+    enabled: isLead,
+    refetchInterval: OVERLAP_POLL_MS,
   })
   const [seen, setSeen] = useState<Set<number>>(() => readSeen(user?.id))
   const unseenRequests = pendingRequests.filter((r) => !seen.has(r.id))
@@ -196,7 +205,20 @@ export function NotificationBell() {
     setRequestAlerts((prev) => prev.filter((a) => a.id !== id))
   }
 
-  const count = isManager ? requestAlerts.length : 0
+  const count = isManager ? requestAlerts.length + overlapAlerts.length : 0
+
+  async function dismissOverlaps(ids: number[]) {
+    try {
+      await markTaskOverlapAlertsRead(ids)
+    } finally {
+      refetchOverlaps()
+    }
+  }
+
+  function clearAll() {
+    setRequestAlerts([])
+    void dismissOverlaps(overlapAlerts.map((a) => a.id))
+  }
 
   function close() {
     setOpen(false)
@@ -249,7 +271,7 @@ export function NotificationBell() {
                 <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Notifications</span>
                 {count > 0 && (
                   <button
-                    onClick={() => setRequestAlerts([])}
+                    onClick={clearAll}
                     className="inline-flex items-center gap-1.5 text-xs font-medium text-sky-700 hover:underline"
                   >
                     <X className="h-3.5 w-3.5" aria-hidden />
@@ -259,6 +281,28 @@ export function NotificationBell() {
               </div>
               <div className="flex max-h-96 flex-col gap-1 overflow-y-auto">
                 {(!isManager || count === 0) && <div className="px-2 py-3 text-sm text-gray-400">Nothing to show.</div>}
+                {isLead &&
+                  overlapAlerts.map((alert) => (
+                    <div key={`overlap-${alert.id}`} className="flex items-start gap-2 rounded-lg px-2 py-2 hover:bg-gray-50">
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-status-warning-bg text-status-warning-text">
+                        <Copy className="h-4 w-4" aria-hidden />
+                      </span>
+                      <div className="min-w-0 flex-1 text-sm">
+                        <div className="text-gray-900">
+                          <span className="font-medium">{alert.logged_by}</span> ({teamLabel(alert.logged_by_team)}) logged a task{' '}
+                          <span className="font-medium">{alert.other_by}</span> ({teamLabel(alert.other_team)}) already logged
+                        </div>
+                        <div className="truncate font-mono text-xs text-gray-500">{alert.task_id}</div>
+                      </div>
+                      <button
+                        onClick={() => void dismissOverlaps([alert.id])}
+                        className="shrink-0 rounded p-1 text-gray-300 hover:bg-gray-200 hover:text-gray-600"
+                        aria-label="Dismiss"
+                      >
+                        <X className="h-4 w-4" aria-hidden />
+                      </button>
+                    </div>
+                  ))}
                 {requestAlerts.map((alert) => (
                   <div key={alert.id} className="group flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-gray-50">
                     <Link

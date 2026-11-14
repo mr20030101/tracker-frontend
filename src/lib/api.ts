@@ -28,7 +28,7 @@ export function errorMessage(err: unknown, fallback: string): string {
 
 export function taskIdConflictError(table: string, error: { code?: string; message: string }): Error {
   if (table === 'task_submissions' && error.code === '23505' && error.message.includes('task_id')) {
-    return new Error('This Task ID has already been logged. Double check your Task ID.')
+    return new Error('This Task ID is already logged for this person. Double check your Task ID.')
   }
   return error as Error
 }

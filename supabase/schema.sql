@@ -242,7 +242,8 @@ create index if not exists task_submissions_cb_email_idx on public.task_submissi
 create index if not exists task_submissions_date_idx on public.task_submissions(date);
 -- Enforces one row per Task ID; multiple NULLs are still allowed since a
 -- unique index treats each NULL as distinct.
-create unique index if not exists task_submissions_task_id_key on public.task_submissions(task_id);
+-- One person logs a task ID once; others may log it too (see 20261114_task_id_per_person.sql).
+create unique index if not exists task_submissions_task_id_cb_email_key on public.task_submissions (lower(task_id), lower(cb_email));
 create index if not exists resources_project_category_idx on public.resources(project_id, category, sort_order);
 create index if not exists activity_logs_created_at_idx on public.activity_logs(created_at desc);
 create index if not exists activity_logs_user_id_idx on public.activity_logs(user_id);
