@@ -93,7 +93,7 @@ async function submissions(params: Record<string, unknown> = {}): Promise<Pagina
   const profile = await currentProfile()
   const sortColumn = typeof params.sort === 'string' && SORTABLE_COLUMNS.has(params.sort) ? params.sort : 'date'
   const sortAscending = params.sort_dir === 'asc'
-  let query = supabase.from('task_submissions').select('*', { count: 'exact' }).order(sortColumn, { ascending: sortAscending }).order('id', { ascending: sortAscending })
+  let query = supabase.from('task_submissions').select('*, logged_by_other_cb', { count: 'exact' }).order(sortColumn, { ascending: sortAscending }).order('id', { ascending: sortAscending })
   if (profile.role === 'contributor') query = query.eq('user_id', profile.id)
   if (params.stage) query = query.eq('stage', params.stage)
   if (params.search) {
@@ -340,7 +340,7 @@ async function contributor(params: Record<string, unknown>): Promise<Contributor
   const [{ data: rows }, targetByUser, totals] = await Promise.all([
     // Paged: one contributor's whole history can pass 1,000 rows.
     fetchAllPages<TaskSubmission>((from, to) => {
-      let query = supabase.from('task_submissions').select('*').ilike('cb_email', emailPattern)
+      let query = supabase.from('task_submissions').select('*, logged_by_other_cb').ilike('cb_email', emailPattern)
       if (dateFrom) query = query.gte('date', dateFrom)
       if (dateTo) query = query.lte('date', dateTo)
       return query.order('date', { ascending: false }).order('id').range(from, to)
