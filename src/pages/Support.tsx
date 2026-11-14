@@ -31,6 +31,7 @@ import {
   type SupportStatus,
 } from '../lib/support'
 import { FoldText } from '../components/FoldText'
+import { FormattedText } from '../components/FormattedText'
 import { Modal } from '../components/Modal'
 import { Detail } from '../components/Detail'
 import { Select } from '../components/Select'
@@ -659,7 +660,7 @@ function TicketModal({ ticketId, onClose }: { ticketId: number; onClose: () => v
         <span className="ml-auto text-xs text-gray-400">#{ticket.id}</span>
       </div>
 
-      <p className="whitespace-pre-wrap text-sm text-gray-800">{ticket.body}</p>
+      <FormattedText text={ticket.body} className="text-sm text-gray-800" />
 
       {ticket.screenshot_refs.length > 0 && (
         <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -718,7 +719,7 @@ function TicketModal({ ticketId, onClose }: { ticketId: number; onClose: () => v
                     {fromSupport && <span className="ml-1.5 rounded-full bg-accent-bg px-1.5 py-px text-[10px] font-semibold text-accent-on-bg">Support</span>}
                     <span className="ml-1.5">{timeAgo(r.created_at)}</span>
                   </div>
-                  <p className="mt-0.5 whitespace-pre-wrap text-sm text-gray-800">{r.body}</p>
+                  <FormattedText text={r.body} className="mt-0.5 text-sm text-gray-800" />
                 </div>
               </li>
             )

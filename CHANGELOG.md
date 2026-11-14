@@ -14,6 +14,12 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.44.0 — 2026-11-14
+
+### Changed
+
+- **Support tickets and replies show their formatting.** **Bold**, *italic*, `code`, bullet and numbered lists, and paragraphs now display as formatted text instead of showing the raw asterisks and backticks.
+
 ## 8.43.0 — 2026-11-14
 
 ### Added
