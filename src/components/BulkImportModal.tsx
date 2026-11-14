@@ -162,18 +162,20 @@ export function BulkImportModal({ projects, onClose, contributorEmail, contribut
     setError(null)
     try {
       const candidateTaskIds = includedRows.map(({ row }) => row.task_id).filter((id): id is string => Boolean(id))
+      // A task ID may be logged by several people, but only once per person.
+      const personTaskKey = (taskId: string, email: string) => `${taskId.toLowerCase()}|${email.toLowerCase()}`
 
-      let existingIds = new Set<string>()
+      const existingKeys = new Set<string>()
       if (candidateTaskIds.length > 0) {
         const chunks = chunkArray(candidateTaskIds, 200)
         const results = await Promise.all(
           chunks.map((chunk) =>
-            supabase.from('task_submissions').select('task_id').in('task_id', chunk),
+            supabase.from('task_submissions').select('task_id, cb_email').in('task_id', chunk),
           ),
         )
         for (const { data, error: existingErr } of results) {
           if (existingErr) throw existingErr
-          for (const r of data ?? []) existingIds.add(r.task_id as string)
+          for (const r of data ?? []) existingKeys.add(personTaskKey(r.task_id as string, r.cb_email as string))
         }
       }
 
@@ -185,14 +187,16 @@ export function BulkImportModal({ projects, onClose, contributorEmail, contribut
       const userIdByEmail = new Map(profiles.map((p) => [p.email.toLowerCase(), p.id]))
 
       let duplicates = 0
-      const seenTaskIds = new Set<string>()
       const toInsert = []
       for (const { row, index } of includedRows) {
-        if (row.task_id && (existingIds.has(row.task_id) || seenTaskIds.has(row.task_id))) {
-          duplicates += 1
-          continue
+        if (row.task_id) {
+          const key = personTaskKey(row.task_id, row.cb_email)
+          if (existingKeys.has(key)) {
+            duplicates += 1
+            continue
+          }
+          existingKeys.add(key)
         }
-        if (row.task_id) seenTaskIds.add(row.task_id)
         toInsert.push({
           task_id: row.task_id,
           cb_email: row.cb_email,
@@ -395,7 +399,7 @@ export function BulkImportModal({ projects, onClose, contributorEmail, contribut
               Imported {result.inserted} new submissions.
             </div>
             {result.duplicates > 0 && (
-              <div className="text-sm text-gray-500">{result.duplicates} rows skipped — task ID already exists.</div>
+              <div className="text-sm text-gray-500">{result.duplicates} rows skipped — that person already logged the task ID.</div>
             )}
             {result.skipped > 0 && (
               <div className="text-sm text-gray-500">{result.skipped} rows skipped — no CB email.</div>
