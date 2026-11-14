@@ -65,7 +65,7 @@ export function BrowserExtensionCard() {
             <li key={step}>{step}</li>
           ))}
           <li className="list-none text-gray-500">
-            To update, download the new version, unzip it over the old folder, and press the reload button on the extension’s card.
+            To update, press Update in the extension’s banner (or download the new version here), unzip it over the old folder, and press Reload now.
           </li>
         </ol>
       )}

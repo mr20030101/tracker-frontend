@@ -5,7 +5,7 @@
 // load the folder with Load unpacked (see extension/README.md); a .crx from outside the Chrome Web
 // Store won't install on Mac or Windows.
 import { execFileSync } from 'node:child_process'
-import { copyFileSync, mkdirSync, readFileSync, rmSync } from 'node:fs'
+import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 const root = join(import.meta.dirname, '..')
@@ -28,6 +28,8 @@ rmSync(staging, { recursive: true, force: true })
 const publicZip = join(root, 'public', 'downloads', 'grey-owls-tracker-extension.zip')
 mkdirSync(join(root, 'public', 'downloads'), { recursive: true })
 copyFileSync(zipPath, publicZip)
+// Read by the extension's popup to offer the update (checkForUpdate in extension/popup.js).
+writeFileSync(join(root, 'public', 'downloads', 'extension-version.json'), `${JSON.stringify({ version })}\n`)
 
 console.log(`Packed v${version}: ${zipPath}`)
 console.log(`Site download: ${publicZip}`)
