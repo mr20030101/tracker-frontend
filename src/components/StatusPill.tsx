@@ -1,4 +1,4 @@
-import { CircleCheck, CircleDashed, CircleSlash, CircleX, Clock, CloudAlert, TriangleAlert, type LucideIcon } from 'lucide-react'
+import { CircleCheck, CircleDashed, CircleSlash, CircleX, Clock, CloudAlert, Copy, TriangleAlert, type LucideIcon } from 'lucide-react'
 import type { SubmissionStatus, TaskSubmission } from '../types'
 
 const STATUS: Record<SubmissionStatus, { label: string; icon: LucideIcon; strong?: boolean }> = {
@@ -43,6 +43,20 @@ export function BackupFormFailed({ task }: { task: Pick<TaskSubmission, 'backup_
       <CloudAlert className="h-4 w-4" aria-hidden />
       Not in backup form
       <span className="sr-only">: {note}</span>
+    </span>
+  )
+}
+
+/** Tags a task whose ID another CB has also logged. */
+export function SharedTaskIdTag({ task }: { task: Pick<TaskSubmission, 'logged_by_other_cb'> }) {
+  if (!task.logged_by_other_cb) return null
+  return (
+    <span
+      className="inline-flex shrink-0 items-center gap-1 rounded bg-status-warning-bg px-1.5 py-0.5 font-sans text-[11px] font-medium text-status-warning-text"
+      title="Another CB has also logged this task ID."
+    >
+      <Copy className="h-3 w-3" aria-hidden />
+      Also logged by another CB
     </span>
   )
 }

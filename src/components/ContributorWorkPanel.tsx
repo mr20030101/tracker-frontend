@@ -45,7 +45,7 @@ import { ProgressRing } from './ProgressRing'
 import { LineChart } from './LineChart'
 import { CountUp } from './CountUp'
 import { GrowBar } from './GrowBar'
-import { BackupFormFailed, StatusPill } from './StatusPill'
+import { BackupFormFailed, SharedTaskIdTag, StatusPill } from './StatusPill'
 import { ActionsMenu } from './ActionsMenu'
 import { TaskTimer } from './TaskTimer'
 import { timeEditMode } from '../lib/taskTimer'
@@ -911,6 +911,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                               <Image className="h-3.5 w-3.5" strokeWidth={2} />
                             </a>
                           )}
+                          <SharedTaskIdTag task={row} />
                         </span>
                       </td>
                       <td className="px-5 py-3 text-gray-600">{row.project?.name ?? '—'}</td>

@@ -8,7 +8,7 @@ import { sanitiseOrTerm } from '../lib/sanitiseOrTerm'
 import { useAuth } from '../lib/auth'
 import { toISODate } from '../lib/week'
 import type { Paginated, Project, Stage, SubmissionStatus, TaskSubmission } from '../types'
-import { BackupFormFailed, StatusPill } from '../components/StatusPill'
+import { BackupFormFailed, SharedTaskIdTag, StatusPill } from '../components/StatusPill'
 import { TaskTimer } from '../components/TaskTimer'
 import { timeEditMode } from '../lib/taskTimer'
 import { Avatar } from '../components/Avatar'
@@ -439,6 +439,7 @@ function ManagerTaskLog() {
                         <Image className="h-3.5 w-3.5" aria-label="Screenshot" />
                       </a>
                     )}
+                    <SharedTaskIdTag task={row} />
                   </span>
                 </td>
                 <td className="whitespace-nowrap px-5 py-3 text-gray-700">{row.project?.name ?? <span className="text-gray-400">—</span>}</td>

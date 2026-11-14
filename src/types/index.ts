@@ -87,6 +87,8 @@ export interface TaskSubmission {
   submitted_at: string | null
   snipboard_url: string | null
   cts_submitted_at: string | null
+  // Another CB has logged the same task ID (20261114_task_id_shared_tag.sql).
+  logged_by_other_cb?: boolean
   // The task's timer: running while timer_started_at is set, plus the seconds banked from earlier runs.
   timer_started_at?: string | null
   timer_elapsed_seconds?: number

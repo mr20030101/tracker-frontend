@@ -6,7 +6,7 @@ import { contributorPath } from '../lib/urlRef'
 import type { TaskSubmission } from '../types'
 import { Detail } from './Detail'
 import { Modal } from './Modal'
-import { StatusPill } from './StatusPill'
+import { SharedTaskIdTag, StatusPill } from './StatusPill'
 
 const formatDateTime = (iso: string) => new Date(iso).toLocaleString()
 
@@ -76,6 +76,11 @@ export function SubmissionDetailsModal({
             </div>
           ) : (
             '—'
+          )}
+          {s.logged_by_other_cb && (
+            <div className="mt-1.5">
+              <SharedTaskIdTag task={s} />
+            </div>
           )}
         </Detail>
         <Detail label="Project">{s.project?.name ?? '—'}</Detail>

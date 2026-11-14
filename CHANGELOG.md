@@ -14,6 +14,14 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Added
+
+- **Shared task IDs are tagged.** A task whose ID another CB has also logged shows "Also logged by another CB" next to its task ID on the Task Log, a contributor's submissions and the submission details.
+
+### Changed
+
+- **Admins are told about cross-team task IDs too.** The notification that goes to both teams' leads now also reaches every admin's bell.
+
 ## 8.41.0 — 2026-11-14
 
 ### Changed
