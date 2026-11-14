@@ -6,6 +6,21 @@
     <link rel="stylesheet" href="popup.css" />
   </head>
   <body>
+    <section id="update" class="update" hidden>
+      <div class="update-text">
+        <strong>Update available</strong>
+        <span id="update-versions" class="mono"></span>
+      </div>
+      <ol id="update-steps" class="update-steps" hidden>
+        <li>Unzip the download over your <span class="mono">grey-owls-tracker</span> folder, replacing the files.</li>
+        <li>Press <strong>Reload now</strong>.</li>
+      </ol>
+      <div class="row row-wrap">
+        <button id="update-download" class="btn btn-primary" type="button">Update</button>
+        <button id="update-reload" class="btn btn-ghost" type="button" hidden>Reload now</button>
+      </div>
+    </section>
+
     <!-- Signed out -->
     <section id="sign-in-view" class="sign-in" hidden>
       <picture class="sign-in-mark">

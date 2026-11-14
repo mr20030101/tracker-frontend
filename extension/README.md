@@ -47,13 +47,19 @@ Nothing is read from or sent to Remotasks: the extension only talks to the track
 5. Click the puzzle-piece icon in the toolbar and pin **Grey Owls Tracker**.
 6. Open it, sign in with your tracker account, and pick your project and stage.
 
-To update to a new version, unzip it over the old folder (or into a new one and load that
-instead), then press the reload button on the extension's card in the extensions page.
+To update: when a new version is out, the popup shows **Update available** with the two version
+numbers. Press **Update**: it downloads the new zip and opens the extensions page. Unzip it over
+the old **grey-owls-tracker** folder, replacing the files, then press **Reload now** in the popup
+(or the reload button on the extension's card). The browser doesn't let an unpacked extension
+replace its own files, so the unzip step stays manual. Versions before 1.10.0 have no banner:
+update those once by hand the same way.
 
 ## Packing a new version
 
 Raise `version` in `manifest.json`, then run `npm run pack:extension`. The zip lands in
-`extension-build/` (not committed) for sharing with the team.
+`extension-build/` (not committed) for sharing with the team, and the site's copy and
+`public/downloads/extension-version.json` are updated. Once that's deployed, popups on older
+versions show the update banner.
 
 ## How it works
 

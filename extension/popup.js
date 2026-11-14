@@ -367,7 +367,57 @@ async function fillFromPage() {
   }
 }
 
+// --- updates ------------------------------------------------------------------------------
+
+// Written by `npm run pack:extension` next to the zip the Resources page serves.
+const SITE = 'https://www.greyowlstracker.space'
+const VERSION_URL = `${SITE}/downloads/extension-version.json`
+const DOWNLOAD_URL = `${SITE}/downloads/grey-owls-tracker-extension.zip`
+
+function isNewer(latest, current) {
+  const a = String(latest).split('.').map(Number)
+  const b = String(current).split('.').map(Number)
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    if ((a[i] || 0) !== (b[i] || 0)) return (a[i] || 0) > (b[i] || 0)
+  }
+  return false
+}
+
+async function checkForUpdate() {
+  const current = chrome.runtime.getManifest().version
+  let latest = null
+  try {
+    const res = await fetch(VERSION_URL, { cache: 'no-store' })
+    if (res.ok) latest = (await res.json()).version
+  } catch {
+    // Offline or the site is down: no banner.
+  }
+  const { updateStarted } = await chrome.storage.local.get('updateStarted')
+  if (!latest || !isNewer(latest, current)) {
+    if (updateStarted) await chrome.storage.local.remove('updateStarted')
+    return
+  }
+  $('update-versions').textContent = `${current} → ${latest}`
+  $('update-steps').hidden = !updateStarted
+  $('update-reload').hidden = !updateStarted
+  $('update-download').textContent = updateStarted ? 'Download again' : 'Update'
+  $('update').hidden = false
+}
+
+// The browser won't let an unpacked extension replace its own files, so this downloads the zip and
+// opens the extensions page; the person unzips it over the folder and reloads from here.
+$('update-download').addEventListener('click', async () => {
+  await chrome.storage.local.set({ updateStarted: true })
+  $('update-steps').hidden = false
+  $('update-reload').hidden = false
+  await chrome.tabs.create({ url: DOWNLOAD_URL, active: false })
+  await chrome.tabs.create({ url: `chrome://extensions/?id=${chrome.runtime.id}` })
+})
+
+$('update-reload').addEventListener('click', () => chrome.runtime.reload())
+
 renderRequestType()
+checkForUpdate()
 refresh()
 fillFromPage()
 // The timer ticks here; the stored state is re-read now and then in case it changed in the tracker.

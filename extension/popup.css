@@ -220,6 +220,16 @@ textarea {
   background: rgba(255, 255, 255, 0.08);
 }
 
+.btn-ghost {
+  background: transparent;
+  border-color: var(--mist);
+  color: var(--text);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: var(--neutral-bg);
+}
+
 .btn-danger {
   background: #d92d20;
   color: #fff;
@@ -743,4 +753,28 @@ textarea {
   color: inherit;
   font: 600 14px/1 var(--font-body);
   cursor: pointer;
+}
+
+.update {
+  display: grid;
+  gap: 8px;
+  padding: 10px 16px 12px;
+  background: var(--warning-bg);
+  border-bottom: 1px solid var(--mist);
+  color: var(--text);
+  font-size: 12px;
+}
+
+.update-text {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--warning-text);
+}
+
+.update-steps {
+  margin: 0;
+  padding-left: 18px;
+  line-height: 1.5;
 }

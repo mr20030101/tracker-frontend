@@ -14,6 +14,12 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.43.0 — 2026-11-14
+
+### Added
+
+- **Update button in the browser extension (v1.10.0).** When a newer version is on the site, the popup shows "Update available" with both version numbers. Update downloads the new zip and opens the extensions page; after unzipping it over the old folder, Reload now finishes the update. Extensions older than 1.10.0 need one last update by hand.
+
 ## 8.42.0 — 2026-11-14
 
 ### Added
