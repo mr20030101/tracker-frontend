@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.41.0 — 2026-11-14
+
 ### Changed
 
 - **A task ID can be logged by more than one person.** Each person can still log a task ID only once; logging it again for the same person says "This Task ID is already logged for this person." Bulk import skips only rows that person already has. Browser extension 1.9.1 no longer says "Someone else already logged this task ID": download it again from Resources.
