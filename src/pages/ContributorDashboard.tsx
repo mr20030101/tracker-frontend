@@ -6,6 +6,7 @@ import { useAuth } from '../lib/auth'
 import { useMessaging } from '../lib/messagingContext'
 import { todayIso, weekStartIso } from '../lib/week'
 import { useNow } from '../lib/useNow'
+import { serverNow } from '../lib/serverClock'
 import type { ContributorProfile, Project } from '../types'
 import { Reveal } from '../components/Reveal'
 import { CtsFormModal } from '../components/CtsFormModal'
@@ -156,7 +157,7 @@ export function ContributorDashboard() {
 
   function handleAttendanceClick() {
     // The time right now, not `now`, which is up to a minute old.
-    if (attendanceWindow(new Date(), closesMin) === 'open') {
+    if (attendanceWindow(new Date(serverNow()), closesMin) === 'open') {
       setShowAttendanceForm(true)
     } else {
       // Only reachable once it's opened for the day (the button is disabled before 6 AM), so this is the "already closed" case.

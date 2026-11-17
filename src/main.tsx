@@ -13,9 +13,11 @@ import './lib/sound.ts'
 import './lib/consoleWarning.ts'
 import { startInstallListener } from './lib/install.ts'
 import { startIdleWatch } from './lib/idle.ts'
+import { startServerClock } from './lib/serverClock.ts'
 
 startInstallListener()
 startIdleWatch()
+startServerClock()
 
 // A tab opened before a release asks for page files that deploy replaced. Reload once to pick up
 // the new ones; the timestamp stops a loop if the file is missing for another reason.

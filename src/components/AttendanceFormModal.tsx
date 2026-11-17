@@ -15,6 +15,7 @@ import {
 } from '../lib/attendance'
 import { useAttendanceClosesMin } from '../lib/useAttendanceClosesMin'
 import { useNow } from '../lib/useNow'
+import { serverNow } from '../lib/serverClock'
 import { confirmDialog } from '../lib/dialog'
 import { fetchAttendancePhotoRequired, sendAttendanceToGoogleForm, uploadAttendancePhoto } from '../lib/attendancePhoto'
 import { CameraCapture } from './CameraCapture'
@@ -162,7 +163,7 @@ export function AttendanceFormModal({
           e.preventDefault()
           if (!isLast) return next()
           if (busy) return
-          if (!support && (date !== todayIso(Date.now()) || attendanceWindow(new Date(), closesMin) !== 'open')) return setFormError(closedMessage)
+          if (!support && (date !== todayIso(serverNow()) || attendanceWindow(new Date(serverNow()), closesMin) !== 'open')) return setFormError(closedMessage)
           const blocked = steps.findIndex((s) => stepProblem(s))
           if (blocked !== -1) {
             setStepIndex(blocked)
