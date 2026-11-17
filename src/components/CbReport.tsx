@@ -37,7 +37,7 @@ function daysOf(start: string, end: string): string[] {
   return days
 }
 
-const dayLabel = (iso: string) => fromISODate(iso).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
+const dayLabel = (iso: string) => fromISODate(iso).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'Asia/Singapore' })
 
 interface TaskRow {
   date: string | null
@@ -176,7 +176,7 @@ export function CbReport({ userId, email, leadId, name }: { userId: string; emai
               </div>
               <DailyHoursChart
                 days={[...rows].reverse().map((r) => ({
-                  label: fromISODate(r.day).toLocaleDateString(undefined, period === 'month' ? { day: 'numeric' } : { weekday: 'short' }),
+                  label: fromISODate(r.day).toLocaleDateString(undefined, { ...(period === 'month' ? { day: 'numeric' } : { weekday: 'short' }), timeZone: 'Asia/Singapore' }),
                   hours: r.hours,
                 }))}
                 target={dailyHours}

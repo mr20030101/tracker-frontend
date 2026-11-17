@@ -14,6 +14,13 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.44.1 — 2026-11-17
+
+### Fixed
+
+- **Attendance follows the server's clock, not the phone's.** The attendance window, the countdown bomb, today's date and the "attendance closed" check now use the server's time. A contributor whose phone or laptop clock is wrong no longer sees attendance as open or closed at the wrong time, or gets refused when saving.
+- **CB report days are labelled in Singapore time.** On a device in another time zone, the report's day and weekday labels could show the day before.
+
 ## 8.44.0 — 2026-11-14
 
 ### Changed
