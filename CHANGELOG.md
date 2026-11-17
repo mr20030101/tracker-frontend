@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.44.1 — 2026-11-17
+
 ### Fixed
 
 - **Attendance follows the server's clock, not the phone's.** The attendance window, the countdown bomb, today's date and the "attendance closed" check now use the server's time. A contributor whose phone or laptop clock is wrong no longer sees attendance as open or closed at the wrong time, or gets refused when saving.
