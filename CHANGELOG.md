@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.47.0 — 2026-11-18
+
 ### Added
 
 - **The Tracker works on phones.** Pop-ups open as sheets from the bottom of the screen with their title and close button always in reach, tables turn into easy-to-read cards, and buttons are big enough to tap. The header stays put while you scroll, and no longer slides away after typing in a field. iPhones no longer zoom in when you tap a field.
