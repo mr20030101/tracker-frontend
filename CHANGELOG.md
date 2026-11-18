@@ -14,6 +14,10 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Added
+
+- **A contributor's profile shows their lead.** A "Lead" chip next to the shift and Meet link names the contributor's lead and opens the lead's profile.
+
 ## 8.47.0 — 2026-11-18
 
 ### Added
