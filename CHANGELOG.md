@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.45.0 — 2026-11-18
+
 ### Added
 
 - **Pay your bill with an InstaPay QR.** Leads can now scan a Grey Owls InstaPay QR (GoTyme) from the Billing page and pay in pesos from GCash, Maya or any bank app. PayPal in USD is still highly recommended, since the server is paid in USD. "I've paid" asks whether you used PayPal or InstaPay, and admins see which one each report used, so they know where to check it.
