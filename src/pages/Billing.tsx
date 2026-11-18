@@ -37,6 +37,7 @@ import {
   monthOf,
   parseAmount,
   paypalLink,
+  paymentMethodLabel,
   paypalMeName,
   setHowToPay,
   removeLeadBill,
@@ -264,8 +265,8 @@ export function Billing() {
     const name = leadById.get(bill.leadId)?.name ?? 'this lead'
     const ok = await confirmDialog(
       bill.reportedPaidAt && !bill.paidAt
-        ? `${name} reported paying ${monthLabel(bill.month)} (PayPal ${bill.reportedRef}). If it isn't in your PayPal, mark it not received: their report is cleared and the share shows unpaid again.`
-        : `Mark ${name}'s ${monthLabel(bill.month)} bill as unpaid? The paid date, note and any PayPal report are cleared.`,
+        ? `${name} reported paying ${monthLabel(bill.month)} (${paymentMethodLabel(bill.reportedMethod)} ${bill.reportedRef}). If it isn't in your ${bill.reportedMethod === 'instapay' ? 'GoTyme account' : 'PayPal'}, mark it not received: their report is cleared and the share shows unpaid again.`
+        : `Mark ${name}'s ${monthLabel(bill.month)} bill as unpaid? The paid date, note and any payment report are cleared.`,
       {
         title: bill.reportedPaidAt && !bill.paidAt ? 'Payment not received?' : 'Mark as unpaid?',
         confirmLabel: bill.reportedPaidAt && !bill.paidAt ? 'Not received' : 'Mark unpaid',
@@ -352,7 +353,7 @@ export function Billing() {
             <CircleAlert className="h-4 w-4" aria-hidden />
             {toConfirm.length} payment{toConfirm.length === 1 ? '' : 's'} to confirm
           </p>
-          <p className="mt-0.5">Check each transaction ID in your PayPal activity, then click Confirm paid.</p>
+          <p className="mt-0.5">Check each reference in your PayPal activity or GoTyme account, then click Confirm paid.</p>
           <ul className="mt-1 space-y-0.5">
             {toConfirm.map((bill) => (
               <li key={`${bill.month}-${bill.leadId}`}>
@@ -360,7 +361,7 @@ export function Billing() {
                 <button type="button" onClick={() => setMonth(bill.month)} className="font-medium underline">
                   {monthLabel(bill.month)}
                 </button>
-                : <span className="font-mono">{bill.reportedRef}</span>
+                : <span className="font-mono">{paymentMethodLabel(bill.reportedMethod)} {bill.reportedRef}</span>
               </li>
             ))}
           </ul>
@@ -486,7 +487,7 @@ export function Billing() {
                         ) : bill.reportedPaidAt ? (
                           <>
                             <div>Reported {formatPaidOn(bill.reportedPaidAt)}</div>
-                            <div className="font-mono text-xs text-gray-500">PayPal {bill.reportedRef}</div>
+                            <div className="font-mono text-xs text-gray-500">{paymentMethodLabel(bill.reportedMethod)} {bill.reportedRef}</div>
                           </>
                         ) : (
                           '—'
@@ -878,7 +879,7 @@ function PaidModal({
   onClose: () => void
   onSaved: () => void
 }) {
-  const [note, setNote] = useState(bill.note ?? (bill.reportedRef ? `PayPal ${bill.reportedRef}` : ''))
+  const [note, setNote] = useState(bill.note ?? (bill.reportedRef ? `${paymentMethodLabel(bill.reportedMethod)} ${bill.reportedRef}` : ''))
   const [error, setError] = useState('')
   const mutation = useMutation({
     mutationFn: () => setLeadBillPaid(bill.month, bill.leadId, true, note),
@@ -901,8 +902,8 @@ function PaidModal({
           <p className="text-sm text-gray-600">
             {bill.reportedRef ? (
               <>
-                {leadName} reported paying {amountLabel} for {monthLabel(bill.month)} with PayPal transaction{' '}
-                <span className="font-mono">{bill.reportedRef}</span>. Check it's in your PayPal activity first.
+                {leadName} reported paying {amountLabel} for {monthLabel(bill.month)} with {bill.reportedMethod === 'instapay' ? 'InstaPay reference' : 'PayPal transaction'}{' '}
+                <span className="font-mono">{bill.reportedRef}</span>. Check it's in your {bill.reportedMethod === 'instapay' ? 'GoTyme account' : 'PayPal activity'} first.
               </>
             ) : (
               <>
