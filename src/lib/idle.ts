@@ -58,6 +58,14 @@ function subscribe(listener: () => void) {
   return () => listeners.delete(listener)
 }
 
+/** Whether the tab is idle right now, for code outside React. */
+export function isTabIdle(): boolean {
+  return idle
+}
+
+/** Calls `listener` whenever the tab turns idle or wakes, for code outside React. */
+export const onIdleChange = subscribe
+
 /** False while the tab is idle: pause background work (live feeds, heartbeats) until it's true again. */
 export function useIsActive(): boolean {
   return !useSyncExternalStore(subscribe, () => idle, () => false)

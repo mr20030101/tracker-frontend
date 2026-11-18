@@ -5,6 +5,7 @@ import { hubFor, logHubs } from '../lib/logHubs'
 import { fetchPendingRequestCount } from '../lib/taskRequests'
 import { fetchPendingFeedbackCount } from '../lib/taskFeedback'
 import { SegmentedTabs } from './TableToolbar'
+import { MANAGER_COUNTS_POLL_MS } from '../lib/managerCountsLive'
 
 const MANAGER_ROLES = ['admin', 'lead']
 
@@ -24,13 +25,13 @@ export function LogTabs() {
     queryKey: ['task-requests', 'pending-count'],
     queryFn: fetchPendingRequestCount,
     enabled: isManager,
-    refetchInterval: 2 * 60_000,
+    refetchInterval: MANAGER_COUNTS_POLL_MS,
   })
   const { data: pendingFeedback = 0 } = useQuery({
     queryKey: ['task-feedback', 'pending-count'],
     queryFn: fetchPendingFeedbackCount,
     enabled: isManager,
-    refetchInterval: 2 * 60_000,
+    refetchInterval: MANAGER_COUNTS_POLL_MS,
   })
   const countFor = (to: string) => (!isManager ? undefined : to === '/requests' ? pendingRequests : to === '/feedback' ? pendingFeedback : undefined)
 

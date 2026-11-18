@@ -6,6 +6,7 @@ import { Copy, X } from 'lucide-react'
 import { supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { liveChannelName } from '../lib/idle'
+import { MANAGER_COUNTS_POLL_MS } from '../lib/managerCountsLive'
 import { ALERT_NOTIFICATION_SOUND, loopSound } from '../lib/sound'
 import { Avatar } from './Avatar'
 import { RequestAlarm } from './RequestAlarm'
@@ -23,7 +24,6 @@ const TITLE_FLASH_MS = 1000
 // How often the alarm checks for pending requests, in case a live event was missed. New requests
 // normally ring straight away through the live feed below; this is only the safety net.
 const PENDING_POLL_MS = 5 * 60_000
-const OVERLAP_POLL_MS = 2 * 60_000
 const NO_OVERLAPS: TaskOverlapAlert[] = []
 // One shared empty list, so having no pending requests yet doesn't hand the effects below a new
 // array every render (which re-marked them seen on every render on the Requests page, forever).
@@ -91,7 +91,7 @@ export function NotificationBell() {
     queryKey: ['task-overlap-alerts', user?.id],
     queryFn: fetchUnreadTaskOverlapAlerts,
     enabled: isManager,
-    refetchInterval: OVERLAP_POLL_MS,
+    refetchInterval: MANAGER_COUNTS_POLL_MS,
   })
   const [seen, setSeen] = useState<Set<number>>(() => readSeen(user?.id))
   const unseenRequests = pendingRequests.filter((r) => !seen.has(r.id))

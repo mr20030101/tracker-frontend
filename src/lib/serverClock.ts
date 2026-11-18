@@ -2,6 +2,8 @@
 // checked against the server's clock (file_attendance()). So the app reads the time from the server's
 // Date header and keeps how far off the device is, and anything time-sensitive uses serverNow().
 
+import { isTabIdle, onIdleChange } from './idle'
+
 // The Date header only has whole seconds, so smaller differences are noise and are ignored.
 const MIN_SKEW_MS = 2000
 const RESYNC_MS = 10 * 60_000
@@ -46,13 +48,27 @@ export function syncServerClock(): Promise<void> {
   return syncing
 }
 
-/** Syncs now, whenever the app comes back to the foreground, and every 10 minutes. */
+function inUse(): boolean {
+  return document.visibilityState === 'visible' && !isTabIdle()
+}
+
+/**
+ * Syncs now, every 10 minutes while the tab is in use, and whenever it comes back (shown again or
+ * woken from idle). A hidden or idle tab shows no times, so it skips the resync.
+ */
 export function startServerClock(): void {
   if (started) return
   started = true
   void syncServerClock()
-  setInterval(() => void syncServerClock(), RESYNC_MS)
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') void syncServerClock()
-  })
+  setInterval(() => {
+    if (inUse()) void syncServerClock()
+  }, RESYNC_MS)
+  let wasInUse = inUse()
+  const onChange = () => {
+    const now = inUse()
+    if (now && !wasInUse) void syncServerClock()
+    wasInUse = now
+  }
+  document.addEventListener('visibilitychange', onChange)
+  onIdleChange(onChange)
 }

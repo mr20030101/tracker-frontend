@@ -35,6 +35,23 @@ window.addEventListener('vite:preloadError', (event) => {
 // doesn't refetch everything on screen at once. Polls and live events still refresh it sooner.
 const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 30_000 } } })
 
+// Settings that only an admin or lead changes, and rarely: used as is for 5 minutes. The page that
+// edits them refreshes them straight away (it invalidates the key), and polls still run on time.
+const SLOW_DATA_STALE_MS = 5 * 60_000
+for (const queryKey of [
+  ['projects'],
+  ['resources'],
+  ['project-leads'],
+  ['team-features'],
+  ['team-features-list'],
+  ['attendance-closes-min'],
+  ['attendance-close-times'],
+  ['attendance-photo-required'],
+  ['billing', 'how-to-pay'],
+]) {
+  queryClient.setQueryDefaults(queryKey, { staleTime: SLOW_DATA_STALE_MS })
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ThemeProvider>
