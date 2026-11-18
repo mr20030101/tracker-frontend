@@ -1,4 +1,4 @@
-import { ClipboardList, Inbox, LineChart, type LucideIcon } from 'lucide-react'
+import { ClipboardList, Hourglass, LineChart, MessageSquareText, type LucideIcon } from 'lucide-react'
 
 export interface HubTab {
   to: string
@@ -6,32 +6,26 @@ export interface HubTab {
 }
 
 export interface LogHub {
-  key: 'todo' | 'tasks' | 'reports'
+  key: 'requests' | 'feedback' | 'tasks' | 'reports'
   label: string
   icon: LucideIcon
   tabs: HubTab[]
 }
 
 /**
- * The Logs pages, grouped by job: what's waiting on you, the work itself, and the reports. Each
- * group is one menu item; its pages are tabs at the top, and every page keeps its own address.
+ * The Logs menu items. Requests and Feedback stand alone; the task pages and the reports are
+ * grouped, one menu item each, with their pages as tabs at the top. Every page keeps its own address.
  * Attendance isn't here: it has its own item under Overview.
  */
 export function logHubs(isManager: boolean, isAdmin: boolean): LogHub[] {
-  const todo: LogHub = {
-    key: 'todo',
-    label: 'To do',
-    icon: Inbox,
-    tabs: [
-      { to: '/requests', label: 'Requests' },
-      { to: '/feedback', label: 'Feedback' },
-    ],
-  }
+  const requests: LogHub = { key: 'requests', label: 'Requests', icon: Hourglass, tabs: [{ to: '/requests', label: 'Requests' }] }
+  const feedback: LogHub = { key: 'feedback', label: 'Feedback', icon: MessageSquareText, tabs: [{ to: '/feedback', label: 'Feedback' }] }
   if (!isManager) {
-    return [{ key: 'tasks', label: 'Task Log', icon: ClipboardList, tabs: [{ to: '/task-log', label: 'Task Log' }] }, todo]
+    return [{ key: 'tasks', label: 'Task Log', icon: ClipboardList, tabs: [{ to: '/task-log', label: 'Task Log' }] }, requests, feedback]
   }
   return [
-    todo,
+    requests,
+    feedback,
     {
       key: 'tasks',
       label: 'Tasks',

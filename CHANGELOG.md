@@ -14,6 +14,15 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Changed
+
+- **Requests and Feedback are separate menu items again.** They replace the To do group, and each has its own badge: pending requests (red when one is overdue) and feedback to check.
+
+### Added
+
+- **Find unusual time entries in the Task Log.** A new Time filter shows tasks submitted with under 2 minutes on the timer (or none), tasks with 3 hours or more on the timer (including timers left running that long), or both. Export CSV follows the filter.
+- **See the tasks behind a high daily volume.** On Data Quality, each "Unusually High Daily Volume" row now has View tasks, which lists that contributor's tasks for the day in the order they were logged, with project, stage, status, timer time, a link to the task, and Edit and Delete.
+
 ## 8.48.0 — 2026-11-18
 
 ### Added
