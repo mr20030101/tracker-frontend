@@ -8,7 +8,6 @@ export function useAttendanceClosesMin(): { closesMin: number; closesLabel: stri
   const { data: closesMin = ATTENDANCE_CLOSES_MIN } = useQuery({
     queryKey: ['attendance-closes-min'],
     queryFn: fetchOwnAttendanceClosesMin,
-    staleTime: 30_000,
     refetchInterval: 30 * 60_000,
   })
   return { closesMin, closesLabel: attendanceTimeLabel(closesMin) }

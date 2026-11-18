@@ -325,7 +325,7 @@ export function ChatComposer({
           placeholder={placeholder}
           maxLength={maxLength}
           aria-label="Message"
-          className="min-h-9 flex-1 resize-none rounded-2xl border border-gray-200 bg-gray-50 px-4 py-2 text-sm leading-5 outline-none focus:border-accent"
+          className="min-h-9 min-w-0 flex-1 resize-none rounded-2xl border border-gray-200 bg-gray-50 px-4 py-2 text-sm leading-5 outline-none focus:border-accent"
         />
         <EmojiPickerButton onSelect={(emoji) => onChange(value + emoji)} />
         <button

@@ -91,7 +91,7 @@ export function EmojiPickerButton({ onSelect }: { onSelect: (emoji: string) => v
         ref={buttonRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+        className="shrink-0 rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
         aria-label="Add emoji"
       >
         <span className="text-base leading-none">🙂</span>

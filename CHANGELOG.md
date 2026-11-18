@@ -14,6 +14,16 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.46.0 — 2026-11-18
+
+### Fixed
+
+- **The Send button stays inside the chat pop-up.** In the small chat window, the message box wouldn't shrink to fit, so the Send button stuck out past the window's right edge. The message box now narrows to make room, and the emoji and Send buttons keep their size.
+
+### Changed
+
+- **Menu counts for leads and admins update the moment something changes.** Pending requests, feedback to check and task overlap alerts now refresh as soon as a request, report or alert is added or decided, instead of up to two minutes later. The app also checks the server far less often in the background: these counts poll every 5 minutes as a backup, settings that rarely change (projects, resources, team features, attendance times) are reused for 5 minutes, and an idle tab stops checking the server's clock.
+
 ## 8.45.0 — 2026-11-18
 
 ### Added
