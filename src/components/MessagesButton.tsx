@@ -318,13 +318,13 @@ export function MessagesButton() {
                       value={draft}
                       onChange={(e) => setDraft(e.target.value)}
                       placeholder="Aa"
-                      className="flex-1 rounded-full border border-gray-200 bg-gray-50 px-3.5 py-1.5 text-sm outline-none focus:border-accent"
+                      className="min-w-0 flex-1 rounded-full border border-gray-200 bg-gray-50 px-3.5 py-1.5 text-sm outline-none focus:border-accent"
                     />
                     <EmojiPickerButton onSelect={(emoji) => setDraft((d) => d + emoji)} />
                     <button
                       type="submit"
                       disabled={!draft.trim() || sendMutation.isPending}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground transition-colors duration-100 hover:bg-accent-hover disabled:opacity-50"
+                      className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground transition-colors duration-100 hover:bg-accent-hover disabled:opacity-50"
                     >
                       <Send className="h-4 w-4" aria-hidden />
                       Send
