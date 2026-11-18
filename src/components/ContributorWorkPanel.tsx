@@ -56,6 +56,7 @@ import { goesToCts } from '../lib/cts'
 import { useTeamFeatures } from '../lib/teamFeatures'
 import { TaskSubmissionForm } from './TaskSubmissionForm'
 import { BulkImportModal } from './BulkImportModal'
+import { useAppSwitches } from '../lib/appSettings'
 import { BadVideoReportModal } from './BadVideoReportModal'
 import { FileTimeRequestModal, type TimeRequestFormFields } from './FileTimeRequestModal'
 import { SelfFileTaskIssueModal } from './SelfFileTaskIssueModal'
@@ -109,6 +110,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
   const [showCtsModal, setShowCtsModal] = useState(false)
   const [formTarget, setFormTarget] = useState<'new' | TaskSubmission | null>(null)
   const [bulkImporting, setBulkImporting] = useState(false)
+  const bulkImportEnabled = useAppSwitches().bulk_import
   // The reason form a contributor is filling in: a new request, a resend after a denial, or an edit
   // of a pending one (`request` is the earlier/pending one for the last two).
   // An Octet Mind task's extension, reclaim or unclaim the contributor is filing themselves (TASK ISSUES).
@@ -722,6 +724,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                 import tasks from the Task Log. */}
             {!(isManager && !isOwnProfile) && (
               <>
+                {bulkImportEnabled && (
                 <button
                   onClick={() => setBulkImporting(true)}
                   className={`${ctsEnabled ? '' : 'ml-auto '}inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50`}
@@ -729,9 +732,10 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                   <FileUp className="h-4 w-4" aria-hidden />
                   Bulk Import
                 </button>
+                )}
                 <button
                   onClick={() => setFormTarget('new')}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
+                  className={`${ctsEnabled || bulkImportEnabled ? '' : 'ml-auto '}inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground`}
                 >
                   <Plus className="h-4 w-4" aria-hidden />
                   Add Submission

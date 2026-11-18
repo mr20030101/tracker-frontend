@@ -1,5 +1,6 @@
 import { lazy, Suspense, type ComponentType } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
+import { useAppSwitches } from './lib/appSettings'
 import { useAuth } from './lib/auth'
 import { AppShell } from './components/AppShell'
 import { RemotasksIdGate } from './components/RemotasksIdGate'
@@ -30,6 +31,7 @@ const DataQuality = page(() => import('./pages/DataQuality'), 'DataQuality')
 const Audits = page(() => import('./pages/Audits'), 'Audits')
 const TeamReports = page(() => import('./pages/TeamReports'), 'TeamReports')
 const ActivityLog = page(() => import('./pages/ActivityLog'), 'ActivityLog')
+const AppSettings = page(() => import('./pages/AppSettings'), 'AppSettings')
 const Billing = page(() => import('./pages/Billing'), 'Billing')
 const MyBilling = page(() => import('./pages/MyBilling'), 'MyBilling')
 const Apply = page(() => import('./pages/Apply'), 'Apply')
@@ -47,6 +49,7 @@ const MANAGER_ROLES = ['admin', 'lead']
 
 function ProtectedLayout() {
   const { user, loading } = useAuth()
+  const switches = useAppSwitches(Boolean(user))
 
   if (loading) {
     return <div className="flex h-screen items-center justify-center text-gray-400">Loading...</div>
@@ -85,11 +88,12 @@ function ProtectedLayout() {
         {isManager && <Route path="/users" element={<Users />} />}
         {isManager && <Route path="/leads" element={<Users view="leads" />} />}
         {isManager && <Route path="/projects" element={<Projects />} />}
-        {isManager && <Route path="/hiring" element={<Hiring />} />}
-        {isManager && <Route path="/data-quality" element={<DataQuality />} />}
-        {isManager && <Route path="/audits" element={<Audits />} />}
+        {isManager && switches.hiring && <Route path="/hiring" element={<Hiring />} />}
+        {isManager && switches.data_quality && <Route path="/data-quality" element={<DataQuality />} />}
+        {isManager && switches.audits && <Route path="/audits" element={<Audits />} />}
         {isManager && <Route path="/team-reports" element={<TeamReports />} />}
         {isAdmin && <Route path="/activity-log" element={<ActivityLog />} />}
+        {isAdmin && <Route path="/app-settings" element={<AppSettings />} />}
         {isManager && <Route path="/billing" element={isAdmin ? <Billing /> : <MyBilling />} />}
         {isAdmin && <Route path="/leads/:leadId" element={<LeadTeam />} />}
         <Route path="*" element={<NotFound />} />

@@ -1,3 +1,4 @@
+import type { AppSwitches } from './appSettings'
 import { ClipboardList, Hourglass, LineChart, MessageSquareText, type LucideIcon } from 'lucide-react'
 
 export interface HubTab {
@@ -17,7 +18,7 @@ export interface LogHub {
  * grouped, one menu item each, with their pages as tabs at the top. Every page keeps its own address.
  * Attendance isn't here: it has its own item under Overview.
  */
-export function logHubs(isManager: boolean, isAdmin: boolean): LogHub[] {
+export function logHubs(isManager: boolean, isAdmin: boolean, switches: Pick<AppSwitches, 'audits' | 'data_quality'>): LogHub[] {
   const requests: LogHub = { key: 'requests', label: 'Requests', icon: Hourglass, tabs: [{ to: '/requests', label: 'Requests' }] }
   const feedback: LogHub = { key: 'feedback', label: 'Feedback', icon: MessageSquareText, tabs: [{ to: '/feedback', label: 'Feedback' }] }
   if (!isManager) {
@@ -32,8 +33,8 @@ export function logHubs(isManager: boolean, isAdmin: boolean): LogHub[] {
       icon: ClipboardList,
       tabs: [
         { to: '/task-log', label: 'Task Log' },
-        { to: '/audits', label: 'Audits' },
-        { to: '/data-quality', label: 'Data Quality' },
+        ...(switches.audits ? [{ to: '/audits', label: 'Audits' }] : []),
+        ...(switches.data_quality ? [{ to: '/data-quality', label: 'Data Quality' }] : []),
       ],
     },
     {

@@ -22,6 +22,7 @@ import {
   X,
   type LucideIcon,
   UserCog,
+  SlidersHorizontal,
   ReceiptText,
   LifeBuoy,
 } from 'lucide-react'
@@ -45,6 +46,7 @@ import { fetchPendingFeedbackCount } from '../lib/taskFeedback'
 import { fetchSupportBadgeCount } from '../lib/support'
 import { AppFooter } from './AppFooter'
 import { LogTabs } from './LogTabs'
+import { useAppSwitches, type AppSwitches } from '../lib/appSettings'
 import { MANAGER_COUNTS_POLL_MS, useManagerCountsLive } from '../lib/managerCountsLive'
 import { OfflineQueueBanner } from './OfflineQueueBanner'
 import { useTeamFeatures } from '../lib/teamFeatures'
@@ -70,6 +72,8 @@ function navSections(
   billsAreReports: boolean,
   // For an admin, new tickets; for anyone else, their tickets with a reply or status change they haven't opened.
   supportBadge: number,
+  // What an admin has switched off on App Settings.
+  switches: AppSwitches,
 ): {
   label: string
   // `urgent`: the badge turns red with `badgeTitle` explaining why (overdue requests).
@@ -89,7 +93,7 @@ function navSections(
     },
     {
       label: 'Logs',
-      items: logHubs(isManager, isAdmin).map((hub) => {
+      items: logHubs(isManager, isAdmin, switches).map((hub) => {
         const item = { to: hub.tabs[0].to, label: hub.label, icon: hub.icon, match: hub.tabs.map((tab) => tab.to) }
         if (!isManager) return item
         if (hub.key === 'requests') {
@@ -131,7 +135,7 @@ function navSections(
           { to: '/users', label: 'Contributors', icon: UsersIcon },
           { to: '/leads', label: isAdmin ? 'Leads' : 'Team settings', icon: UserCog },
           { to: '/projects', label: 'Projects', icon: FolderKanban },
-          { to: '/hiring', label: 'Hiring', icon: UserPlus },
+          ...(switches.hiring ? [{ to: '/hiring', label: 'Hiring', icon: UserPlus }] : []),
           {
             to: '/billing',
             label: 'Billing',
@@ -144,6 +148,7 @@ function navSections(
                 ? 'Your Supabase share is overdue'
                 : `${unpaidBills} unpaid Supabase bill${unpaidBills === 1 ? '' : 's'}`,
           },
+          ...(isAdmin ? [{ to: '/app-settings', label: 'App Settings', icon: SlidersHorizontal }] : []),
         ]
         : [
           ...(messagingEnabled ? [{ to: '/messages', label: 'Messages', icon: MessageCircle }] : []),
@@ -197,6 +202,7 @@ const CRUMBS: Record<string, string> = {
   '/data-quality': 'Data Quality',
   '/team-reports': 'Team Reports',
   '/activity-log': 'Activity Log',
+  '/app-settings': 'App Settings',
   '/billing': 'Billing',
   '/resources': 'Resources',
   '/announcements': 'Announcements',
@@ -409,13 +415,14 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const ownProfilePath = user ? contributorPath(user.email) : '/'
   const { attendanceEnabled, messagingEnabled } = useTeamFeatures(user?.id)
-  const sections = navSections(isManager, isAdmin, attendanceEnabled, messagingEnabled, pendingRequests, overdueRequests, pendingFeedback, unreadAnnouncements, isAdmin ? billsToConfirm : unpaidBills.length, overdueBills, isAdmin, supportBadge)
+  const switches = useAppSwitches(Boolean(user))
+  const sections = navSections(isManager, isAdmin, attendanceEnabled, messagingEnabled, pendingRequests, overdueRequests, pendingFeedback, unreadAnnouncements, isAdmin ? billsToConfirm : unpaidBills.length, overdueBills, isAdmin, supportBadge, switches)
   const isCurrent = (item: { to: string; match?: string[] }) => (item.match ?? [item.to]).includes(location.pathname)
   const searchPages = [
     ...sections.flatMap((section) =>
       section.items.flatMap(({ to, label, icon, match }) =>
         match && match.length > 1
-          ? logHubs(isManager, isAdmin)
+          ? logHubs(isManager, isAdmin, switches)
               .find((hub) => hub.tabs[0].to === to)!
               .tabs.map((tab) => ({ to: tab.to, label: tab.label, icon }))
           : [{ to, label, icon }],

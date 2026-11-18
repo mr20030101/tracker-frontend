@@ -1,6 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { hubFor, logHubs } from '../lib/logHubs'
+import { useAppSwitches } from '../lib/appSettings'
 import { SegmentedTabs } from './TableToolbar'
 
 const MANAGER_ROLES = ['admin', 'lead']
@@ -14,7 +15,8 @@ export function LogTabs() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const isManager = Boolean(user && MANAGER_ROLES.includes(user.role))
-  const hub = hubFor(logHubs(isManager, user?.role === 'admin'), pathname)
+  const switches = useAppSwitches(Boolean(user))
+  const hub = hubFor(logHubs(isManager, user?.role === 'admin', switches), pathname)
 
   if (!hub || hub.tabs.length < 2) return null
   return (
