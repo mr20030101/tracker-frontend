@@ -14,6 +14,14 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Changed
+
+- **Bulk Import is off unless an admin turns it on.** The Bulk Import button on the Task Log and on contributors' profiles is hidden by default.
+
+### Added
+
+- **App Settings for admins.** A new App Settings page under Team holds the settings that apply to everyone: Bulk import tasks, Hiring (off hides the Hiring page, closes every apply link and refuses new applications), Audits, Data Quality, and Require attendance photo (also still on the Attendance page). Each change is recorded in the Activity Log.
+
 ## 8.49.0 — 2026-11-18
 
 ### Changed

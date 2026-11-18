@@ -21,6 +21,7 @@ import { SubmissionDetailsModal } from '../components/SubmissionDetailsModal'
 import { TaskSubmissionForm } from '../components/TaskSubmissionForm'
 import { SortableHeader } from '../components/SortableHeader'
 import { BulkImportModal } from '../components/BulkImportModal'
+import { useAppSwitches } from '../lib/appSettings'
 import { ContributorWorkPanel } from '../components/ContributorWorkPanel'
 import { downloadCsv } from '../lib/csv'
 import { contributorPath } from '../lib/urlRef'
@@ -101,6 +102,7 @@ function ManagerTaskLog() {
   const [viewingId, setViewingId] = useState<number | null>(null)
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'date', dir: 'desc' })
   const [bulkImportOpen, setBulkImportOpen] = useState(false)
+  const bulkImportEnabled = useAppSwitches().bulk_import
   const [exporting, setExporting] = useState(false)
   const queryClient = useQueryClient()
 
@@ -229,6 +231,7 @@ function ManagerTaskLog() {
           </p>
         </div>
         <div className="flex gap-2">
+          {bulkImportEnabled && (
           <button
             onClick={() => setBulkImportOpen(true)}
             className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
@@ -236,6 +239,7 @@ function ManagerTaskLog() {
             <FileUp className="h-4 w-4" aria-hidden />
             Bulk Import
           </button>
+          )}
           <button
             onClick={() => setFormTarget('new')}
             className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
