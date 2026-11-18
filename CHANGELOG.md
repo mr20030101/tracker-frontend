@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.45.0 — 2026-11-18
+
 ### Fixed
 
 - **The Send button stays inside the chat pop-up.** In the small chat window, the message box wouldn't shrink to fit, so the Send button stuck out past the window's right edge. The message box now narrows to make room, and the emoji and Send buttons keep their size.
