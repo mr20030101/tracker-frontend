@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { aspectCrop, coverRect, faceLabel, faceMessage, faceVerdict } from './faceCheck'
+import { aspectCrop, boxLabel, coverRect, faceLabel, faceMessage, faceVerdict, frameSummary } from './faceCheck'
 
 const face = (width: number, score = 0.9) => ({ width, height: width, score })
 const seen = (label: string, score = 0.8) => ({ label, score })
@@ -104,5 +104,19 @@ describe('aspectCrop', () => {
 
   it('trims the sides of a wide photo, and centres without a face', () => {
     expect(aspectCrop(1600, 900, 4 / 3)).toEqual({ x: 200, y: 0, width: 1200, height: 900 })
+  })
+})
+
+describe('frameSummary', () => {
+  it('counts everyone in the frame, people first', () => {
+    expect(frameSummary(['human', 'human', 'human'])).toBe('3 humans')
+    expect(frameSummary(['cat', 'human'])).toBe('1 human · 1 cat')
+    expect(frameSummary(['baby', 'human', 'baby', 'dog', 'dog'])).toBe('1 human · 2 babies · 2 dogs')
+    expect(frameSummary(['sheep', 'sheep'])).toBe('2 sheep')
+  })
+
+  it('capitalises a box label', () => {
+    expect(boxLabel('human')).toBe('Human')
+    expect(boxLabel('cat')).toBe('Cat')
   })
 })

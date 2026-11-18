@@ -314,13 +314,17 @@ export function MessagesButton() {
                   </div>
                 ) : (
                   <form onSubmit={handleSend} className={`flex items-center gap-2 p-2 ${showQuickReplies ? '' : 'border-t border-gray-100'}`}>
-                    <input
-                      value={draft}
-                      onChange={(e) => setDraft(e.target.value)}
-                      placeholder="Aa"
-                      className="min-w-0 flex-1 rounded-full border border-gray-200 bg-gray-50 px-3.5 py-1.5 text-sm outline-none focus:border-accent"
-                    />
-                    <EmojiPickerButton onSelect={(emoji) => setDraft((d) => d + emoji)} />
+                    <div className="relative min-w-0 flex-1">
+                      <input
+                        value={draft}
+                        onChange={(e) => setDraft(e.target.value)}
+                        placeholder="Aa"
+                        className="block w-full rounded-full border border-gray-200 bg-gray-50 py-1.5 pl-3.5 pr-9 text-sm outline-none focus:border-accent"
+                      />
+                      <div className="absolute inset-y-0 right-1 flex items-center">
+                        <EmojiPickerButton onSelect={(emoji) => setDraft((d) => d + emoji)} />
+                      </div>
+                    </div>
                     <button
                       type="submit"
                       disabled={!draft.trim() || sendMutation.isPending}

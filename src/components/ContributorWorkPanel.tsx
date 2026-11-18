@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
+import { StackTable } from './StackTable'
 import { SegmentedTabs } from './TableToolbar'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -744,7 +745,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
               Submissions — {rangeLabel()}
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[40rem] text-left text-sm">
+              <StackTable className="w-full min-w-[40rem] text-left text-sm">
                 <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
                   <tr>
                     <SortableHeader label="Task ID" active={sort.key === 'task_id'} dir={sort.dir} onClick={() => toggleSort('task_id')} />
@@ -1001,7 +1002,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                     )
                   })}
                 </tbody>
-              </table>
+              </StackTable>
             </div>
             {sortedSubmissions.length > 0 && (
               <div className="flex items-center justify-between border-t border-gray-200 px-5 py-3 text-sm text-gray-500">

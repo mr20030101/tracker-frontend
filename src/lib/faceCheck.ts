@@ -55,6 +55,22 @@ export function faceLabel(verdict: FaceVerdict): string {
   return 'No face in frame'
 }
 
+/** What a box in the frame shows: 'human', 'baby' or an animal's name. */
+export function boxLabel(label: string): string {
+  return label.charAt(0).toUpperCase() + label.slice(1)
+}
+
+const plural = (label: string, count: number) =>
+  count === 1 ? label : label === 'baby' ? 'babies' : label === 'sheep' ? 'sheep' : `${label}s`
+
+/** Everyone and everything in the frame, counted: "3 humans", "1 human · 1 cat". People come first. */
+export function frameSummary(labels: string[]): string {
+  const counts = new Map<string, number>()
+  for (const label of ['human', 'baby']) if (labels.includes(label)) counts.set(label, 0)
+  for (const label of labels) counts.set(label, (counts.get(label) ?? 0) + 1)
+  return Array.from(counts, ([label, count]) => `${count} ${plural(label, count)}`).join(' · ')
+}
+
 export interface PercentRect {
   left: number
   top: number

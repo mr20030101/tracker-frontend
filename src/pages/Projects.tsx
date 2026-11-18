@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { StackTable } from '../components/StackTable'
 import { FoldText } from '../components/FoldText'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, supabase } from '../lib/api'
@@ -285,7 +286,7 @@ export function Projects() {
       )}
 
       <div className="overflow-x-auto card">
-        <table className="w-full min-w-[50rem] text-left text-sm">
+        <StackTable className="w-full min-w-[50rem] text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
             <tr>
               <th className="px-5 py-3">Name</th>
@@ -402,7 +403,7 @@ export function Projects() {
               )
             })}
           </tbody>
-        </table>
+        </StackTable>
       </div>
 
       {adding && (

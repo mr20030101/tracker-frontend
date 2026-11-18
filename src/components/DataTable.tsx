@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { StackTable } from './StackTable'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import {
   flexRender,
@@ -110,7 +111,7 @@ export function DataTable<TData>({
     {toolbar}
     <div className={bare ? '' : 'card'}>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[36rem] text-left text-sm">
+        <StackTable className="w-full min-w-[36rem] text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
@@ -186,7 +187,7 @@ export function DataTable<TData>({
                 </tr>
               ))}
           </tbody>
-        </table>
+        </StackTable>
       </div>
       {!isLoading && paginate && total > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-gray-200 px-5 py-3 text-xs text-gray-500">

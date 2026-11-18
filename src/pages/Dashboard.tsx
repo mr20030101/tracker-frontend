@@ -204,7 +204,7 @@ export function Dashboard() {
                   { value: 'projects', label: 'By project' },
                   ...(isAdmin ? [{ value: 'leads', label: 'By team (lead)' }] : []),
                 ]}
-                className="rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-gray-800 shadow-card hover:bg-gray-100"
+                className="rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-gray-800 shadow-card hover:bg-gray-100 max-sm:w-full max-sm:px-4"
               />
               {isAdmin && (
                 <button
@@ -214,7 +214,7 @@ export function Dashboard() {
                   className="inline-flex items-center gap-1.5 rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-gray-800 shadow-card hover:bg-gray-100 disabled:opacity-50"
                 >
                   <Send className="h-4 w-4" aria-hidden />
-                  {weeklyReportMutation.isPending ? 'Sending...' : 'Send weekly report'}
+                  {weeklyReportMutation.isPending ? 'Sending...' : 'Weekly Report'}
                 </button>
               )}
               {overdueRequests > 0 && (
@@ -260,23 +260,27 @@ export function Dashboard() {
           options={(['day', 'week', 'month'] as const).map((mode) => ({ value: mode, label: mode[0].toUpperCase() + mode.slice(1) }))}
         />
 
+        <div className="flex w-full items-center gap-2 sm:w-auto sm:gap-3">
         <button
           onClick={() => shiftRange(-1)}
+          aria-label="Previous"
           className="inline-flex h-10 items-center gap-1.5 rounded-full border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 hover:bg-gray-100 pointer-coarse:h-11"
         >
           <ChevronLeft className="h-4 w-4" aria-hidden />
-          Prev
+          <span className="hidden sm:inline">Prev</span>
         </button>
-        <div className="min-w-48 px-2 text-center font-display text-lg text-gray-900">
+        <div className="min-w-0 flex-1 px-1 text-center font-display text-lg text-gray-900 sm:min-w-48 sm:flex-none sm:px-2">
           {rangeLabel()}
         </div>
         <button
           onClick={() => shiftRange(1)}
+          aria-label="Next"
           className="inline-flex h-10 items-center gap-1.5 rounded-full border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 hover:bg-gray-100 pointer-coarse:h-11"
         >
-          Next
+          <span className="hidden sm:inline">Next</span>
           <ChevronRight className="h-4 w-4" aria-hidden />
         </button>
+        </div>
         {!isCurrentRange && (
           <button
             onClick={() => setAnchorDate(new Date())}
@@ -295,7 +299,7 @@ export function Dashboard() {
           {viewMode !== 'day' && (
             <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
               <div className="card p-5">
-                <div className="mb-4 flex items-center justify-between">
+                <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
                   <h3 className="font-display text-lg text-gray-900">Submitted tasks by day</h3>
                   <span className="text-xs text-gray-400">tasks</span>
                 </div>
@@ -307,7 +311,7 @@ export function Dashboard() {
               </div>
 
               <div className="card p-5">
-                <div className="mb-4 flex items-center justify-between">
+                <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
                   <h3 className="font-display text-lg text-gray-900">Contributors active by day</h3>
                   <span className="text-xs text-gray-400">contributors</span>
                 </div>

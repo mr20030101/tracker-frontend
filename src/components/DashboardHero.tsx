@@ -91,7 +91,7 @@ export function DashboardHero({
       <p className="mt-3 max-w-2xl text-base text-gray-600">{subtitle}</p>
 
       {(meters.length > 0 || stats.length > 0) && (
-        <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-end lg:gap-10">
+        <div className="mt-6 flex flex-col gap-6 xl:flex-row xl:items-end xl:gap-10">
           {meters.length > 0 && (
             <div className="grid min-w-0 flex-1 grid-cols-2 gap-x-3 gap-y-4 md:grid-cols-4">
               {meters.map((meter) => (
@@ -100,14 +100,14 @@ export function DashboardHero({
             </div>
           )}
           {stats.length > 0 && (
-            <dl className="flex shrink-0 justify-between gap-8 sm:justify-start sm:gap-10">
+            <dl className="grid shrink-0 grid-cols-3 gap-4 sm:flex sm:gap-10">
               {stats.map(({ value, label, icon: Icon }) => (
-                <div key={label} className="flex flex-col">
-                  <dd className="order-1 font-display text-5xl font-light leading-none tracking-tight text-gray-900 tabular-nums lg:text-6xl">
+                <div key={label} className="flex min-w-0 flex-col">
+                  <dd className="order-1 font-display text-4xl font-light leading-none tracking-tight text-gray-900 tabular-nums sm:text-5xl lg:text-6xl">
                     <CountUp value={value} />
                   </dd>
-                  <dt className="order-2 mt-2 flex items-center gap-1.5 text-sm text-gray-600">
-                    <Icon className="h-4 w-4" aria-hidden />
+                  <dt className="order-2 mt-2 flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-600 sm:text-sm">
+                    <Icon className="h-4 w-4 shrink-0" aria-hidden />
                     {label}
                   </dt>
                 </div>
@@ -117,7 +117,11 @@ export function DashboardHero({
         </div>
       )}
 
-      {actions && <div className="mt-7 flex flex-wrap items-center gap-2 sm:gap-3">{actions}</div>}
+      {actions && (
+        <div className="mt-7 flex flex-wrap items-center gap-2 *:whitespace-nowrap max-sm:*:grow max-sm:*:justify-center max-sm:[&>:is(a,button)]:px-4 sm:gap-3">
+          {actions}
+        </div>
+      )}
     </section>
   )
 }

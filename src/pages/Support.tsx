@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
+import { StackTable } from '../components/StackTable'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Bug, ImagePlus, Lightbulb, RotateCw, Send, Trash2, Undo2, X } from 'lucide-react'
@@ -166,7 +167,7 @@ export function Support() {
           </FilterBar>
         }
       >
-        <table className="w-full min-w-[44rem] text-left text-sm">
+        <StackTable className="w-full min-w-[44rem] text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
             <tr>
               <th className="px-5 py-3">Ticket</th>
@@ -237,7 +238,7 @@ export function Support() {
               )
             })}
           </tbody>
-        </table>
+        </StackTable>
         {pageData && <PageFooter page={page} total={pageData.total} onPage={setPage} />}
       </TableCard>
 

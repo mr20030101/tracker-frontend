@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { StackTable } from '../components/StackTable'
 import { FoldText } from '../components/FoldText'
 import { Link } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, Download, Eye, FileUp, Image, Pencil, Plus, Trash2 } from 'lucide-react'
@@ -378,7 +379,7 @@ function ManagerTaskLog() {
           )
         }
       >
-        <table className="w-full min-w-[56rem] text-left text-sm">
+        <StackTable className="w-full min-w-[56rem] text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
             <tr>
               <SortableHeader
@@ -501,7 +502,7 @@ function ManagerTaskLog() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </StackTable>
       </TableCard>
 
       {viewing && (

@@ -95,11 +95,11 @@ export function BulkImportUsersModal({ existingEmails, canSetRole = true, onClos
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
-      <div className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-2xl bg-white p-6 shadow-xl">
-        <div className="mb-4 flex items-center justify-between">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-end justify-center overscroll-contain bg-black/30 pt-10 sm:items-center sm:px-4 sm:py-6">
+      <div className="flex max-h-full w-full max-w-2xl flex-col rounded-t-2xl bg-white px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 shadow-xl sm:max-h-[85dvh] sm:rounded-2xl sm:p-6">
+        <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="text-lg font-semibold text-gray-900">Bulk Import Users</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-700" aria-label="Close">
+          <button onClick={onClose} className="-mr-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-700 pointer-coarse:h-11 pointer-coarse:w-11" aria-label="Close">
             <X className="h-4 w-4" aria-hidden />
           </button>
         </div>

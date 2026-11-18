@@ -5,7 +5,7 @@ import faceModelUrl from '../assets/models/blaze_face_short_range.tflite?url'
 import objectModelUrl from '../assets/models/efficientdet_lite0.tflite?url'
 import ageModelUrl from '../assets/models/age_gender_model.bin?url'
 import ageManifestUrl from '../assets/models/age_gender_model-manifest.json?url'
-import { ANIMAL_LABELS, faceVerdict, MIN_FACE_SCORE, MIN_OBJECT_SCORE, PERSON_LABEL, type FaceVerdict } from './faceCheck'
+import { ANIMAL_LABELS, BABY_MAX_AGE, faceVerdict, MIN_FACE_SCORE, MIN_OBJECT_SCORE, PERSON_LABEL, type FaceVerdict } from './faceCheck'
 
 export interface Detectors {
   face: FaceDetector
@@ -74,8 +74,13 @@ export function loadFaceDetector(): Promise<Detectors | null> {
   return detectorsPromise
 }
 
+// Faces past this many (by size) aren't aged: each one costs a model run on every live check.
+const MAX_AGED_FACES = 4
+
 export interface SeenBox {
   kind: 'face' | 'animal'
+  // 'human', 'baby' or the animal's name.
+  label: string
   x: number
   y: number
   width: number
@@ -90,8 +95,9 @@ export interface FrameCheck {
   height: number
 }
 
-const toBox = (kind: SeenBox['kind'], box: { originX: number; originY: number; width: number; height: number }): SeenBox => ({
+const toBox = (kind: SeenBox['kind'], label: string, box: { originX: number; originY: number; width: number; height: number }): SeenBox => ({
   kind,
+  label,
   x: box.originX,
   y: box.originY,
   width: box.width,
@@ -140,20 +146,25 @@ export async function checkFrame(detectors: Detectors, source: HTMLCanvasElement
     score: detection.categories[0]?.score ?? 0,
   }))
   let verdict = faceVerdict(faces, width, objects)
-  // A face that passes is checked for being a baby's, by the largest face's estimated age.
+  const faceBoxes = faceHits
+    .filter((d) => d.boundingBox)
+    .map((d) => toBox('face', 'human', d.boundingBox!))
+    .sort((a, b) => b.width * b.height - a.width * a.height)
+  // Each face (the largest few) is checked for being a baby's by its estimated age; the largest
+  // face's age decides the verdict.
   if (verdict.kind === 'ok' && detectors.age) {
-    const main = faceHits
-      .filter((d) => d.boundingBox)
-      .map((d) => toBox('face', d.boundingBox!))
-      .reduce<SeenBox | null>((a, b) => (!a || b.width * b.height > a.width * a.height ? b : a), null)
-    if (main) {
-      const age = await detectors.age(cropFace(source, main, width, height)).catch(() => null)
-      verdict = faceVerdict(faces, width, objects, age)
+    const ages: (number | null)[] = []
+    for (const box of faceBoxes.slice(0, MAX_AGED_FACES)) {
+      const age = await detectors.age(cropFace(source, box, width, height)).catch(() => null)
+      if (age !== null && age < BABY_MAX_AGE) box.label = 'baby'
+      ages.push(age)
     }
+    verdict = faceVerdict(faces, width, objects, ages[0] ?? null)
   }
-  const boxes =
-    verdict.kind === 'animal'
-      ? objectHits.filter((d) => d.boundingBox && d.categories[0]?.categoryName !== PERSON_LABEL).map((d) => toBox('animal', d.boundingBox!))
-      : faceHits.filter((d) => d.boundingBox).map((d) => toBox('face', d.boundingBox!))
+  const animalBoxes = objectHits
+    .filter((d) => d.boundingBox && ANIMAL_LABELS.includes(d.categories[0]?.categoryName ?? ''))
+    .map((d) => toBox('animal', d.categories[0].categoryName, d.boundingBox!))
+  // With no person seen, a "face" is the animal's own, so only the animal is boxed.
+  const boxes = verdict.kind === 'animal' ? animalBoxes : [...faceBoxes, ...animalBoxes]
   return { verdict, boxes, width, height }
 }

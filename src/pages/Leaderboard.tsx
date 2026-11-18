@@ -1,4 +1,5 @@
 import { Fragment, useMemo, useState } from 'react'
+import { StackTable } from '../components/StackTable'
 import { FoldText } from '../components/FoldText'
 import { ChevronLeft, ChevronRight, Download, UserCheck, UserMinus } from 'lucide-react'
 import { Link } from 'react-router-dom'
@@ -457,7 +458,7 @@ function ManagerLeaderboard() {
           </FilterBar>
         }
       >
-        <table className="w-full min-w-[36rem] text-left text-sm">
+        <StackTable className="w-full min-w-[36rem] text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
             <tr>
               <th className="px-5 py-3">Contributor</th>
@@ -542,7 +543,7 @@ function ManagerLeaderboard() {
               )
             })}
           </tbody>
-        </table>
+        </StackTable>
       </TableCard>
     </div>
   )

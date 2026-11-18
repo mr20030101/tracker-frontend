@@ -226,23 +226,27 @@ export function LeadTeam() {
       </div>
 
       <div className="mb-6 flex flex-wrap items-center gap-3">
+        <div className="flex w-full items-center gap-2 sm:w-auto sm:gap-3">
         <button
           onClick={() => shiftWeek(-1)}
+          aria-label="Previous week"
           className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
         >
           <ChevronLeft className="h-4 w-4" aria-hidden />
-          Prev
+          <span className="hidden sm:inline">Prev</span>
         </button>
-        <div className="min-w-48 rounded-lg border border-gray-200 bg-white px-4 py-2 text-center text-sm font-medium text-gray-700">
+        <div className="min-w-0 flex-1 sm:min-w-48 sm:flex-none rounded-lg border border-gray-200 bg-white px-4 py-2 text-center text-sm font-medium text-gray-700">
           {formatRange(team.weekStart, team.weekEnd)}
         </div>
         <button
           onClick={() => shiftWeek(1)}
+          aria-label="Next week"
           className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
         >
           <ChevronRight className="h-4 w-4" aria-hidden />
-          Next
+          <span className="hidden sm:inline">Next</span>
         </button>
+        </div>
         {!isCurrentWeek && (
           <button onClick={() => setAnchorDate(new Date())} className="inline-flex items-center gap-1.5 text-sm font-medium text-sky-700 hover:underline">
             <CalendarDays className="h-4 w-4" aria-hidden />
@@ -283,7 +287,7 @@ export function LeadTeam() {
           </div>
 
           <div className="mb-4 card p-5">
-            <div className="mb-4 flex items-center justify-between">
+            <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
               <h3 className="text-sm font-semibold text-gray-700">Team submissions by day</h3>
               <span className="text-xs text-gray-400">tasks</span>
             </div>
