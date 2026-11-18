@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState, type DragEvent, type FormEvent } from 'react'
+import { StackTable } from '../components/StackTable'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Check, ChevronLeft, ExternalLink, FileText, Upload, ChevronRight, CircleAlert, Pencil, Plus, ReceiptText, Trash2, Undo2, X } from 'lucide-react'
 import { FoldText } from '../components/FoldText'
@@ -443,7 +444,7 @@ export function Billing() {
               )
             }
           >
-            <table className="w-full text-sm">
+            <StackTable className="w-full text-sm">
               <thead className="bg-gray-50 text-left text-xs uppercase tracking-wider text-gray-500">
                 <tr>
                   <th className="px-4 py-3 font-semibold">Lead</th>
@@ -524,7 +525,7 @@ export function Billing() {
                   )
                 })}
               </tbody>
-            </table>
+            </StackTable>
           </TableCard>
         </>
       )}

@@ -48,7 +48,7 @@ export function EmbeddedFormModal({
 
   return (
     <Modal title={title} onClose={onClose} maxWidthClassName="max-w-3xl">
-      <div className="relative h-[70vh] overflow-hidden rounded-lg border border-gray-200 bg-white">
+      <div className="relative h-[75dvh] sm:h-[70dvh] overflow-hidden rounded-lg border border-gray-200 bg-white">
         {!loaded && (
           <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-400">Loading form...</div>
         )}

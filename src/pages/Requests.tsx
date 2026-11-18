@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { StackTable } from '../components/StackTable'
 import { PAGE_SIZE, PageFooter } from '../components/PageFooter'
 import { FoldText } from '../components/FoldText'
 import { Link } from 'react-router-dom'
@@ -524,7 +525,7 @@ export function Requests() {
       )}
 
       <TableCard>
-        <table className="w-full min-w-[36rem] text-left text-sm">
+        <StackTable className="w-full min-w-[36rem] text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
             <tr>
               <th className="w-10 px-4 py-3">
@@ -617,7 +618,7 @@ export function Requests() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </StackTable>
         {pageData && <PageFooter page={page} total={pageData.total} onPage={setPage} />}
       </TableCard>
 

@@ -307,27 +307,31 @@ export function ChatComposer({
             />
           </>
         )}
-        <textarea
-          ref={textareaRef}
-          rows={1}
-          value={value}
-          onChange={(e) => {
-            onChange(e.target.value)
-            setCaret(e.target.selectionStart)
-          }}
-          onKeyDown={handleKeyDown}
-          onKeyUp={syncCaret}
-          onClick={syncCaret}
-          onSelect={syncCaret}
-          onBlur={() => setDismissedAt(mention?.start ?? null)}
-          onFocus={() => setDismissedAt(null)}
-          onPaste={handlePaste}
-          placeholder={placeholder}
-          maxLength={maxLength}
-          aria-label="Message"
-          className="min-h-9 min-w-0 flex-1 resize-none rounded-2xl border border-gray-200 bg-gray-50 px-4 py-2 text-sm leading-5 outline-none focus:border-accent"
-        />
-        <EmojiPickerButton onSelect={(emoji) => onChange(value + emoji)} />
+        <div className="relative min-w-0 flex-1">
+          <textarea
+            ref={textareaRef}
+            rows={1}
+            value={value}
+            onChange={(e) => {
+              onChange(e.target.value)
+              setCaret(e.target.selectionStart)
+            }}
+            onKeyDown={handleKeyDown}
+            onKeyUp={syncCaret}
+            onClick={syncCaret}
+            onSelect={syncCaret}
+            onBlur={() => setDismissedAt(mention?.start ?? null)}
+            onFocus={() => setDismissedAt(null)}
+            onPaste={handlePaste}
+            placeholder={placeholder}
+            maxLength={maxLength}
+            aria-label="Message"
+            className="block min-h-9 w-full resize-none rounded-2xl border border-gray-200 bg-gray-50 py-2 pl-4 pr-10 text-sm leading-5 outline-none focus:border-accent"
+          />
+          <div className="absolute bottom-1 right-1.5">
+            <EmojiPickerButton onSelect={(emoji) => onChange(value + emoji)} />
+          </div>
+        </div>
         <button
           type="submit"
           disabled={!value.trim() && images.length === 0}

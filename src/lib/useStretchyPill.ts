@@ -46,9 +46,22 @@ export function useStretchyPill(
       })
     }
     measure()
-    const observer = new ResizeObserver(measure)
-    observer.observe(root)
-    return () => observer.disconnect()
+    // Items can shift without the list itself resizing (badges, fonts, a drawer sliding in).
+    const resize = new ResizeObserver(measure)
+    resize.observe(root)
+    for (const child of Array.from(root.children)) resize.observe(child)
+    const mutation = new MutationObserver(measure)
+    mutation.observe(root, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['aria-current', 'class'] })
+    const settle = (event: Event) => {
+      if (event.target instanceof Node && event.target.contains(root)) measure()
+    }
+    document.addEventListener('transitionend', settle)
+    void document.fonts?.ready.then(measure)
+    return () => {
+      resize.disconnect()
+      mutation.disconnect()
+      document.removeEventListener('transitionend', settle)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [container, activeSelector, axis, ...deps])
 

@@ -252,8 +252,9 @@ function Palette({ pages, onClose }: { pages: SearchPage[]; onClose: () => void 
       <div
         role="dialog"
         aria-label="Search"
+        aria-modal="true"
         onMouseDown={(e) => e.stopPropagation()}
-        className="mx-auto mt-[10vh] flex max-h-[70vh] w-[calc(100%-2rem)] max-w-xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
+        className="mx-auto mt-3 flex max-h-[calc(100dvh-1.5rem)] w-[calc(100%-1.5rem)] max-w-xl flex-col sm:mt-[10vh] sm:max-h-[70dvh] sm:w-[calc(100%-2rem)] overflow-hidden rounded-2xl bg-white shadow-xl"
       >
         <div className="flex items-center gap-3 border-b border-gray-100 px-4">
           <Search className="h-5 w-5 shrink-0 text-gray-400" />

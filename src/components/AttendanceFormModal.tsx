@@ -171,9 +171,9 @@ export function AttendanceFormModal({
           setFormError(null)
           saveMutation.mutate()
         }}
-        className="flex flex-col gap-4"
+        className="flex flex-col gap-3 sm:gap-4"
       >
-        <div className="rounded-lg bg-gray-50 px-3 py-2 text-sm">
+        <div className="hidden rounded-lg bg-gray-50 px-3 py-2 text-sm sm:block">
           <div className="font-medium text-gray-900">{person.name}</div>
           <div className="text-xs text-gray-500">
             {person.email} · {dayLabel}
@@ -231,12 +231,12 @@ export function AttendanceFormModal({
               )}
             </div>
             {photo && photoUrl ? (
-              <div className="flex flex-col gap-2">
-                <img src={photoUrl} alt="Your photo" className="w-full rounded-lg object-cover" />
+              <div className="relative w-full overflow-hidden rounded-lg">
+                <img src={photoUrl} alt="Your photo" className="aspect-4/3 w-full object-cover" />
                 <button
                   type="button"
                   onClick={() => setPhoto(null)}
-                  className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  className="absolute bottom-3 left-1/2 inline-flex min-h-11 -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-full bg-black/60 px-4 text-sm font-semibold text-white backdrop-blur-sm hover:bg-black/70"
                 >
                   <RotateCcw className="h-4 w-4" aria-hidden />
                   Take it again
@@ -397,7 +397,7 @@ export function AttendanceFormModal({
           )
         )}
 
-        <div className="mt-1 flex flex-wrap items-center justify-end gap-2">
+        <div className="mt-1 flex flex-wrap items-center justify-end gap-2 max-sm:sticky max-sm:bottom-0 max-sm:z-10 max-sm:-mx-4 max-sm:-mb-5 max-sm:border-t max-sm:border-gray-100 max-sm:bg-white max-sm:px-4 max-sm:pt-3 max-sm:pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           {support && existing && (
             <button
               type="button"
@@ -407,14 +407,14 @@ export function AttendanceFormModal({
                   deleteMutation.mutate()
                 }
               }}
-              className="mr-auto inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+              className="mr-auto inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 pointer-coarse:min-h-11"
             >
               <Trash2 className="h-4 w-4" aria-hidden />
               Delete
             </button>
           )}
           {stepIndex === 0 ? (
-            <button type="button" onClick={onClose} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600">
+            <button type="button" onClick={onClose} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 pointer-coarse:min-h-11">
               <X className="h-4 w-4" aria-hidden />
               Cancel
             </button>
@@ -422,7 +422,7 @@ export function AttendanceFormModal({
             <button
               type="button"
               onClick={() => goTo(stepIndex - 1)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 pointer-coarse:min-h-11"
             >
               <ArrowLeft className="h-4 w-4" aria-hidden />
               Back
@@ -432,13 +432,13 @@ export function AttendanceFormModal({
             <button
               type="submit"
               aria-busy={saveMutation.isPending}
-              className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
+              className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground pointer-coarse:min-h-11"
             >
               {existing ? <Save className="h-4 w-4" aria-hidden /> : <Send className="h-4 w-4" aria-hidden />}
               {saveMutation.isPending ? (photo ? 'Saving photo...' : 'Saving...') : existing ? 'Save changes' : 'Submit attendance'}
             </button>
           ) : (
-            <button type="submit" className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground">
+            <button type="submit" className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground pointer-coarse:min-h-11">
               Next
               <ArrowRight className="h-4 w-4" aria-hidden />
             </button>

@@ -36,7 +36,7 @@ function WhatsNew({ onClose }: { onClose: () => void }) {
   const releases = useReleases()
   return (
     <Modal title="What's new" onClose={onClose} maxWidthClassName="max-w-2xl">
-      <div className="max-h-[70vh] space-y-6 overflow-y-auto pr-1 text-sm">
+      <div className="max-h-[70dvh] space-y-6 overflow-y-auto pr-1 text-sm">
         {releases === null && <p className="text-gray-400">Loading...</p>}
         {releases?.length === 0 && <p className="text-gray-600">No release notes yet.</p>}
 

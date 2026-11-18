@@ -14,6 +14,20 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.47.0 — 2026-11-18
+
+### Added
+
+- **The Tracker works on phones.** Pop-ups open as sheets from the bottom of the screen with their title and close button always in reach, tables turn into easy-to-read cards, and buttons are big enough to tap. The header stays put while you scroll, and no longer slides away after typing in a field. iPhones no longer zoom in when you tap a field.
+- **The attendance camera says what it sees.** Every face and animal in the frame gets its own labelled box (human, baby, cat, dog…), with a count when there's more than one, such as "2 humans · 1 cat".
+- **Upload a photo from inside the camera frame.** The upload button now floats on the photo frame. On a computer it appears when you hover over the frame; on phones it's always there. "Take it again" sits on the photo you took.
+
+### Fixed
+
+- **Attendance on phones.** The photo now fills the width of the pop-up, the name card is hidden to save room, and Cancel / Next stay visible at the bottom.
+- **The emoji button sits inside the message box**, on the right, in chat and in the chat pop-up.
+- **The red highlight in the menu stays on the page you're on**, instead of drifting onto the next section's heading.
+
 ## 8.46.0 — 2026-11-18
 
 ### Fixed

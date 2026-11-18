@@ -439,6 +439,82 @@ main h1 {
   }
 }
 
+/* <StackTable> on phones: each row is a card, each cell shows its column header (data-label) above it.
+   The first column is the card title, a checkbox column floats top-right, the last column spans the card. */
+@media (max-width: 639px) {
+  .stack-table {
+    display: block;
+    min-width: 0;
+  }
+  .stack-table thead:not(:has(input[type='checkbox'])) {
+    display: none;
+  }
+  .stack-table thead {
+    display: block;
+  }
+  .stack-table thead tr {
+    display: flex;
+  }
+  .stack-table thead th:not(:has(input[type='checkbox'])) {
+    display: none;
+  }
+  .stack-table tbody {
+    display: block;
+  }
+  .stack-table tbody tr {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem 1rem;
+    padding: 0.875rem 1rem;
+  }
+  .stack-table tbody td {
+    display: block;
+    min-width: 0;
+    max-width: none;
+    padding: 0;
+    text-align: left;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .stack-table tbody td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 0.125rem;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--color-gray-500);
+  }
+  .stack-table tbody td[colspan],
+  .stack-table tbody td:last-child,
+  .stack-table tbody td:first-child:not(:has(> input[type='checkbox'])),
+  .stack-table tbody td:has(> input[type='checkbox']) + td {
+    grid-column: 1 / -1;
+  }
+  .stack-table tbody td:first-child:not(:has(> input[type='checkbox']))::before,
+  .stack-table tbody td:has(> input[type='checkbox']) + td::before {
+    display: none;
+  }
+  .stack-table tbody td[colspan] {
+    text-align: center;
+  }
+  .stack-table tbody td:has(> input[type='checkbox']) {
+    position: absolute;
+    top: 0.875rem;
+    right: 1rem;
+    width: auto;
+  }
+  .stack-table tbody tr:has(> td > input[type='checkbox']) > td:has(> input[type='checkbox']) + td {
+    padding-right: 2rem;
+  }
+  .stack-table tbody td:last-child > :is(div, span) {
+    justify-content: flex-start;
+    margin-left: 0;
+  }
+}
+
 /* Playful sky (<SkyBackdrop />: login page, dashboard banner) and owl mascot (<LoginOwl />). */
 
 /* Mascot (<LoginOwl />) in the app palette: night-ink feathers, honey eyes and beak, cream whites.
@@ -959,5 +1035,25 @@ main h1 {
   .fold-char,
   .fold-char::after {
     animation: none;
+  }
+}
+
+/* Keep the page behind an open modal still; on iOS it otherwise scrolls underneath the sheet. */
+html:has([aria-modal='true']) {
+  overflow: hidden;
+}
+
+/* Only <main> scrolls inside the app shell; the page itself never does, so the header can't slide away on iOS. */
+html:has(.app-shell) {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+/* iOS Safari zooms into any focused field under 16px and stays zoomed after it blurs. */
+@media (pointer: coarse) {
+  input:not([type='checkbox'], [type='radio'], [type='range'], [type='color'], [type='file']),
+  select,
+  textarea {
+    font-size: 16px;
   }
 }

@@ -43,7 +43,7 @@ import type { Attendance as AttendanceEntry, AttendanceHours } from '../types'
 
 const MANAGER_ROLES = ['admin', 'lead']
 
-const statusClass = 'inline-flex shrink-0 items-center gap-1.5 text-xs'
+const statusClass = 'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap text-xs'
 
 function hoursStatus(hours: AttendanceHours) {
   return SUPPORT_HOURS.includes(hours) ? (
@@ -164,7 +164,7 @@ function CloseTimeSetting({ leadId }: { leadId: string | null }) {
         e.preventDefault()
         if (changed && valid && !save.isPending) save.mutate(draftMin)
       }}
-      className="flex items-center gap-2 text-sm text-gray-700"
+      className="flex flex-wrap items-center gap-2 text-sm text-gray-700"
       title={error ?? (leadId ? 'When this team can no longer file their own attendance' : 'When attendance closes for teams without their own time')}
     >
       <label className="flex items-center gap-2">
@@ -355,7 +355,7 @@ function TeamAttendance() {
             value={date}
             max={today}
             onChange={(e) => setDate(e.target.value || today)}
-            className={toolbarControlClass}
+            className={`${toolbarControlClass} w-full`}
           />
         </FilterField>
         {isAdmin && (
@@ -378,7 +378,7 @@ function TeamAttendance() {
             ))}
           </div>
         )}
-        <div className="ml-auto flex flex-wrap items-center gap-x-5 gap-y-2">
+        <div className="flex w-full flex-wrap items-center gap-x-5 gap-y-2 sm:ml-auto sm:w-auto">
           <CloseTimeSetting key={closeTimeLead ?? 'default'} leadId={closeTimeLead} />
           {isAdmin && <PhotoRequiredSetting />}
         </div>
@@ -389,13 +389,13 @@ function TeamAttendance() {
       ) : visible.length === 0 ? (
         <EmptyCard>{tab === 'missing' ? 'Everyone has filed.' : tab === 'filed' ? 'Nobody has filed yet.' : 'No contributors.'}</EmptyCard>
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {visible.map(({ person, entry }) => (
-            <li key={person.id}>
+            <li key={person.id} className="min-w-0">
               {/* The whole card opens the form for a mouse; the footer button is the keyboard way in. */}
               <div
                 onClick={() => setEditing({ person, entry })}
-                className={`flex h-full cursor-pointer flex-col gap-3 card p-4 text-sm transition-colors duration-75 ${
+                className={`flex h-full min-w-0 cursor-pointer flex-col gap-3 card p-4 text-sm transition-colors duration-75 ${
                   entry ? 'hover:bg-gray-50' : 'border-status-danger-text/50 bg-status-danger-bg hover:border-status-danger-text'
                 }`}
               >
@@ -422,19 +422,19 @@ function TeamAttendance() {
                 {entry ? (
                   <>
                     <EntryDetails entry={entry} />
-                    <div className="mt-auto flex items-center justify-between border-t border-gray-100 pt-2 text-xs text-gray-400">
-                      <span>
+                    <div className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-2 text-xs text-gray-400">
+                      <span className="min-w-0">
                         Filed {formatTime(entry.updated_at)}
                         {entry.filed_by !== entry.user_id && <> by {entry.filer?.name ?? 'support'}</>}
                       </span>
-                      <span className="flex items-center gap-1">
+                      <span className="ml-auto flex items-center gap-1">
                         {entry.photo_ref && <PhotoButton onClick={() => setViewingPhoto({ ref: entry.photo_ref!, name: person.name })} />}
                         <CardAction icon={Pencil}>Edit</CardAction>
                       </span>
                     </div>
                   </>
                 ) : (
-                  <div className="mt-auto flex items-center justify-between border-t border-status-danger-text/20 pt-2 text-xs font-medium text-status-danger-text">
+                  <div className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-status-danger-text/20 pt-2 text-xs font-medium text-status-danger-text">
                     <span>No attendance yet</span>
                     <CardAction icon={FilePlus} primary>
                       File for them

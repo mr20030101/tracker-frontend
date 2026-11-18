@@ -277,7 +277,7 @@ export function SegmentedTabs<T extends string>({
             aria-selected={active}
             title={option.title}
             onClick={() => onChange(option.value)}
-            className={`relative h-full rounded-full px-4 text-sm font-medium transition-colors duration-300 ${
+            className={`relative h-full shrink-0 whitespace-nowrap rounded-full px-4 text-sm font-medium transition-colors duration-300 ${
               active ? 'text-ink-foreground' : 'text-gray-600 hover:text-gray-900'
             }`}
           >

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Baby, Camera, Loader2, PawPrint, RotateCcw, RotateCw, ScanFace, Upload, User } from 'lucide-react'
-import { aspectCrop, coverRect, faceLabel, faceMessage } from '../lib/faceCheck'
-import { checkFrame, loadFaceDetector, mainFaceCenter, type FrameCheck } from '../lib/faceDetector'
+import { aspectCrop, boxLabel, coverRect, faceLabel, faceMessage, frameSummary } from '../lib/faceCheck'
+import { checkFrame, loadFaceDetector, mainFaceCenter, type FrameCheck, type SeenBox } from '../lib/faceDetector'
 
 // Saved photos are this wide at most: plenty to recognise someone, and about 20–40 KB as a JPEG.
 const PHOTO_WIDTH = 480
@@ -56,7 +56,11 @@ async function cropLikeCamera(image: ImageBitmap): Promise<HTMLCanvasElement> {
 const toJpeg = (canvas: HTMLCanvasElement): Promise<Blob | null> =>
   new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', JPEG_QUALITY))
 
-const BOX_COLOUR = '#34d399'
+const FACE_COLOUR = '#34d399'
+const ANIMAL_COLOUR = '#fbbf24'
+const FACE_TAG = 'rgba(5, 150, 105, 0.9)'
+const ANIMAL_TAG = 'rgba(217, 119, 6, 0.9)'
+const SUMMARY_TAG = 'rgba(17, 24, 39, 0.7)'
 const PERSON_ICON = ['M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2', 'M8 7a4 4 0 1 0 8 0a4 4 0 1 0-8 0']
 const BABY_ICON = [
   'M9 12h.01',
@@ -64,46 +68,60 @@ const BABY_ICON = [
   'M10 16c.5.3 1.2.5 2 .5s1.5-.2 2-.5',
   'M19 6.3a9 9 0 0 1 1.8 3.9 2 2 0 0 1 0 3.6 9 9 0 0 1-17.6 0 2 2 0 0 1 0-3.6A9 9 0 0 1 12 3c2 0 3.5 1.1 3.5 2.5s-.9 2.5-2 2.5c-.8 0-1.5-.4-1.5-1',
 ]
-const LABEL_COLOUR = 'rgba(5, 150, 105, 0.9)'
 
-// Draws the face boxes and the label into the photo itself, as they looked on the live view.
+// A rounded label with an optional lucide icon (drawn on its 24px grid), its top-left at x, y.
+function drawTag(g: CanvasRenderingContext2D, x: number, y: number, size: number, text: string, fill: string, icon: string[] | null) {
+  const { width, height } = tagSize(g, size, text, icon)
+  const padX = Math.round(size * 0.6)
+  const iconSize = Math.round(size * 1.05)
+  g.fillStyle = fill
+  g.beginPath()
+  g.roundRect(x, y, width, height, Math.round(size * 0.4))
+  g.fill()
+  if (icon) {
+    g.save()
+    g.translate(x + padX, y + (height - iconSize) / 2)
+    g.scale(iconSize / 24, iconSize / 24)
+    g.strokeStyle = '#fff'
+    g.lineWidth = 2
+    g.lineCap = 'round'
+    g.lineJoin = 'round'
+    for (const d of icon) g.stroke(new Path2D(d))
+    g.restore()
+  }
+  g.fillStyle = '#fff'
+  g.textBaseline = 'middle'
+  g.fillText(text, x + padX + (icon ? iconSize + Math.round(size * 0.35) : 0), y + height / 2)
+}
+
+function tagSize(g: CanvasRenderingContext2D, size: number, text: string, icon: string[] | null) {
+  const iconW = icon ? Math.round(size * 1.05) + Math.round(size * 0.35) : 0
+  return { width: g.measureText(text).width + Math.round(size * 0.6) * 2 + iconW, height: Math.round(size * 1.7) }
+}
+
+// Draws every box with its own label into the photo itself, as they looked on the live view, and
+// the count in the corner when there's more than one.
 function markFaces(canvas: HTMLCanvasElement, check: FrameCheck) {
   const g = canvas.getContext('2d')
   if (!g || check.boxes.length === 0) return
   const line = Math.max(2, Math.round(canvas.width / 160))
-  g.lineWidth = line
-  g.strokeStyle = BOX_COLOUR
-  for (const box of check.boxes) g.strokeRect(box.x, box.y, box.width, box.height)
-
-  const main = check.boxes.reduce((a, b) => (b.width * b.height > a.width * a.height ? b : a))
-  const label = faceLabel(check.verdict)
   const size = Math.max(12, Math.round(canvas.width / 32))
   g.font = `600 ${size}px system-ui, sans-serif`
-  const padX = Math.round(size * 0.6)
-  const icon = Math.round(size * 1.05)
-  const gap = Math.round(size * 0.35)
-  const tagW = g.measureText(label).width + padX * 2 + icon + gap
-  const tagH = Math.round(size * 1.7)
-  const x = Math.min(canvas.width - tagW, Math.max(0, main.x + main.width / 2 - tagW / 2))
-  // Above the box, or just inside the top edge when there's no room.
-  const y = main.y - tagH - line >= 0 ? main.y - tagH - line : Math.max(0, main.y) + line
-  g.fillStyle = LABEL_COLOUR
-  g.beginPath()
-  g.roundRect(x, y, tagW, tagH, Math.round(size * 0.4))
-  g.fill()
-  // The same icon as on the live view (lucide "user" or "baby", drawn on its 24px grid).
-  g.save()
-  g.translate(x + padX, y + (tagH - icon) / 2)
-  g.scale(icon / 24, icon / 24)
-  g.strokeStyle = '#fff'
-  g.lineWidth = 2
-  g.lineCap = 'round'
-  g.lineJoin = 'round'
-  for (const d of check.verdict.kind === 'baby' ? BABY_ICON : PERSON_ICON) g.stroke(new Path2D(d))
-  g.restore()
-  g.fillStyle = '#fff'
-  g.textBaseline = 'middle'
-  g.fillText(label, x + padX + icon + gap, y + tagH / 2)
+  g.lineWidth = line
+  for (const box of check.boxes) {
+    g.strokeStyle = box.kind === 'animal' ? ANIMAL_COLOUR : FACE_COLOUR
+    g.strokeRect(box.x, box.y, box.width, box.height)
+  }
+  for (const box of check.boxes) {
+    const icon = box.kind === 'animal' ? null : box.label === 'baby' ? BABY_ICON : PERSON_ICON
+    const text = boxLabel(box.label)
+    const tag = tagSize(g, size, text, icon)
+    const x = Math.min(canvas.width - tag.width, Math.max(0, box.x + box.width / 2 - tag.width / 2))
+    // Above the box, or just inside its top edge when there's no room.
+    const y = box.y - tag.height - line >= 0 ? box.y - tag.height - line : Math.max(0, box.y) + line
+    drawTag(g, x, y, size, text, box.kind === 'animal' ? ANIMAL_TAG : FACE_TAG, icon)
+  }
+  if (check.boxes.length > 1) drawTag(g, line * 2, line * 2, size, frameSummary(check.boxes.map((b) => b.label)), SUMMARY_TAG, null)
 }
 
 // Checks the photo for a face and, when it passes, marks it. Null when it passes, or when the
@@ -116,6 +134,37 @@ async function checkAndMarkFace(canvas: HTMLCanvasElement): Promise<string | nul
   if (check.verdict.kind !== 'ok' && check.verdict.kind !== 'baby') return faceMessage(check.verdict)
   markFaces(canvas, check)
   return null
+}
+
+// One face or animal on the live view: its box, and its label riding above it (or just inside the
+// preview's top edge when there's no room above, so it never goes off-screen with the crop).
+function LiveBox({ box, rect, dim }: { box: SeenBox; rect: ReturnType<typeof coverRect>; dim: boolean }) {
+  const animal = box.kind === 'animal'
+  const Icon = animal ? PawPrint : box.label === 'baby' ? Baby : User
+  const roomAbove = rect.top >= 12
+  return (
+    <>
+      <div
+        className={`pointer-events-none absolute rounded border-[3px] transition-all duration-150 ${
+          animal ? 'border-amber-400' : dim ? 'border-white/70' : 'border-emerald-400'
+        }`}
+        style={{ left: `${rect.left}%`, top: `${rect.top}%`, width: `${rect.width}%`, height: `${rect.height}%` }}
+      />
+      <div
+        className={`pointer-events-none absolute -translate-x-1/2 transition-all duration-150 ${roomAbove ? '-translate-y-full pb-1' : 'pt-1'}`}
+        style={{ left: `${Math.min(85, Math.max(15, rect.left + rect.width / 2))}%`, top: `${Math.max(0, rect.top)}%` }}
+      >
+        <span
+          className={`inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-1 text-xs font-semibold text-white ${
+            animal ? 'bg-amber-600/90' : dim ? 'bg-gray-900/70' : 'bg-emerald-600/90'
+          }`}
+        >
+          <Icon className="h-3.5 w-3.5" aria-hidden />
+          {boxLabel(box.label)}
+        </span>
+      </div>
+    </>
+  )
 }
 
 /**
@@ -241,7 +290,7 @@ export function CameraCapture({ onChange }: { onChange: (photo: Blob | null) => 
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="relative aspect-[4/3] overflow-hidden rounded-lg bg-gray-900">
+      <div className="group relative aspect-4/3 w-full overflow-hidden rounded-lg bg-gray-900">
         {/* Not mirrored: the live view, the taken photo and the saved photo all face the same way. */}
         <video
           ref={videoRef}
@@ -250,59 +299,28 @@ export function CameraCapture({ onChange }: { onChange: (photo: Blob | null) => 
           className={`h-full w-full object-cover ${state.kind === 'live' ? '' : 'hidden'}`}
         />
         {live && liveFace && (() => {
-          const tone = liveFace.kind === 'ok' || liveFace.kind === 'baby' ? 'emerald' : liveFace.kind === 'animal' ? 'amber' : 'gray'
-          const tag = (
-            <span
-              className={`inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-1 text-xs font-semibold text-white ${
-                tone === 'emerald' ? 'bg-emerald-600/90' : tone === 'amber' ? 'bg-amber-600/90' : 'bg-gray-900/70'
-              }`}
-            >
-              {liveFace.kind === 'ok' ? (
-                <User className="h-3.5 w-3.5" aria-hidden />
-              ) : liveFace.kind === 'animal' ? (
-                <PawPrint className="h-3.5 w-3.5" aria-hidden />
-              ) : liveFace.kind === 'baby' ? (
-                <Baby className="h-3.5 w-3.5" aria-hidden />
-              ) : (
-                <ScanFace className="h-3.5 w-3.5" aria-hidden />
-              )}
-              {faceLabel(liveFace)}
-            </span>
-          )
           const boxes = liveCheck?.boxes ?? []
-          if (!liveCheck || boxes.length === 0) return <div className="absolute left-2 top-2">{tag}</div>
-          // The label rides on the largest box, above it, or just inside the preview's top edge when
-          // there's no room above (it never goes off-screen with the crop).
-          const main = coverRect(
-            boxes.reduce((a, b) => (b.width * b.height > a.width * a.height ? b : a)),
-            liveCheck.width,
-            liveCheck.height,
-            PREVIEW_ASPECT,
-          )
-          const roomAbove = main.top >= 12
+          const passing = liveFace.kind === 'ok' || liveFace.kind === 'baby'
+          // The corner tag: what's wrong when the check fails, the count when there's more than one.
+          const corner =
+            liveFace.kind === 'none' || liveFace.kind === 'far' || boxes.length === 0
+              ? faceLabel(liveFace)
+              : boxes.length > 1
+                ? frameSummary(boxes.map((b) => b.label))
+                : null
           return (
             <>
-              {boxes.map((box, i) => {
-                const rect = coverRect(box, liveCheck.width, liveCheck.height, PREVIEW_ASPECT)
-                return (
-                  <div
-                    key={i}
-                    className={`pointer-events-none absolute rounded border-[3px] transition-all duration-150 ${
-                      tone === 'emerald' ? 'border-emerald-400' : tone === 'amber' ? 'border-amber-400' : 'border-white/70'
-                    }`}
-                    style={{ left: `${rect.left}%`, top: `${rect.top}%`, width: `${rect.width}%`, height: `${rect.height}%` }}
-                  />
-                )
-              })}
-              <div
-                className={`pointer-events-none absolute -translate-x-1/2 transition-all duration-150 ${roomAbove ? '-translate-y-full pb-1' : 'pt-1'}`}
-                style={{
-                  left: `${Math.min(85, Math.max(15, main.left + main.width / 2))}%`,
-                  top: `${roomAbove ? main.top : Math.max(0, main.top)}%`,
-                }}
-              >
-                {tag}
-              </div>
+              {liveCheck &&
+                boxes.map((box, i) => {
+                  const rect = coverRect(box, liveCheck.width, liveCheck.height, PREVIEW_ASPECT)
+                  return <LiveBox key={i} box={box} rect={rect} dim={box.kind === 'face' && !passing} />
+                })}
+              {corner && (
+                <span className="absolute left-2 top-2 inline-flex min-h-8 items-center gap-1 whitespace-nowrap rounded-md bg-gray-900/70 px-2 text-xs font-semibold text-white">
+                  {boxes.length === 0 && <ScanFace className="h-3.5 w-3.5" aria-hidden />}
+                  {corner}
+                </span>
+              )}
             </>
           )
         })()}
@@ -316,6 +334,25 @@ export function CameraCapture({ onChange }: { onChange: (photo: Blob | null) => 
               Try again
             </button>
           </div>
+        )}
+        {(state.kind === 'live' || state.kind === 'starting') && (
+          <label
+            aria-label="Upload a photo instead"
+            title="Upload a photo instead"
+            className="absolute right-2 top-2 inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-full bg-black/60 px-3 text-xs font-semibold text-white backdrop-blur-sm transition-opacity duration-100 hover:bg-black/70 focus-within:opacity-100 pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100"
+          >
+            <Upload className="h-4 w-4" aria-hidden />
+            Upload
+            <input
+              type="file"
+              accept="image/*"
+              className="sr-only"
+              onChange={(e) => {
+                void pickFile(e.target.files?.[0])
+                e.target.value = ''
+              }}
+            />
+          </label>
         )}
         {/* A camera's shutter: the one main action, on the picture itself. */}
         {live && (
@@ -345,32 +382,22 @@ export function CameraCapture({ onChange }: { onChange: (photo: Blob | null) => 
           {faceError}
         </p>
       )}
-      {state.kind !== 'taken' && (
-        <>
-          {/* No capture attribute: on phones this offers the gallery as well as the camera. When the camera
-              can't open it's the only way, so it's a full button; otherwise a quieter link. */}
-          <label
-            className={
-              state.kind === 'error'
-                ? 'flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50'
-                : 'mx-auto inline-flex min-h-11 cursor-pointer items-center gap-1.5 px-2 text-sm font-medium text-gray-500 hover:text-gray-800 hover:underline'
-            }
-          >
-            <Upload className="h-4 w-4" aria-hidden />
-            Upload a photo instead
-            <input
-              type="file"
-              accept="image/*"
-              className="sr-only"
-              onChange={(e) => {
-                void pickFile(e.target.files?.[0])
-                e.target.value = ''
-              }}
-            />
-          </label>
-          {fileError && <p className="text-xs text-red-600">{fileError}</p>}
-        </>
+      {state.kind === 'error' && (
+        <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+          <Upload className="h-4 w-4" aria-hidden />
+          Upload a photo instead
+          <input
+            type="file"
+            accept="image/*"
+            className="sr-only"
+            onChange={(e) => {
+              void pickFile(e.target.files?.[0])
+              e.target.value = ''
+            }}
+          />
+        </label>
       )}
+      {fileError && <p className="text-xs text-red-600">{fileError}</p>}
     </div>
   )
 }

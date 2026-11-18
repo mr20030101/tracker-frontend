@@ -383,6 +383,27 @@ export function AppShell({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- runs on the switch only; collapsed is read as it was
   }, [onMessages, isDesktop])
 
+  // iOS scrolls the locked page to lift a focused field above the keyboard and leaves it there
+  // once the keyboard closes, hiding the header. Put it back when nothing is being typed into.
+  useEffect(() => {
+    const typing = () => document.activeElement?.matches('input, textarea, select, [contenteditable="true"]') ?? false
+    const settle = () => {
+      if (window.scrollY === 0 && window.scrollX === 0) return
+      if (typing()) return
+      window.scrollTo(0, 0)
+    }
+    const onFocusOut = () => setTimeout(settle, 50)
+    const viewport = window.visualViewport
+    document.addEventListener('focusout', onFocusOut)
+    window.addEventListener('scroll', settle, { passive: true })
+    viewport?.addEventListener('resize', settle)
+    return () => {
+      document.removeEventListener('focusout', onFocusOut)
+      window.removeEventListener('scroll', settle)
+      viewport?.removeEventListener('resize', settle)
+    }
+  }, [])
+
   const navListRef = useRef<HTMLDivElement>(null)
   const activePill = useStretchyPill(navListRef, 'a[aria-current="page"]', 'y', [location.pathname, rail, docked, menuOpen])
 
@@ -409,9 +430,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <MessagingProvider>
       <CallProvider>
+        <div className="app-shell flex h-dvh flex-col overflow-hidden">
         <CallBar />
         <LoginAsBar />
-        <div className="relative isolate flex h-screen overflow-hidden">
+        <div className="relative isolate flex min-h-0 flex-1 overflow-hidden">
           {/* Contributors: the countdown to today's attendance closing, until they've filed. */}
           {user && <AttendanceBomb />}
           {menuOpen && !docked && (
@@ -539,7 +561,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           )}
 
           <div className="flex min-w-0 flex-1 flex-col">
-            <header className="flex items-center justify-between gap-2 px-3 pt-3 pb-1 sm:px-6 sm:pt-4">
+            <header className="flex shrink-0 items-center justify-between gap-2 px-4 pt-4 pb-2 sm:px-6 sm:pt-4 sm:pb-1">
               <div className="flex min-w-0 items-center gap-2 sm:gap-4">
                 {!(isDesktop && !onMessages) && (
                 <button
@@ -587,6 +609,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               {!onMessages && <AppFooter className="mt-10 pb-2" releaseNotes />}
             </main>
           </div>
+        </div>
         </div>
       </CallProvider>
     </MessagingProvider>
