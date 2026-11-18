@@ -2,13 +2,14 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { FoldText } from '../components/FoldText'
 import { createPortal } from 'react-dom'
 import { Navigate, useParams, Link } from 'react-router-dom'
-import { ChevronDown, ChevronLeft, CircleDashed, Clock, Eye, MessageCircle, Pencil, Sparkles, Video } from 'lucide-react'
+import { ChevronDown, ChevronLeft, CircleDashed, Clock, Eye, MessageCircle, Pencil, Sparkles, UserRound, Video } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, functionErrorMessage, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { weekStartIso } from '../lib/week'
 import { useNow } from '../lib/useNow'
-import { isUserId, messagePath, parseContributorRef } from '../lib/urlRef'
+import { contributorPathById, isUserId, messagePath, parseContributorRef } from '../lib/urlRef'
+import { useMessaging } from '../lib/messagingContext'
 import type { ContributorProfile, ContributorProjectLevel, Project, ProjectLevel } from '../types'
 import { Avatar } from '../components/Avatar'
 import { LevelPill, LEVEL_TIERS } from '../components/LevelPill'
@@ -142,6 +143,8 @@ export function CbProfile() {
 
   const contributorId = data?.user?.id ?? null
   const contributorLeadId = data?.user?.lead_id ?? null
+  const { usersById } = useMessaging()
+  const contributorLead = contributorLeadId ? usersById.get(contributorLeadId) : undefined
 
   // A lead's shift (when their contributors can send requests), shown on their profile, their own included.
   const { data: leadShift = null } = useQuery({
@@ -317,6 +320,15 @@ export function CbProfile() {
             <p className="mt-1 max-w-xl text-sm text-gray-600">{isOwnProfile ? currentUser?.bio : data.user?.bio}</p>
           )}
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
+          {data.user?.role === 'contributor' && contributorLead && (
+            <Link
+              to={contributorPathById(contributorLead.id)}
+              className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600 hover:bg-gray-200 hover:text-gray-900"
+            >
+              <UserRound className="h-3.5 w-3.5" aria-hidden />
+              Lead: {contributorLead.name}
+            </Link>
+          )}
           {(leadShift || (!isOwnProfile && data.user?.shift?.trim())) && (
             <span
               className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600"
