@@ -5,6 +5,15 @@ import { supabase } from './api'
 
 export type BillingCurrency = 'PHP' | 'USD'
 
+export type PaymentMethod = 'paypal' | 'instapay'
+
+export function paymentMethodLabel(method: PaymentMethod | null): string {
+  return method === 'instapay' ? 'InstaPay' : 'PayPal'
+}
+
+/** The admin's GoTyme account behind the InstaPay QR on the lead Billing page (pesos only). */
+export const INSTAPAY_ACCOUNT = { bank: 'GoTyme Bank', name: 'Shean Louise Margallo', last4: '9593' }
+
 export interface BillingMonth {
   month: string
   supabaseAmount: number
@@ -23,6 +32,7 @@ export interface LeadBill {
   // The lead said they paid (PayPal transaction ID) and it's waiting for an admin to confirm.
   reportedPaidAt: string | null
   reportedRef: string | null
+  reportedMethod: PaymentMethod | null
 }
 
 export interface BillingLead {
@@ -121,7 +131,7 @@ export async function fetchBillingMonths(): Promise<BillingMonth[]> {
 }
 
 export async function fetchLeadBills(): Promise<LeadBill[]> {
-  const { data, error } = await supabase.from('lead_bills').select('month, lead_id, amount, paid_at, note, reported_paid_at, reported_ref')
+  const { data, error } = await supabase.from('lead_bills').select('month, lead_id, amount, paid_at, note, reported_paid_at, reported_ref, reported_method')
   if (error) throw error
   return (data ?? []).map((row) => ({
     month: row.month,
@@ -131,6 +141,7 @@ export async function fetchLeadBills(): Promise<LeadBill[]> {
     note: row.note,
     reportedPaidAt: row.reported_paid_at,
     reportedRef: row.reported_ref,
+    reportedMethod: row.reported_method,
   }))
 }
 
@@ -184,6 +195,7 @@ export interface MyBill {
   paidAt: string | null
   reportedPaidAt: string | null
   reportedRef: string | null
+  reportedMethod: PaymentMethod | null
   supabaseAmount: number
   leads: number
 }
@@ -232,7 +244,7 @@ export async function fetchMyBilling(): Promise<MyBilling> {
     exempt: boolean
     paypal_me?: string | null
     how_to_pay?: string | null
-    bills: { month: string; amount: number; currency: BillingCurrency; paid_at: string | null; reported_paid_at: string | null; reported_ref: string | null; supabase_amount: number; leads: number }[]
+    bills: { month: string; amount: number; currency: BillingCurrency; paid_at: string | null; reported_paid_at: string | null; reported_ref: string | null; reported_method?: PaymentMethod | null; supabase_amount: number; leads: number }[]
   }
   return {
     exempt: raw.exempt,
@@ -245,20 +257,21 @@ export async function fetchMyBilling(): Promise<MyBilling> {
       paidAt: b.paid_at,
       reportedPaidAt: b.reported_paid_at ?? null,
       reportedRef: b.reported_ref ?? null,
+      reportedMethod: b.reported_method ?? (b.reported_ref ? 'paypal' : null),
       supabaseAmount: Number(b.supabase_amount),
       leads: b.leads,
     })),
   }
 }
 
-/** A PayPal transaction ID as typed or pasted (spaces dropped, upper case). Null if it can't be one. */
+/** A PayPal transaction ID or InstaPay reference as typed or pasted (spaces dropped, upper case). Null if it can't be one. */
 export function paypalRef(text: string): string | null {
   const ref = text.replace(/\s/g, '').toUpperCase()
   return /^[A-Z0-9-]{6,40}$/.test(ref) ? ref : null
 }
 
-/** A lead reports paying their own share, with PayPal's transaction ID. */
-export async function reportBillPaid(month: string, ref: string): Promise<void> {
-  const { error } = await supabase.rpc('report_bill_paid', { p_month: month, p_ref: ref })
+/** A lead reports paying their own share, with the PayPal transaction ID or InstaPay reference. */
+export async function reportBillPaid(month: string, ref: string, method: PaymentMethod): Promise<void> {
+  const { error } = await supabase.rpc('report_bill_paid', { p_month: month, p_ref: ref, p_method: method })
   if (error) throw error
 }

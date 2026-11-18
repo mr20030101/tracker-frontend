@@ -1,14 +1,16 @@
 import { useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, ExternalLink, X } from 'lucide-react'
+import { Check, ExternalLink, QrCode, X } from 'lucide-react'
 import { FoldText } from '../components/FoldText'
 import { BillStatusBadge } from '../components/BillStatusBadge'
 import { TableCard } from '../components/TableToolbar'
 import { Modal } from '../components/Modal'
 import { errorMessage } from '../lib/api'
 import { usePageTitle } from '../lib/usePageTitle'
+import instapayQr from '../assets/billing/instapay-qr.svg'
 import {
   DUE_DAY,
+  INSTAPAY_ACCOUNT,
   billStatus,
   dueDate,
   fetchMyBilling,
@@ -16,14 +18,16 @@ import {
   formatPaidOn,
   manilaToday,
   monthLabel,
+  paymentMethodLabel,
   paypalLink,
   paypalRef,
   reportBillPaid,
   type MyBill,
+  type PaymentMethod,
 } from '../lib/billing'
 
-// Billing for a lead: their own share of each month's Supabase bill. They pay through PayPal.Me,
-// report it with the transaction ID, and an admin confirms it.
+// Billing for a lead: their own share of each month's Supabase bill. They pay through PayPal.Me
+// (USD, recommended) or the admin's InstaPay QR (pesos), report it with the reference, and an admin confirms it.
 
 const primaryButton = 'inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground'
 const secondaryButton =
@@ -46,7 +50,8 @@ export function MyBilling() {
   usePageTitle('Billing')
   const today = manilaToday()
   const { data, isLoading, error } = useQuery({ queryKey: ['my-billing'], queryFn: fetchMyBilling, staleTime: 60_000 })
-  const [reporting, setReporting] = useState<MyBill[] | null>(null)
+  const [reporting, setReporting] = useState<{ bills: MyBill[]; method: PaymentMethod } | null>(null)
+  const [showQr, setShowQr] = useState(false)
 
   const bills = data?.bills ?? []
   const unpaid = bills.filter((bill) => !bill.paidAt)
@@ -107,19 +112,30 @@ export function MyBilling() {
               {!oneCurrency && <p className="mt-1 text-xs text-gray-400">Some months are in another currency; pay them one by one below.</p>}
               {toPay.length > 0 && (
                 <ol className="mt-4 space-y-3 text-sm text-gray-700">
-                  {paypalMe && oneCurrency && (
-                    <li className="flex flex-wrap items-center gap-3">
-                      <span className="text-gray-400">1.</span>
-                      <PayButton paypalMe={paypalMe} amount={owed} currency={toPay[0].currency} label={`Pay ${formatMoney(owed, toPay[0].currency)} with PayPal`} />
-                    </li>
-                  )}
+                  <li className="flex gap-3">
+                    <span className="pt-2 text-gray-400">1.</span>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex flex-wrap items-center gap-3">
+                        {paypalMe && oneCurrency && (
+                          <PayButton paypalMe={paypalMe} amount={owed} currency={toPay[0].currency} label={`Pay ${formatMoney(owed, toPay[0].currency)} with PayPal`} />
+                        )}
+                        <button type="button" onClick={() => setShowQr(true)} className={secondaryButton}>
+                          <QrCode className="h-4 w-4" aria-hidden />
+                          Pay with InstaPay QR
+                        </button>
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        <span className="font-semibold text-gray-700">PayPal in USD is highly recommended.</span> The server is paid in USD, so pesos lose some to conversion and fees.
+                      </p>
+                    </div>
+                  </li>
                   <li className="flex flex-wrap items-center gap-3">
-                    {paypalMe && oneCurrency && <span className="text-gray-400">2.</span>}
-                    <button type="button" onClick={() => setReporting(toPay)} className={secondaryButton}>
+                    <span className="text-gray-400">2.</span>
+                    <button type="button" onClick={() => setReporting({ bills: toPay, method: 'paypal' })} className={secondaryButton}>
                       <Check className="h-4 w-4" aria-hidden />
                       I've paid
                     </button>
-                    <span className="text-xs text-gray-500">with the transaction ID from PayPal</span>
+                    <span className="text-xs text-gray-500">with the PayPal transaction ID or InstaPay reference</span>
                   </li>
                 </ol>
               )}
@@ -156,7 +172,7 @@ export function MyBilling() {
                       {bill.paidAt ? (
                         formatPaidOn(bill.paidAt)
                       ) : bill.reportedPaidAt ? (
-                        <span title={`PayPal ${bill.reportedRef}`}>Reported {formatPaidOn(bill.reportedPaidAt)}</span>
+                        <span title={`${paymentMethodLabel(bill.reportedMethod)} ${bill.reportedRef}`}>Reported {formatPaidOn(bill.reportedPaidAt)}</span>
                       ) : toPay.length > 1 ? (
                         <span className="inline-flex items-center gap-3">
                           {paypalMe && (
@@ -165,7 +181,7 @@ export function MyBilling() {
                               <ExternalLink className="h-3.5 w-3.5" aria-hidden />
                             </a>
                           )}
-                          <button type="button" onClick={() => setReporting([bill])} className="font-medium underline">
+                          <button type="button" onClick={() => setReporting({ bills: [bill], method: 'paypal' })} className="font-medium underline">
                             I've paid
                           </button>
                         </span>
@@ -178,23 +194,74 @@ export function MyBilling() {
               </tbody>
             </table>
           </TableCard>
-          <p className="mt-3 text-xs text-gray-400">After you report a payment, an admin checks PayPal and marks your share paid.</p>
+          <p className="mt-3 text-xs text-gray-400">After you report a payment, an admin checks PayPal or the bank and marks your share paid.</p>
         </>
       )}
 
-      {reporting && <ReportModal bills={reporting} onClose={() => setReporting(null)} />}
+      {showQr && toPay.length > 0 && (
+        <InstapayModal
+          owed={formatMoney(owed, toPay[0].currency)}
+          inUsd={toPay.some((bill) => bill.currency === 'USD')}
+          onClose={() => setShowQr(false)}
+          onPaid={() => {
+            setShowQr(false)
+            setReporting({ bills: toPay, method: 'instapay' })
+          }}
+        />
+      )}
+      {reporting && <ReportModal bills={reporting.bills} initialMethod={reporting.method} onClose={() => setReporting(null)} />}
     </div>
   )
 }
 
-function ReportModal({ bills, onClose }: { bills: MyBill[]; onClose: () => void }) {
+function InstapayModal({ owed, inUsd, onClose, onPaid }: { owed: string; inUsd: boolean; onClose: () => void; onPaid: () => void }) {
+  return (
+    <Modal title="Pay with InstaPay" onClose={onClose}>
+      <div className="flex flex-col gap-4">
+        <div className="rounded-lg bg-status-warning-bg px-4 py-3 text-sm text-status-warning-text">
+          <p className="font-semibold">PayPal in USD is highly recommended</p>
+          <p className="mt-0.5">The Tracker's server is paid in USD. Use InstaPay only if you can't use PayPal.</p>
+        </div>
+        <div className="mx-auto w-full max-w-64 rounded-lg border border-gray-200 bg-white p-3">
+          <img src={instapayQr} alt="InstaPay QR code for the Grey Owls Tracker bill" className="block aspect-square w-full" />
+        </div>
+        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+          <dt className="text-gray-500">Name</dt>
+          <dd className="font-medium text-gray-900">{INSTAPAY_ACCOUNT.name}</dd>
+          <dt className="text-gray-500">Bank</dt>
+          <dd className="text-gray-900">
+            {INSTAPAY_ACCOUNT.bank} <span className="font-mono text-gray-500">•••• {INSTAPAY_ACCOUNT.last4}</span>
+          </dd>
+          <dt className="text-gray-500">Amount</dt>
+          <dd className="tabular-nums text-gray-900">{owed}</dd>
+        </dl>
+        <p className="text-xs text-gray-500">
+          Scan with GCash, Maya or any bank app.{' '}
+          {inUsd ? 'Send the peso equivalent at today\'s rate, and cover any transfer fee.' : 'Cover any transfer fee so the full amount arrives.'}
+        </p>
+        <div className="flex justify-end gap-2">
+          <button type="button" onClick={onClose} className={secondaryButton}>
+            Close
+          </button>
+          <button type="button" onClick={onPaid} className={primaryButton}>
+            <Check className="h-4 w-4" aria-hidden />
+            I've paid
+          </button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+function ReportModal({ bills, initialMethod, onClose }: { bills: MyBill[]; initialMethod: PaymentMethod; onClose: () => void }) {
   const queryClient = useQueryClient()
+  const [method, setMethod] = useState<PaymentMethod>(initialMethod)
   const [ref, setRef] = useState('')
   const [error, setError] = useState('')
   const total = bills.reduce((sum, bill) => sum + bill.amount, 0)
   const mutation = useMutation({
     mutationFn: async (cleaned: string) => {
-      for (const bill of bills) await reportBillPaid(bill.month, cleaned)
+      for (const bill of bills) await reportBillPaid(bill.month, cleaned, method)
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: ['my-billing'] }),
     onSuccess: onClose,
@@ -206,7 +273,11 @@ function ReportModal({ bills, onClose }: { bills: MyBill[]; onClose: () => void 
     if (mutation.isPending) return
     const cleaned = paypalRef(ref)
     if (!cleaned) {
-      setError('Enter the transaction ID from PayPal: letters and numbers, e.g. 5TY05013RG002845M.')
+      setError(
+        method === 'instapay'
+          ? 'Enter the InstaPay reference number from your bank app: letters and numbers.'
+          : 'Enter the transaction ID from PayPal: letters and numbers, e.g. 5TY05013RG002845M.',
+      )
       document.getElementById('paypal-ref')?.focus()
       return
     }
@@ -220,21 +291,40 @@ function ReportModal({ bills, onClose }: { bills: MyBill[]; onClose: () => void 
         <p className="text-sm text-gray-600">
           {formatMoney(total, bills[0].currency)} for {bills.map((bill) => monthLabel(bill.month)).join(', ')}.
         </p>
+        <fieldset>
+          <legend className="mb-1 text-sm font-medium text-gray-700">Paid with</legend>
+          <div className="grid grid-cols-2 gap-2">
+            {(['paypal', 'instapay'] as const).map((option) => (
+              <label
+                key={option}
+                className="flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 has-[:checked]:border-accent has-[:checked]:font-medium has-[:checked]:text-gray-900"
+              >
+                <input type="radio" name="pay-method" value={option} checked={method === option} onChange={() => setMethod(option)} className="accent-accent" />
+                {paymentMethodLabel(option)}
+                {option === 'paypal' && <span className="text-xs font-normal text-gray-400">USD</span>}
+              </label>
+            ))}
+          </div>
+        </fieldset>
         <div>
           <label htmlFor="paypal-ref" className="mb-1 block text-sm font-medium text-gray-700">
-            PayPal transaction ID
+            {method === 'instapay' ? 'InstaPay reference number' : 'PayPal transaction ID'}
           </label>
           <input
             id="paypal-ref"
             value={ref}
             onChange={(e) => setRef(e.target.value)}
-            placeholder="e.g. 5TY05013RG002845M"
+            placeholder={method === 'instapay' ? 'e.g. 123456789012' : 'e.g. 5TY05013RG002845M'}
             autoComplete="off"
             autoFocus
             aria-invalid={Boolean(error)}
             className="w-full rounded-lg border border-gray-200 px-3 py-2 font-mono text-sm uppercase outline-none focus:border-accent"
           />
-          <p className="mt-1 text-xs text-gray-400">In PayPal, open Activity, tap the payment, and copy the Transaction ID.</p>
+          <p className="mt-1 text-xs text-gray-400">
+            {method === 'instapay'
+              ? 'In your bank or e-wallet app, open the transfer receipt and copy the reference number.'
+              : 'In PayPal, open Activity, tap the payment, and copy the Transaction ID.'}
+          </p>
         </div>
         {error && <div className="text-sm text-status-danger-text">{error}</div>}
         <div className="mt-2 flex justify-end gap-2">
