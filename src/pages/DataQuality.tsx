@@ -1,14 +1,18 @@
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import { FoldText } from '../components/FoldText'
 import { Link } from 'react-router-dom'
-import { Pencil, Trash2 } from 'lucide-react'
+import { ListChecks, Pencil, Trash2 } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ColumnDef } from '@tanstack/react-table'
-import { supabase } from '../lib/api'
+import { api, supabase } from '../lib/api'
 import { remotasksDiffViewerUrl } from '../lib/remotasks'
 import { TaskSubmissionForm } from '../components/TaskSubmissionForm'
 import { DataTable } from '../components/DataTable'
-import type { TaskSubmission } from '../types'
+import type { Project, Stage, SubmissionStatus, TaskSubmission } from '../types'
+import { Modal } from '../components/Modal'
+import { StatusPill } from '../components/StatusPill'
+import { STAGE_LABELS } from '../lib/rewards'
+import { formatTimer } from '../lib/taskTimer'
 import { contributorPath } from '../lib/urlRef'
 import { confirmDialog } from '../lib/dialog'
 import { fetchAllPages } from '../lib/fetchAll'
@@ -24,6 +28,8 @@ interface Row {
   date: string | null
   status: string
   stage: string
+  created_at: string
+  timer_elapsed_seconds: number
 }
 
 interface HighVolumeRow {
@@ -37,7 +43,7 @@ async function fetchAll(): Promise<Row[]> {
   return fetchAllPages<Row>((from, to) =>
     supabase
       .from('task_submissions')
-      .select('id, task_id, cb_email, project_id, date, status, stage')
+      .select('id, task_id, cb_email, project_id, date, status, stage, created_at, timer_elapsed_seconds')
       .order('date', { ascending: false })
       .order('id')
       .range(from, to),
@@ -90,11 +96,30 @@ export function DataQuality() {
   usePageTitle('Data Quality')
   const queryClient = useQueryClient()
   const [editTarget, setEditTarget] = useState<TaskSubmission | null>(null)
+  const [volumeTarget, setVolumeTarget] = useState<HighVolumeRow | null>(null)
 
   const { data: rows, isLoading } = useQuery({
     queryKey: ['data-quality-rows'],
     queryFn: fetchAll,
   })
+
+  const { data: projects } = useQuery({
+    queryKey: ['projects'],
+    queryFn: async () => (await api.get<Project[]>('/projects')).data,
+    staleTime: 5 * 60_000,
+  })
+  const projectNames = useMemo(() => new Map((projects ?? []).map((p) => [p.id, p.name])), [projects])
+
+  // Looked up from the loaded rows each render, so an edit or delete shows straight away.
+  const volumeTasks = useMemo(
+    () =>
+      volumeTarget
+        ? (rows ?? [])
+            .filter((r) => r.cb_email === volumeTarget.cb_email && r.date === volumeTarget.date)
+            .sort((a, b) => a.created_at.localeCompare(b.created_at))
+        : [],
+    [rows, volumeTarget],
+  )
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -341,8 +366,108 @@ export function DataQuality() {
         header: 'Count',
         cell: ({ row }) => <span className="font-semibold text-gray-900">{row.original.count}</span>,
       },
+      {
+        id: 'actions',
+        header: 'Actions',
+        enableSorting: false,
+        meta: { align: 'right' },
+        cell: ({ row }) => (
+          <div className="flex justify-end">
+            <button
+              onClick={() => setVolumeTarget(row.original)}
+              className="inline-flex min-h-8 items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-gray-900 pointer-coarse:min-h-11"
+            >
+              <ListChecks className="h-3.5 w-3.5" aria-hidden />
+              View tasks
+            </button>
+          </div>
+        ),
+      },
     ],
     [],
+  )
+
+  const volumeTaskColumns = useMemo<ColumnDef<Row, any>[]>(
+    () => [
+      {
+        id: 'task_id',
+        accessorFn: (r) => r.task_id ?? '',
+        header: 'Task ID',
+        cell: ({ row }) =>
+          row.original.task_id ? (
+            <a
+              href={remotasksDiffViewerUrl(row.original.task_id)}
+              target="_blank"
+              rel="noreferrer"
+              className="block whitespace-nowrap font-mono text-xs text-sky-700 hover:underline"
+            >
+              {row.original.task_id}
+            </a>
+          ) : (
+            <span className="text-gray-500">—</span>
+          ),
+      },
+      {
+        id: 'project',
+        accessorFn: (r) => (r.project_id ? (projectNames.get(r.project_id) ?? '') : ''),
+        header: 'Project',
+        cell: ({ getValue }) => <span className="text-gray-600">{getValue() || '—'}</span>,
+      },
+      {
+        id: 'stage',
+        accessorFn: (r) => r.stage,
+        header: 'Stage',
+        cell: ({ row }) => <span className="text-gray-600">{STAGE_LABELS[row.original.stage as Stage] ?? row.original.stage}</span>,
+      },
+      {
+        id: 'status',
+        accessorFn: (r) => r.status,
+        header: 'Status',
+        cell: ({ row }) => <StatusPill status={row.original.status as SubmissionStatus} />,
+      },
+      {
+        id: 'logged',
+        accessorFn: (r) => r.created_at,
+        header: 'Logged',
+        cell: ({ row }) => (
+          <span className="whitespace-nowrap text-gray-500">
+            {new Date(row.original.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+          </span>
+        ),
+      },
+      {
+        id: 'time',
+        accessorFn: (r) => r.timer_elapsed_seconds,
+        header: 'Time',
+        meta: { align: 'right' },
+        cell: ({ row }) => <span className="tabular-nums text-gray-600">{formatTimer(row.original.timer_elapsed_seconds ?? 0)}</span>,
+      },
+      {
+        id: 'actions',
+        header: 'Actions',
+        enableSorting: false,
+        meta: { align: 'right' },
+        cell: ({ row }) => (
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => setEditTarget(row.original as unknown as TaskSubmission)}
+              className="inline-flex min-h-8 items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-gray-900 pointer-coarse:min-h-11"
+            >
+              <Pencil className="h-3.5 w-3.5" aria-hidden />
+              Edit
+            </button>
+            <button
+              onClick={() => handleDelete(row.original.id)}
+              className="inline-flex min-h-8 items-center gap-1.5 text-xs font-medium text-status-danger-text hover:underline pointer-coarse:min-h-11"
+            >
+              <Trash2 className="h-3.5 w-3.5" aria-hidden />
+              Delete
+            </button>
+          </div>
+        ),
+      },
+    ],
+    [projectNames, handleDelete],
   )
 
   return (
@@ -417,6 +542,18 @@ export function DataQuality() {
               </div>
             )}
         </>
+      )}
+
+      {volumeTarget && (
+        <Modal title={`${volumeTasks.length} tasks on ${volumeTarget.date}`} onClose={() => setVolumeTarget(null)} maxWidthClassName="max-w-4xl">
+          <p className="mb-4 text-sm text-gray-500">
+            <Link to={contributorPath(volumeTarget.cb_email)} className="text-sky-700 hover:underline">
+              {volumeTarget.cb_email}
+            </Link>
+            {' · in the order they were logged'}
+          </p>
+          <DataTable bare columns={volumeTaskColumns} data={volumeTasks} getRowId={(r) => String(r.id)} />
+        </Modal>
       )}
 
       {editTarget && <TaskSubmissionForm submission={editTarget} onClose={() => setEditTarget(null)} />}

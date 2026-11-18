@@ -90,21 +90,21 @@ function navSections(
     {
       label: 'Logs',
       items: logHubs(isManager, isAdmin).map((hub) => {
-        const match = hub.tabs.map((tab) => tab.to)
-        if (hub.key !== 'todo' || !isManager) return { to: hub.tabs[0].to, label: hub.label, icon: hub.icon, match }
-        const waiting = pendingRequests + pendingFeedback
-        return {
-          to: hub.tabs[0].to,
-          label: hub.label,
-          icon: hub.icon,
-          match,
-          badge: waiting,
-          urgent: overdueRequests > 0,
-          badgeTitle:
-            overdueRequests > 0
-              ? `${overdueRequests} request${overdueRequests === 1 ? '' : 's'} waiting over ${OVERDUE_HOURS} hours`
-              : `${pendingRequests} pending request${pendingRequests === 1 ? '' : 's'}, ${pendingFeedback} feedback to check`,
+        const item = { to: hub.tabs[0].to, label: hub.label, icon: hub.icon, match: hub.tabs.map((tab) => tab.to) }
+        if (!isManager) return item
+        if (hub.key === 'requests') {
+          return {
+            ...item,
+            badge: pendingRequests,
+            urgent: overdueRequests > 0,
+            badgeTitle:
+              overdueRequests > 0
+                ? `${overdueRequests} waiting over ${OVERDUE_HOURS} hours`
+                : `${pendingRequests} pending`,
+          }
         }
+        if (hub.key === 'feedback') return { ...item, badge: pendingFeedback, badgeTitle: `${pendingFeedback} to check` }
+        return item
       }),
     },
     {

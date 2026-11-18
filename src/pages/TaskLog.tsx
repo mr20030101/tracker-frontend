@@ -12,6 +12,7 @@ import type { Paginated, Project, Stage, SubmissionStatus, TaskSubmission } from
 import { BackupFormFailed, SharedTaskIdTag, StatusPill } from '../components/StatusPill'
 import { TaskTimer } from '../components/TaskTimer'
 import { timeEditMode } from '../lib/taskTimer'
+import { TIME_FLAG_OPTIONS, timeFlagFilter, type TimeFlag } from '../lib/timeFlag'
 import { Avatar } from '../components/Avatar'
 import { ActionsMenu } from '../components/ActionsMenu'
 import { Select } from '../components/Select'
@@ -88,6 +89,7 @@ function ManagerTaskLog() {
   const [status, setStatus] = useState<SubmissionStatus | ''>('')
   const [projectId, setProjectId] = useState('')
   const [leadId, setLeadId] = useState('')
+  const [timeFlag, setTimeFlag] = useState<TimeFlag>('')
   // Today only by default, so the log opens with one day's tasks instead of everything; leads pick
   // other dates (or empty both for all of them) when they need more.
   const today = toISODate(new Date())
@@ -120,7 +122,7 @@ function ManagerTaskLog() {
   })
 
   const { data, isLoading } = useQuery({
-    queryKey: ['task-submissions', stage, search, dateFrom, dateTo, status, projectId, leadId, page, sort],
+    queryKey: ['task-submissions', stage, search, dateFrom, dateTo, status, projectId, leadId, timeFlag, page, sort],
     queryFn: async () =>
       (
         await api.get<Paginated<TaskSubmission>>('/task-submissions', {
@@ -132,6 +134,7 @@ function ManagerTaskLog() {
             status: status || undefined,
             project_id: projectId || undefined,
             lead_id: leadId || undefined,
+            time_flag: timeFlag || undefined,
             page,
             sort: sort.key,
             sort_dir: sort.dir,
@@ -170,6 +173,8 @@ function ManagerTaskLog() {
         if (status) query = query.eq('status', status)
         if (projectId) query = query.eq('project_id', Number(projectId))
         if (teamIds) query = query.in('user_id', teamIds)
+        const timeFilter = timeFlagFilter(timeFlag)
+        if (timeFilter) query = query.or(timeFilter)
         return query.range(from, to)
       }
       const rows = await fetchAllPages(pageOf)
@@ -244,7 +249,7 @@ function ManagerTaskLog() {
       <TableCard
         toolbar={
           <FilterBar
-            active={[stage, search, status, projectId, leadId].filter(Boolean).length + (dateFrom !== today || dateTo !== today ? 1 : 0)}
+            active={[stage, search, status, projectId, leadId, timeFlag].filter(Boolean).length + (dateFrom !== today || dateTo !== today ? 1 : 0)}
             onReset={() => {
               setStage('')
               setSearch('')
@@ -315,6 +320,19 @@ function ManagerTaskLog() {
                   setPage(1)
                 }}
                 options={[{ value: '', label: 'All Statuses' }, ...STATUS_OPTIONS]}
+                className={toolbarControlClass}
+              />
+            </FilterField>
+            <FilterField label="Time" id="tasklog-time" set={Boolean(timeFlag)}>
+              <Select
+                id="tasklog-time"
+                fullWidth
+                value={timeFlag}
+                onChange={(value) => {
+                  setTimeFlag(value as TimeFlag)
+                  setPage(1)
+                }}
+                options={TIME_FLAG_OPTIONS}
                 className={toolbarControlClass}
               />
             </FilterField>

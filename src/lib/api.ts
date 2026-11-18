@@ -4,6 +4,7 @@ import { DEFAULT_SUPABASE_ANON_KEY, DEFAULT_SUPABASE_URL } from './supabaseConfi
 import type { ActivityEvent, ActivityLog, ContributorProfile, DashboardSummary, DailyReportRow, LeaderboardRow, Paginated, Project, ProjectBreakdown, ProjectLevel, ProjectReportRow, Resource, Stage, TaskSubmission, User } from '../types'
 import { fetchAllPages } from './fetchAll'
 import { sanitiseOrTerm } from './sanitiseOrTerm'
+import { timeFlagFilter, type TimeFlag } from './timeFlag'
 import { WORKING_DAYS, fetchDailyQuotas, fetchWeeklyTargets } from './quotas'
 import { dailyHoursFor, hoursRendered } from './hoursTarget'
 import { assignedProjectIds, fetchAssignments } from './cbProjects'
@@ -104,6 +105,8 @@ async function submissions(params: Record<string, unknown> = {}): Promise<Pagina
   if (params.date_to) query = query.lte('date', params.date_to)
   if (params.status) query = query.eq('status', params.status)
   if (params.project_id) query = query.eq('project_id', Number(params.project_id))
+  const timeFilter = timeFlagFilter(String(params.time_flag ?? '') as TimeFlag)
+  if (timeFilter) query = query.or(timeFilter)
   // One lead's team: their contributors' tasks.
   if (params.lead_id) query = query.in('user_id', await teamMemberIds(String(params.lead_id)))
   const page = Number(params.page ?? 1)
