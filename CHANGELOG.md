@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.49.0 — 2026-11-18
+
 ### Changed
 
 - **Requests and Feedback are separate menu items again.** They replace the To do group, and each has its own badge: pending requests (red when one is overdue) and feedback to check.
