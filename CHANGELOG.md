@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.50.0 — 2026-11-18
+
 ### Changed
 
 - **Bulk Import is off unless an admin turns it on.** The Bulk Import button on the Task Log and on contributors' profiles is hidden by default.
