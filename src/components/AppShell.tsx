@@ -45,6 +45,7 @@ import { fetchPendingFeedbackCount } from '../lib/taskFeedback'
 import { fetchSupportBadgeCount } from '../lib/support'
 import { AppFooter } from './AppFooter'
 import { LogTabs } from './LogTabs'
+import { MANAGER_COUNTS_POLL_MS, useManagerCountsLive } from '../lib/managerCountsLive'
 import { OfflineQueueBanner } from './OfflineQueueBanner'
 import { useTeamFeatures } from '../lib/teamFeatures'
 import { billStatus, fetchLeadBills, fetchMyBilling, manilaToday } from '../lib/billing'
@@ -273,29 +274,30 @@ export function AppShell({ children }: { children: ReactNode }) {
     }
   }
 
-  // The number on the Requests link, for the people who decide them. Refreshed after every review
-  // on the Requests page (same ['task-requests'] key prefix) and every two minutes in between.
+  // The number on the Requests link, for the people who decide them. Refreshed by the live feed
+  // whenever a request changes, with a slow poll as the safety net.
+  useManagerCountsLive(isManager)
   const { data: pendingRequests = 0 } = useQuery({
     queryKey: ['task-requests', 'pending-count'],
     queryFn: fetchPendingRequestCount,
     enabled: isManager,
-    refetchInterval: 2 * 60_000,
+    refetchInterval: MANAGER_COUNTS_POLL_MS,
   })
   // Of those, the ones waiting past OVERDUE_HOURS — what turns the badge red as a reminder.
   const { data: overdueRequests = 0 } = useQuery({
     queryKey: ['task-requests', 'overdue-count'],
     queryFn: fetchOverdueRequestCount,
     enabled: isManager,
-    refetchInterval: 5 * 60_000,
+    refetchInterval: MANAGER_COUNTS_POLL_MS,
   })
 
   // Feedback reports waiting for a lead to check them. Refreshed after every check on the Feedback
-  // page (same ['task-feedback'] key prefix) and every two minutes in between.
+  // page (same ['task-feedback'] key prefix) and by the live feed.
   const { data: pendingFeedback = 0 } = useQuery({
     queryKey: ['task-feedback', 'pending-count'],
     queryFn: fetchPendingFeedbackCount,
     enabled: isManager,
-    refetchInterval: 2 * 60_000,
+    refetchInterval: MANAGER_COUNTS_POLL_MS,
   })
 
   // New announcements addressed to you. Cleared when the Announcements page marks them seen (it

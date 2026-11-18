@@ -109,7 +109,6 @@ function Palette({ pages, onClose }: { pages: SearchPage[]; onClose: () => void 
   const { data: resources = [] } = useQuery({
     queryKey: ['resources'],
     queryFn: async () => (await api.get<Resource[]>('/resources')).data,
-    staleTime: 60_000,
   })
   const { data: announcements = [] } = useQuery({
     queryKey: ['announcements'],

@@ -59,7 +59,6 @@ export function AttendanceFormModal({
   const { data: photoRequired = false } = useQuery({
     queryKey: ['attendance-photo-required'],
     queryFn: fetchAttendancePhotoRequired,
-    staleTime: 60_000,
   })
   // A contributor filing their own sees the camera until there's a photo; one that has a photo keeps
   // it unless they retake it.

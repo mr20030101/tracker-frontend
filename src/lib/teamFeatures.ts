@@ -133,7 +133,6 @@ export function useTeamFeatures(userId: string | null | undefined): TeamFeatures
     queryKey: ['team-features', userId],
     queryFn: () => fetchTeamFeaturesFor(userId!),
     enabled: Boolean(userId),
-    staleTime: 60_000,
     refetchInterval: 30 * 60_000,
   })
   return { ...(data ?? ALL_FEATURES_OFF), loaded: isSuccess }
