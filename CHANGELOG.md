@@ -14,6 +14,12 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.51.0 — 2026-11-19
+
+### Added
+
+- **Editing someone's attendance shows their photo, lead and profile link.** When a lead or admin opens a contributor's attendance, the top of the form now shows the photo they took that day (tap it to see it bigger), who their lead is, and their email as a link to their profile.
+
 ## 8.50.0 — 2026-11-18
 
 ### Changed

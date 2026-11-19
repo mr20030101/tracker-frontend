@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, ArrowRight, Pencil, RotateCcw, Save, Send, Trash2, X } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { ArrowLeft, ArrowRight, Camera, Pencil, RotateCcw, Save, Send, Trash2, X } from 'lucide-react'
 import { errorMessage } from '../lib/api'
 import {
   CONTRIBUTOR_HOURS,
@@ -19,6 +20,8 @@ import { serverNow } from '../lib/serverClock'
 import { confirmDialog } from '../lib/dialog'
 import { fetchAttendancePhotoRequired, sendAttendanceToGoogleForm, uploadAttendancePhoto } from '../lib/attendancePhoto'
 import { CameraCapture } from './CameraCapture'
+import { useAttendancePhoto } from '../lib/useAttendancePhoto'
+import { contributorPath } from '../lib/urlRef'
 import { fromISODate, todayIso } from '../lib/week'
 import { Modal } from './Modal'
 import { Select } from './Select'
@@ -41,7 +44,8 @@ export function AttendanceFormModal({
   support = false,
   onClose,
 }: {
-  person: { id: string; name: string; email: string }
+  // leadName: shown to the lead or admin filing for them; null when they have no lead.
+  person: { id: string; name: string; email: string; leadName?: string | null }
   date: string
   existing: Attendance | null
   support?: boolean
@@ -63,6 +67,10 @@ export function AttendanceFormModal({
   // A contributor filing their own sees the camera until there's a photo; one that has a photo keeps
   // it unless they retake it.
   const hasPhoto = Boolean(existing?.photo_ref)
+  // A lead or admin editing someone's day sees the photo that person took, to check it against
+  // what they're changing. Fetched only for them, and cached with the Attendance page's copy.
+  const { url: savedPhotoUrl, error: savedPhotoError } = useAttendancePhoto(existing?.photo_ref, support)
+  const [photoExpanded, setPhotoExpanded] = useState(false)
   const [retaking, setRetaking] = useState(false)
   const showCamera = !support && (!hasPhoto || retaking)
   // When the photo is required, filing for the first time means taking one before saving. Retaking
@@ -173,11 +181,56 @@ export function AttendanceFormModal({
         }}
         className="flex flex-col gap-3 sm:gap-4"
       >
-        <div className="hidden rounded-lg bg-gray-50 px-3 py-2 text-sm sm:block">
-          <div className="font-medium text-gray-900">{person.name}</div>
-          <div className="text-xs text-gray-500">
-            {person.email} · {dayLabel}
+        <div className={`${support ? 'flex' : 'hidden sm:flex'} flex-col gap-2 rounded-lg bg-gray-50 px-3 py-2 text-sm`}>
+          <div className="flex items-center gap-3">
+            {support && (
+              <button
+                type="button"
+                onClick={() => savedPhotoUrl && setPhotoExpanded((v) => !v)}
+                disabled={!savedPhotoUrl}
+                aria-label={photoExpanded ? 'Hide attendance photo' : 'Show attendance photo'}
+                aria-expanded={savedPhotoUrl ? photoExpanded : undefined}
+                title={!hasPhoto ? 'No photo for this day' : savedPhotoError ? "This photo couldn't be loaded" : undefined}
+                className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md bg-gray-100 text-gray-400 enabled:cursor-zoom-in"
+              >
+                {savedPhotoUrl ? (
+                  <img src={savedPhotoUrl} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <Camera className={`h-5 w-5 ${hasPhoto && !savedPhotoError ? 'animate-pulse' : ''}`} aria-hidden />
+                )}
+              </button>
+            )}
+            <div className="min-w-0">
+              <div className="truncate font-medium text-gray-900">{person.name}</div>
+              <div className="text-xs text-gray-500">
+                {support ? (
+                  <Link to={contributorPath(person.email)} onClick={onClose} className="text-sky-700 hover:underline">
+                    {person.email}
+                  </Link>
+                ) : (
+                  person.email
+                )}{' '}
+                · {dayLabel}
+              </div>
+              {support && <div className="text-xs text-gray-500">Lead: {person.leadName ?? 'None'}</div>}
+              {support && (
+                <div className="text-xs text-gray-500">
+                  {!hasPhoto
+                    ? 'No attendance photo'
+                    : savedPhotoError
+                      ? errorMessage(savedPhotoError, "The photo couldn't be loaded.")
+                      : savedPhotoUrl
+                        ? photoExpanded ? 'Tap the photo to make it small' : 'Tap the photo to see it bigger'
+                        : 'Loading photo...'}
+                </div>
+              )}
+            </div>
           </div>
+          {support && photoExpanded && savedPhotoUrl && (
+            <button type="button" onClick={() => setPhotoExpanded(false)} aria-label="Hide attendance photo" className="cursor-zoom-out overflow-hidden rounded-md">
+              <img src={savedPhotoUrl} alt={`${person.name}'s attendance photo`} className="max-h-[50vh] w-full object-contain" />
+            </button>
+          )}
         </div>
 
         <nav aria-label="Attendance steps">
