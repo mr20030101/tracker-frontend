@@ -450,7 +450,12 @@ function TeamAttendance() {
       {editing && (
         <AttendanceFormModal
           key={editing.person.id}
-          person={editing.person}
+          person={{
+            ...editing.person,
+            leadName: editing.person.lead_id
+              ? (leadNames.get(editing.person.lead_id) ?? (editing.person.lead_id === user?.id ? user.name : '—'))
+              : null,
+          }}
           date={date}
           existing={editing.entry}
           support={editing.person.id !== user?.id}
