@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.52.0 — 2026-11-20
+
 ### Added
 
 - **Leads and admins can take back a task's CTS "Sent".** On a contributor's task list, a task marked Sent now has **Mark CTS not sent** in its ⋮ menu. After you confirm, the task goes back to Pending and can be sent from the CTS Form again. Useful when a task was marked by mistake or the form didn't go through.
