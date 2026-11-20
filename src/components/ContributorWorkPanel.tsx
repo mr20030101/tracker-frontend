@@ -24,7 +24,7 @@ import {
   Trash2,
   Undo2,
 } from 'lucide-react'
-import { api, supabase } from '../lib/api'
+import { api, errorMessage, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, yearMonth, toISODate, weekStartIso, formatRange, formatTime } from '../lib/week'
 import { useNow } from '../lib/useNow'
@@ -61,7 +61,7 @@ import { BadVideoReportModal } from './BadVideoReportModal'
 import { FileTimeRequestModal, type TimeRequestFormFields } from './FileTimeRequestModal'
 import { SelfFileTaskIssueModal } from './SelfFileTaskIssueModal'
 import { TIME_REQUEST_LABELS, TimeRequestReasonModal, type SelfFileRequestType, type TimeRequestMode, type TimeRequestType } from './TimeRequestReasonModal'
-import { confirmDialog } from '../lib/dialog'
+import { alertDialog, confirmDialog } from '../lib/dialog'
 import { WORKING_DAYS } from '../lib/quotas'
 import { dailyHoursFor, formatHours, hoursRendered } from '../lib/hoursTarget'
 import { fetchAssignments } from '../lib/cbProjects'
@@ -217,6 +217,21 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
       queryClient.invalidateQueries({ queryKey: ['task-submissions'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] })
     },
+  })
+
+  // A lead or admin takes back a task's "Sent" (marked by mistake, or the CTS form didn't go
+  // through), so it shows as Pending and can be sent from the CTS Form again.
+  const unsendCtsMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const { data, error } = await supabase.from('task_submissions').update({ cts_submitted_at: null }).eq('id', id).select('id')
+      if (error) throw error
+      if (!data?.length) throw new Error("You can't change this task's CTS status.")
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contributor'] })
+      queryClient.invalidateQueries({ queryKey: ['task-submissions'] })
+    },
+    onError: (error) => alertDialog(errorMessage(error, "Couldn't mark it as not sent.")),
   })
 
   const requestExtensionMutation = useMutation({
@@ -988,6 +1003,24 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                               ...timeRequestItems('reclaim', reclaim),
                               ...unclaimItems,
                               ...badVideoItems,
+                              ...(isManager && ctsEnabled && row.cts_submitted_at
+                                ? [
+                                    {
+                                      label: 'Mark CTS not sent',
+                                      icon: Undo2,
+                                      onClick: async () => {
+                                        if (
+                                          await confirmDialog(
+                                            `Mark task ${row.task_id ?? ''} as not sent to CTS? It goes back to Pending so it can be sent from the CTS Form again.`,
+                                            { confirmLabel: 'Mark not sent' },
+                                          )
+                                        ) {
+                                          unsendCtsMutation.mutate(row.id)
+                                        }
+                                      },
+                                    },
+                                  ]
+                                : []),
                               {
                                 label: 'Delete',
                                 icon: Trash2,

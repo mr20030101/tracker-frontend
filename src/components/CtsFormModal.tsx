@@ -5,6 +5,7 @@ import { supabase } from '../lib/api'
 import { toISODate } from '../lib/week'
 import type { ContributorProjectLevel, Project, ProjectLevel, Stage, TaskSubmission } from '../types'
 import { EmbeddedFormModal } from './EmbeddedFormModal'
+import { confirmDialog } from '../lib/dialog'
 import { Modal } from './Modal'
 import { StatusPill } from './StatusPill'
 
@@ -82,6 +83,20 @@ export function CtsFormModal({ email, submissions, trainer, onClose }: Props) {
   const [openForm, setOpenForm] = useState<{ url: string; ids: number[] } | null>(null)
   // Every task here has gone to CTS, so closing the form closes this too.
   const [allSubmitted, setAllSubmitted] = useState(false)
+  // Tasks marked as sent while this is open, so closing knows what's still left.
+  const [sentIds, setSentIds] = useState<Set<number>>(new Set())
+  const unsentCount = submissions.filter((s) => !s.cts_submitted_at && !sentIds.has(s.id)).length
+
+  async function close() {
+    if (unsentCount > 0) {
+      const ok = await confirmDialog(
+        `${unsentCount} task${unsentCount === 1 ? '' : 's'} still ${unsentCount === 1 ? "hasn't" : "haven't"} been sent to CTS. If you close now, ${unsentCount === 1 ? 'it' : 'they'} won't be submitted to CTS.`,
+        { title: 'Close without submitting?', confirmLabel: 'Close without submitting', cancelLabel: 'Keep it open', danger: true, confirmIcon: X },
+      )
+      if (!ok) return
+    }
+    onClose()
+  }
   // The project whose "Open CTS Form" was pressed with no task ticked.
   const [needsPick, setNeedsPick] = useState<string | null>(null)
   const groups = groupByProject(submissions)
@@ -116,6 +131,7 @@ export function CtsFormModal({ email, submissions, trainer, onClose }: Props) {
       if (error) throw error
     },
     onSuccess: (_, ids) => {
+      setSentIds((prev) => new Set([...prev, ...ids]))
       queryClient.invalidateQueries({ queryKey: ['contributor'] })
       queryClient.invalidateQueries({ queryKey: ['task-submissions'] })
       // Close once every project's tasks have gone to CTS; otherwise stay for the next project.
@@ -165,7 +181,7 @@ export function CtsFormModal({ email, submissions, trainer, onClose }: Props) {
   }
 
   return (
-    <Modal title="Tasks Ready for CTS" onClose={onClose} maxWidthClassName="max-w-4xl">
+    <Modal title="Tasks Ready for CTS" onClose={close} maxWidthClassName="max-w-4xl" hideClose>
       <p className="mb-3 text-sm text-gray-500">
         The CTS Tracker takes one entry per project, so submit each project below separately. Its Task IDs, screenshot
         links, project code, tasker level and trainer will be prefilled for you. Today's tasks are selected by default —
@@ -277,7 +293,7 @@ export function CtsFormModal({ email, submissions, trainer, onClose }: Props) {
         </span>
         <button
           type="button"
-          onClick={onClose}
+          onClick={close}
           className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
         >
           <X className="h-4 w-4" aria-hidden />
@@ -290,6 +306,7 @@ export function CtsFormModal({ email, submissions, trainer, onClose }: Props) {
           title="CTS Form"
           url={openForm.url}
           onSubmitted={() => markSubmittedMutation.mutate(openForm.ids)}
+          confirmCloseMessage={`You haven't submitted the CTS form yet. If you close it now, ${openForm.ids.length === 1 ? 'this task' : `these ${openForm.ids.length} tasks`} won't be submitted to CTS.`}
           onClose={() => {
             setOpenForm(null)
             if (allSubmitted) onClose()
