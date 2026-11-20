@@ -1,6 +1,7 @@
 import { useRef, useState, type ReactNode } from 'react'
-import { Check, ExternalLink } from 'lucide-react'
+import { Check, ExternalLink, X } from 'lucide-react'
 import { Modal } from './Modal'
+import { confirmDialog } from '../lib/dialog'
 
 // Shows a public Google Form inside the Tracker instead of sending people off to a new tab.
 // Only works for forms anyone can open: one that needs a Google sign-in can't be embedded,
@@ -17,6 +18,7 @@ export function EmbeddedFormModal({
   onClose,
   onSubmitted,
   status,
+  confirmCloseMessage,
 }: {
   title: string
   url: string
@@ -24,6 +26,11 @@ export function EmbeddedFormModal({
   onSubmitted?: () => void
   /** Shown beside the Done button, e.g. how saving the submission went. */
   status?: ReactNode
+  /**
+   * Asked before closing while the form hasn't been submitted yet. With it, the corner ✕ is left
+   * out, so Done is the only way out and always asks.
+   */
+  confirmCloseMessage?: string
 }) {
   const [loaded, setLoaded] = useState(false)
   const [openedInTab, setOpenedInTab] = useState(false)
@@ -40,6 +47,20 @@ export function EmbeddedFormModal({
     onSubmitted?.()
   }
 
+  async function close() {
+    if (confirmCloseMessage && !submitted.current) {
+      const ok = await confirmDialog(confirmCloseMessage, {
+        title: 'Close without submitting?',
+        confirmLabel: 'Close without submitting',
+        cancelLabel: 'Keep the form open',
+        danger: true,
+        confirmIcon: X,
+      })
+      if (!ok) return
+    }
+    onClose()
+  }
+
   function handleLoad() {
     setLoaded(true)
     loadCount.current += 1
@@ -47,7 +68,7 @@ export function EmbeddedFormModal({
   }
 
   return (
-    <Modal title={title} onClose={onClose} maxWidthClassName="max-w-3xl">
+    <Modal title={title} onClose={close} maxWidthClassName="max-w-3xl" hideClose={Boolean(confirmCloseMessage)}>
       <div className="relative h-[75dvh] sm:h-[70dvh] overflow-hidden rounded-lg border border-gray-200 bg-white">
         {!loaded && (
           <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-400">Loading form...</div>
@@ -76,8 +97,8 @@ export function EmbeddedFormModal({
           {status}
           <button
             type="button"
-            onClick={onClose}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
+            onClick={close}
+            className="inline-flex select-none items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600"
           >
             <Check className="h-4 w-4" aria-hidden />
             Done

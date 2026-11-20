@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useSyncExternalStore } from 'react'
 import { animate } from 'animejs'
-import { Check, CircleAlert, Trash2, TriangleAlert, X } from 'lucide-react'
+import { Check, CircleAlert, Trash2, TriangleAlert, X, type LucideIcon } from 'lucide-react'
 import { prefersReducedMotion } from './motion'
 
 // Themed stand-ins for window.confirm / window.alert. They return promises, so a call site reads
@@ -13,9 +13,12 @@ interface DialogOptions {
   cancelLabel?: string
   /** Red confirm button and a warning icon, for actions that delete or remove something. */
   danger?: boolean
+  /** The confirm button's icon, when the default (a bin for danger, a tick otherwise) would mislead. */
+  confirmIcon?: LucideIcon
 }
 
-interface DialogRequest extends Required<Omit<DialogOptions, 'cancelLabel'>> {
+interface DialogRequest extends Required<Omit<DialogOptions, 'cancelLabel' | 'confirmIcon'>> {
+  confirmIcon?: LucideIcon
   id: number
   kind: 'confirm' | 'alert'
   message: string
@@ -44,6 +47,7 @@ export function confirmDialog(message: string, options: DialogOptions = {}): Pro
     confirmLabel: options.confirmLabel ?? 'OK',
     cancelLabel: options.cancelLabel ?? 'Cancel',
     danger: options.danger ?? false,
+    confirmIcon: options.confirmIcon,
   })
 }
 
@@ -97,7 +101,7 @@ function Dialog({ request, onDone }: { request: DialogRequest; onDone: (confirme
   return (
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-4"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onDone(false)
       }}
@@ -108,7 +112,7 @@ function Dialog({ request, onDone }: { request: DialogRequest; onDone: (confirme
         aria-modal="true"
         aria-labelledby="dialog-title"
         aria-describedby="dialog-message"
-        className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-xl"
+        className="w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-6 text-center shadow-2xl"
       >
         <div
           className={`mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full ${
@@ -123,13 +127,14 @@ function Dialog({ request, onDone }: { request: DialogRequest; onDone: (confirme
         <p id="dialog-message" className="mt-2 text-sm text-gray-500">
           {request.message}
         </p>
-        <div className="mt-6 flex gap-3">
+        {/* Side by side when they fit; otherwise stacked, with the confirm button on top. */}
+        <div className="mt-6 flex flex-wrap-reverse gap-3">
           {request.kind === 'confirm' && (
             <button
               ref={cancelRef}
               type="button"
               onClick={() => onDone(false)}
-              className="inline-flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
+              className="inline-flex flex-[1_1_auto] items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
             >
               <X className="h-4 w-4 shrink-0" aria-hidden />
               {request.cancelLabel}
@@ -140,11 +145,14 @@ function Dialog({ request, onDone }: { request: DialogRequest; onDone: (confirme
             type="button"
             onClick={() => onDone(true)}
             // Explicit hex text: the dark theme remaps --color-white to a dark colour.
-            className={`inline-flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-4 py-2.5 text-sm font-semibold ${
+            className={`inline-flex flex-[1_1_auto] items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-4 py-2.5 text-sm font-semibold ${
               request.danger ? 'bg-red-600 text-[#ffffff] hover:bg-red-700' : 'bg-accent text-accent-foreground hover:opacity-90'
             }`}
           >
-            {request.danger ? <Trash2 className="h-4 w-4 shrink-0" aria-hidden /> : <Check className="h-4 w-4 shrink-0" aria-hidden />}
+            {(() => {
+              const ConfirmIcon = request.confirmIcon ?? (request.danger ? Trash2 : Check)
+              return <ConfirmIcon className="h-4 w-4 shrink-0" aria-hidden />
+            })()}
             {request.confirmLabel}
           </button>
         </div>

@@ -8,11 +8,14 @@ export function Modal({
   onClose,
   children,
   maxWidthClassName = 'max-w-md',
+  hideClose = false,
 }: {
   title: string
   onClose: () => void
   children: ReactNode
   maxWidthClassName?: string
+  /** Leaves out the corner ✕, for a modal that only closes through its own buttons (e.g. after a confirmation). */
+  hideClose?: boolean
 }) {
   const overlayRef = useRef<HTMLDivElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
@@ -54,9 +57,9 @@ export function Modal({
         >
           <div className="sticky top-0 z-10 -mx-4 mb-4 flex items-center justify-between gap-3 rounded-t-2xl bg-white px-4 pb-3 pt-4 sm:static sm:mx-0 sm:rounded-none sm:px-0 sm:pb-0 sm:pt-7">
             <h2 id={titleId} className="min-w-0 font-display text-lg font-medium text-gray-900 sm:text-xl">{title}</h2>
-            <button onClick={onClose} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-600 transition-colors duration-100 hover:bg-gray-200 hover:text-gray-900 pointer-coarse:h-11 pointer-coarse:w-11" aria-label="Close">
+            {!hideClose && <button onClick={onClose} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-600 transition-colors duration-100 hover:bg-gray-200 hover:text-gray-900 pointer-coarse:h-11 pointer-coarse:w-11" aria-label="Close">
               <X className="h-4 w-4" aria-hidden />
-            </button>
+            </button>}
           </div>
           {children}
         </div>

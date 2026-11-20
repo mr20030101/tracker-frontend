@@ -14,6 +14,20 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 8.52.0 — 2026-11-20
+
+### Added
+
+- **Leads and admins can take back a task's CTS "Sent".** On a contributor's task list, a task marked Sent now has **Mark CTS not sent** in its ⋮ menu. After you confirm, the task goes back to Pending and can be sent from the CTS Form again. Useful when a task was marked by mistake or the form didn't go through.
+
+### Changed
+
+- **Closing the CTS pop-ups asks first.** If tasks still haven't been sent, closing "Tasks Ready for CTS" or the CTS Form now warns that they won't be submitted to CTS, and you can keep it open. The ✕ in their top corner is gone, so they close only through the Close or Done button.
+
+### Fixed
+
+- **Confirmation pop-ups with long button labels fit.** The buttons stack instead of running past the pop-up's edge, the background behind a confirmation is darker and blurred so the two don't blend together, and a closing button no longer shows a bin icon unless it deletes something.
+
 ## 8.51.0 — 2026-11-19
 
 ### Added
