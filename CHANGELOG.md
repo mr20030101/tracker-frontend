@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 10.0.0 — 2026-11-23
+
 ### Changed
 
 - **Bootcamp and RST don't message or call each other.** Contributors, leads and team managers only see, message and call people in their own program, plus admins and Meera. Admins still reach everyone. An older conversation with someone in the other program stays in your list, with their name shown as Unknown, but you can't send them anything new.
