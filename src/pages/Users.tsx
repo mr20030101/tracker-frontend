@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ColumnDef, RowSelectionState } from '@tanstack/react-table'
 import { api, supabase } from '../lib/api'
 import { PROGRAM_LABELS, ROLE_LABELS } from '../lib/roles'
+import { fetchTeamFeaturesList } from '../lib/teamFeatures'
 import { useAuth } from '../lib/auth'
 import { alertDialog, confirmDialog } from '../lib/dialog'
 import { loginAs } from '../lib/loginAs'
@@ -65,14 +66,15 @@ const emptyForm = { name: '', email: '', password: '', role: 'contributor' as Us
 
 // Two pages share this: CBs (/users, contributor logins) and Leads (/leads: lead and admin logins,
 // with every team's settings below). A lead's /leads is just their own team's settings.
-export function Users({ view = 'cbs' }: { view?: 'cbs' | 'leads' }) {
+// A third, admins only: Team managers (/team-managers), with each one's program and its size.
+export function Users({ view = 'cbs' }: { view?: 'cbs' | 'leads' | 'managers' }) {
   const { user: currentUser } = useAuth()
   const isAdmin = currentUser?.role === 'admin'
   const isTeamManager = currentUser?.role === 'team_manager'
   // Admins and team managers see many teams (a team manager, their program's: the database limits it).
   const managesMany = isAdmin || isTeamManager
   const roleOptions = isAdmin ? ROLE_OPTIONS : TEAM_MANAGER_ROLE_OPTIONS
-  const pageTitle = view === 'cbs' ? 'Contributors' : managesMany ? 'Leads' : 'Team settings'
+  const pageTitle = view === 'cbs' ? 'Contributors' : view === 'managers' ? 'Team managers' : managesMany ? 'Leads' : 'Team settings'
   usePageTitle(pageTitle)
   const queryClient = useQueryClient()
   const [adding, setAdding] = useState(false)
@@ -101,7 +103,10 @@ export function Users({ view = 'cbs' }: { view?: 'cbs' | 'leads' }) {
 
   const everyone = useMemo(() => (data ?? []).filter((u) => u.id !== currentUser?.id), [data, currentUser?.id])
   const people = useMemo(
-    () => everyone.filter((u) => (view === 'leads' ? u.role !== 'contributor' : u.role === 'contributor')),
+    () =>
+      everyone.filter((u) =>
+        view === 'managers' ? u.role === 'team_manager' : view === 'leads' ? u.role !== 'contributor' && u.role !== 'team_manager' : u.role === 'contributor',
+      ),
     [everyone, view],
   )
   const leads = useMemo(() => (data ?? []).filter((u) => u.role === 'lead'), [data])
@@ -132,6 +137,30 @@ export function Users({ view = 'cbs' }: { view?: 'cbs' | 'leads' }) {
     enabled: isAdmin,
     refetchInterval: 60_000,
   })
+  // Team managers page: each program's leads (by their team's program) and active contributors.
+  const { data: teamFeatures } = useQuery({
+    queryKey: ['team-features-list'],
+    queryFn: fetchTeamFeaturesList,
+    enabled: view === 'managers' && isAdmin,
+  })
+  const programSize = useMemo(() => {
+    const size = new Map<'bootcamp' | 'rst', { leads: number; cbs: number }>([
+      ['bootcamp', { leads: 0, cbs: 0 }],
+      ['rst', { leads: 0, cbs: 0 }],
+    ])
+    const programByLead = new Map<string, 'bootcamp' | 'rst'>()
+    for (const u of data ?? []) {
+      if (u.role !== 'lead' || !u.is_active) continue
+      const program = teamFeatures?.get(u.id)?.program ?? 'bootcamp'
+      programByLead.set(u.id, program)
+      size.get(program)!.leads += 1
+    }
+    for (const u of data ?? []) {
+      const program = u.role === 'contributor' && u.is_active && u.lead_id ? programByLead.get(u.lead_id) : undefined
+      if (program) size.get(program)!.cbs += 1
+    }
+    return size
+  }, [data, teamFeatures])
   const sessionFlagById = useMemo(() => new Map(sessionFlags.map((flag) => [flag.user_id, flag])), [sessionFlags])
   const projectNamesByLead = useMemo(() => {
     const names = new Map<string, string[]>()
@@ -314,7 +343,7 @@ export function Users({ view = 'cbs' }: { view?: 'cbs' | 'leads' }) {
 
   function openAdd() {
     setError(null)
-    if (managesMany) setForm((f) => ({ ...f, role: view === 'leads' ? 'lead' : 'contributor' }))
+    if (managesMany) setForm((f) => ({ ...f, role: view === 'managers' && isAdmin ? 'team_manager' : view === 'leads' ? 'lead' : 'contributor' }))
     setAdding(true)
   }
 
@@ -477,8 +506,32 @@ export function Users({ view = 'cbs' }: { view?: 'cbs' | 'leads' }) {
                 )
               },
             } satisfies ColumnDef<User, any>,
+            // A team manager's row: how big their program is.
+            ...(view === 'managers'
+              ? [
+                  {
+                    id: 'program-size',
+                    accessorFn: (u: User) => (u.program ? (programSize.get(u.program)?.leads ?? 0) : -1),
+                    header: 'Program',
+                    cell: ({ row }) => {
+                      const size = row.original.program ? programSize.get(row.original.program) : undefined
+                      if (!size) return <span className="text-xs text-gray-400">No program yet</span>
+                      return (
+                        <div className="whitespace-nowrap text-sm">
+                          <span className="font-medium text-gray-900">
+                            {size.leads} {size.leads === 1 ? 'lead' : 'leads'}
+                          </span>
+                          <div className="text-xs text-gray-500">
+                            {size.cbs} active {size.cbs === 1 ? 'CB' : 'CBs'}
+                          </div>
+                        </div>
+                      )
+                    },
+                  } satisfies ColumnDef<User, any>,
+                ]
+              : []),
             // A lead has no lead of their own: the Leads page shows their team instead.
-            ...(view === 'cbs'
+            ...(view === 'managers' ? [] : view === 'cbs'
               ? [
                 {
                   id: 'lead',
@@ -652,7 +705,7 @@ export function Users({ view = 'cbs' }: { view?: 'cbs' | 'leads' }) {
         },
       },
     ],
-    [isAdmin, managesMany, roleOptions, programMutation, view, leadOptions, leadNameById, teamByLead, projectNamesByLead, sessionFlagById, currentUser, roleMutation, leadMutation, toggleActiveMutation, deleteMutation],
+    [isAdmin, managesMany, roleOptions, programMutation, programSize, view, leadOptions, leadNameById, teamByLead, projectNamesByLead, sessionFlagById, currentUser, roleMutation, leadMutation, toggleActiveMutation, deleteMutation],
   )
 
   const bulkBusy = bulkMutation.isPending
@@ -680,7 +733,9 @@ export function Users({ view = 'cbs' }: { view?: 'cbs' | 'leads' }) {
             <FoldText text={pageTitle} />
           </h1>
           <p className="text-sm text-gray-500">
-            {view === 'leads'
+            {view === 'managers'
+              ? 'Each team manager runs one program, Bootcamp or RST: every lead whose team is in it, and their contributors.'
+              : view === 'leads'
               ? 'Lead and admin logins, and what each team uses in the Tracker.'
               : managesMany
                 ? 'Manage CB logins, roles, and passwords.'

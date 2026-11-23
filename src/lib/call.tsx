@@ -18,6 +18,7 @@ import {
   type CallDevicePrefs,
   type SpeakerMode,
 } from './callDevices'
+import { useMessaging } from './messagingContext'
 
 // One-to-one voice calls, started from a conversation in Messages. The call itself is a direct
 // WebRTC audio connection (relayed through Cloudflare TURN when needed, see lib/voice); a shared
@@ -110,6 +111,13 @@ export function CallProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
   const myId = user?.id ?? null
   const queryClient = useQueryClient()
+  // The people you can reach (directory(): your own program, admins and Meera). A ring from anyone
+  // else is turned away: the call channel is shared, so the database can't stop it.
+  const { usersById } = useMessaging()
+  const reachableRef = useRef(usersById)
+  useEffect(() => {
+    reachableRef.current = usersById
+  })
   const [state, setState] = useState<CallState>(IDLE)
   const [muted, setMuted] = useState(false)
   const mutedRef = useRef(muted)
@@ -267,6 +275,12 @@ export function CallProvider({ children }: { children: ReactNode }) {
       const c = call.current
       const { signal } = msg
       if (signal.kind === 'ring') {
+        // Someone outside your program (not in your directory, once it has loaded): they hear "busy".
+        const reachable = reachableRef.current
+        if (reachable.size > 0 && !reachable.has(msg.from)) {
+          send(msg.callId, msg.from, { kind: 'busy' })
+          return
+        }
         // Already on (or setting up) a call: they hear "busy".
         if (c) {
           send(msg.callId, msg.from, { kind: 'busy' })

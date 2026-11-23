@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { ArrowRight, CalendarDays, ChevronLeft, ChevronRight, MessageSquare, User as UserIcon } from 'lucide-react'
 import type { ColumnDef } from '@tanstack/react-table'
 import { api } from '../lib/api'
+import { useAuth } from '../lib/auth'
 import { fetchLeadTeam, type TeamMember } from '../lib/leadTeam'
 import { isOnline } from '../lib/presence'
 import { startOfWeek, toISODate, formatRange } from '../lib/week'
@@ -34,6 +35,7 @@ function StatTile({ label, children, hint }: { label: string; children: ReactNod
 export function LeadTeam() {
   const { leadId = '' } = useParams()
   const navigate = useNavigate()
+  const { user: currentUser } = useAuth()
   const [anchorDate, setAnchorDate] = useState(() => new Date())
   const weekStart = toISODate(startOfWeek(anchorDate))
   const isCurrentWeek = weekStart === toISODate(startOfWeek(new Date()))
@@ -304,7 +306,8 @@ export function LeadTeam() {
         </>
       )}
 
-      <SignedInDevices userId={lead.id} name={lead.name} />
+      {/* Sessions are admins-only (list_user_sessions); team managers open this page too. */}
+      {currentUser?.role === 'admin' && <SignedInDevices userId={lead.id} name={lead.name} />}
     </div>
   )
 }

@@ -123,8 +123,12 @@ export function Feedback() {
       <TableCard
         toolbar={
           <FilterBar
-            active={search ? 1 : 0}
-            onReset={() => setSearch('')}
+            // The status tabs count too, as on Requests and Support: Reset goes back to Pending.
+            active={(search ? 1 : 0) + (statusFilter !== 'pending' ? 1 : 0)}
+            onReset={() => {
+              setSearch('')
+              setStatusFilter('pending')
+            }}
             actions={
               isManager && (
                 <FilterAction onClick={exportRows} disabled={rows.length === 0}>
