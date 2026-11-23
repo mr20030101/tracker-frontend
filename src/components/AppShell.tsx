@@ -25,6 +25,7 @@ import {
   SlidersHorizontal,
   ReceiptText,
   LifeBuoy,
+  BriefcaseBusiness,
 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { prefersReducedMotion } from '../lib/motion'
@@ -135,6 +136,7 @@ function navSections(
           ...(messagingEnabled ? [{ to: '/messages', label: 'Messages', icon: MessageCircle }] : []),
           { to: '/announcements', label: 'Announcements', icon: Megaphone, badge: unreadAnnouncements },
           { to: '/users', label: 'Contributors', icon: UsersIcon },
+          ...(isAdmin ? [{ to: '/team-managers', label: 'Team managers', icon: BriefcaseBusiness }] : []),
           { to: '/leads', label: seesManyTeams(role) ? 'Leads' : 'Team settings', icon: UserCog },
           { to: '/projects', label: 'Projects', icon: FolderKanban },
           ...(switches.hiring ? [{ to: '/hiring', label: 'Hiring', icon: UserPlus }] : []),

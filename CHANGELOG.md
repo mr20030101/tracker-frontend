@@ -14,6 +14,20 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Changed
+
+- **Bootcamp and RST don't message or call each other.** Contributors, leads and team managers only see, message and call people in their own program, plus admins and Meera. Admins still reach everyone. An older conversation with someone in the other program stays in your list, with their name shown as Unknown, but you can't send them anything new.
+
+### Fixed
+
+- **Team managers don't see the admins-only Signed-in devices card** on a lead's team page, which only showed them an error.
+- **Reset on the Feedback page also resets the Pending / Valid / Invalid / All tabs.** Picking another tab now lights up Reset, and Reset takes you back to Pending, as on Requests and Support.
+- **Leads and team managers aren't asked for a Remotask ID.** The "Add your Remotask ID" prompt that blocked the app now only shows for contributors (and admins).
+
+### Added
+
+- **A Team managers page for admins.** Under Team, Team managers lists each team manager with their program and how many leads and active contributors it has. Change someone's program or role from their row, or press Add Login to make a new team manager. Team managers no longer appear on the Leads page.
+
 ## 9.0.0 — 2026-11-23
 
 ### Added

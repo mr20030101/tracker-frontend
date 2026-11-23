@@ -89,6 +89,7 @@ function ProtectedLayout() {
         <Route path="/contributors/:email" element={<CbProfile />} />
         {isManager && <Route path="/users" element={<Users />} />}
         {isManager && <Route path="/leads" element={<Users view="leads" />} />}
+        {isAdmin && <Route path="/team-managers" element={<Users view="managers" />} />}
         {isManager && <Route path="/projects" element={<Projects />} />}
         {isManager && switches.hiring && <Route path="/hiring" element={<Hiring />} />}
         {isManager && switches.data_quality && <Route path="/data-quality" element={<DataQuality />} />}
@@ -101,8 +102,9 @@ function ProtectedLayout() {
         <Route path="*" element={<NotFound />} />
       </Routes>
       </Suspense>
-      {/* Everyone needs a valid Remotask ID on file; this blocks the app until they've saved one. */}
-      {!isValidRemotasksId(user.remotasks_id) && <RemotasksIdGate />}
+      {/* Requests are filed with Scale under a contributor's Remotask ID, so this blocks the app until
+          they've saved one. Leads and team managers don't need one. */}
+      {user.role !== 'lead' && user.role !== 'team_manager' && !isValidRemotasksId(user.remotasks_id) && <RemotasksIdGate />}
     </AppShell>
   )
 }
