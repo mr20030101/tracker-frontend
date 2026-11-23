@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 10.1.0 — 2026-11-23
+
 ### Fixed
 
 - **The "new version available" banner no longer gets stuck when running the Tracker locally.** On the development server it kept coming back after every reload once the version number changed; it now only checks on the live site, where Reload clears it.
