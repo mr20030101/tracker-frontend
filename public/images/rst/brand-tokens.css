@@ -1,0 +1,9 @@
+/* RST — brand tokens */
+:root {
+  --rst-ink: #32373F;
+  --rst-sub: #5A626D;
+  --rst-accent: #F5B301;
+  --rst-accent-text: #8A6200;
+  --rst-light: #F6F7F8;
+  --rst-mist: #D8DCE1;
+}
