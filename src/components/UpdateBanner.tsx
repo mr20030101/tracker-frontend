@@ -14,6 +14,10 @@ export function UpdateBanner() {
   const [dismissed, setDismissed] = useState<string | null>(null)
 
   useEffect(() => {
+    // Not on the dev server: it answers /version.json live from package.json, but this tab's
+    // APP_VERSION stays at what the server started with, so after a release bump the prompt came
+    // back on every reload and never went away. The dev server reloads changed code by itself.
+    if (import.meta.env.DEV) return
     let cancelled = false
 
     async function check() {

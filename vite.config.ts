@@ -5,7 +5,7 @@ import { defineConfig, type Plugin } from 'vite'
 
 // Publishes the app's version at /version.json, so an open tab can tell a newer release has
 // been deployed (src/components/UpdateBanner.tsx). Written into every build; the dev server
-// answers it live from package.json, so bumping the version there shows the prompt too.
+// answers it live from package.json, though the banner doesn't ask in dev (see UpdateBanner).
 function versionFile(): Plugin {
   const read = () => JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')).version as string
   const body = () => JSON.stringify({ version: read() })
