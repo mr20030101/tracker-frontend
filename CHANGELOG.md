@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 10.0.1 — 2026-11-23
+
 ### Fixed
 
 - **The dashboard's message button goes to a real admin, not Meera.** Leads and team managers saw "Message Meera" because the FAQ bot is stored as an admin; it now opens a chat with an admin, and doesn't show if there's none.
