@@ -255,8 +255,9 @@ export function Projects() {
     addProjectLeadMutation.mutate({ projectId: assignTarget.id, leadId: selectedLeadId })
   }
 
+  // A team manager only sees their program's projects (is_project_lead in the database), and runs them all.
   function canManage(project: Project) {
-    return isAdmin || (leadIdsByProject.get(project.id) ?? []).includes(currentUser?.id ?? '')
+    return isAdmin || currentUser?.role === 'team_manager' || (leadIdsByProject.get(project.id) ?? []).includes(currentUser?.id ?? '')
   }
 
   return (

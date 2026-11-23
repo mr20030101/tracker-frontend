@@ -23,10 +23,10 @@ import { recordProfileView, useProfileViewCount } from '../lib/profileViews'
 import { useFeaturedBadges } from '../lib/achievements'
 import { usePageTitle } from '../lib/usePageTitle'
 import { fetchLeadShift, shiftLabel } from '../lib/taskRequests'
+import { MANAGER_ROLES } from '../lib/roles'
 
 const LEVEL_OPTIONS: ProjectLevel[] = ['contributor', 'l0', 'l1', 'l10']
 
-const MANAGER_ROLES = ['admin', 'lead']
 
 const LEVEL_PANEL_WIDTH = 160
 const LEVEL_PANEL_EDGE_GAP = 8

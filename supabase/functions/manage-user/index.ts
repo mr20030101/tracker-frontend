@@ -70,18 +70,39 @@ Deno.serve(async (request) => {
     const { data: caller } = await admin.auth.getUser(token)
     if (!caller.user) return errorResponse('Unauthorized: invalid access token.', 401)
 
-    const { data: profile } = await admin.from('profiles').select('role, is_active, name, email').eq('id', caller.user.id).single()
-    if (!profile?.is_active || !['admin', 'lead'].includes(profile.role)) {
-        return errorResponse('Forbidden: only active admins or leads can manage users.', 403)
+    const { data: profile } = await admin.from('profiles').select('role, is_active, name, email, program').eq('id', caller.user.id).single()
+    if (!profile?.is_active || !['admin', 'team_manager', 'lead'].includes(profile.role)) {
+        return errorResponse('Forbidden: only active admins, team managers or leads can manage users.', 403)
+    }
+    // A team manager runs one program (Bootcamp or RST); without one set they manage no one.
+    const isTeamManager = profile.role === 'team_manager'
+    if (isTeamManager && !profile.program) {
+        return errorResponse('Forbidden: an admin has not given you a program yet.', 403)
+    }
+
+    // The program of a lead's team, or of a contributor's lead's team (as team_program_of() in SQL).
+    async function programOf(target: { id: string; role: string; lead_id: string | null }): Promise<string | null> {
+        const teamLead = target.role === 'lead' ? target.id : target.role === 'contributor' ? target.lead_id : null
+        if (!teamLead) return null
+        const { data: team } = await admin.from('team_features').select('program').eq('lead_id', teamLead).maybeSingle()
+        return team?.program ?? 'bootcamp'
+    }
+
+    // Whether this lead's team is in the calling team manager's program.
+    async function isLeadInMyProgram(leadId: string): Promise<boolean> {
+        const { data: lead } = await admin.from('profiles').select('id, role, lead_id').eq('id', leadId).maybeSingle()
+        return lead?.role === 'lead' && (await programOf(lead)) === profile!.program
     }
 
     // Whether the caller may reset the password of, or delete, this account. An admin may act on
-    // anyone; a lead only on a contributor attached to them. Without this, any lead could set an
-    // admin's password and sign in as them.
+    // anyone; a team manager on the leads and contributors in their program; a lead only on a
+    // contributor attached to them. Without this, any lead could set an admin's password and sign in as them.
     async function canManageAccount(targetId: string): Promise<boolean> {
         if (profile!.role === 'admin') return true
-        const { data: target } = await admin.from('profiles').select('role, lead_id').eq('id', targetId).maybeSingle()
-        return target?.role === 'contributor' && target.lead_id === caller.user!.id
+        const { data: target } = await admin.from('profiles').select('id, role, lead_id').eq('id', targetId).maybeSingle()
+        if (!target) return false
+        if (isTeamManager) return ['contributor', 'lead'].includes(target.role) && (await programOf(target)) === profile!.program
+        return target.role === 'contributor' && target.lead_id === caller.user!.id
     }
 
     // Account and hiring actions run as the service role, which the audit_logs triggers can't
@@ -378,7 +399,7 @@ Deno.serve(async (request) => {
         if (!body.id) return errorResponse('A user id is required.', 400)
         if (body.id === caller.user.id) return errorResponse('You cannot delete your own account.', 422)
         if (!(await canManageAccount(body.id))) {
-            return errorResponse('Forbidden: a lead can only delete contributors on their own team.', 403)
+            return errorResponse('Forbidden: you can only delete people on your own team or in your program.', 403)
         }
 
         // Read before deleting: afterwards there is no profile left to name in the log.
@@ -398,7 +419,7 @@ Deno.serve(async (request) => {
         }
         if (!targetId) return errorResponse('Target Auth user was not found.', 404)
         if (!(await canManageAccount(targetId))) {
-            return errorResponse('Forbidden: a lead can only reset passwords for contributors on their own team.', 403)
+            return errorResponse('Forbidden: you can only reset passwords for people on your own team or in your program.', 403)
         }
         const { data, error } = await admin.auth.admin.updateUserById(targetId, { password: body.password })
         if (error) return errorResponse(`Password reset failed: ${error.message}`, 400)
@@ -434,9 +455,24 @@ Deno.serve(async (request) => {
     if (typedPassword && typedPassword.length < 8) return errorResponse('A temporary password needs at least 8 characters.', 400)
     const password = typedPassword || generateTemporaryPassword()
 
-    // Only an admin caller may hand out a non-contributor role — a lead's
-    // logins always come out as contributors, regardless of what was sent.
-    const role = profile.role === 'admin' ? (body.role ?? 'contributor') : 'contributor'
+    // An admin may hand out any role; a team manager, contributor or lead; a lead's logins always
+    // come out as contributors, regardless of what was sent.
+    const allowedRoles = profile.role === 'admin' ? ['contributor', 'lead', 'team_manager', 'admin'] : isTeamManager ? ['contributor', 'lead'] : ['contributor']
+    const role = allowedRoles.includes(body.role) ? body.role : 'contributor'
+
+    // A team manager's new contributor goes on one of their program's leads; a new team manager
+    // needs a program from the admin.
+    let leadId: string | null = profile.role === 'lead' ? caller.user.id : null
+    if (role === 'contributor' && (isTeamManager || (profile.role === 'admin' && body.lead_id))) {
+        leadId = typeof body.lead_id === 'string' ? body.lead_id : null
+        if (isTeamManager && (!leadId || !(await isLeadInMyProgram(leadId)))) {
+            return errorResponse('Pick a lead from your program for this contributor.', 400)
+        }
+    }
+    const program = role === 'team_manager' ? body.program : null
+    if (role === 'team_manager' && !['bootcamp', 'rst'].includes(program)) {
+        return errorResponse('Choose Bootcamp or RST for the new team manager.', 400)
+    }
 
     const { data: existingUsers } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 })
     const existingUser = existingUsers.users.find((user) => user.email?.toLowerCase() === body.email.toLowerCase())
@@ -473,13 +509,22 @@ Deno.serve(async (request) => {
         email: body.email,
         role,
         shift: body.shift ?? null,
-        // A lead's new login joins their own team, so they can manage it afterwards (see canManageAccount).
-        ...(profile.role === 'lead' ? { lead_id: caller.user.id } : {}),
+        // A lead's new login joins their own team, so they can manage it afterwards (see canManageAccount);
+        // a team manager's joins the lead they picked.
+        ...(leadId ? { lead_id: leadId } : {}),
+        ...(role === 'team_manager' ? { program } : {}),
         is_active: true,
         must_change_password: true,
         updated_at: new Date().toISOString(),
     })
     if (profileError) return errorResponse(`Profile update failed: ${profileError.message}`, 400)
+    // A lead made by a team manager runs a team in the manager's program.
+    if (role === 'lead' && isTeamManager && userId) {
+        const { error: teamError } = await admin
+            .from('team_features')
+            .upsert({ lead_id: userId, program: profile.program, updated_by: caller.user.id, updated_at: new Date().toISOString() })
+        if (teamError) return errorResponse(`The lead was created, but their team couldn't be put in your program: ${teamError.message}`, 400)
+    }
     if (userId) await recordTemporaryPassword(userId)
     await audit(
         existingUser ? 'account_updated' : 'account_created',

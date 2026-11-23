@@ -3,8 +3,8 @@ import { useAuth } from '../lib/auth'
 import { hubFor, logHubs } from '../lib/logHubs'
 import { useAppSwitches } from '../lib/appSettings'
 import { SegmentedTabs } from './TableToolbar'
+import { MANAGER_ROLES } from '../lib/roles'
 
-const MANAGER_ROLES = ['admin', 'lead']
 
 /**
  * The tabs of the Logs group (Tasks, Reports) the current page belongs to, drawn by the app

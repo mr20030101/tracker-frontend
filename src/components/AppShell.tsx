@@ -49,10 +49,11 @@ import { LogTabs } from './LogTabs'
 import { useAppSwitches, type AppSwitches } from '../lib/appSettings'
 import { MANAGER_COUNTS_POLL_MS, useManagerCountsLive } from '../lib/managerCountsLive'
 import { OfflineQueueBanner } from './OfflineQueueBanner'
-import { useTeamFeatures } from '../lib/teamFeatures'
+import { auditsAllowed, useTeamFeatures } from '../lib/teamFeatures'
 import { billStatus, fetchLeadBills, fetchMyBilling, manilaToday } from '../lib/billing'
+import { MANAGER_ROLES } from '../lib/roles'
+import { seesManyTeams } from '../lib/roles'
 
-const MANAGER_ROLES = ['admin', 'lead']
 
 function navSections(
   isManager: boolean,
@@ -74,6 +75,7 @@ function navSections(
   supportBadge: number,
   // What an admin has switched off on App Settings.
   switches: AppSwitches,
+  role: string | undefined,
 ): {
   label: string
   // `urgent`: the badge turns red with `badgeTitle` explaining why (overdue requests).
@@ -133,10 +135,11 @@ function navSections(
           ...(messagingEnabled ? [{ to: '/messages', label: 'Messages', icon: MessageCircle }] : []),
           { to: '/announcements', label: 'Announcements', icon: Megaphone, badge: unreadAnnouncements },
           { to: '/users', label: 'Contributors', icon: UsersIcon },
-          { to: '/leads', label: isAdmin ? 'Leads' : 'Team settings', icon: UserCog },
+          { to: '/leads', label: seesManyTeams(role) ? 'Leads' : 'Team settings', icon: UserCog },
           { to: '/projects', label: 'Projects', icon: FolderKanban },
           ...(switches.hiring ? [{ to: '/hiring', label: 'Hiring', icon: UserPlus }] : []),
-          {
+          // Billing is between the admins and each lead; team managers have no bills.
+          ...(role === 'team_manager' ? [] : [{
             to: '/billing',
             label: 'Billing',
             icon: ReceiptText,
@@ -147,7 +150,7 @@ function navSections(
               : overdueBills
                 ? 'Your Supabase share is overdue'
                 : `${unpaidBills} unpaid Supabase bill${unpaidBills === 1 ? '' : 's'}`,
-          },
+          }]),
           ...(isAdmin ? [{ to: '/app-settings', label: 'App Settings', icon: SlidersHorizontal }] : []),
         ]
         : [
@@ -414,9 +417,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   const activePill = useStretchyPill(navListRef, 'a[aria-current="page"]', 'y', [location.pathname, rail, docked, menuOpen])
 
   const ownProfilePath = user ? contributorPath(user.email) : '/'
-  const { attendanceEnabled, messagingEnabled } = useTeamFeatures(user?.id)
-  const switches = useAppSwitches(Boolean(user))
-  const sections = navSections(isManager, isAdmin, attendanceEnabled, messagingEnabled, pendingRequests, overdueRequests, pendingFeedback, unreadAnnouncements, isAdmin ? billsToConfirm : unpaidBills.length, overdueBills, isAdmin, supportBadge, switches)
+  const { attendanceEnabled, messagingEnabled, program, loaded: teamLoaded } = useTeamFeatures(user?.id)
+  const appSwitches = useAppSwitches(Boolean(user))
+  // Audits only for the RST team (and admins); in the menu, only once the team is known.
+  const switches = { ...appSwitches, audits: appSwitches.audits && auditsAllowed(user, program, teamLoaded) && (user?.role !== 'lead' || teamLoaded) }
+  const sections = navSections(isManager, isAdmin, attendanceEnabled, messagingEnabled, pendingRequests, overdueRequests, pendingFeedback, unreadAnnouncements, isAdmin ? billsToConfirm : unpaidBills.length, overdueBills, isAdmin, supportBadge, switches, user?.role)
   const isCurrent = (item: { to: string; match?: string[] }) => (item.match ?? [item.to]).includes(location.pathname)
   const searchPages = [
     ...sections.flatMap((section) =>

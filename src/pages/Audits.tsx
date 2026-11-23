@@ -11,18 +11,23 @@ import { remotasksDiffViewerUrl } from '../lib/remotasks'
 import { addTaskAudit, deleteTaskAudit, fetchTaskAudits, STAGE_LABELS, updateTaskAudit, type TaskAudit, type TaskAuditInput } from '../lib/taskAudits'
 import { contributorPath } from '../lib/urlRef'
 import { usePageTitle } from '../lib/usePageTitle'
-import type { User } from '../types'
+import type { Project, User } from '../types'
+import { fetchProjectLeads } from '../lib/cbProjects'
+import { fetchTeamFeaturesList } from '../lib/teamFeatures'
 import { AuditEntryModal } from '../components/AuditEntryModal'
 import { Avatar } from '../components/Avatar'
 import { DataTable } from '../components/DataTable'
 import { Select } from '../components/Select'
 import { CopyButton } from '../components/SubmissionDetailsModal'
 import { FilterBar, FilterField, SearchInput, SegmentedTabs, toolbarControlClass } from '../components/TableToolbar'
+import { seesManyTeams } from '../lib/roles'
+import { useManagedLeadIds } from '../lib/useManagedLeadIds'
 
 type AuditFilter = 'all' | 'errors' | 'low'
 
 interface Row extends TaskAudit {
-  cb: User
+  // The audited person's profile, for older audits made from a logged task; null for typed-in names.
+  cb: User | null
 }
 
 const EVERYONE = 'everyone'
@@ -56,10 +61,13 @@ function ScorePill({ score }: { score: number }) {
 export function Audits() {
   usePageTitle('Audits')
   const { user } = useAuth()
-  const isAdmin = user?.role === 'admin'
+  // The RST team manager gets the admin's view of every RST team (the database limits them to RST).
+  const isAdmin = seesManyTeams(user?.role)
+  const isTeamManager = user?.role === 'team_manager'
+  const managedLeadIds = useManagedLeadIds(user?.role)
   const queryClient = useQueryClient()
   const [leadId, setLeadId] = useState(isAdmin ? EVERYONE : (user?.id ?? ''))
-  const [cbFilter, setCbFilter] = useState('')
+  const [personFilter, setPersonFilter] = useState('')
   const [filter, setFilter] = useState<AuditFilter>('all')
   const [search, setSearch] = useState('')
   // null: closed; 'new': adding one; otherwise the audit being edited.
@@ -74,52 +82,107 @@ export function Audits() {
     queryKey: ['task-audits'],
     queryFn: fetchTaskAudits,
   })
+  const { data: projects = [] } = useQuery({
+    queryKey: ['projects'],
+    queryFn: async () => (await api.get<Project[]>('/projects')).data,
+  })
+  const { data: projectLeads = [] } = useQuery({ queryKey: ['project-leads', 'all'], queryFn: fetchProjectLeads })
+
+
+  // Audits are for the RST team: an admin's team filter lists the RST teams only.
+  const { data: teamFeatures } = useQuery({ queryKey: ['team-features-list'], queryFn: fetchTeamFeaturesList, enabled: isAdmin && !isTeamManager })
+  const rstLeadIds = useMemo(
+    () =>
+      new Set(
+        isTeamManager
+          ? managedLeadIds
+          : isAdmin
+            ? [...(teamFeatures ?? new Map()).entries()].filter(([, f]) => f.program === 'rst').map(([id]) => id)
+            : user
+              ? [user.id]
+              : [],
+      ),
+    [isAdmin, isTeamManager, managedLeadIds, teamFeatures, user],
+  )
+  // The projects audits are filed on: a lead's own; for an admin, the RST teams' projects.
+  const auditProjects = useMemo(() => {
+    const ids = new Set(projectLeads.filter((row) => (isAdmin ? rstLeadIds.has(row.lead_id) : row.lead_id === user?.id)).map((row) => row.project_id))
+    return projects.filter((p) => ids.has(p.id))
+  }, [isAdmin, projects, projectLeads, rstLeadIds, user?.id])
 
   const leadOptions = useMemo(
     () => [
-      { value: EVERYONE, label: 'Every team' },
-      ...(users ?? []).filter((u) => u.role === 'lead' || u.role === 'admin').map((u) => ({ value: u.id, label: `${u.name}'s team` })),
+      { value: EVERYONE, label: 'Every RST team' },
+      ...(users ?? []).filter((u) => u.role === 'lead' && rstLeadIds.has(u.id)).map((u) => ({ value: u.id, label: `${u.name}'s team` })),
     ],
-    [users],
+    [users, rstLeadIds],
   )
 
+  const usersById = useMemo(() => new Map((users ?? []).map((u) => [u.id, u])), [users])
   const team = useMemo(
-    () => (users ?? []).filter((u) => u.role === 'contributor' && !u.is_bot && (leadId === EVERYONE || u.lead_id === leadId)),
-    [users, leadId],
+    () =>
+      (users ?? []).filter(
+        (u) => u.role === 'contributor' && !u.is_bot && u.lead_id !== null && rstLeadIds.has(u.lead_id) && (leadId === EVERYONE || u.lead_id === leadId),
+      ),
+    [users, leadId, rstLeadIds],
   )
 
+  // An admin's team filter: audits on that lead's projects, saved by them, or of their CBs.
+  // "Every RST team" means any of the RST leads; older Bootcamp audits stay out.
   const teamRows = useMemo<Row[]>(() => {
-    const byId = new Map(team.map((u) => [u.id, u]))
+    const leads = leadId === EVERYONE ? rstLeadIds : new Set([leadId])
+    const leadProjects = new Set(projectLeads.filter((row) => leads.has(row.lead_id)).map((row) => row.project_id))
     return audits.flatMap((a) => {
-      const cb = byId.get(a.cb_user_id)
-      return cb ? [{ ...a, cb }] : []
+      const cb = (a.cb_user_id && usersById.get(a.cb_user_id)) || null
+      const onTeam =
+        (a.audited_by !== null && leads.has(a.audited_by)) ||
+        (a.project_id !== null && leadProjects.has(a.project_id)) ||
+        (cb?.lead_id != null && leads.has(cb.lead_id))
+      return onTeam ? [{ ...a, cb }] : []
     })
-  }, [audits, team])
+  }, [audits, usersById, projectLeads, leadId, rstLeadIds])
 
-  const cbOptions = useMemo(() => {
-    const counts = new Map<string, number>()
-    for (const r of teamRows) counts.set(r.cb.id, (counts.get(r.cb.id) ?? 0) + 1)
-    return [{ value: '', label: 'All CBs' }, ...team.map((cb) => ({ value: cb.id, label: `${cb.name} (${counts.get(cb.id) ?? 0})` }))]
-  }, [teamRows, team])
+  const personKey = (name: string) => name.trim().toLowerCase()
+  const personOptions = useMemo(() => {
+    const people = new Map<string, { name: string; count: number }>()
+    for (const r of teamRows) {
+      const entry = people.get(personKey(r.cb_name)) ?? { name: r.cb_name, count: 0 }
+      entry.count += 1
+      people.set(personKey(r.cb_name), entry)
+    }
+    return [
+      { value: '', label: 'Everyone' },
+      ...[...people.entries()]
+        .sort((a, b) => a[1].name.localeCompare(b[1].name))
+        .map(([key, { name, count }]) => ({ value: key, label: `${name} (${count})` })),
+    ]
+  }, [teamRows])
+
+  // Offered while typing a name: the team's CBs and everyone audited before.
+  const nameSuggestions = useMemo(
+    () => [...new Set([...team.map((u) => u.name), ...audits.map((a) => a.cb_name)].map((n) => n.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+    [team, audits],
+  )
 
   const withErrors = teamRows.filter((r) => r.errors)
   const low = teamRows.filter((r) => r.score <= 3)
   const averageScore = teamRows.length ? teamRows.reduce((sum, r) => sum + r.score, 0) / teamRows.length : null
-  const cbsAudited = new Set(teamRows.map((r) => r.cb.id)).size
+  const peopleAudited = new Set(teamRows.map((r) => personKey(r.cb_name))).size
 
   const shown = useMemo(() => {
     const term = search.trim().toLowerCase()
     return teamRows.filter(
       (r) =>
         (filter === 'all' || (filter === 'errors' ? Boolean(r.errors) : r.score <= 3)) &&
-        (!cbFilter || r.cb.id === cbFilter) &&
+        (!personFilter || personKey(r.cb_name) === personFilter) &&
         (!term ||
           r.task_id.toLowerCase().includes(term) ||
-          r.cb.email.toLowerCase().includes(term) ||
-          r.cb.name.toLowerCase().includes(term) ||
+          r.cb_name.toLowerCase().includes(term) ||
+          (r.cb?.email ?? '').toLowerCase().includes(term) ||
+          (r.project?.name ?? '').toLowerCase().includes(term) ||
           (r.errors ?? '').toLowerCase().includes(term)),
     )
-  }, [teamRows, filter, cbFilter, search])
+  }, [teamRows, filter, personFilter, search])
 
   const save = useMutation({
     mutationFn: (input: TaskAuditInput) =>
@@ -153,18 +216,24 @@ export function Audits() {
     () => [
       {
         id: 'cb',
-        accessorFn: (r) => r.cb.name,
-        header: 'CB',
+        accessorFn: (r) => r.cb_name,
+        header: 'Person',
         cell: ({ row }) => {
-          const cb = row.original.cb
-          return (
+          const { cb, cb_name } = row.original
+          // Older audits link to the CB's profile; typed-in names are plain text.
+          return cb ? (
             <Link to={contributorPath(cb.email)} className="flex items-center gap-3 hover:underline">
-              <Avatar name={cb.name} photoUrl={cb.avatar_url} size={28} />
+              <Avatar name={cb_name} photoUrl={cb.avatar_url} size={28} />
               <div className="min-w-0">
-                <div className="truncate font-medium text-gray-900">{cb.name}</div>
+                <div className="truncate font-medium text-gray-900">{cb_name}</div>
                 <div className="truncate text-xs text-gray-400">{cb.email}</div>
               </div>
             </Link>
+          ) : (
+            <div className="flex items-center gap-3">
+              <Avatar name={cb_name} size={28} />
+              <div className="min-w-0 truncate font-medium text-gray-900">{cb_name}</div>
+            </div>
           )
         },
       },
@@ -265,7 +334,7 @@ export function Audits() {
         <div>
           <h1 className="text-3xl font-medium sm:text-4xl text-gray-900"><FoldText text="Audits" /></h1>
           <p className="max-w-2xl text-sm text-gray-500">
-            Spot check the tasks your CBs logged. Add an entry for each one you audit: find the task by its ID or the CB's name, then give it a score and note the errors you found.
+            Add an entry for each task you spot check: type the person's name and the task ID, pick the project, then give it a score and note the errors you found.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -274,7 +343,7 @@ export function Audits() {
               value={leadId}
               onChange={(id) => {
                 setLeadId(id)
-                setCbFilter('')
+                setPersonFilter('')
               }}
               options={leadOptions}
               aria-label="Team"
@@ -284,7 +353,8 @@ export function Audits() {
           <button
             type="button"
             onClick={() => open('new')}
-            disabled={team.length === 0}
+            disabled={auditProjects.length === 0}
+            title={auditProjects.length === 0 ? 'You have no projects to audit on. An admin assigns projects to leads.' : undefined}
             className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
           >
             <Plus className="h-4 w-4" aria-hidden />
@@ -301,8 +371,8 @@ export function Audits() {
 
       {editing && (
         <AuditEntryModal
-          team={team}
-          auditedIds={new Set(audits.filter((a) => editing === 'new' || a.id !== editing.id).map((a) => a.task_submission_id))}
+          projects={auditProjects}
+          nameSuggestions={nameSuggestions}
           existing={editing === 'new' ? null : editing}
           isPending={save.isPending || remove.isPending}
           error={save.error ?? remove.error}
@@ -313,7 +383,7 @@ export function Audits() {
       )}
 
       <div className="mb-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatTile label="Audits" hint={`${cbsAudited} of ${team.length} CBs audited`}>
+        <StatTile label="Audits" hint={`${peopleAudited} ${peopleAudited === 1 ? 'person' : 'people'} audited`}>
           {teamRows.length}
         </StatTile>
         <StatTile label="Average score" hint="Out of 5">
@@ -334,23 +404,21 @@ export function Audits() {
         isLoading={usersLoading || auditsLoading}
         pageSize={25}
         emptyMessage={
-          team.length === 0
-            ? 'No CBs are on this team yet. Assign contributors to a lead from the Users page.'
-            : teamRows.length === 0
+          teamRows.length === 0
               ? 'No audits yet. Press Add entry to audit a task.'
               : 'No audits match these filters.'
         }
         toolbar={
           <FilterBar
-            active={[filter !== 'all', cbFilter, search].filter(Boolean).length}
+            active={[filter !== 'all', personFilter, search].filter(Boolean).length}
             onReset={() => {
               setFilter('all')
-              setCbFilter('')
+              setPersonFilter('')
               setSearch('')
             }}
           >
             <FilterField label="Search" id="audits-search">
-              <SearchInput id="audits-search" value={search} onChange={setSearch} placeholder="Task ID, CB or errors" />
+              <SearchInput id="audits-search" value={search} onChange={setSearch} placeholder="Task ID, name, project or errors" />
             </FilterField>
             <FilterField label="Show" wide>
               <SegmentedTabs
@@ -364,8 +432,8 @@ export function Audits() {
                 ]}
               />
             </FilterField>
-            <FilterField label="CB" id="audits-cb">
-              <Select id="audits-cb" fullWidth value={cbFilter} onChange={setCbFilter} options={cbOptions} className={toolbarControlClass} />
+            <FilterField label="Person" id="audits-person">
+              <Select id="audits-person" fullWidth value={personFilter} onChange={setPersonFilter} options={personOptions} className={toolbarControlClass} />
             </FilterField>
           </FilterBar>
         }

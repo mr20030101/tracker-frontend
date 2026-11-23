@@ -56,7 +56,7 @@ function MessagesPage() {
   const queryClient = useQueryClient()
   const { user } = useAuth()
   const { myId, usersById, conversations, groups, groupsLoaded, typingUserIds } = useMessaging()
-  const canCreateGroups = user?.role === 'admin' || user?.role === 'lead'
+  const canCreateGroups = user?.role === 'admin' || user?.role === 'team_manager' || user?.role === 'lead'
   const [creatingGroup, setCreatingGroup] = useState(false)
   const selectedGroupId = groupRef ? Number(groupRef) : null
   const selectedGroup = selectedGroupId ? groups.find((g) => g.id === selectedGroupId) : undefined

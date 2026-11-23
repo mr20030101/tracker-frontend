@@ -14,6 +14,7 @@ import { LineChart } from '../components/LineChart'
 import { DashboardHero } from '../components/DashboardHero'
 import { OVERDUE_HOURS, fetchOverdueRequestCount } from '../lib/taskRequests'
 import { usePageTitle } from '../lib/usePageTitle'
+import { seesManyTeams } from '../lib/roles'
 
 type ExportKind = 'daily' | 'contributors' | 'projects' | 'leads'
 
@@ -202,7 +203,7 @@ export function Dashboard() {
                   { value: 'daily', label: 'Daily report' },
                   { value: 'contributors', label: 'By contributor' },
                   { value: 'projects', label: 'By project' },
-                  ...(isAdmin ? [{ value: 'leads', label: 'By team (lead)' }] : []),
+                  ...(seesManyTeams(user?.role) ? [{ value: 'leads', label: 'By team (lead)' }] : []),
                 ]}
                 className="rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-gray-800 shadow-card hover:bg-gray-100 max-sm:w-full max-sm:px-4"
               />

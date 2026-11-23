@@ -52,6 +52,6 @@ export function timeEditMode(viewer: { id: string; role: string } | null | undef
   if (!viewer) return undefined
   if (viewer.role === 'admin') return 'any'
   if (taskUserId && taskUserId === viewer.id) return 'lower'
-  if (viewer.role === 'lead' && taskUserId) return 'any'
+  if ((viewer.role === 'lead' || viewer.role === 'team_manager') && taskUserId) return 'any'
   return undefined
 }

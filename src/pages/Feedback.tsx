@@ -23,8 +23,8 @@ import { confirmDialog } from '../lib/dialog'
 import { downloadCsv } from '../lib/csv'
 import { FilterAction, FilterBar, FilterField, SearchInput, SegmentedTabs, TableCard } from '../components/TableToolbar'
 import { usePageTitle } from '../lib/usePageTitle'
+import { MANAGER_ROLES } from '../lib/roles'
 
-const MANAGER_ROLES = ['admin', 'lead']
 
 type StatusFilter = FeedbackStatus | 'all'
 

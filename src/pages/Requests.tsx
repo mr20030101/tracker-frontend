@@ -41,8 +41,8 @@ import { useNow } from '../lib/useNow'
 import { confirmDialog } from '../lib/dialog'
 import { FilterBar, FilterField, SegmentedTabs, TableCard } from '../components/TableToolbar'
 import { usePageTitle } from '../lib/usePageTitle'
+import { MANAGER_ROLES } from '../lib/roles'
 
-const MANAGER_ROLES = ['admin', 'lead']
 
 type StatusFilter = RequestStatus | 'all'
 type TypeFilter = RequestType | 'all'

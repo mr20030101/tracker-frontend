@@ -22,6 +22,23 @@ export interface TeamFeatures {
 
 export type TeamProgram = 'bootcamp' | 'rst'
 
+/**
+ * Audits are for the RST team: admins, the RST team manager, and leads whose team is RST
+ * (is_rst_lead() in the database enforces the same). `teamProgram` is the lead's team's. Until a
+ * lead's team has loaded, they're let through so a reload on /audits doesn't flash Not Found; the
+ * database still refuses a Bootcamp lead.
+ */
+export function auditsAllowed(
+  user: { role: string; program?: TeamProgram | null } | null | undefined,
+  teamProgram: TeamProgram,
+  loaded: boolean,
+): boolean {
+  if (!user) return false
+  if (user.role === 'admin') return true
+  if (user.role === 'team_manager') return user.program === 'rst'
+  return user.role === 'lead' && (teamProgram === 'rst' || !loaded)
+}
+
 interface TeamFeaturesRow {
   cts_enabled: boolean
   attendance_enabled: boolean

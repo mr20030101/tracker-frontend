@@ -14,6 +14,21 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Added
+
+- **Team managers.** A new role between admin and lead: Administrator → Team manager → Lead → Contributor. Each team manager runs one program, Bootcamp or RST, and is an admin for it: every lead whose team is in that program, and those leads' contributors. They see and act on all of those teams (requests, feedback, attendance, Task Log, audits, reports, rewards, announcements, projects, resources and team settings), add contributors and leads, assign contributors to their program's leads, and switch people between contributor and lead. An admin makes someone a team manager from the Leads page (Add Login, or change their role) and picks their program there. Only admins make admins or team managers, move a team between programs, or use App Settings, the Activity Log, Billing and Hiring.
+
+### Changed
+
+- **Audits are for the RST team only.** The Audits menu item and page show only for admins and for leads whose team is RST (Settings → Team → Program). An admin's team filter lists the RST teams.
+- **Audits are typed in, not picked from the Task Log.** Add entry now asks for the name of the person audited, the task ID and the project, then the score and errors. The person doesn't need a Tracker account, and names you've used before are suggested as you type. A lead picks from their own projects (an admin from all of them). A lead sees the audits on their projects, the ones they saved, and older audits of their own CBs. Older audits keep their link to the CB's profile.
+
+- **Audits and Data Quality have their own menu items.** They were tabs inside Tasks; now each sits under Logs on its own, next to Task Log, which keeps its name. Each still shows only while it's turned on in App Settings.
+
+### Fixed
+
+- **Pop-ups opened from a disabled user's row show properly.** On the Users page, editing a disabled contributor's projects opened a faded pop-up with the table's Role and Lead boxes drawn over it. Pop-ups now always open on top of the whole page, whatever they're opened from.
+
 ## 8.52.0 — 2026-11-20
 
 ### Added
