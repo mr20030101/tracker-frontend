@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 9.0.0 — 2026-11-23
+
 ### Added
 
 - **Team managers.** A new role between admin and lead: Administrator → Team manager → Lead → Contributor. Each team manager runs one program, Bootcamp or RST, and is an admin for it: every lead whose team is in that program, and those leads' contributors. They see and act on all of those teams (requests, feedback, attendance, Task Log, audits, reports, rewards, announcements, projects, resources and team settings), add contributors and leads, assign contributors to their program's leads, and switch people between contributor and lead. An admin makes someone a team manager from the Leads page (Add Login, or change their role) and picks their program there. Only admins make admins or team managers, move a team between programs, or use App Settings, the Activity Log, Billing and Hiring.
