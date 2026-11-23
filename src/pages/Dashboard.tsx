@@ -25,7 +25,8 @@ export function Dashboard() {
   const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('week')
   const [anchorDate, setAnchorDate] = useState(() => new Date())
   const { usersById, myId, openChatWith, messagingEnabled } = useMessaging()
-  const admin = useMemo(() => [...usersById.values()].find((u) => u.role === 'admin' && u.id !== myId), [usersById, myId])
+  // A real admin to message: Meera (the FAQ bot) is stored as an admin too, and isn't one.
+  const admin = useMemo(() => [...usersById.values()].find((u) => u.role === 'admin' && !u.is_bot && u.id !== myId), [usersById, myId])
 
   const rangeStart = useMemo(() => {
     if (viewMode === 'day') return toISODate(anchorDate)
