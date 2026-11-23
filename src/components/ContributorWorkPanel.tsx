@@ -65,9 +65,9 @@ import { alertDialog, confirmDialog } from '../lib/dialog'
 import { WORKING_DAYS } from '../lib/quotas'
 import { dailyHoursFor, formatHours, hoursRendered } from '../lib/hoursTarget'
 import { fetchAssignments } from '../lib/cbProjects'
+import { MANAGER_ROLES } from '../lib/roles'
 
 const TREND_DAYS = 30
-const MANAGER_ROLES = ['admin', 'lead']
 // A request only makes sense before the outcome is settled.
 const EXTENSION_ELIGIBLE_STATUSES = ['in_progress', 'expired']
 

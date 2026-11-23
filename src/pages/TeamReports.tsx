@@ -10,6 +10,7 @@ import { TeamTrendChart } from '../components/TeamTrendChart'
 import { FilterBar, FilterField, SegmentedTabs, toolbarControlClass } from '../components/TableToolbar'
 import { Select } from '../components/Select'
 import { usePageTitle } from '../lib/usePageTitle'
+import { seesManyTeams } from '../lib/roles'
 
 // Team Reports: each lead's team compared week by week. An admin sees every team; a lead sees
 // their own, so they can compare it against its own earlier weeks.
@@ -23,7 +24,8 @@ function shortWeek(weekStart: string): string {
 export function TeamReports() {
   usePageTitle('Team Reports')
   const { user } = useAuth()
-  const isAdmin = user?.role === 'admin'
+  // Every team for an admin; every team in their program for a team manager (the database limits it).
+  const isAdmin = seesManyTeams(user?.role)
   const [weekCount, setWeekCount] = useState(8)
   const [metric, setMetric] = useState<TeamMetric>('submitted')
 

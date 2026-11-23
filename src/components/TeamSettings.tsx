@@ -18,6 +18,7 @@ import {
 import type { User } from '../types'
 import { Select } from './Select'
 import { Switch } from './Switch'
+import { seesManyTeams } from '../lib/roles'
 
 // Leads and admins: what each team uses (a lead's own; every lead's for an admin), one row per team
 // with what each switch does explained once above. Each switch saves straight away.
@@ -69,7 +70,9 @@ const TEAM_LEGEND: { term: string; text: string }[] = [
 /** `bare` drops the card and heading, for use inside a modal that has its own title. */
 export function TeamSettings({ bare = false }: { bare?: boolean }) {
   const { user } = useAuth()
+  // Program and chat stay admin-only; a team manager sees every team in their program.
   const isAdmin = user?.role === 'admin'
+  const managesMany = seesManyTeams(user?.role)
   const { data: leads = [] } = useQuery({
     queryKey: ['settings-team-leads'],
     queryFn: async () => {
@@ -77,17 +80,17 @@ export function TeamSettings({ bare = false }: { bare?: boolean }) {
       if (error) throw error
       return data as Pick<User, 'id' | 'name'>[]
     },
-    enabled: isAdmin,
+    enabled: managesMany,
   })
   const { data: features, isLoading } = useQuery({ queryKey: ['team-features-list'], queryFn: fetchTeamFeaturesList })
-  const teams = isAdmin ? leads : user ? [{ id: user.id, name: user.name }] : []
+  const teams = managesMany ? leads : user ? [{ id: user.id, name: user.name }] : []
 
   return (
     <section className={bare ? '' : 'card px-5 py-4'}>
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         {!bare && <h2 className="text-base font-semibold text-gray-900">Team settings</h2>}
         <p className="text-sm text-gray-500">
-          {isAdmin
+          {managesMany
             ? "What each lead's team uses in the Tracker. Switching something off hides it from that team's contributors."
             : 'What your team uses in the Tracker. Switching something off hides it from your contributors.'}
         </p>
@@ -129,7 +132,7 @@ export function TeamSettings({ bare = false }: { bare?: boolean }) {
               <TeamFeatureRow
                 key={team.id}
                 leadId={team.id}
-                title={isAdmin ? `${team.name.trim()}’s team` : 'Your team'}
+                title={managesMany ? `${team.name.trim()}’s team` : 'Your team'}
                 features={features?.get(team.id) ?? NO_SETTINGS_YET}
                 isAdmin={isAdmin}
                 disabled={isLoading}

@@ -1,10 +1,12 @@
 import { lazy, Suspense, type ComponentType } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAppSwitches } from './lib/appSettings'
+import { auditsAllowed, useTeamFeatures } from './lib/teamFeatures'
 import { useAuth } from './lib/auth'
 import { AppShell } from './components/AppShell'
 import { RemotasksIdGate } from './components/RemotasksIdGate'
 import { isValidRemotasksId } from './lib/remotasks'
+import { MANAGER_ROLES, seesManyTeams } from './lib/roles'
 
 // Each page is its own download, fetched the first time it's opened.
 function page<K extends string>(load: () => Promise<Record<K, ComponentType<any>>>, name: K) {
@@ -45,11 +47,11 @@ const Settings = page(() => import('./pages/Settings'), 'Settings')
 
 const pageFallback = <div className="flex h-64 items-center justify-center text-gray-400">Loading...</div>
 
-const MANAGER_ROLES = ['admin', 'lead']
 
 function ProtectedLayout() {
   const { user, loading } = useAuth()
   const switches = useAppSwitches(Boolean(user))
+  const team = useTeamFeatures(user?.id)
 
   if (loading) {
     return <div className="flex h-screen items-center justify-center text-gray-400">Loading...</div>
@@ -90,12 +92,12 @@ function ProtectedLayout() {
         {isManager && <Route path="/projects" element={<Projects />} />}
         {isManager && switches.hiring && <Route path="/hiring" element={<Hiring />} />}
         {isManager && switches.data_quality && <Route path="/data-quality" element={<DataQuality />} />}
-        {isManager && switches.audits && <Route path="/audits" element={<Audits />} />}
+        {switches.audits && auditsAllowed(user, team.program, team.loaded) && <Route path="/audits" element={<Audits />} />}
         {isManager && <Route path="/team-reports" element={<TeamReports />} />}
         {isAdmin && <Route path="/activity-log" element={<ActivityLog />} />}
         {isAdmin && <Route path="/app-settings" element={<AppSettings />} />}
-        {isManager && <Route path="/billing" element={isAdmin ? <Billing /> : <MyBilling />} />}
-        {isAdmin && <Route path="/leads/:leadId" element={<LeadTeam />} />}
+        {(isAdmin || user.role === 'lead') && <Route path="/billing" element={isAdmin ? <Billing /> : <MyBilling />} />}
+        {seesManyTeams(user.role) && <Route path="/leads/:leadId" element={<LeadTeam />} />}
         <Route path="*" element={<NotFound />} />
       </Routes>
       </Suspense>

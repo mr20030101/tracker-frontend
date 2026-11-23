@@ -31,8 +31,8 @@ import { usePageTitle } from '../lib/usePageTitle'
 import { remotasksDiffViewerUrl } from '../lib/remotasks'
 import { STAGE_LABELS } from '../lib/taskAudits'
 import { useMessaging } from '../lib/messagingContext'
+import { MANAGER_ROLES, seesManyTeams } from '../lib/roles'
 
-const MANAGER_ROLES = ['admin', 'lead']
 
 type SortKey = 'cb_email' | 'status' | 'date'
 
@@ -80,7 +80,8 @@ function ContributorTaskLog() {
 // The global, filterable, multi-contributor log — for a lead/admin reviewing everyone's work.
 function ManagerTaskLog() {
   const { user: me } = useAuth()
-  const isAdmin = me?.role === 'admin'
+  // Admins and team managers pick a team; the database limits a team manager to their program's.
+  const isAdmin = seesManyTeams(me?.role)
   // Contributors' names and photos, from the directory the app already loads.
   const { usersById } = useMessaging()
   const { user } = useAuth()

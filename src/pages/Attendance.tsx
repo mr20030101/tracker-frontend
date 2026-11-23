@@ -40,8 +40,8 @@ import { usePageTitle } from '../lib/usePageTitle'
 import { useAttendancePhoto } from '../lib/useAttendancePhoto'
 import { fetchTeamFeaturesList, useTeamFeatures } from '../lib/teamFeatures'
 import type { Attendance as AttendanceEntry, AttendanceHours } from '../types'
+import { MANAGER_ROLES, seesManyTeams } from '../lib/roles'
 
-const MANAGER_ROLES = ['admin', 'lead']
 
 const statusClass = 'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap text-xs'
 
@@ -220,6 +220,8 @@ function CloseTimeSetting({ leadId }: { leadId: string | null }) {
 function TeamAttendance() {
   const { user } = useAuth()
   const isAdmin = user?.role === 'admin'
+  // Admins and team managers pick a team; only an admin sets the default closing time.
+  const managesMany = seesManyTeams(user?.role)
   const now = useNow(60_000)
   const today = todayIso(now)
   const [date, setDate] = useState(today)
@@ -228,9 +230,9 @@ function TeamAttendance() {
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<{ person: Person; entry: AttendanceEntry | null } | null>(null)
   const [viewingPhoto, setViewingPhoto] = useState<{ ref: string; name: string } | null>(null)
-  // The closing time shown and changed here: a lead's own team; for an admin, the team picked in the
-  // filter, or the default when it's all teams or no lead.
-  const closeTimeLead = isAdmin ? (team !== ALL_TEAMS && team !== UNASSIGNED ? team : null) : (user?.id ?? null)
+  // The closing time shown and changed here: a lead's own team; for an admin or team manager, the
+  // team picked in the filter, or the default when it's all teams or no lead.
+  const closeTimeLead = managesMany ? (team !== ALL_TEAMS && team !== UNASSIGNED ? team : null) : (user?.id ?? null)
   const { data: closeTimes } = useQuery({ queryKey: ['attendance-close-times'], queryFn: fetchAttendanceCloseTimes })
   const closesMin = closeTimes && ((closeTimeLead ? closeTimes.teams.get(closeTimeLead) : undefined) ?? closeTimes.defaultMin)
 
@@ -320,7 +322,7 @@ function TeamAttendance() {
         <p className="text-sm text-gray-500">
           Who filed their daily attendance, and who hasn't yet. Contributors file theirs from the Dashboard until{' '}
           {closesMin !== undefined ? attendanceTimeLabel(closesMin) : 'their closing time'}
-          {isAdmin && !closeTimeLead && ', unless their team closes at a different time'}. Open
+          {managesMany && !closeTimeLead && ', unless their team closes at a different time'}. Open
           anyone's row to file or correct it for them.
         </p>
       </div>
@@ -358,7 +360,7 @@ function TeamAttendance() {
             className={`${toolbarControlClass} w-full`}
           />
         </FilterField>
-        {isAdmin && (
+        {managesMany && (
           <FilterField label="Team" id="attendance-team" set={team !== ALL_TEAMS}>
             <Select id="attendance-team" fullWidth value={team} onChange={setTeam} options={teamOptions} className={toolbarControlClass} />
           </FilterField>
@@ -379,7 +381,8 @@ function TeamAttendance() {
           </div>
         )}
         <div className="flex w-full flex-wrap items-center gap-x-5 gap-y-2 sm:ml-auto sm:w-auto">
-          <CloseTimeSetting key={closeTimeLead ?? 'default'} leadId={closeTimeLead} />
+          {/* The default closing time is the admins'; a team manager changes one team's at a time. */}
+          {(closeTimeLead || isAdmin) && <CloseTimeSetting key={closeTimeLead ?? 'default'} leadId={closeTimeLead} />}
           {isAdmin && <PhotoRequiredSetting />}
         </div>
       </div>
@@ -410,7 +413,7 @@ function TeamAttendance() {
                       {person.name}
                     </Link>
                     <div className="truncate text-xs text-gray-500">{person.email}</div>
-                    {isAdmin && person.lead_id && <div className="truncate text-xs text-gray-400">Lead: {leadNames.get(person.lead_id) ?? '—'}</div>}
+                    {managesMany && person.lead_id && <div className="truncate text-xs text-gray-400">Lead: {leadNames.get(person.lead_id) ?? '—'}</div>}
                   </div>
                   {entry ? (
                     hoursStatus(entry.hours)

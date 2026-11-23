@@ -1,8 +1,12 @@
+// Administrator → Team manager → Lead → Contributor. A team manager is an admin for one program
+// (Bootcamp or RST): every lead whose team is in it, and their contributors (20261123_team_managers.sql).
+export type Role = 'contributor' | 'lead' | 'team_manager' | 'admin'
+
 export interface User {
   id: string
   name: string
   email: string
-  role: 'contributor' | 'lead' | 'admin'
+  role: Role
   shift: string | null
   meet_link: string | null
   is_active: boolean
@@ -16,6 +20,8 @@ export interface User {
   remotasks_id: string | null
   // A short self-written line shown on the profile page, self-set from Edit Profile.
   bio: string | null
+  // A team manager's program (Bootcamp or RST), set by an admin; null for everyone else.
+  program?: 'bootcamp' | 'rst' | null
   // The FAQ bot's own profile (Meera). Left out where a profile comes from the public-stats RPC.
   is_bot?: boolean
 }

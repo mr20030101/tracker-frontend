@@ -1,10 +1,9 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { Save, Trash2, X } from 'lucide-react'
 import { errorMessage } from '../lib/api'
-import { AUDIT_SCORES, type TaskAudit, type TaskAuditInput, type TaskMatch } from '../lib/taskAudits'
-import type { User } from '../types'
+import { AUDIT_SCORES, type TaskAudit, type TaskAuditInput } from '../lib/taskAudits'
 import { Modal } from './Modal'
-import { TaskPicker } from './TaskPicker'
+import { Select } from './Select'
 
 const fieldClass = 'w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent'
 const labelClass = 'mb-1.5 block text-sm font-medium text-gray-700'
@@ -16,10 +15,11 @@ function scoreTone(score: number): string {
   return 'border-status-danger-text bg-status-danger-bg text-status-danger-text'
 }
 
-// Adding or editing a lead's audit of one of their CBs' tasks on the Audits page.
+// Adding or editing an audit on the Audits page. Everything is typed in: the person may have no
+// Tracker account, and the task needn't be in the Task Log. The project is one the lead runs.
 export function AuditEntryModal({
-  team,
-  auditedIds,
+  projects,
+  nameSuggestions,
   existing,
   isPending,
   error,
@@ -27,9 +27,10 @@ export function AuditEntryModal({
   onDelete,
   onClose,
 }: {
-  team: User[]
-  /** Submissions that already have an audit (not counting the one being edited). */
-  auditedIds: Set<number>
+  /** The projects the caller can audit on: a lead's own, or every one for an admin. */
+  projects: { id: number; name: string }[]
+  /** Names offered while typing: the team's CBs and people audited before. */
+  nameSuggestions: string[]
   existing: TaskAudit | null
   isPending: boolean
   error: unknown
@@ -37,23 +38,23 @@ export function AuditEntryModal({
   onDelete: () => void
   onClose: () => void
 }) {
-  // The audited task, rebuilt from the audit when editing one.
-  const [task, setTask] = useState<TaskMatch | null>(() => {
-    const cb = existing && team.find((u) => u.id === existing.cb_user_id)
-    if (!existing || !cb || !existing.submission) return null
-    return {
-      id: existing.task_submission_id,
-      task_id: existing.task_id,
-      cb_email: cb.email,
-      stage: existing.submission.stage,
-      status: existing.submission.status,
-      date: existing.submission.date,
-      project: existing.project,
-    }
+  const nameListId = useId()
+  // An older audit's project may not be one the caller runs; it's still shown until they change it.
+  const projectOptions = [
+    ...projects.map((p) => ({ value: String(p.id), label: p.name })),
+    ...(existing?.project && !projects.some((p) => p.id === existing.project!.id)
+      ? [{ value: String(existing.project.id), label: existing.project.name }]
+      : []),
+  ]
+  const [form, setForm] = useState({
+    cbName: existing?.cb_name ?? '',
+    taskId: existing?.task_id ?? '',
+    projectId: existing?.project_id ? String(existing.project_id) : projects.length === 1 ? String(projects[0].id) : '',
+    score: existing?.score ?? 0,
+    errors: existing?.errors ?? '',
   })
-  const [form, setForm] = useState({ score: existing?.score ?? 0, errors: existing?.errors ?? '' })
 
-  const complete = task !== null && form.score > 0
+  const complete = form.cbName.trim() !== '' && form.taskId.trim() !== '' && form.projectId !== '' && form.score > 0
   const chosenScore = AUDIT_SCORES.find((s) => s.value === form.score)
 
   return (
@@ -62,13 +63,58 @@ export function AuditEntryModal({
         className="flex flex-col gap-5"
         onSubmit={(e) => {
           e.preventDefault()
-          if (!task || !complete) return
-          onSave({ taskSubmissionId: task.id, score: form.score, errors: form.errors })
+          if (!complete) return
+          onSave({ cbName: form.cbName, taskId: form.taskId, projectId: Number(form.projectId), score: form.score, errors: form.errors })
         }}
       >
         <div>
-          <span className={labelClass}>Task</span>
-          <TaskPicker value={task} onChange={setTask} team={team} auditedIds={auditedIds} />
+          <label htmlFor="audit-name" className={labelClass}>
+            Person audited
+          </label>
+          <input
+            id="audit-name"
+            list={nameListId}
+            value={form.cbName}
+            onChange={(e) => setForm({ ...form, cbName: e.target.value })}
+            maxLength={200}
+            autoComplete="off"
+            placeholder="Their name"
+            className={fieldClass}
+          />
+          <datalist id={nameListId}>
+            {nameSuggestions.map((name) => (
+              <option key={name} value={name} />
+            ))}
+          </datalist>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label htmlFor="audit-task-id" className={labelClass}>
+              Task ID
+            </label>
+            <input
+              id="audit-task-id"
+              value={form.taskId}
+              onChange={(e) => setForm({ ...form, taskId: e.target.value })}
+              maxLength={200}
+              autoComplete="off"
+              placeholder="e.g. 6aa34905fe8d09b156e1ef4d"
+              className={`${fieldClass} font-mono`}
+            />
+          </div>
+          <div>
+            <span className={labelClass}>Project</span>
+            <Select
+              fullWidth
+              value={form.projectId}
+              onChange={(projectId) => setForm({ ...form, projectId })}
+              options={projectOptions}
+              placeholder={projects.length === 0 ? 'You have no projects' : 'Choose a project...'}
+              aria-label="Project"
+              className={fieldClass}
+            />
+          </div>
         </div>
 
         <div>
@@ -111,7 +157,7 @@ export function AuditEntryModal({
             className={fieldClass}
           />
           <div className="mt-1 text-xs text-gray-400">
-            Only the CB's lead and admins see audits.
+            Only admins and the project's leads see audits.
             {existing?.auditor && ` Last saved by ${existing.auditor.name}, ${new Date(existing.updated_at).toLocaleString()}.`}
           </div>
         </div>

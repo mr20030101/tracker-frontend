@@ -49,12 +49,13 @@ import { Modal } from '../components/Modal'
 import { Select } from '../components/Select'
 import { Reveal } from '../components/Reveal'
 import { contributorPathById } from '../lib/urlRef'
+import { MANAGER_ROLES } from '../lib/roles'
+import { useManagedLeadIds } from '../lib/useManagedLeadIds'
 
 // Rewards: prizes a lead offers their team (or an admin offers anyone) for a rule over a date
 // range. Everyone sees what's running and how they're doing, but only managers see who's ahead
 // until the winners are announced; managers create, award and mark paid.
 
-const MANAGER_ROLES = ['admin', 'lead']
 
 const PHASE_STYLES: Record<RewardPhase, { label: string; className: string }> = {
   live: { label: 'Live', className: 'bg-status-success-bg text-status-success-text' },
@@ -83,6 +84,7 @@ export function Rewards() {
   usePageTitle('Rewards')
   const { user } = useAuth()
   const isManager = Boolean(user && MANAGER_ROLES.includes(user.role))
+  const managedLeadIds = useManagedLeadIds(user?.role)
   const [creating, setCreating] = useState(false)
   const { data: rewards = [], isLoading, isError } = useRewards()
   const { data: winners = [] } = useRewardWinners()
@@ -162,6 +164,7 @@ export function Rewards() {
                   today={today}
                   isManager={isManager}
                   isAdmin={user?.role === 'admin'}
+                  managedLeadIds={managedLeadIds}
                   meId={user?.id}
                   projectName={projects.find((p) => p.id === reward.project_id)?.name}
                   winners={winners.filter((w) => w.reward_id === reward.id)}
@@ -181,6 +184,7 @@ function RewardCard({
   today,
   isManager,
   isAdmin,
+  managedLeadIds,
   meId,
   projectName,
   winners,
@@ -190,6 +194,7 @@ function RewardCard({
   today: string
   isManager: boolean
   isAdmin: boolean
+  managedLeadIds: Set<string>
   meId: string | undefined
   projectName: string | undefined
   winners: RewardWinner[]
@@ -200,8 +205,10 @@ function RewardCard({
   const [confirmCancel, setConfirmCancel] = useState(false)
   const showStandings = phase === 'live' || phase === 'ended'
   const { data: standings = [] } = useRewardStandings(reward.id, showStandings || phase === 'awarded')
-  // Mirrors can_manage_reward(): admins manage everything, a lead only their own team's.
-  const canManage = isAdmin || (isManager && reward.team_lead_id === meId)
+  // Mirrors can_manage_reward(): admins manage everything, a lead only their own team's, a team
+  // manager their program's teams'.
+  const canManage =
+    isAdmin || (isManager && reward.team_lead_id !== null && (reward.team_lead_id === meId || managedLeadIds.has(reward.team_lead_id)))
   const style = PHASE_STYLES[phase]
   const audience = reward.team_lead_id ? `${usersById.get(reward.team_lead_id)?.name ?? 'A lead'}’s team` : 'Everyone'
   const mine = phase === 'live' ? myStandingLine(reward, standings, meId) : undefined
@@ -632,11 +639,14 @@ const REWARD_STEPS = ['Basics', 'Levels', 'Prize & dates', 'Review'] as const
 function NewRewardModal({ projects, onClose }: { projects: Project[]; onClose: () => void }) {
   const { user } = useAuth()
   const isAdmin = user?.role === 'admin'
+  // A team manager picks one of their program's teams; only an admin makes a reward for everyone.
+  const isTeamManager = user?.role === 'team_manager'
+  const managedLeadIds = useManagedLeadIds(user?.role)
   const { usersById } = useMessaging()
   const queryClient = useQueryClient()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [teamLeadId, setTeamLeadId] = useState(isAdmin ? '' : (user?.id ?? ''))
+  const [teamLeadId, setTeamLeadId] = useState(isAdmin || isTeamManager ? '' : (user?.id ?? ''))
   const [rule, setRule] = useState<RewardRule>('top_submitters')
   const [threshold, setThreshold] = useState('')
   const [places, setPlaces] = useState(1)
@@ -665,8 +675,11 @@ function NewRewardModal({ projects, onClose }: { projects: Project[]; onClose: (
   }
 
   const leads = useMemo(
-    () => [...usersById.values()].filter((u) => u.role === 'lead' && !u.is_bot).sort((a, b) => a.name.localeCompare(b.name)),
-    [usersById],
+    () =>
+      [...usersById.values()]
+        .filter((u) => u.role === 'lead' && !u.is_bot && (!isTeamManager || managedLeadIds.has(u.id)))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [usersById, isTeamManager, managedLeadIds],
   )
 
   const prizeSlots = rule === 'top_submitters' ? places : rule === 'custom' ? prizes.length : 1
@@ -743,11 +756,15 @@ function NewRewardModal({ projects, onClose }: { projects: Project[]; onClose: (
         return setFormError(problem)
       }
     }
+    if (isTeamManager && !teamLeadId) {
+      setStep(0)
+      return setFormError('Pick the team this reward is for.')
+    }
     setFormError(null)
     create.mutate({
       title: title.trim(),
       description: description.trim(),
-      team_lead_id: isAdmin ? teamLeadId || null : (user?.id ?? null),
+      team_lead_id: isAdmin || isTeamManager ? teamLeadId || null : (user?.id ?? null),
       rule,
       threshold: (rule === 'min_tasks' || rule === 'top_submitters') && threshold ? Number(threshold) : null,
       places: rule === 'top_submitters' ? places : 1,
@@ -863,13 +880,14 @@ function NewRewardModal({ projects, onClose }: { projects: Project[]; onClose: (
                   className={fieldClass}
                 />
               </div>
-              {isAdmin && (
+              {(isAdmin || isTeamManager) && (
                 <div>
                   <label className={labelClass}>For</label>
                   <Select
                     value={teamLeadId}
                     onChange={setTeamLeadId}
-                    options={[{ value: '', label: 'Everyone' }, ...leads.map((l) => ({ value: l.id, label: `${l.name}'s team` }))]}
+                    placeholder={isTeamManager ? 'Choose a team...' : undefined}
+                    options={[...(isAdmin ? [{ value: '', label: 'Everyone' }] : []), ...leads.map((l) => ({ value: l.id, label: `${l.name}'s team` }))]}
                     fullWidth
                     className={fieldClass}
                   />

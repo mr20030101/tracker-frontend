@@ -1,4 +1,5 @@
 import { useId, useLayoutEffect, useRef, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { animate } from 'animejs'
 import { prefersReducedMotion } from '../lib/motion'
@@ -41,7 +42,9 @@ export function Modal({
     return () => animations.forEach((a) => a.revert())
   }, [])
 
-  return (
+  // Rendered into <body>, not where it's opened: inside a faded (opacity) or animated table row it
+  // took on the row's fading and later rows drew over it, whatever its z-index.
+  return createPortal(
     // The overlay scrolls (not the card) so a tall form on a short screen stays
     // reachable, while dropdowns inside the card aren't clipped by an inner
     // scroll area. On phones the card docks to the bottom as a sheet; from sm up
@@ -64,6 +67,7 @@ export function Modal({
           {children}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

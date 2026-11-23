@@ -12,8 +12,8 @@ import { Select } from '../components/Select'
 import { BrowserExtensionCard } from '../components/BrowserExtensionCard'
 import { confirmDialog, alertDialog } from '../lib/dialog'
 import { usePageTitle } from '../lib/usePageTitle'
+import { MANAGER_ROLES } from '../lib/roles'
 
-const MANAGER_ROLES = ['admin', 'lead']
 
 const emptyForm = { category: '', title: '', url: '', project_id: '' }
 
@@ -71,12 +71,13 @@ export function Resources() {
     [projectLeads, user?.id],
   )
   const projectOptions = useMemo(() => {
-    const projects = isAdmin ? allProjects : allProjects.filter((p) => myProjectIds.has(p.id))
+    // A team manager only sees their program's projects, and can file under any of them.
+    const projects = isAdmin || user?.role === 'team_manager' ? allProjects : allProjects.filter((p) => myProjectIds.has(p.id))
     const options = projects.map((p) => ({ value: String(p.id), label: p.name }))
     // Only an admin can leave a resource general (visible to everyone) — a lead must pick one of
     // their own projects, enforced server-side too.
     return isAdmin ? [{ value: '', label: '— General (visible to everyone) —' }, ...options] : options
-  }, [allProjects, isAdmin, myProjectIds])
+  }, [allProjects, isAdmin, myProjectIds, user?.role])
 
   const saveMutation = useMutation({
     mutationFn: async () => {

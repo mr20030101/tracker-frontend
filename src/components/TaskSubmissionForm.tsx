@@ -9,8 +9,8 @@ import { assignedProjectIds, fetchAssignments } from '../lib/cbProjects'
 import { Modal } from './Modal'
 import { Select } from './Select'
 import { isNetworkError, queueSubmission } from '../lib/offlineQueue'
+import { MANAGER_ROLES } from '../lib/roles'
 
-const MANAGER_ROLES = ['admin', 'lead']
 
 const STAGE_OPTIONS: { value: Stage; label: string }[] = [
   { value: 'attempt', label: 'Attempt' },

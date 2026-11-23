@@ -65,7 +65,7 @@ export async function fetchTeamReports(weekCount: number, onlyLeadId: string | n
 
   const [contributors, leads, submissions, badVideos] = await Promise.all([
     supabase.from('profiles').select('id, email, lead_id, is_active').eq('role', 'contributor'),
-    supabase.from('profiles').select('id, name').in('role', ['lead', 'admin']),
+    supabase.from('profiles').select('id, name').in('role', ['lead', 'team_manager', 'admin']),
     // Paged: weeks of submissions are far more than the 1,000 rows one request returns.
     // Every status, not just submitted: time on a task that later expired still counts as hours.
     fetchAllPages<{

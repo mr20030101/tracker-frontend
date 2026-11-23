@@ -18,6 +18,7 @@ import { GroupIcon } from './GroupChat'
 import { StatusPill } from './StatusPill'
 import { SubmissionDetailsModal } from './SubmissionDetailsModal'
 import { alertDialog } from '../lib/dialog'
+import { isManagerRole } from '../lib/roles'
 
 export interface SearchPage {
   to: string
@@ -94,7 +95,7 @@ function Palette({ pages, onClose }: { pages: SearchPage[]; onClose: () => void 
   const navigate = useNavigate()
   const { user } = useAuth()
   const { usersById, myId, groups } = useMessaging()
-  const isManager = user?.role === 'admin' || user?.role === 'lead'
+  const isManager = isManagerRole(user?.role)
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
   const [viewingTask, setViewingTask] = useState<TaskSubmission | null>(null)

@@ -24,13 +24,13 @@ import { useAchievements, useFeaturedBadges } from '../lib/achievements'
 import { LONG_CACHE } from '../lib/queryCache'
 import { usePageTitle } from '../lib/usePageTitle'
 import { mostImproved, rankWeek, teamGoal, useTeamWeeks, type TeamWeekRow } from '../lib/teamWeeks'
+import { MANAGER_ROLES } from '../lib/roles'
 
 type Period = 'week' | 'month' | 'all'
 type StatusFilter = 'all' | 'active' | 'disabled'
 type ActivityFilter = 'all' | 'submitted' | 'no_submissions'
 
 const MEDALS = ['🥇', '🥈', '🥉']
-const MANAGER_ROLES = ['admin', 'lead']
 
 function rangeFor(period: Period): { start: string; end: string } {
   const today = new Date()

@@ -26,8 +26,9 @@ import { Select } from '../components/Select'
 import { loadRichTextFonts, renderRichText, richTextToPlain } from '../lib/richText'
 import { alertDialog, confirmDialog } from '../lib/dialog'
 import { usePageTitle } from '../lib/usePageTitle'
+import { MANAGER_ROLES } from '../lib/roles'
+import { useManagedLeadIds } from '../lib/useManagedLeadIds'
 
-const MANAGER_ROLES = ['admin', 'lead']
 
 function formatWhen(iso: string) {
   return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
@@ -296,8 +297,12 @@ function ComposeAnnouncement({
   onPosted: () => void
 }) {
   const { usersById } = useMessaging()
+  // A team manager posts to any team or project in their program (the database enforces it).
+  const { user } = useAuth()
+  const isTeamManager = user?.role === 'team_manager'
+  const managedLeadIds = useManagedLeadIds(user?.role)
   const [audience, setAudience] = useState<AnnouncementAudience>(editing?.audience ?? (isAdmin ? 'everyone' : 'team'))
-  const [teamLeadId, setTeamLeadId] = useState(editing?.team_lead_id ?? (isAdmin ? '' : authorId))
+  const [teamLeadId, setTeamLeadId] = useState(editing?.team_lead_id ?? (isAdmin || isTeamManager ? '' : authorId))
   const [projectId, setProjectId] = useState(editing?.project_id ? String(editing.project_id) : '')
   const [title, setTitle] = useState(editing?.title ?? '')
   const [body, setBody] = useState(editing?.body ?? '')
@@ -316,18 +321,22 @@ function ComposeAnnouncement({
       if (error) throw error
       return data.map((row) => row.project_id as number)
     },
-    enabled: !isAdmin,
+    enabled: !isAdmin && !isTeamManager,
   })
-  const projectOptions = isAdmin ? projects : projects.filter((p) => myProjectIds?.includes(p.id))
+  // A team manager only sees their program's projects.
+  const projectOptions = isAdmin || isTeamManager ? projects : projects.filter((p) => myProjectIds?.includes(p.id))
 
   const leads = useMemo(
-    () => [...usersById.values()].filter((u) => u.role === 'lead' && !u.is_bot).sort((a, b) => a.name.localeCompare(b.name)),
-    [usersById],
+    () =>
+      [...usersById.values()]
+        .filter((u) => u.role === 'lead' && !u.is_bot && (!isTeamManager || managedLeadIds.has(u.id)))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [usersById, isTeamManager, managedLeadIds],
   )
 
   const audienceOptions = [
     ...(isAdmin ? [{ value: 'everyone', label: 'Everyone' }] : []),
-    { value: 'team', label: isAdmin ? "A lead's team" : 'My team' },
+    { value: 'team', label: isAdmin || isTeamManager ? "A lead's team" : 'My team' },
     { value: 'project', label: 'A project', disabled: projectOptions.length === 0 },
   ]
 
@@ -366,7 +375,7 @@ function ComposeAnnouncement({
               className={fieldClass}
             />
           </div>
-          {audience === 'team' && isAdmin && (
+          {audience === 'team' && (isAdmin || isTeamManager) && (
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">Team</label>
               <Select

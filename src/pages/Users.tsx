@@ -4,7 +4,8 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { FileUp, KeyRound, LogIn, Trash2, UserCheck, UserMinus, UserPlus, X, SlidersHorizontal, TriangleAlert } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ColumnDef, RowSelectionState } from '@tanstack/react-table'
-import { api } from '../lib/api'
+import { api, supabase } from '../lib/api'
+import { PROGRAM_LABELS, ROLE_LABELS } from '../lib/roles'
 import { useAuth } from '../lib/auth'
 import { alertDialog, confirmDialog } from '../lib/dialog'
 import { loginAs } from '../lib/loginAs'
@@ -25,8 +26,14 @@ import { BulkImportUsersModal } from '../components/BulkImportUsersModal'
 import { contributorPath } from '../lib/urlRef'
 import { usePageTitle } from '../lib/usePageTitle'
 
-const ROLES: User['role'][] = ['contributor', 'lead', 'admin']
-const ROLE_OPTIONS = ROLES.map((r) => ({ value: r, label: r.charAt(0).toUpperCase() + r.slice(1) }))
+const ROLES: User['role'][] = ['contributor', 'lead', 'team_manager', 'admin']
+const ROLE_OPTIONS = ROLES.map((r) => ({ value: r, label: ROLE_LABELS[r] }))
+// A team manager switches people in their program between contributor and lead, nothing more.
+const TEAM_MANAGER_ROLE_OPTIONS = ROLE_OPTIONS.filter((o) => o.value === 'contributor' || o.value === 'lead')
+const PROGRAM_OPTIONS = [
+  { value: 'bootcamp', label: PROGRAM_LABELS.bootcamp },
+  { value: 'rst', label: PROGRAM_LABELS.rst },
+]
 
 type StatusFilter = '' | 'active' | 'disabled'
 type Notice = { tone: 'success' | 'error'; text: string }
@@ -53,14 +60,19 @@ function formatLastSeen(lastSeenAt: string | null) {
   return `${Math.floor(hours / 24)}d ago`
 }
 
-const emptyForm = { name: '', email: '', password: '', role: 'contributor' as User['role'], shift: '' }
+// lead_id: a new contributor's lead (required from a team manager); program: a new team manager's.
+const emptyForm = { name: '', email: '', password: '', role: 'contributor' as User['role'], shift: '', lead_id: '', program: '' }
 
 // Two pages share this: CBs (/users, contributor logins) and Leads (/leads: lead and admin logins,
 // with every team's settings below). A lead's /leads is just their own team's settings.
 export function Users({ view = 'cbs' }: { view?: 'cbs' | 'leads' }) {
   const { user: currentUser } = useAuth()
   const isAdmin = currentUser?.role === 'admin'
-  const pageTitle = view === 'cbs' ? 'Contributors' : isAdmin ? 'Leads' : 'Team settings'
+  const isTeamManager = currentUser?.role === 'team_manager'
+  // Admins and team managers see many teams (a team manager, their program's: the database limits it).
+  const managesMany = isAdmin || isTeamManager
+  const roleOptions = isAdmin ? ROLE_OPTIONS : TEAM_MANAGER_ROLE_OPTIONS
+  const pageTitle = view === 'cbs' ? 'Contributors' : managesMany ? 'Leads' : 'Team settings'
   usePageTitle(pageTitle)
   const queryClient = useQueryClient()
   const [adding, setAdding] = useState(false)
@@ -135,7 +147,7 @@ export function Users({ view = 'cbs' }: { view?: 'cbs' | 'leads' }) {
   const statusParam = searchParams.get('status')
   const statusFilter: StatusFilter = statusParam === 'active' || statusParam === 'disabled' ? statusParam : ''
   const leadParam = searchParams.get('lead') ?? ''
-  const leadFilter = isAdmin && view === 'cbs' && (leadParam === 'none' || leads.some((lead) => lead.id === leadParam)) ? leadParam : ''
+  const leadFilter = managesMany && view === 'cbs' && (leadParam === 'none' || leads.some((lead) => lead.id === leadParam)) ? leadParam : ''
 
   function setFilter(key: 'view' | 'status' | 'lead', value: string) {
     setSearchParams(
@@ -185,6 +197,16 @@ export function Users({ view = 'cbs' }: { view?: 'cbs' | 'leads' }) {
     mutationFn: async ({ id, role }: { id: string; role: User['role'] }) => api.patch(`/users/${id}`, { role }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
     onError: (mutationError: Error) => notifyError(mutationError, 'Could not change that role.'),
+  })
+
+  // An admin moves a team manager to Bootcamp or RST.
+  const programMutation = useMutation({
+    mutationFn: async ({ id, program }: { id: string; program: 'bootcamp' | 'rst' }) => {
+      const { error } = await supabase.rpc('set_team_manager_program', { p_user_id: id, p_program: program })
+      if (error) throw error
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
+    onError: (mutationError: Error) => notifyError(mutationError, "Could not change that team manager's program."),
   })
 
   const leadMutation = useMutation({
@@ -292,7 +314,7 @@ export function Users({ view = 'cbs' }: { view?: 'cbs' | 'leads' }) {
 
   function openAdd() {
     setError(null)
-    if (isAdmin) setForm((f) => ({ ...f, role: view === 'leads' ? 'lead' : 'contributor' }))
+    if (managesMany) setForm((f) => ({ ...f, role: view === 'leads' ? 'lead' : 'contributor' }))
     setAdding(true)
   }
 
@@ -311,6 +333,14 @@ export function Users({ view = 'cbs' }: { view?: 'cbs' | 'leads' }) {
     const existing = (data ?? []).find((u) => u.email.toLowerCase() === email)
     if (existing) {
       setError(`${existing.name} already has a login with this email. Use Reset Password from their row instead.`)
+      return
+    }
+    if (isTeamManager && form.role === 'contributor' && !form.lead_id) {
+      setError('Pick their lead.')
+      return
+    }
+    if (form.role === 'team_manager' && !form.program) {
+      setError('Pick their program: Bootcamp or RST.')
       return
     }
     createMutation.mutate()
@@ -387,7 +417,7 @@ export function Users({ view = 'cbs' }: { view?: 'cbs' | 'leads' }) {
         header: 'Name',
         cell: ({ row }) => {
           const u = row.original
-          const opensTeam = isAdmin && u.role === 'lead'
+          const opensTeam = managesMany && u.role === 'lead'
           return (
             <Link
               to={opensTeam ? `/leads/${u.id}` : contributorPath(u.email)}
@@ -407,8 +437,8 @@ export function Users({ view = 'cbs' }: { view?: 'cbs' | 'leads' }) {
         },
       },
       // A lead's list is only their own contributors, so a Role or Lead column would
-      // repeat the same value on every row. Only admins get them.
-      ...(isAdmin
+      // repeat the same value on every row. Admins and team managers get them.
+      ...(managesMany
         ? [
             {
               id: 'role',
@@ -416,13 +446,34 @@ export function Users({ view = 'cbs' }: { view?: 'cbs' | 'leads' }) {
               header: 'Role',
               cell: ({ row }) => {
                 const u = row.original
+                // A team manager can't change admins, team managers (themselves included).
+                const locked = !isAdmin && !(u.role === 'contributor' || u.role === 'lead')
                 return (
-                  <Select
-                    value={u.role}
-                    onChange={(value) => roleMutation.mutate({ id: u.id, role: value as User['role'] })}
-                    options={ROLE_OPTIONS}
-                    className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs outline-none focus:border-accent"
-                  />
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {locked ? (
+                      <span className="text-xs text-gray-600">{ROLE_LABELS[u.role]}</span>
+                    ) : (
+                      <Select
+                        value={u.role}
+                        onChange={(value) => roleMutation.mutate({ id: u.id, role: value as User['role'] })}
+                        options={roleOptions}
+                        className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs outline-none focus:border-accent"
+                      />
+                    )}
+                    {u.role === 'team_manager' &&
+                      (isAdmin ? (
+                        <Select
+                          value={u.program ?? ''}
+                          placeholder="Program..."
+                          aria-label={`${u.name}'s program`}
+                          onChange={(value) => programMutation.mutate({ id: u.id, program: value as 'bootcamp' | 'rst' })}
+                          options={PROGRAM_OPTIONS}
+                          className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs outline-none focus:border-accent"
+                        />
+                      ) : (
+                        <span className="text-xs text-gray-500">{u.program ? PROGRAM_LABELS[u.program] : ''}</span>
+                      ))}
+                  </div>
                 )
               },
             } satisfies ColumnDef<User, any>,
@@ -499,7 +550,7 @@ export function Users({ view = 'cbs' }: { view?: 'cbs' | 'leads' }) {
               enableSorting: false,
               cell: ({ row }) =>
                 row.original.role === 'contributor' ? (
-                  <ProjectTags user={row.original} canEdit={isAdmin || row.original.lead_id === currentUser?.id} />
+                  <ProjectTags user={row.original} canEdit={managesMany || row.original.lead_id === currentUser?.id} />
                 ) : (
                   <span className="text-xs text-gray-300">—</span>
                 ),
@@ -601,13 +652,13 @@ export function Users({ view = 'cbs' }: { view?: 'cbs' | 'leads' }) {
         },
       },
     ],
-    [isAdmin, view, leadOptions, leadNameById, teamByLead, projectNamesByLead, sessionFlagById, currentUser, roleMutation, leadMutation, toggleActiveMutation, deleteMutation],
+    [isAdmin, managesMany, roleOptions, programMutation, view, leadOptions, leadNameById, teamByLead, projectNamesByLead, sessionFlagById, currentUser, roleMutation, leadMutation, toggleActiveMutation, deleteMutation],
   )
 
   const bulkBusy = bulkMutation.isPending
   const bulkSelectClass = 'rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm outline-none focus:border-accent'
 
-  if (view === 'leads' && !isAdmin) {
+  if (view === 'leads' && !managesMany) {
     return (
       <div>
         <div className="mb-6">
@@ -631,7 +682,7 @@ export function Users({ view = 'cbs' }: { view?: 'cbs' | 'leads' }) {
           <p className="text-sm text-gray-500">
             {view === 'leads'
               ? 'Lead and admin logins, and what each team uses in the Tracker.'
-              : isAdmin
+              : managesMany
                 ? 'Manage CB logins, roles, and passwords.'
                 : "Manage your team's logins and passwords."}
           </p>
@@ -646,13 +697,14 @@ export function Users({ view = 'cbs' }: { view?: 'cbs' | 'leads' }) {
               Team settings
             </button>
           )}
-          <button
+          {/* Bulk import has no lead column, and a team manager's contributors each need one. */}
+          {!isTeamManager && <button
             onClick={() => setBulkImporting(true)}
             className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50"
           >
             <FileUp className="h-4 w-4" aria-hidden />
             Bulk Import
-          </button>
+          </button>}
           <button onClick={openAdd} className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground">
             <UserPlus className="h-4 w-4" aria-hidden />
             Add Login
@@ -698,7 +750,7 @@ export function Users({ view = 'cbs' }: { view?: 'cbs' | 'leads' }) {
             }}
           />
         </FilterField>
-        {isAdmin && view === 'cbs' && (
+        {managesMany && view === 'cbs' && (
           <FilterField label="Lead" id="users-lead">
             <Select
               id="users-lead"
@@ -715,25 +767,26 @@ export function Users({ view = 'cbs' }: { view?: 'cbs' | 'leads' }) {
       {selectedIds.length > 0 && (
         <div className="sticky top-0 z-10 mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 shadow-sm">
           <span className="text-sm font-medium text-gray-700">{selectedIds.length} selected</span>
-          {isAdmin && (
+          {managesMany && (
             <Select
               value=""
               placeholder="Set role..."
               aria-label="Set role for selected logins"
               disabled={bulkBusy}
               onChange={(value) => bulkSetRole(value as User['role'])}
-              options={ROLE_OPTIONS}
+              options={roleOptions}
               className={bulkSelectClass}
             />
           )}
-          {isAdmin && (
+          {managesMany && (
             <Select
               value=""
               placeholder="Set lead..."
               aria-label="Set lead for selected logins"
               disabled={bulkBusy}
               onChange={(value) => bulkSetLead(value === '__none__' ? null : value)}
-              options={[{ value: '__none__', label: '— No lead —' }, ...leadOptions]}
+              // A team manager's contributors always have a lead in their program.
+              options={[...(isAdmin ? [{ value: '__none__', label: '— No lead —' }] : []), ...leadOptions]}
               className={bulkSelectClass}
             />
           )}
@@ -782,7 +835,7 @@ export function Users({ view = 'cbs' }: { view?: 'cbs' | 'leads' }) {
         emptyMessage={
           people.length > 0
             ? 'No users match these filters.'
-            : isAdmin
+            : managesMany
               ? 'No users yet.'
               : 'No one is assigned to you yet. New logins you add will appear here once they are on your team.'
         }
@@ -835,16 +888,47 @@ export function Users({ view = 'cbs' }: { view?: 'cbs' | 'leads' }) {
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
               />
             </div>
-            {isAdmin && (
+            {managesMany && (
               <div>
                 <label className="mb-1 block text-sm font-medium text-gray-700">Role</label>
                 <Select
                   fullWidth
                   value={form.role}
                   onChange={(value) => setForm({ ...form, role: value as User['role'] })}
-                  options={ROLE_OPTIONS}
+                  options={roleOptions}
                   className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
                 />
+              </div>
+            )}
+            {managesMany && form.role === 'contributor' && (
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Lead{isAdmin && <span className="font-normal text-gray-400"> (optional)</span>}
+                </label>
+                <Select
+                  fullWidth
+                  value={form.lead_id}
+                  placeholder="Choose a lead..."
+                  aria-label="Lead"
+                  onChange={(value) => setForm({ ...form, lead_id: value })}
+                  options={leadOptions}
+                  className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
+                />
+              </div>
+            )}
+            {isAdmin && form.role === 'team_manager' && (
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Program</label>
+                <Select
+                  fullWidth
+                  value={form.program}
+                  placeholder="Bootcamp or RST..."
+                  aria-label="Program"
+                  onChange={(value) => setForm({ ...form, program: value })}
+                  options={PROGRAM_OPTIONS}
+                  className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
+                />
+                <p className="mt-1 text-xs text-gray-500">They manage every lead and contributor in this program.</p>
               </div>
             )}
             {error && <div className="text-sm text-status-danger-text">{error}</div>}

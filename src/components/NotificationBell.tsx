@@ -12,8 +12,8 @@ import { Avatar } from './Avatar'
 import { RequestAlarm } from './RequestAlarm'
 import { fetchPendingRequestsForAlarm, type PendingRequestAlarmRow } from '../lib/taskRequests'
 import { fetchUnreadTaskOverlapAlerts, markTaskOverlapAlertsRead, teamLabel, type TaskOverlapAlert } from '../lib/taskOverlapAlerts'
+import { MANAGER_ROLES } from '../lib/roles'
 
-const MANAGER_ROLES = ['admin', 'lead']
 const MAX_REQUEST_ALERTS = 20
 const PANEL_WIDTH = 320
 const EDGE_GAP = 8
