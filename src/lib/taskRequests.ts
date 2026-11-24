@@ -360,7 +360,7 @@ export function buildExtensionRequestFormUrl(params: {
 }
 
 // Which form an extension or reclaim is filed on goes by the task's project:
-//   Aloha OTS Tasking (RST), Aloha-OTS_Tasking  → the RST Task Extension Form
+//   Aloha OTS Tasking (RST), Aloha-OTS_Tasking  → the RST Task Extension Form (and Bad Video, see hasBadVideoForm)
 //   Octet Mind, octet-mind                      → the TASK ISSUES form
 //   Aloha OTS, Sweet Yam, others              → the Scale Reclaim / Extend form (and Bad Video)
 export type TimeRequestForm = 'scale' | 'rst' | 'task_issues'
@@ -401,6 +401,17 @@ export function buildRstExtensionFormUrl(params: { taskId: string | null; cbEmai
   const project = params.projectName ? RST_FORM_PROJECTS.find((p) => p.match.test(params.projectName!))?.option : undefined
   if (project) query.set(RST_EXTENSION_FORM_ENTRY.projectName, project)
   return `${RST_EXTENSION_FORM_URL}?${query.toString()}`
+}
+
+/**
+ * Whether a task's project has the Bad Video Validation/Removal form: the Scale projects, and the
+ * RST ones it lists (Aloha OTS Tasking (RST) goes in as "Aloha"). Octet Mind has none.
+ */
+export function hasBadVideoForm(project: { name: string; code?: string | null } | null | undefined): boolean {
+  const form = timeRequestFormFor(project)
+  if (form === 'scale') return true
+  // By name or code: other RST projects (Ego…) aren't on the form.
+  return form === 'rst' && (formProjectOption(project?.name ?? null) ?? formProjectOption(project?.code ?? null)) !== null
 }
 
 // The "Bad Video Validation/Removal" form (ALOHA | URSA | YAM) a lead/admin files once they've

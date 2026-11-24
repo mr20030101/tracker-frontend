@@ -14,6 +14,16 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 10.2.0 — 2026-11-24
+
+### Changed
+
+- **Only admins can open "What's new".** The version number at the bottom of the page opens the release notes for admins; for leads, team managers and contributors it's just the version. Everyone still gets the "new version available" banner.
+
+### Added
+
+- **Report bad video on Aloha OTS Tasking (RST) tasks.** RST's Aloha OTS Tasking (RST) tasks now have Report bad video in their ⋮ menu, like the Scale projects. It's filed on the Bad Video Validation/Removal form with the project as Aloha. Extension requests still go to the RST Task Extension Form.
+
 ## 10.1.2 — 2026-11-24
 
 ### Fixed
