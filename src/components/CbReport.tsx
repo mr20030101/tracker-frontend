@@ -62,11 +62,11 @@ export function CbReport({ userId, email, leadId, name }: { userId: string; emai
   const { data: tasks = [], isLoading: tasksLoading } = useQuery({
     queryKey: ['cb-report', 'tasks', email, start, end],
     queryFn: async () => {
-      const pattern = email.replace(/[\\%_]/g, (c) => `\\${c}`)
+      // cb_email_lower is indexed; see 20261124_task_email_lookup.sql.
       const { data, error } = await supabase
         .from('task_submissions')
         .select('date, status, timer_elapsed_seconds, timer_started_at')
-        .ilike('cb_email', pattern)
+        .eq('cb_email_lower', email.trim().toLowerCase())
         .gte('date', start)
         .lte('date', end)
         .limit(5000)
