@@ -61,7 +61,7 @@ export async function fetchLeadTeam(leadId: string, weekStart: string): Promise<
   }
 
   const ids = users.map((u) => u.id)
-  const emails = users.map((u) => u.email)
+  const emails = users.map((u) => u.email.trim().toLowerCase())
   const inWeek = () =>
     supabase.from('task_submissions').select('id, user_id, cb_email, status, date').gte('date', weekStart).lte('date', weekEnd)
 
@@ -69,7 +69,7 @@ export async function fetchLeadTeam(leadId: string, weekStart: string): Promise<
   // logger's user_id, so match on either, like the dashboard does.
   const [byUser, byEmail, targetByUser] = await Promise.all([
     fetchAllPages<SubmissionRow>((from, to) => inWeek().in('user_id', ids).order('id').range(from, to)),
-    fetchAllPages<SubmissionRow>((from, to) => inWeek().in('cb_email', emails).order('id').range(from, to)),
+    fetchAllPages<SubmissionRow>((from, to) => inWeek().in('cb_email_lower', emails).order('id').range(from, to)),
     fetchWeeklyTargets(weekStart, ids),
   ])
 

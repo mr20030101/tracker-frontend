@@ -325,8 +325,9 @@ async function contributor(params: Record<string, unknown>): Promise<Contributor
   }
 
   // Case-insensitive, like the dashboard, leaderboard and rewards: a row logged as "Jane.Doe@…" for
-  // jane.doe@… counts there, so it has to count here too. ilike needs LIKE's _ and % escaped.
-  const emailPattern = email.replace(/[\\%_]/g, (char) => `\\${char}`)
+  // jane.doe@… counts there, so it has to count here too. cb_email_lower is indexed (an ilike on
+  // cb_email made Postgres check every task's access rules: 20261124_task_email_lookup.sql).
+  const emailLower = email.trim().toLowerCase()
   // `week_only`: just the week's rows (the contributor's own Dashboard needs nothing older), one
   // small request instead of their whole history.
   // `date_from` / `date_to`: just the rows in that span (a profile's chosen period plus the last 30
@@ -335,7 +336,7 @@ async function contributor(params: Record<string, unknown>): Promise<Contributor
   const dateFrom = weekOnly ? weekStart : typeof params.date_from === 'string' ? params.date_from : null
   const dateTo = typeof params.date_to === 'string' ? params.date_to : null
   const countTotal = async (submittedOnly: boolean) => {
-    let query = supabase.from('task_submissions').select('id', { count: 'exact', head: true }).ilike('cb_email', emailPattern)
+    let query = supabase.from('task_submissions').select('id', { count: 'exact', head: true }).eq('cb_email_lower', emailLower)
     if (submittedOnly) query = query.eq('status', 'submitted')
     const { count } = await query
     return count ?? 0
@@ -343,7 +344,7 @@ async function contributor(params: Record<string, unknown>): Promise<Contributor
   const [{ data: rows }, targetByUser, totals] = await Promise.all([
     // Paged: one contributor's whole history can pass 1,000 rows.
     fetchAllPages<TaskSubmission>((from, to) => {
-      let query = supabase.from('task_submissions').select('*, logged_by_other_cb').ilike('cb_email', emailPattern)
+      let query = supabase.from('task_submissions').select('*, logged_by_other_cb').eq('cb_email_lower', emailLower)
       if (dateFrom) query = query.gte('date', dateFrom)
       if (dateTo) query = query.lte('date', dateTo)
       return query.order('date', { ascending: false }).order('id').range(from, to)
