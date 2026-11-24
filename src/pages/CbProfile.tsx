@@ -125,11 +125,15 @@ export function CbProfile() {
   const thisWeekIso = weekStartIso(now)
 
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ['contributor', target, thisWeekIso],
+    queryKey: ['contributor', target, thisWeekIso, 'header'],
     queryFn: async () =>
       (
         await api.get<ContributorProfile>('/contributor', {
-          params: targetIsId ? { id: target, week_start: thisWeekIso } : { email: target, week_start: thisWeekIso },
+          // week_only: the header needs this week's count, not the CB's whole history (which grows
+          // every day and was fetched in 1,000-row pages). The work panel below loads its own period.
+          params: targetIsId
+            ? { id: target, week_start: thisWeekIso, week_only: true }
+            : { email: target, week_start: thisWeekIso, week_only: true },
         })
       ).data,
     enabled: Boolean(target),
