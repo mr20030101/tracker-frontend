@@ -620,7 +620,8 @@ export function AppShell({ children }: { children: ReactNode }) {
               <div ref={pageRef} className={onMessages ? 'h-full' : undefined}>{children}</div>
               {/* Under the page's content, not pinned to the window: it scrolls into view at the
                   end. Left off Messages, which fills the screen with the conversation. */}
-              {!onMessages && <AppFooter className="mt-10 pb-2" releaseNotes />}
+              {/* "What's new" (the release notes) is for admins; everyone else sees just the version. */}
+              {!onMessages && <AppFooter className="mt-10 pb-2" releaseNotes={isAdmin} />}
             </main>
           </div>
         </div>

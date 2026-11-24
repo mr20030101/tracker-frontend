@@ -31,6 +31,7 @@ import { useNow } from '../lib/useNow'
 import { remotasksDiffViewerUrl } from '../lib/remotasks'
 import {
   buildBadVideoRequestFormUrl,
+  hasBadVideoForm,
   timeRequestFormFor,
   editTaskRequest,
   reopenTaskRequest,
@@ -904,9 +905,8 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                     // A bad video is only reportable same-day — the video isn't expected to still
                     // be reviewable once the day it was logged has passed.
                     const canReportBadVideo = row.date?.slice(0, 10) === toISODate(new Date())
-                    // The Bad Video form is for the Scale projects (Aloha OTS, Sweet Yam); RST and Octet Mind tasks have none.
-                    const hasBadVideoForm = timeRequestFormFor(row.project) === 'scale'
-                    const badVideoItems = !hasBadVideoForm
+                    // The Bad Video form is for the Scale projects and Aloha OTS Tasking (RST); Octet Mind has none.
+                    const badVideoItems = !hasBadVideoForm(row.project)
                       ? []
                       : [
                           !canReportBadVideo
