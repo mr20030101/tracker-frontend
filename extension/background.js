@@ -131,7 +131,7 @@ async function reload() {
   await loadAccount(session.userId)
   const [current, profile] = await Promise.all([load('current'), load('profile')])
   if (current?.taskId) {
-    const { row } = await findOwnRow(current.taskId, profile)
+    const { row } = await findOwnRow(current.taskId)
     if (row?.status === 'in_progress') {
       await save({ current: { ...current, row } })
     } else {
@@ -174,10 +174,8 @@ async function setCurrent(taskId, row, created = false) {
 }
 
 // Other people may log the same task ID; yours is the one credited to your email.
-async function findOwnRow(taskId, profile) {
-  const rows = await rest(`task_submissions?task_id=ilike.${taskId}&select=${SUBMISSION_FIELDS},cb_email`)
-  const email = String(profile.email ?? '').toLowerCase()
-  const row = rows.find((r) => String(r.cb_email ?? '').toLowerCase() === email)
+async function findOwnRow(taskId) {
+  const [row] = await rest(`rpc/my_submission_for_task?select=${SUBMISSION_FIELDS}`, { method: 'POST', body: { p_task_id: taskId } })
   return { row }
 }
 
@@ -201,7 +199,7 @@ async function start(input) {
   if (!taskId) throw new Error('That isn’t a task ID. A task ID is 24 characters of 0-9 and a-f.')
   if (!projectId) throw new Error('You have no project in the tracker yet. Ask your lead to add you to one.')
 
-  const found = await findOwnRow(taskId, profile)
+  const found = await findOwnRow(taskId)
   let row = found.row
   // Starting the same task again keeps knowing the extension logged it.
   const created = !row || (current?.taskId === taskId && Boolean(current.created))
@@ -290,7 +288,7 @@ async function markStatus(status, screenshot) {
 async function reset(remove) {
   const [current, profile] = await Promise.all([load('current'), load('profile')])
   if (current?.taskId && profile) {
-    const { row } = await findOwnRow(current.taskId, profile)
+    const { row } = await findOwnRow(current.taskId)
     if (row && remove) {
       if (row.status !== 'in_progress') {
         throw new Error('Only a task that’s still in progress can be removed here. Change it on your Submissions in the tracker.')
@@ -335,7 +333,7 @@ async function requestableRow(input) {
   if (!profile) throw new Error('Sign in to Grey Owls Tracker first.')
   const taskId = parseTaskId(input)
   if (!taskId) throw new Error('That isn’t a task ID. A task ID is 24 characters of 0-9 and a-f.')
-  const found = await findOwnRow(taskId, profile)
+  const found = await findOwnRow(taskId)
   if (!found.row) throw new Error('This task isn’t in the tracker yet. Start it first.')
   return { profile, row: found.row }
 }
@@ -346,7 +344,7 @@ async function taskRequests(input) {
   const profile = await load('profile')
   if (!profile) return { requests: [] }
   if (!taskId) return { requests: [], note: 'That isn’t a task ID. A task ID is 24 characters of 0-9 and a-f.' }
-  const found = await findOwnRow(taskId, profile)
+  const found = await findOwnRow(taskId)
   if (!found.row) return { requests: [], note: 'This task isn’t in the tracker yet. Start it on the Timer tab first.' }
   const [requests, project] = await Promise.all([
     rest(`task_requests?task_submission_id=eq.${found.row.id}&type=in.(extension,reclaim,unclaim)&select=id,type,status,reason,requested_at&order=requested_at.desc`),

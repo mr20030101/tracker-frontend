@@ -14,6 +14,10 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Fixed
+
+- **The browser extension's Start no longer fails with "canceling statement due to statement timeout".** Looking up your task checked every submission in the tracker, which grew too slow; it now goes straight to yours. Start, Reload, Reset and requests in the extension all use the faster lookup. Update the extension to 1.10.1 from the Resources page.
+
 ## 10.1.0 — 2026-11-23
 
 ### Fixed
