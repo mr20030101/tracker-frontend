@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 10.1.2 — 2026-11-24
+
 ### Fixed
 
 - **Contributor profiles, CB reports and lead team pages load much faster.** Finding one contributor's tasks made the database check access on every task in the Tracker; it now goes straight to that contributor's tasks (needs 20261124_task_email_lookup.sql).
