@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 10.1.1 — 2026-11-24
+
 ### Fixed
 
 - **A contributor's profile opens much faster.** The top of the page loaded the contributor's entire task history just to show this week's count; it now loads only this week. The task list below still shows the period you pick.
