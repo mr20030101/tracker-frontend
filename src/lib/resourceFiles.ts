@@ -23,10 +23,41 @@ export function resourceFilePath(url: string): string | null {
  * storage policies check to decide who may read and change it. Returns the URL to save on the row.
  */
 export async function uploadResourceFile(file: File, projectId: number | null): Promise<string> {
-  const path = `${projectId ?? 'general'}/${crypto.randomUUID()}-${file.name}`
+  const path = `${projectId ?? 'general'}/${crypto.randomUUID()}-${storageSafeName(file.name)}`
   const { error } = await supabase.storage.from(BUCKET).upload(path, file)
-  if (error) throw error
+  if (error) throw new Error(uploadErrorMessage(error))
   return supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl
+}
+
+/**
+ * A file name storage accepts. It refuses some characters in a path, which failed every upload of,
+ * say, a macOS screen recording ("Screen Recording … 10.32.11 AM.mov" has a narrow no-break space
+ * before AM). Letters, digits, dot, dash and underscore stay, accents are dropped, the rest become
+ * dashes. The resource's title keeps the original name.
+ */
+export function storageSafeName(name: string): string {
+  const dot = name.lastIndexOf('.')
+  const [base, ext] = dot > 0 ? [name.slice(0, dot), name.slice(dot + 1)] : [name, '']
+  const clean = (part: string) =>
+    part
+      .normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^A-Za-z0-9._-]+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^[-.]+|[-.]+$/g, '')
+  const safeBase = clean(base).slice(0, 100) || 'file'
+  const safeExt = clean(ext).slice(0, 10)
+  return safeExt ? `${safeBase}.${safeExt}` : safeBase
+}
+
+/** What went wrong, in words someone can act on. */
+function uploadErrorMessage(error: { message?: string; statusCode?: string | number }): string {
+  const message = error.message ?? ''
+  if (String(error.statusCode) === '413' || /too large|exceeded the maximum|payload/i.test(message)) {
+    return 'That file is too big to upload. Try a shorter or smaller video, or upload it somewhere else and paste the link.'
+  }
+  if (/mime|type .* not supported/i.test(message)) return "That kind of file can't be uploaded here."
+  return message ? `Could not upload this file: ${message}` : 'Could not upload this file. Try again.'
 }
 
 /** Opens an uploaded resource file in a new tab through a signed URL that expires in a minute. */

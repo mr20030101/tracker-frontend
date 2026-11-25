@@ -149,8 +149,8 @@ export function Resources() {
     try {
       const url = await uploadResourceFile(file, form.project_id ? Number(form.project_id) : null)
       setForm((prev) => ({ ...prev, url, title: prev.title || file.name }))
-    } catch {
-      setError('Could not upload this file. Try again.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not upload this file. Try again.')
     } finally {
       setUploading(false)
       e.target.value = ''
