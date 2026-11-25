@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 10.2.1 — 2026-11-25
+
 ### Fixed
 
 - **Uploading a file to a resource works with any file name.** Names with characters storage won't take (like the hidden space in a Mac screen recording's name) made every upload fail. Files are now stored under a cleaned-up name, and a failed upload says why, such as the file being too big, instead of always "Try again".
