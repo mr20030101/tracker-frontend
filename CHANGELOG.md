@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 10.10.0 — 2026-11-28
+
 ### Added
 
 - **Resources for one team only.** When you add or edit a resource on a project, a new **Visible to** option lets you keep it to one lead's team instead of everyone on the project. Other leads on that project and their contributors won't see it, or open its uploaded file. A lead can limit a resource to their own team; a team manager to any team in their program; an admin to any lead of the project. Resources list it as "Your team only" or "Maria's team only". Existing resources stay visible to the whole project.
