@@ -73,6 +73,27 @@ describe('handleApply', () => {
     expect((await handleApply(request(APPLICATION, { country: null }), { ...ENV, VERCEL: undefined }, fakeFetch())).status).toBe(200)
   })
 
+  describe('on Cloudflare Pages (no VERCEL, the country on request.cf)', () => {
+    const CLOUDFLARE_ENV = { ...ENV, VERCEL: undefined }
+    const onCloudflare = (cf: Record<string, unknown>) =>
+      Object.assign(request(APPLICATION, { country: null }), { cf })
+
+    it('saves an application from the Philippines', async () => {
+      expect((await handleApply(onCloudflare({ country: 'PH' }), CLOUDFLARE_ENV, fakeFetch())).status).toBe(200)
+    })
+
+    it('refuses another country, even with a forged x-vercel-ip-country header', async () => {
+      const forged = onCloudflare({ country: 'US' })
+      forged.headers.set('x-vercel-ip-country', 'PH')
+      expect((await handleApply(forged, CLOUDFLARE_ENV, fakeFetch())).status).toBe(403)
+    })
+
+    it('refuses a missing or unknown country', async () => {
+      expect((await handleApply(onCloudflare({}), CLOUDFLARE_ENV, fakeFetch())).status).toBe(403)
+      expect((await handleApply(onCloudflare({ country: 'XX' }), CLOUDFLARE_ENV, fakeFetch())).status).toBe(403)
+    })
+  })
+
   it('refuses a request with no Turnstile token', async () => {
     const fetchImpl = fakeFetch()
     const response = await handleApply(request({ ...APPLICATION, turnstile_token: '' }), ENV, fetchImpl)

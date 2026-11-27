@@ -28,6 +28,11 @@ function versionFile(): Plugin {
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss(), versionFile()],
+  define: {
+    // True only in a build on Vercel (which sets VERCEL=1), the one host with Speed Insights. The
+    // same code is also deployed to Cloudflare Pages (see wrangler.toml).
+    'import.meta.env.VERCEL_BUILD': JSON.stringify(process.env.VERCEL === '1'),
+  },
   server: {
     proxy: {
       '/api': 'http://localhost:8000',
