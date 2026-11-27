@@ -194,6 +194,9 @@ export interface Resource {
   title: string
   url: string
   project_id: number | null
+  // Set when only this lead's team (and their team manager and admins) can see it; null for
+  // everyone on the project (20261128_resource_team_scope.sql).
+  lead_id: string | null
   project: Project | null
 }
 

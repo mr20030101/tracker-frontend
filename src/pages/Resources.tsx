@@ -3,7 +3,7 @@ import { FoldText } from '../components/FoldText'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Pencil, Plus, Save, Trash2, X } from 'lucide-react'
 import { api, errorMessage, supabase } from '../lib/api'
-import { openResourceFile, resourceFilePath, uploadResourceFile } from '../lib/resourceFiles'
+import { openResourceFile, resourceFileFolder, resourceFilePath, resourceFolder, uploadResourceFile } from '../lib/resourceFiles'
 import { useAuth } from '../lib/auth'
 import type { Project, Resource } from '../types'
 import { Modal } from '../components/Modal'
@@ -14,9 +14,20 @@ import { confirmDialog, alertDialog } from '../lib/dialog'
 import { usePageTitle } from '../lib/usePageTitle'
 import { MANAGER_ROLES } from '../lib/roles'
 import { useTeamFeatures } from '../lib/teamFeatures'
+import { useMessaging } from '../lib/messagingContext'
+import { useManagedLeadIds } from '../lib/useManagedLeadIds'
 
 
-const emptyForm = { category: '', title: '', url: '', project_id: '' }
+// lead_id: '' for everyone on the project, or the lead whose team alone can see it.
+const emptyForm = { category: '', title: '', url: '', project_id: '', lead_id: '' }
+
+// An uploaded file lives in the folder for its project and team, which decides who can open it, so
+// it can't follow the resource to another one: the URL is cleared, to be uploaded again there.
+function withFileKept(url: string, projectId: string, leadId: string): string {
+  const path = resourceFilePath(url)
+  const folder = path ? resourceFileFolder(path) : null
+  return folder !== null && folder !== resourceFolder(projectId ? Number(projectId) : null, leadId || null) ? '' : url
+}
 
 // A Canva share link (edit or view) turned into its embeddable form, so it can be shown in an
 // iframe here instead of sending people to canva.com. Canva's own embed convention: any
@@ -42,6 +53,9 @@ export function Resources() {
   const showExtension = user?.role === 'team_manager' ? user.program !== 'rst' : team.loaded && team.program !== 'rst'
   const isAdmin = user?.role === 'admin'
   const isManager = Boolean(user && MANAGER_ROLES.includes(user.role))
+  const isTeamManager = user?.role === 'team_manager'
+  const { usersById } = useMessaging()
+  const managedLeadIds = useManagedLeadIds(user?.role)
   const queryClient = useQueryClient()
   const [formTarget, setFormTarget] = useState<'new' | Resource | null>(null)
   const [form, setForm] = useState(emptyForm)
@@ -69,7 +83,8 @@ export function Resources() {
       if (error) throw error
       return rows as { project_id: number; lead_id: string }[]
     },
-    enabled: isManager && !isAdmin,
+    // Admins too: it lists which leads a resource can be limited to.
+    enabled: isManager,
   })
   const myProjectIds = useMemo(
     () => new Set(projectLeads.filter((pl) => pl.lead_id === user?.id).map((pl) => pl.project_id)),
@@ -84,9 +99,36 @@ export function Resources() {
     return isAdmin ? [{ value: '', label: '— General (visible to everyone) —' }, ...options] : options
   }, [allProjects, isAdmin, myProjectIds, user?.role])
 
+  // The teams a resource on this project can be limited to: a lead only their own, a team manager
+  // their program's, an admin any lead of the project (the database enforces the same).
+  const teamLeadIdsFor = (projectId: string): string[] => {
+    if (!projectId) return []
+    const leadIds = projectLeads.filter((pl) => pl.project_id === Number(projectId)).map((pl) => pl.lead_id)
+    if (isAdmin) return leadIds
+    if (isTeamManager) return leadIds.filter((id) => managedLeadIds.has(id))
+    return leadIds.filter((id) => id === user?.id)
+  }
+  const visibilityOptions = [
+    { value: '', label: 'Everyone on this project' },
+    ...teamLeadIdsFor(form.project_id)
+      .map((id) => ({ value: id, label: id === user?.id ? 'Only my team' : `Only ${usersById.get(id)?.name ?? 'a lead'}'s team` }))
+      .sort((a, b) => a.label.localeCompare(b.label)),
+  ]
+
+  function teamLabel(leadId: string): string {
+    if (leadId === user?.id || leadId === user?.lead_id) return 'Your team only'
+    return `${usersById.get(leadId)?.name ?? 'One lead'}'s team only`
+  }
+
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const payload = { category: form.category, title: form.title, url: form.url, project_id: form.project_id ? Number(form.project_id) : null }
+      const payload = {
+        category: form.category,
+        title: form.title,
+        url: form.url,
+        project_id: form.project_id ? Number(form.project_id) : null,
+        lead_id: form.project_id && form.lead_id ? form.lead_id : null,
+      }
       if (formTarget && formTarget !== 'new') {
         await api.patch(`/resources/${formTarget.id}`, payload)
       } else {
@@ -117,6 +159,7 @@ export function Resources() {
       title: resource.title,
       url: resource.url,
       project_id: resource.project_id != null ? String(resource.project_id) : '',
+      lead_id: resource.lead_id ?? '',
     })
     setError(null)
     setFormTarget(resource)
@@ -152,7 +195,7 @@ export function Resources() {
     setUploading(true)
     setError(null)
     try {
-      const url = await uploadResourceFile(file, form.project_id ? Number(form.project_id) : null)
+      const url = await uploadResourceFile(file, form.project_id ? Number(form.project_id) : null, form.project_id && form.lead_id ? form.lead_id : null)
       setForm((prev) => ({ ...prev, url, title: prev.title || file.name }))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not upload this file. Try again.')
@@ -234,7 +277,11 @@ export function Resources() {
                         {item.title}
                       </a>
                     )}
-                    {item.project && <div className="text-xs text-gray-400">{item.project.name}</div>}
+                    {(item.project || item.lead_id) && (
+                      <div className="text-xs text-gray-400">
+                        {[item.project?.name, item.lead_id && teamLabel(item.lead_id)].filter(Boolean).join(' · ')}
+                      </div>
+                    )}
                   </div>
                   {isManager && (
                     <div className="flex shrink-0">
@@ -276,11 +323,9 @@ export function Resources() {
                   value={form.project_id}
                   onChange={(value) =>
                     setForm((prev) => {
-                      // An uploaded file lives in its project's folder, so it can't follow the resource
-                      // to another project: clear it, to be uploaded again under the new one.
-                      const path = resourceFilePath(prev.url)
-                      const movedFile = path?.includes('/') && path.split('/')[0] !== (value || 'general')
-                      return { ...prev, project_id: value, url: movedFile ? '' : prev.url }
+                      // Keep the team only if that lead also leads the new project.
+                      const leadId = teamLeadIdsFor(value).includes(prev.lead_id) ? prev.lead_id : ''
+                      return { ...prev, project_id: value, lead_id: leadId, url: withFileKept(prev.url, value, leadId) }
                     })
                   }
                   options={projectOptions}
@@ -290,6 +335,25 @@ export function Resources() {
                 />
               )}
             </div>
+            {visibilityOptions.length > 1 && (
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Visible to</label>
+                <Select
+                  value={form.lead_id}
+                  onChange={(value) =>
+                    setForm((prev) => ({ ...prev, lead_id: value, url: withFileKept(prev.url, prev.project_id, value) }))
+                  }
+                  options={visibilityOptions}
+                  fullWidth
+                  className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
+                />
+                <p className="mt-1 text-xs text-gray-400">
+                  {form.lead_id
+                    ? "Other leads on this project and their contributors won't see it."
+                    : "Every lead on this project and their contributors will see it."}
+                </p>
+              </div>
+            )}
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">Category</label>
               <input

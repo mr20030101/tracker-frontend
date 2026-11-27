@@ -19,11 +19,24 @@ export function resourceFilePath(url: string): string | null {
 }
 
 /**
- * Uploads into the project's folder ("general" for a resource with no project), which is what the
- * storage policies check to decide who may read and change it. Returns the URL to save on the row.
+ * The folder a resource's uploaded files go in, which is what the storage policies check to decide
+ * who may read and change them: the project's ("general" for a resource with no project), or
+ * <project>/<lead> for a resource limited to one lead's team.
  */
-export async function uploadResourceFile(file: File, projectId: number | null): Promise<string> {
-  const path = `${projectId ?? 'general'}/${crypto.randomUUID()}-${storageSafeName(file.name)}`
+export function resourceFolder(projectId: number | null, leadId: string | null): string {
+  if (projectId == null) return 'general'
+  return leadId ? `${projectId}/${leadId}` : String(projectId)
+}
+
+/** The folder part of an uploaded file's path, or null for a file at the top of the bucket. */
+export function resourceFileFolder(path: string): string | null {
+  const slash = path.lastIndexOf('/')
+  return slash > 0 ? path.slice(0, slash) : null
+}
+
+/** Uploads into resourceFolder(). Returns the URL to save on the row. */
+export async function uploadResourceFile(file: File, projectId: number | null, leadId: string | null): Promise<string> {
+  const path = `${resourceFolder(projectId, leadId)}/${crypto.randomUUID()}-${storageSafeName(file.name)}`
   const { error } = await supabase.storage.from(BUCKET).upload(path, file)
   if (error) throw new Error(uploadErrorMessage(error))
   return supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl
