@@ -39,6 +39,8 @@ const STATUS_OPTIONS: { value: SubmissionStatus; label: string }[] = [
 interface Props {
   submission?: TaskSubmission
   onClose: () => void
+  // Called after a save, before onClose (e.g. to refresh a page's own copy of the task).
+  onSaved?: () => void
 }
 
 function extractErrorMessage(err: unknown): string {
@@ -72,7 +74,7 @@ function wholeNumber(value: string): number | null {
   return value.trim() === '' || Number.isNaN(n) ? null : n
 }
 
-export function TaskSubmissionForm({ submission, onClose }: Props) {
+export function TaskSubmissionForm({ submission, onClose, onSaved }: Props) {
   const queryClient = useQueryClient()
   const { user } = useAuth()
   const isManager = Boolean(user && MANAGER_ROLES.includes(user.role))
@@ -227,6 +229,7 @@ export function TaskSubmissionForm({ submission, onClose }: Props) {
       queryClient.invalidateQueries({ queryKey: ['achievements'] })
       queryClient.invalidateQueries({ queryKey: ['team-weeks'] })
       queryClient.invalidateQueries({ queryKey: ['reward-standings'] })
+      onSaved?.()
       onClose()
     },
     onError: (err) => setError(extractErrorMessage(err)),
