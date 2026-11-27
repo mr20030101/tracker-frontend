@@ -13,6 +13,7 @@ import { BrowserExtensionCard } from '../components/BrowserExtensionCard'
 import { confirmDialog, alertDialog } from '../lib/dialog'
 import { usePageTitle } from '../lib/usePageTitle'
 import { MANAGER_ROLES } from '../lib/roles'
+import { useTeamFeatures } from '../lib/teamFeatures'
 
 
 const emptyForm = { category: '', title: '', url: '', project_id: '' }
@@ -35,6 +36,10 @@ function canvaEmbedUrl(url: string): string | null {
 export function Resources() {
   usePageTitle('Resources')
   const { user } = useAuth()
+  // The RST team doesn't use the browser extension, so it isn't offered to them: RST contributors
+  // and leads (their team's program) and the RST team manager. Shown once the team is known.
+  const team = useTeamFeatures(user?.role === 'team_manager' ? null : user?.id)
+  const showExtension = user?.role === 'team_manager' ? user.program !== 'rst' : team.loaded && team.program !== 'rst'
   const isAdmin = user?.role === 'admin'
   const isManager = Boolean(user && MANAGER_ROLES.includes(user.role))
   const queryClient = useQueryClient()
@@ -184,7 +189,7 @@ export function Resources() {
         )}
       </div>
 
-      <BrowserExtensionCard />
+      {showExtension && <BrowserExtensionCard />}
 
       {isLoading && <div className="text-gray-400">Loading...</div>}
 
