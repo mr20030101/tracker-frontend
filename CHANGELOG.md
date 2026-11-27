@@ -14,6 +14,12 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 10.3.0 — 2026-11-27
+
+### Added
+
+- **Assign projects to many contributors at once.** On Contributors, select some and pick **Assign projects** in the bar above the table. Tick projects, then add them to what each person has, take them off, or replace everyone's projects with just those. Each contributor only gets the projects their own lead runs, and anyone a change would leave with no projects is skipped.
+
 ## 10.2.1 — 2026-11-25
 
 ### Fixed

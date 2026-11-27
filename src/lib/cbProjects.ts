@@ -53,3 +53,56 @@ export async function setProjectAssignment(userId: string, projectId: number, as
     : await supabase.from('contributor_project_levels').delete().eq('user_id', userId).eq('project_id', projectId)
   if (error) throw error
 }
+
+export type BulkAssignMode = 'add' | 'remove' | 'replace'
+
+export type BulkAssignPlan =
+  | { userId: string; leadProjectIds: number[]; target: number[] }
+  | { userId: string; skipped: 'no-lead' | 'not-their-lead' | 'none-left' }
+
+/**
+ * What each contributor's projects become when a lead or admin picks some for many at once: added
+ * to theirs, taken off theirs, or put in place of theirs. Only their own lead's projects count, so
+ * picking across teams gives each person just the ones their lead runs; anyone it would leave with
+ * none (or whose lead runs none of the picked ones) is skipped and keeps what they have.
+ */
+export function planBulkAssignment(
+  users: { id: string; lead_id: string | null }[],
+  picked: number[],
+  mode: BulkAssignMode,
+  projectLeads: ProjectLeadRow[],
+  assignments: AssignmentRow[],
+): BulkAssignPlan[] {
+  const pickedSet = new Set(picked)
+  return users.map((user) => {
+    if (!user.lead_id) return { userId: user.id, skipped: 'no-lead' }
+    const leadProjectIds = projectLeads.filter((row) => row.lead_id === user.lead_id).map((row) => row.project_id)
+    const relevant = leadProjectIds.filter((id) => pickedSet.has(id))
+    if (relevant.length === 0) return { userId: user.id, skipped: 'not-their-lead' }
+    const current = new Set(assignedProjectIds(user.id, user.lead_id, projectLeads, assignments))
+    const target =
+      mode === 'replace'
+        ? relevant
+        : mode === 'add'
+          ? leadProjectIds.filter((id) => current.has(id) || pickedSet.has(id))
+          : leadProjectIds.filter((id) => current.has(id) && !pickedSet.has(id))
+    if (target.length === 0) return { userId: user.id, skipped: 'none-left' }
+    return { userId: user.id, leadProjectIds, target }
+  })
+}
+
+/** Puts a contributor on exactly these of their lead's projects (keeping levels on ones they stay on). */
+export async function setProjectAssignments(userId: string, leadProjectIds: number[], target: number[]): Promise<void> {
+  const keep = new Set(target)
+  const { error: addError } = await supabase
+    .from('contributor_project_levels')
+    .upsert(
+      target.map((projectId) => ({ user_id: userId, project_id: projectId })),
+      { onConflict: 'user_id,project_id', ignoreDuplicates: true },
+    )
+  if (addError) throw addError
+  const drop = leadProjectIds.filter((id) => !keep.has(id))
+  if (drop.length === 0) return
+  const { error: dropError } = await supabase.from('contributor_project_levels').delete().eq('user_id', userId).in('project_id', drop)
+  if (dropError) throw dropError
+}
