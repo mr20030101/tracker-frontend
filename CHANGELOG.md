@@ -14,6 +14,10 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Fixed
+
+- **Starting a task in the browser extension no longer fails with "canceling statement due to statement timeout".** The extension looked the task up in every task in the tracker; it now looks only through your own. Browser extension 1.10.1: press Update in the extension's popup.
+
 ## 10.5.0 — 2026-11-27
 
 ### Added
