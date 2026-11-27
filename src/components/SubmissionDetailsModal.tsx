@@ -86,7 +86,26 @@ export function SubmissionDetailsModal({
         <Detail label="Project">{s.project?.name ?? '—'}</Detail>
         <Detail label="Date">{s.date?.slice(0, 10) ?? '—'}</Detail>
         <Detail label="Logged">{formatDateTime(s.created_at)}</Detail>
-        <Detail label="Submitted">{s.submitted_at ? s.submitted_at.slice(0, 10) : <span className="text-gray-400">Not yet</span>}</Detail>
+        <Detail label="Submitted">
+          {s.ended_at ? formatDateTime(s.ended_at) : s.submitted_at ? s.submitted_at.slice(0, 10) : <span className="text-gray-400">Not yet</span>}
+        </Detail>
+        {/* The RST team's extra fields, when the task has any. */}
+        {(s.density || s.task_link || s.progress_pct != null || s.frames != null) && (
+          <>
+            <Detail label="Density">{s.density ? s.density[0].toUpperCase() + s.density.slice(1) : '—'}</Detail>
+            <Detail label="Progress">{s.progress_pct != null ? `${s.progress_pct}%` : '—'}</Detail>
+            <Detail label="Frames">{s.frames ?? '—'}</Detail>
+            <Detail label="Task link">
+              {s.task_link && /^https?:\/\//i.test(s.task_link) ? (
+                <a href={s.task_link} target="_blank" rel="noreferrer" className="break-all text-sky-700 hover:underline">
+                  {s.task_link} ↗
+                </a>
+              ) : (
+                <span className="break-all">{s.task_link || '—'}</span>
+              )}
+            </Detail>
+          </>
+        )}
         <Detail label="CTS">
           {s.cts_submitted_at ? formatDateTime(s.cts_submitted_at) : <span className="text-gray-400">Not submitted to CTS</span>}
         </Detail>

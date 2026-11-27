@@ -24,6 +24,8 @@ import { BulkImportModal } from '../components/BulkImportModal'
 import { useAppSwitches } from '../lib/appSettings'
 import { ContributorWorkPanel } from '../components/ContributorWorkPanel'
 import { downloadCsv } from '../lib/csv'
+import { rstExportRows, type RstExportTask } from '../lib/rstTaskExport'
+import { useTeamFeatures } from '../lib/teamFeatures'
 import { contributorPath } from '../lib/urlRef'
 import { confirmDialog, alertDialog } from '../lib/dialog'
 import { fetchAllPages } from '../lib/fetchAll'
@@ -106,6 +108,11 @@ function ManagerTaskLog() {
   const bulkImportEnabled = useAppSwitches().bulk_import
   const [exporting, setExporting] = useState(false)
   const queryClient = useQueryClient()
+  // The export is in the RST task sheet's format for an RST team: the team picked in the filter, a
+  // lead's own, or (no team picked) an RST team manager's program. Bootcamp keeps the plain one.
+  const exportTeamLeadId = leadId || (me?.role === 'lead' ? me.id : null)
+  const exportTeam = useTeamFeatures(exportTeamLeadId)
+  const rstExport = exportTeamLeadId ? exportTeam.loaded && exportTeam.program === 'rst' : me?.role === 'team_manager' && me.program === 'rst'
 
   const { data: projects } = useQuery({
     queryKey: ['projects'],
@@ -163,7 +170,8 @@ function ManagerTaskLog() {
       const pageOf = (from: number, to: number) => {
         let query = supabase
           .from('task_submissions')
-          .select('date, cb_email, task_id, project_id, stage, status, notes, submitted_at, snipboard_url')
+          // Both formats' columns: the RST sheet's needs the extra ones.
+          .select('date, cb_email, task_id, project_id, stage, status, notes, submitted_at, density, task_link, progress_pct, frames, created_at, ended_at')
           .order(sort.key, { ascending: sort.dir === 'asc' })
           .order('id')
         if (stage) query = query.eq('stage', stage)
@@ -183,6 +191,10 @@ function ManagerTaskLog() {
       const rows = await fetchAllPages(pageOf)
 
       const projectById = new Map((projects ?? []).map((p) => [p.id, p.name]))
+      if (rstExport) {
+        downloadCsv(`rst-task-log-${toISODate(new Date())}.csv`, rstExportRows((rows ?? []) as RstExportTask[], (id) => projectById.get(id)))
+        return
+      }
       downloadCsv(
         `task-log-${toISODate(new Date())}.csv`,
         (rows ?? []).map((r) => ({

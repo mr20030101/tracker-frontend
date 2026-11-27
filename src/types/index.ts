@@ -66,7 +66,8 @@ export interface Project {
 }
 
 export type Stage = 'attempt' | 'l0' | 'l1' | 'l10'
-export type SubmissionStatus = 'submitted' | 'in_progress' | 'empty' | 'expired' | 'claimed_by_another' | 'rejected'
+export type TaskDensity = 'easy' | 'medium' | 'complex'
+export type SubmissionStatus ='submitted' | 'in_progress' | 'empty' | 'expired' | 'claimed_by_another' | 'rejected'
 
 // A contributor's rank on a given project — distinct from Stage above,
 // which describes a task submission's own pipeline stage.
@@ -102,6 +103,13 @@ export interface TaskSubmission {
   backup_form_sent_at?: string | null
   backup_form_error?: string | null
   backup_form_attempts?: number | null
+  // The RST team's extra fields (20261127_rst_task_fields.sql): filled in by RST contributors.
+  density?: TaskDensity | null
+  task_link?: string | null
+  progress_pct?: number | null
+  frames?: number | null
+  // When it became Submitted (set by the database; cleared if it's moved off Submitted).
+  ended_at?: string | null
   created_at: string
   updated_at?: string
 }
