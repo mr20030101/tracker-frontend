@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 10.9.0 — 2026-11-27
+
 ### Changed
 
 - **The browser extension isn't offered to the RST team.** Resources no longer shows the Browser extension card to RST contributors, RST leads or the RST team manager. Bootcamp and admins still see it.
