@@ -10,7 +10,6 @@ const task: RstExportTask = {
   status: 'submitted',
   notes: 'Aloha OTS',
   density: 'medium',
-  task_link: 'https://example.com/task/6af640325c89ed9e49a97891',
   progress_pct: 100,
   frames: 2770,
   created_at: '2026-11-26T05:10:00Z',
@@ -27,6 +26,7 @@ describe('rstExportRows', () => {
     ])
     expect(row).toMatchObject({
       'Task Level': 'L0',
+      Link: 'https://www.remotasks.com/lidarlite/?entrypoint=diff-viewer&sceneId=6af640325c89ed9e49a97891',
       Density: 'medium',
       Status: 'submitted',
       'Progress %': '100%',
@@ -41,7 +41,7 @@ describe('rstExportRows', () => {
 
   it('leaves the RST fields blank on a task without them', () => {
     const [row] = rstExportRows(
-      [{ ...task, status: 'in_progress', density: null, task_link: null, progress_pct: null, frames: null, ended_at: null, project_id: null }],
+      [{ ...task, task_id: null, status: 'in_progress', density: null, progress_pct: null, frames: null, ended_at: null, project_id: null }],
       () => undefined,
       'Asia/Manila',
     )

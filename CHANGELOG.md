@@ -14,6 +14,16 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 10.6.0 — 2026-11-27
+
+### Changed
+
+- **RST tasks don't ask for a Task link any more.** The RST export's Link column is the task's Remotasks link, made from its Task ID.
+
+### Fixed
+
+- **A failed export or long list now says why.** The Task Log's Export CSV (and other pages that load more than 1,000 rows) showed only "Export failed." or a similar message when the database refused; it now shows the database's reason.
+
 ## 10.5.1 — 2026-11-27
 
 ### Fixed

@@ -2,6 +2,7 @@
 // ("Aloha OTS"), so the rows paste straight into it. Project is added at the end, since one export
 // can cover several projects and the sheet has one tab per project. Bootcamp keeps the plain export.
 import type { Stage, SubmissionStatus, TaskDensity } from '../types'
+import { remotasksDiffViewerUrl } from './remotasks'
 
 export interface RstExportTask {
   date: string | null
@@ -12,7 +13,6 @@ export interface RstExportTask {
   status: SubmissionStatus
   notes: string | null
   density: TaskDensity | null
-  task_link: string | null
   progress_pct: number | null
   frames: number | null
   created_at: string
@@ -56,7 +56,8 @@ export function rstExportRows(tasks: RstExportTask[], projectName: (id: number) 
     'Task Level': LEVELS[t.stage] ?? t.stage,
     'Task ID': t.task_id ?? '',
     Density: t.density ?? '',
-    Link: t.task_link ?? '',
+    // The task on Remotasks, from its ID (as the task's details link it).
+    Link: t.task_id ? remotasksDiffViewerUrl(t.task_id) : '',
     'CB Email': t.cb_email,
     Status: STATUSES[t.status] ?? t.status,
     'Progress %': t.progress_pct == null ? '' : `${t.progress_pct}%`,
