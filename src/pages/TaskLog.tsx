@@ -171,7 +171,7 @@ function ManagerTaskLog() {
         let query = supabase
           .from('task_submissions')
           // Both formats' columns: the RST sheet's needs the extra ones.
-          .select('date, cb_email, task_id, project_id, stage, status, notes, submitted_at, density, task_link, progress_pct, frames, created_at, ended_at')
+          .select('date, cb_email, task_id, project_id, stage, status, notes, submitted_at, density, progress_pct, frames, created_at, ended_at')
           .order(sort.key, { ascending: sort.dir === 'asc' })
           .order('id')
         if (stage) query = query.eq('stage', stage)

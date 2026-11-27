@@ -62,7 +62,6 @@ const emptyForm = {
   snipboard_url: '',
   // The RST team's extra fields, shown only for an RST contributor's task.
   density: '' as TaskDensity | '',
-  task_link: '',
   progress_pct: '',
   frames: '',
 }
@@ -96,7 +95,6 @@ export function TaskSubmissionForm({ submission, onClose }: Props) {
           notes: submission.notes ?? '',
           snipboard_url: submission.snipboard_url ?? '',
           density: submission.density ?? '',
-          task_link: submission.task_link ?? '',
           progress_pct: submission.progress_pct == null ? '' : String(submission.progress_pct),
           frames: submission.frames == null ? '' : String(submission.frames),
         }
@@ -123,7 +121,7 @@ export function TaskSubmissionForm({ submission, onClose }: Props) {
   })
   const contributorLeadId = !isManager ? (user?.lead_id ?? null) : lookedUp?.leadId
   const contributorId = !isManager ? (user?.id ?? null) : (lookedUp?.id ?? null)
-  // RST teams log a task's Density, Link, Progress % and # of Frames too (their task sheet's columns).
+  // RST teams log a task's Density, Progress % and # of Frames too (their task sheet's columns).
   const contributorTeam = useTeamFeatures(contributorId)
   const isRst = contributorTeam.loaded && contributorTeam.program === 'rst'
   const { data: contributorAssignments } = useQuery({
@@ -185,7 +183,6 @@ export function TaskSubmissionForm({ submission, onClose }: Props) {
         ...(isRst
           ? {
               density: form.density || null,
-              task_link: form.task_link.trim() || null,
               progress_pct: wholeNumber(form.progress_pct),
               frames: wholeNumber(form.frames),
             }
@@ -390,20 +387,6 @@ export function TaskSubmissionForm({ submission, onClose }: Props) {
                   className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
                 />
               </div>
-            </div>
-            <div className="sm:col-span-2">
-              <label htmlFor={`${projectFieldId}-link`} className="mb-1 block text-sm font-medium text-gray-700">
-                Task link
-              </label>
-              <input
-                id={`${projectFieldId}-link`}
-                type="url"
-                placeholder="https://..."
-                maxLength={2000}
-                value={form.task_link}
-                onChange={(e) => setForm({ ...form, task_link: e.target.value })}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
-              />
             </div>
           </>
         )}

@@ -105,7 +105,6 @@ export interface TaskSubmission {
   backup_form_attempts?: number | null
   // The RST team's extra fields (20261127_rst_task_fields.sql): filled in by RST contributors.
   density?: TaskDensity | null
-  task_link?: string | null
   progress_pct?: number | null
   frames?: number | null
   // When it became Submitted (set by the database; cleared if it's moved off Submitted).
