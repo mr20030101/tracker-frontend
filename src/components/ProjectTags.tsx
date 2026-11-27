@@ -2,11 +2,28 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Check, Pencil } from 'lucide-react'
 import { api, errorMessage } from '../lib/api'
-import { assignedProjectIds, fetchAssignments, fetchProjectLeads, setProjectAssignment } from '../lib/cbProjects'
+import {
+  assignedProjectIds,
+  fetchAssignments,
+  fetchProjectLeads,
+  planBulkAssignment,
+  setProjectAssignment,
+  setProjectAssignments,
+  type BulkAssignMode,
+  type BulkAssignPlan,
+} from '../lib/cbProjects'
 import type { Project, User } from '../types'
 import { Modal } from './Modal'
+import { SegmentedTabs } from './TableToolbar'
 
 const MAX_SHOWN = 3
+
+function invalidateAssignments(queryClient: ReturnType<typeof useQueryClient>) {
+  queryClient.invalidateQueries({ queryKey: ['cb-project-assignments'] })
+  queryClient.invalidateQueries({ queryKey: ['contributor-project-levels'] })
+  queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] })
+  queryClient.invalidateQueries({ queryKey: ['contributor'] })
+}
 
 function useProjectData() {
   const projects = useQuery({ queryKey: ['projects'], queryFn: async () => (await api.get<Project[]>('/projects')).data })
@@ -87,12 +104,7 @@ function AssignProjectsModal({
       }
       await setProjectAssignment(user.id, projectId, on)
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['cb-project-assignments'] })
-      queryClient.invalidateQueries({ queryKey: ['contributor-project-levels'] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] })
-      queryClient.invalidateQueries({ queryKey: ['contributor'] })
-    },
+    onSettled: () => invalidateAssignments(queryClient),
   })
 
   return (
@@ -128,6 +140,144 @@ function AssignProjectsModal({
           <button type="button" onClick={onClose} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600">
             <Check className="h-4 w-4" aria-hidden />
             Done
+          </button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+const MODE_OPTIONS: { value: BulkAssignMode; label: string }[] = [
+  { value: 'add', label: 'Add' },
+  { value: 'remove', label: 'Remove' },
+  { value: 'replace', label: 'Replace' },
+]
+
+const MODE_HINTS: Record<BulkAssignMode, string> = {
+  add: 'The ticked projects are added to what each of them already has.',
+  remove: 'The ticked projects are taken off each of them. Anyone it would leave with none is skipped.',
+  replace: 'Each of them ends up on just the ticked projects.',
+}
+
+const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`
+
+export type BulkAssignResult = { tone: 'success' | 'error'; text: string; failedIds: string[] }
+
+/**
+ * Assigns projects to many contributors at once. Projects are grouped by the lead who runs them, and
+ * each contributor only gets the ticked ones their own lead runs.
+ */
+export function BulkAssignProjectsModal({
+  users,
+  leadNameById,
+  onClose,
+  onDone,
+}: {
+  users: Pick<User, 'id' | 'name' | 'lead_id'>[]
+  leadNameById: Map<string, string>
+  onClose: () => void
+  onDone: (result: BulkAssignResult) => void
+}) {
+  const queryClient = useQueryClient()
+  const { projects, projectLeads, assignments, loaded } = useProjectData()
+  const [mode, setMode] = useState<BulkAssignMode>('add')
+  const [picked, setPicked] = useState<Set<number>>(new Set())
+
+  const leadIds = [...new Set(users.map((u) => u.lead_id).filter((id): id is string => Boolean(id)))]
+  const groups = leadIds
+    .map((leadId) => ({
+      leadId,
+      projects: projectLeads
+        .filter((row) => row.lead_id === leadId)
+        .map((row) => projects.find((p) => p.id === row.project_id))
+        .filter((p): p is Project => Boolean(p)),
+      count: users.filter((u) => u.lead_id === leadId).length,
+    }))
+    .filter((group) => group.projects.length > 0)
+    .sort((a, b) => (leadNameById.get(a.leadId) ?? '').localeCompare(leadNameById.get(b.leadId) ?? ''))
+  const noLead = users.filter((u) => !u.lead_id).length
+
+  const save = useMutation({
+    mutationFn: async () => {
+      const plans = planBulkAssignment(users, [...picked], mode, projectLeads, assignments)
+      const toWrite = plans.filter((plan): plan is Extract<BulkAssignPlan, { target: number[] }> => 'target' in plan)
+      const results = await Promise.allSettled(toWrite.map((plan) => setProjectAssignments(plan.userId, plan.leadProjectIds, plan.target)))
+      const failedIds = toWrite.filter((_, i) => results[i].status === 'rejected').map((plan) => plan.userId)
+      const firstFailure = results.find((r): r is PromiseRejectedResult => r.status === 'rejected')
+      return { written: toWrite.length, skipped: plans.length - toWrite.length, failedIds, reason: firstFailure ? errorMessage(firstFailure.reason, '') : '' }
+    },
+    onSuccess: ({ written, skipped, failedIds, reason }) => {
+      const done = written - failedIds.length
+      const skippedText = skipped > 0 ? ` Skipped ${plural(skipped, 'contributor')} it didn’t apply to${mode === 'remove' ? ' or would have left with no projects' : ''}.` : ''
+      onDone(
+        failedIds.length === 0
+          ? { tone: 'success', text: `Updated projects for ${plural(done, 'contributor')}.${skippedText}`, failedIds }
+          : {
+              tone: 'error',
+              text: `Updated projects for ${done} of ${plural(written, 'contributor')}. ${failedIds.length} failed${reason ? `: ${reason}` : ''}. They’re still selected so you can retry.${skippedText}`,
+              failedIds,
+            },
+      )
+    },
+    onSettled: () => invalidateAssignments(queryClient),
+  })
+
+  function toggle(projectId: number, on: boolean) {
+    setPicked((current) => {
+      const next = new Set(current)
+      if (on) next.add(projectId)
+      else next.delete(projectId)
+      return next
+    })
+  }
+
+  return (
+    <Modal title={`Projects for ${plural(users.length, 'contributor')}`} onClose={onClose}>
+      <div className="flex flex-col gap-3">
+        <SegmentedTabs aria-label="How to apply the projects" value={mode} onChange={setMode} options={MODE_OPTIONS} />
+        <p className="text-sm text-gray-600">{MODE_HINTS[mode]} Each contributor only gets their own lead’s projects.</p>
+        {!loaded ? (
+          <p className="text-sm text-gray-400">Loading projects…</p>
+        ) : groups.length === 0 ? (
+          <p className="text-sm text-gray-500">None of their leads run any projects yet.</p>
+        ) : (
+          <div className="flex max-h-[50vh] flex-col gap-3 overflow-y-auto">
+            {groups.map((group) => (
+              <div key={group.leadId}>
+                {groups.length > 1 && (
+                  <p className="mb-1 text-xs font-medium text-gray-500">
+                    {leadNameById.get(group.leadId) ?? 'Lead'}’s projects · {plural(group.count, 'contributor')}
+                  </p>
+                )}
+                <ul className="divide-y divide-gray-100 rounded-lg border border-gray-200">
+                  {group.projects.map((project) => (
+                    <li key={project.id}>
+                      <label className="flex cursor-pointer items-center gap-3 px-3 py-2.5 text-sm hover:bg-gray-50">
+                        <input type="checkbox" checked={picked.has(project.id)} disabled={save.isPending} onChange={(e) => toggle(project.id, e.target.checked)} />
+                        <span className="flex-1 font-medium text-gray-800">{project.name}</span>
+                        {project.code && <span className="font-mono text-xs text-gray-400">{project.code}</span>}
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        )}
+        {noLead > 0 && <p className="text-xs text-gray-500">{plural(noLead, 'selected contributor')} without a lead will be skipped.</p>}
+        {save.isError && <p className="text-sm text-status-danger-text">{errorMessage(save.error, 'Couldn’t save that.')}</p>}
+        <div className="flex justify-end gap-2">
+          <button type="button" onClick={onClose} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600">
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => save.mutate()}
+            disabled={!loaded || save.isPending || picked.size === 0}
+            className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+          >
+            <Check className="h-4 w-4" aria-hidden />
+            {save.isPending ? 'Saving…' : picked.size === 0 ? 'Tick a project' : `${MODE_OPTIONS.find((o) => o.value === mode)!.label} ${plural(picked.size, 'project')}`}
           </button>
         </div>
       </div>

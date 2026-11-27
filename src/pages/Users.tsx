@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { FoldText } from '../components/FoldText'
 import { Link, useSearchParams } from 'react-router-dom'
-import { FileUp, KeyRound, LogIn, Trash2, UserCheck, UserMinus, UserPlus, X, SlidersHorizontal, TriangleAlert } from 'lucide-react'
+import { FileUp, FolderKanban, KeyRound, LogIn, Trash2, UserCheck, UserMinus, UserPlus, X, SlidersHorizontal, TriangleAlert } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ColumnDef, RowSelectionState } from '@tanstack/react-table'
 import { api, supabase } from '../lib/api'
@@ -21,7 +21,7 @@ import { ActionsMenu } from '../components/ActionsMenu'
 import { Select } from '../components/Select'
 import { FilterBar, FilterField, SearchInput, SegmentedTabs, toolbarControlClass } from '../components/TableToolbar'
 import { TeamSettings } from '../components/TeamSettings'
-import { ProjectTags } from '../components/ProjectTags'
+import { BulkAssignProjectsModal, ProjectTags } from '../components/ProjectTags'
 import { fetchProjectLeads } from '../lib/cbProjects'
 import { BulkImportUsersModal } from '../components/BulkImportUsersModal'
 import { contributorPath } from '../lib/urlRef'
@@ -83,6 +83,7 @@ export function Users({ view = 'cbs' }: { view?: 'cbs' | 'leads' | 'managers' })
   const [resetTarget, setResetTarget] = useState<User | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null)
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
+  const [bulkAssigningProjects, setBulkAssigningProjects] = useState(false)
   const [form, setForm] = useState(emptyForm)
   const [resetPassword, setResetPassword] = useState('')
   // Modal forms report their own failures inline; everything else reports here.
@@ -845,6 +846,16 @@ export function Users({ view = 'cbs' }: { view?: 'cbs' | 'leads' | 'managers' })
               className={bulkSelectClass}
             />
           )}
+          {view === 'cbs' && (
+            <button
+              onClick={() => setBulkAssigningProjects(true)}
+              disabled={bulkBusy}
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-sky-700 hover:underline disabled:opacity-50"
+            >
+              <FolderKanban className="h-4 w-4" aria-hidden />
+              Assign projects
+            </button>
+          )}
           <button
             onClick={() => bulkSetActive(true)}
             disabled={bulkBusy}
@@ -1074,6 +1085,19 @@ export function Users({ view = 'cbs' }: { view?: 'cbs' | 'leads' | 'managers' })
             </div>
           </form>
         </Modal>
+      )}
+
+      {bulkAssigningProjects && (
+        <BulkAssignProjectsModal
+          users={rows.filter((u) => selectedIds.includes(u.id))}
+          leadNameById={leadNameById}
+          onClose={() => setBulkAssigningProjects(false)}
+          onDone={({ tone, text, failedIds }) => {
+            setBulkAssigningProjects(false)
+            setRowSelection(Object.fromEntries(failedIds.map((id) => [id, true])))
+            setNotice({ tone, text })
+          }}
+        />
       )}
 
       {bulkDeleteConfirm && (
