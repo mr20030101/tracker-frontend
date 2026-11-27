@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 10.7.0 — 2026-11-27
+
 ### Changed
 
 - **Data Quality loads much faster, one tab at a time.** Each check (Duplicate Task IDs, Missing Project, Missing Task ID, High Daily Volume) is a tab, and a tab only loads when you open it. Missing Project and Missing Task ID load just the tasks they list instead of every task, and View tasks loads just that person's day. What's loaded is kept for 10 minutes, so switching tabs or coming back to the page doesn't load it again; edits and deletes refresh it, and **Refresh** reloads it any time.
