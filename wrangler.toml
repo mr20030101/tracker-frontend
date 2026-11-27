@@ -1,0 +1,6 @@
+# Cloudflare Pages project. The site is built with `npm run build` into dist/; the Functions in
+# functions/ (the twins of api/ on Vercel) are bundled by Cloudflare. Secrets such as
+# SUPABASE_SERVICE_ROLE_KEY are set in the Pages project's settings, never here.
+name = "greyowlstracker"
+pages_build_output_dir = "dist"
+compatibility_date = "2026-11-01"

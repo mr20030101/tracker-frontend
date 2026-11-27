@@ -18,9 +18,10 @@ function scrub(event: { type: 'vital'; url: string; route?: string }) {
   }
 }
 
-// The measuring script only exists on Vercel, so it is skipped in local development.
+// The measuring script only exists on Vercel, so it is skipped in local development and in the
+// Cloudflare Pages build (VERCEL_BUILD is set in vite.config.ts).
 export function SpeedInsightsTracker() {
   const { pathname } = useLocation()
-  if (!import.meta.env.PROD) return null
+  if (!import.meta.env.PROD || !import.meta.env.VERCEL_BUILD) return null
   return <SpeedInsights route={routeOf(pathname)} beforeSend={scrub} />
 }

@@ -1,10 +1,13 @@
-// Server side of the public Apply form, run by the Vercel Function in api/apply.ts. The form used
-// to call submit_hiring_application straight from the browser with the public anon key, so a
-// script could skip both the Philippines-only rule (checked only in the page) and any bot check.
-// Now the RPC is closed to anon, and only this gate calls it, with the service role key, after:
-//   1. the visitor's country (x-vercel-ip-country, from their IP address) is the Philippines
+// Server side of the public Apply form, run by api/apply.ts on Vercel and functions/api/apply.ts on
+// Cloudflare Pages. The form used to call submit_hiring_application straight from the browser with
+// the public anon key, so a script could skip both the Philippines-only rule (checked only in the
+// page) and any bot check. Now the RPC is closed to anon, and only this gate calls it, with the
+// service role key, after:
+//   1. the visitor's country (from their IP address, as the host reports it) is the Philippines
 //   2. Cloudflare Turnstile confirms the token the widget gave the page
-// Kept free of Vercel and browser APIs so it can be tested with a fake fetch.
+// Kept free of host and browser APIs so it can be tested with a fake fetch.
+
+import { requestCountry, requestIp, servedByCloudflare } from './host.js'
 
 export const ELIGIBLE_COUNTRY = 'PH'
 const SITEVERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify'
@@ -14,7 +17,10 @@ export interface ApplyGateEnv {
   SUPABASE_URL?: string
   VITE_SUPABASE_URL?: string
   SUPABASE_SERVICE_ROLE_KEY?: string
-  /** Set to "1" by Vercel; without it (local dev) a missing country header is let through. */
+  /**
+   * Set to "1" by Vercel; without it, and off Cloudflare (local dev), a missing country is let
+   * through. Cloudflare is recognised from the request itself (see host.ts).
+   */
   VERCEL?: string
 }
 
@@ -46,8 +52,9 @@ export async function handleApply(request: Request, env: ApplyGateEnv, fetchImpl
     return refuse(500, "Applications can't be received right now. Please try again later.")
   }
 
-  const country = request.headers.get('x-vercel-ip-country')?.toUpperCase() ?? null
-  if (country ? country !== ELIGIBLE_COUNTRY : env.VERCEL === '1') {
+  // On a real host a missing country means it couldn't be told, which isn't the Philippines.
+  const country = requestCountry(request)
+  if (country ? country !== ELIGIBLE_COUNTRY : env.VERCEL === '1' || servedByCloudflare(request)) {
     return refuse(403, 'Sorry, this project is only open to applicants based in the Philippines.')
   }
 
@@ -63,7 +70,7 @@ export async function handleApply(request: Request, env: ApplyGateEnv, fetchImpl
   if (!token) return refuse(400, 'Please complete the human check above the Submit button.')
 
   const verifyForm = new URLSearchParams({ secret: env.TURNSTILE_SECRET_KEY, response: token })
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+  const ip = requestIp(request)
   if (ip) verifyForm.set('remoteip', ip)
   let verified = false
   try {
