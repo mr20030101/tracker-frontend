@@ -144,7 +144,6 @@ export function AttendanceFormModal({
     if (s === 'status') {
       if (!status) return 'Pick a tasking status.'
       if (tasking && !taskId.trim()) return 'Add the Task ID, or N/A.'
-      if (tasking && !screenshotUrl.trim()) return 'Add the screenshot link, or N/A.'
     }
     return null
   }
@@ -365,12 +364,14 @@ export function AttendanceFormModal({
                   />
                 </label>
                 <label className="flex flex-col gap-1 text-sm">
-                  <span className="font-medium text-gray-700">Screenshot link of your progress</span>
+                  <span className="font-medium text-gray-700">
+                    Screenshot link of your progress <span className="font-normal text-gray-500">(optional)</span>
+                  </span>
                   <input
                     value={screenshotUrl}
                     onChange={(e) => setScreenshotUrl(e.target.value)}
                     maxLength={1000}
-                    placeholder="https://snipboard.io/..., or N/A"
+                    placeholder="https://snipboard.io/..."
                     className={inputClass}
                   />
                 </label>
@@ -414,7 +415,7 @@ export function AttendanceFormModal({
                           value: (
                             <span className="flex flex-col gap-0.5">
                               <span className="truncate font-mono text-xs">{taskId}</span>
-                              <span className="break-all text-xs text-gray-600">{screenshotUrl}</span>
+                              {screenshotUrl.trim() && <span className="break-all text-xs text-gray-600">{screenshotUrl}</span>}
                             </span>
                           ),
                         },
