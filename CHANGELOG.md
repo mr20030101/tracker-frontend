@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 10.4.0 — 2026-11-27
+
 ### Changed
 
 - **The screenshot link on the attendance form is optional.** When you pick Tasking, you still add the Task ID, but the screenshot link of your progress can be left blank. The Google Form gets "N/A" for it.
