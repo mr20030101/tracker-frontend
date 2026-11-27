@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 10.8.0 — 2026-11-27
+
 ### Added
 
 - **Submit a task in one click.** In your Task Log, an In Progress task has a **Submit** button next to its status (and **Mark as Submitted** in its actions menu), so you no longer have to open Edit, change the status and save. It asks you to confirm first. Its timer stops and, for RST, its Progress goes to 100%.
