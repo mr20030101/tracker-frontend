@@ -42,7 +42,7 @@ const PROGRAM_OPTIONS: { value: TeamProgram; label: string }[] = [
 ]
 
 const TEAM_LEGEND: { term: string; text: string }[] = [
-  { term: 'Program', text: 'Bootcamp or RST. RST teams file extensions on the RST Task Extension Form instead of the Scale form. Set by an admin.' },
+  { term: 'Program', text: 'Bootcamp or RST. RST teams file extensions on the RST Task Extension Form instead of the Scale form, log each task\u2019s Density, Link, Progress % and # of Frames, and export the Task Log in the RST task sheet\u2019s format. Set by an admin.' },
   { term: 'CTS Form', text: 'The CTS Form button and CTS column on the Dashboard, Task Log and profile.' },
   { term: 'Attendance', text: 'The Attendance page, form and countdown. Off, contributors can’t file it themselves.' },
   {

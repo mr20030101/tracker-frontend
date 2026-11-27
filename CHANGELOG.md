@@ -14,6 +14,11 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Added
+
+- **RST tasks keep the task sheet's extra details.** On an RST team, the task form has Density, Task link, Progress % and # of Frames (all optional). A task marked Submitted goes to 100% and records the time it was finished. The task's details show them.
+- **The Task Log exports in the RST task sheet's format for RST teams.** Export CSV, with an RST team picked (or as an RST lead or team manager), gives the sheet's columns in its order: Task Level, Task ID, Density, Link, CB Email, Status, Progress %, # of Frames, Task Notes, Date Started, Time Started, Time Ended and Date Submitted, plus the Project. Bootcamp's export is unchanged.
+
 ## 10.4.0 — 2026-11-27
 
 ### Changed

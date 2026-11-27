@@ -4,12 +4,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { toISODate } from '../lib/week'
-import type { Project, Stage, SubmissionStatus, TaskSubmission } from '../types'
+import type { Project, Stage, SubmissionStatus, TaskDensity, TaskSubmission } from '../types'
 import { assignedProjectIds, fetchAssignments } from '../lib/cbProjects'
 import { Modal } from './Modal'
 import { Select } from './Select'
 import { isNetworkError, queueSubmission } from '../lib/offlineQueue'
 import { MANAGER_ROLES } from '../lib/roles'
+import { useTeamFeatures } from '../lib/teamFeatures'
 
 
 const STAGE_OPTIONS: { value: Stage; label: string }[] = [
@@ -17,6 +18,13 @@ const STAGE_OPTIONS: { value: Stage; label: string }[] = [
   { value: 'l0', label: 'L0' },
   { value: 'l1', label: 'L1' },
   { value: 'l10', label: 'L10' },
+]
+
+const DENSITY_OPTIONS: { value: TaskDensity | ''; label: string }[] = [
+  { value: '', label: '—' },
+  { value: 'easy', label: 'Easy' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'complex', label: 'Complex' },
 ]
 
 const STATUS_OPTIONS: { value: SubmissionStatus; label: string }[] = [
@@ -52,6 +60,17 @@ const emptyForm = {
   date: toISODate(new Date()),
   notes: '',
   snipboard_url: '',
+  // The RST team's extra fields, shown only for an RST contributor's task.
+  density: '' as TaskDensity | '',
+  task_link: '',
+  progress_pct: '',
+  frames: '',
+}
+
+// A whole number from a field, or null when it's blank.
+function wholeNumber(value: string): number | null {
+  const n = Number.parseInt(value, 10)
+  return value.trim() === '' || Number.isNaN(n) ? null : n
 }
 
 export function TaskSubmissionForm({ submission, onClose }: Props) {
@@ -76,6 +95,10 @@ export function TaskSubmissionForm({ submission, onClose }: Props) {
           date: submission.date?.slice(0, 10) ?? toISODate(new Date()),
           notes: submission.notes ?? '',
           snipboard_url: submission.snipboard_url ?? '',
+          density: submission.density ?? '',
+          task_link: submission.task_link ?? '',
+          progress_pct: submission.progress_pct == null ? '' : String(submission.progress_pct),
+          frames: submission.frames == null ? '' : String(submission.frames),
         }
       : { ...emptyForm, cb_email: isManager ? '' : (user?.email ?? '') },
   )
@@ -100,6 +123,9 @@ export function TaskSubmissionForm({ submission, onClose }: Props) {
   })
   const contributorLeadId = !isManager ? (user?.lead_id ?? null) : lookedUp?.leadId
   const contributorId = !isManager ? (user?.id ?? null) : (lookedUp?.id ?? null)
+  // RST teams log a task's Density, Link, Progress % and # of Frames too (their task sheet's columns).
+  const contributorTeam = useTeamFeatures(contributorId)
+  const isRst = contributorTeam.loaded && contributorTeam.program === 'rst'
   const { data: contributorAssignments } = useQuery({
     queryKey: ['cb-project-assignments', contributorId],
     queryFn: () => fetchAssignments([contributorId!]),
@@ -156,6 +182,14 @@ export function TaskSubmissionForm({ submission, onClose }: Props) {
         date: form.date || null,
         notes: form.notes || null,
         snipboard_url: form.snipboard_url || null,
+        ...(isRst
+          ? {
+              density: form.density || null,
+              task_link: form.task_link.trim() || null,
+              progress_pct: wholeNumber(form.progress_pct),
+              frames: wholeNumber(form.frames),
+            }
+          : {}),
       }
 
       if (submission) {
@@ -302,11 +336,77 @@ export function TaskSubmissionForm({ submission, onClose }: Props) {
           <Select
             fullWidth
             value={form.status}
-            onChange={(value) => setForm({ ...form, status: value as SubmissionStatus })}
+            // Submitted means done: Progress goes to 100% (the database does the same).
+            onChange={(value) => setForm({ ...form, status: value as SubmissionStatus, ...(value === 'submitted' ? { progress_pct: '100' } : {}) })}
             options={STATUS_OPTIONS}
             className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
           />
         </div>
+
+        {isRst && (
+          <>
+            <div>
+              <label htmlFor={`${projectFieldId}-density`} className="mb-1 block text-sm font-medium text-gray-700">
+                Density
+              </label>
+              <Select
+                id={`${projectFieldId}-density`}
+                fullWidth
+                value={form.density}
+                onChange={(value) => setForm({ ...form, density: value as TaskDensity | '' })}
+                options={DENSITY_OPTIONS}
+                className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-x-4">
+              <div>
+                <label htmlFor={`${projectFieldId}-progress`} className="mb-1 block text-sm font-medium text-gray-700">
+                  Progress %
+                </label>
+                <input
+                  id={`${projectFieldId}-progress`}
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={form.progress_pct}
+                  onChange={(e) => setForm({ ...form, progress_pct: e.target.value })}
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
+                />
+              </div>
+              <div>
+                <label htmlFor={`${projectFieldId}-frames`} className="mb-1 block text-sm font-medium text-gray-700">
+                  # of Frames
+                </label>
+                <input
+                  id={`${projectFieldId}-frames`}
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  step={1}
+                  value={form.frames}
+                  onChange={(e) => setForm({ ...form, frames: e.target.value })}
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
+                />
+              </div>
+            </div>
+            <div className="sm:col-span-2">
+              <label htmlFor={`${projectFieldId}-link`} className="mb-1 block text-sm font-medium text-gray-700">
+                Task link
+              </label>
+              <input
+                id={`${projectFieldId}-link`}
+                type="url"
+                placeholder="https://..."
+                maxLength={2000}
+                value={form.task_link}
+                onChange={(e) => setForm({ ...form, task_link: e.target.value })}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-accent"
+              />
+            </div>
+          </>
+        )}
 
         <div className="sm:col-span-2">
           <label className="mb-1 block text-sm font-medium text-gray-700">Screenshot link</label>
