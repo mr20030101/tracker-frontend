@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 10.6.0 — 2026-11-27
+
 ### Changed
 
 - **RST tasks don't ask for a Task link any more.** The RST export's Link column is the task's Remotasks link, made from its Task ID.
