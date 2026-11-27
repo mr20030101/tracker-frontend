@@ -14,6 +14,11 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Added
+
+- **Submit a task in one click.** In your Task Log, an In Progress task has a **Submit** button next to its status (and **Mark as Submitted** in its actions menu), so you no longer have to open Edit, change the status and save. It asks you to confirm first. Its timer stops and, for RST, its Progress goes to 100%.
+- **Started and Ended in the Task Log, for RST teams.** Next to Time, each task shows when it was started (logged) and when it ended (marked Submitted), with the date under each time. Leads see them for an RST team (their own, or the one picked under Team), and RST contributors see them in their own Task Log. Bootcamp's Task Log is unchanged.
+
 ## 10.7.0 — 2026-11-27
 
 ### Changed
