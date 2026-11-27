@@ -174,9 +174,14 @@ async function setCurrent(taskId, row, created = false) {
 }
 
 // Other people may log the same task ID; yours is the one credited to your email.
+// Looked up by your email first (cb_email_lower, indexed: 20261124_task_email_lookup.sql), so only
+// your rows are read. By task_id ilike alone no index could serve it, and Postgres ran the
+// row-level security check on every task in the table: "canceling statement due to statement timeout".
 async function findOwnRow(taskId, profile) {
-  const rows = await rest(`task_submissions?task_id=ilike.${taskId}&select=${SUBMISSION_FIELDS},cb_email`)
   const email = String(profile.email ?? '').toLowerCase()
+  const rows = await rest(
+    `task_submissions?cb_email_lower=eq.${encodeURIComponent(email)}&task_id=ilike.${taskId}&select=${SUBMISSION_FIELDS},cb_email`,
+  )
   const row = rows.find((r) => String(r.cb_email ?? '').toLowerCase() === email)
   return { row }
 }
