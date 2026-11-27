@@ -13,7 +13,9 @@ export async function fetchAllPages<T>(page: (from: number, to: number) => PageR
   const rows: T[] = []
   for (let from = 0; ; from += PAGE_SIZE) {
     const { data, error } = await page(from, from + PAGE_SIZE - 1)
-    if (error) throw error
+    // Supabase's error is a plain object: as an Error (keeping its code and details), callers'
+    // `err instanceof Error ? err.message : …` show the real reason, not their fallback.
+    if (error) throw error instanceof Error ? error : Object.assign(new Error(error.message), error)
     rows.push(...(data ?? []))
     if ((data?.length ?? 0) < PAGE_SIZE) return rows
   }
