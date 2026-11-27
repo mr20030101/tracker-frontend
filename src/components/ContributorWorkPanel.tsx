@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Ban,
   CalendarDays,
+  CircleCheck,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -53,6 +54,7 @@ import { TaskTimer } from './TaskTimer'
 import { timeEditMode } from '../lib/taskTimer'
 import { SortableHeader } from './SortableHeader'
 import { CtsFormModal } from './CtsFormModal'
+import { TaskTimeCell } from './TaskTimeCell'
 import { goesToCts } from '../lib/cts'
 import { useTeamFeatures } from '../lib/teamFeatures'
 import { TaskSubmissionForm } from './TaskSubmissionForm'
@@ -160,7 +162,9 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
     placeholderData: (previous) => previous,
   })
   // The CTS Form and column only for a team that still sends its tasks to CTS.
-  const { ctsEnabled, ctsTrainer } = useTeamFeatures(data?.user?.id)
+  const { ctsEnabled, ctsTrainer, program } = useTeamFeatures(data?.user?.id)
+  // RST teams also see when each task was started and ended, as in their task sheet.
+  const isRst = program === 'rst'
 
   const { data: allProjects = [] } = useQuery({
     queryKey: ['projects'],
@@ -219,6 +223,26 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] })
     },
   })
+
+  // Submits an in-progress task in one click (the row's Submit button), instead of Edit → Status
+  // → Save. The database stops its timer and records when it ended.
+  const submitMutation = useMutation({
+    mutationFn: async (id: number) => api.patch(`/task-submissions/${id}`, { status: 'submitted' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contributor'] })
+      queryClient.invalidateQueries({ queryKey: ['task-submissions'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] })
+      // Streaks, badges and the team's board move with every submission.
+      queryClient.invalidateQueries({ queryKey: ['achievements'] })
+      queryClient.invalidateQueries({ queryKey: ['team-weeks'] })
+      queryClient.invalidateQueries({ queryKey: ['reward-standings'] })
+    },
+    onError: (err) => alertDialog(err instanceof Error ? err.message : 'Could not submit this task.'),
+  })
+  async function confirmSubmit(row: TaskSubmission) {
+    const which = row.task_id ? `task ${row.task_id}` : 'this task'
+    if (await confirmDialog(`Mark ${which} as Submitted? Its timer stops.`, { confirmLabel: 'Submit' })) submitMutation.mutate(row.id)
+  }
 
   // A lead or admin takes back a task's "Sent" (marked by mistake, or the CTS form didn't go
   // through), so it shows as Pending and can be sent from the CTS Form again.
@@ -773,6 +797,8 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                     <SortableHeader label="Stage" active={sort.key === 'stage'} dir={sort.dir} onClick={() => toggleSort('stage')} />
                     <SortableHeader label="Status" active={sort.key === 'status'} dir={sort.dir} onClick={() => toggleSort('status')} />
                     <th className="px-5 py-3">Time</th>
+                    {isRst && <th className="px-5 py-3">Started</th>}
+                    {isRst && <th className="px-5 py-3">Ended</th>}
                     {ctsEnabled && <th className="px-5 py-3">CTS</th>}
                     <th className="px-5 py-3">Requests</th>
                     <SortableHeader label="Date" active={sort.key === 'date'} dir={sort.dir} onClick={() => toggleSort('date')} />
@@ -782,7 +808,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                 <tbody className="divide-y divide-gray-100">
                   {pagedSubmissions.length === 0 && (
                     <tr>
-                      <td colSpan={ctsEnabled ? 9 : 8} className="px-5 py-6 text-center text-gray-400">
+                      <td colSpan={8 + (ctsEnabled ? 1 : 0) + (isRst ? 2 : 0)} className="px-5 py-6 text-center text-gray-400">
                         No submissions for this {viewMode}.
                       </td>
                     </tr>
@@ -939,12 +965,34 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                       <td className="px-5 py-3">
                         <div className="flex flex-wrap items-center gap-2">
                           <StatusPill status={row.status} />
+                          {canEdit && row.status === 'in_progress' && (
+                            <button
+                              type="button"
+                              onClick={() => confirmSubmit(row)}
+                              disabled={submitMutation.isPending && submitMutation.variables === row.id}
+                              title="Mark this task as Submitted"
+                              className="inline-flex min-h-7 items-center gap-1 rounded-full bg-accent px-2.5 text-xs font-semibold text-accent-foreground transition-colors duration-100 hover:bg-accent-hover disabled:opacity-50 pointer-coarse:min-h-11 pointer-coarse:px-3.5"
+                            >
+                              <CircleCheck className="h-3.5 w-3.5" aria-hidden />
+                              {submitMutation.isPending && submitMutation.variables === row.id ? 'Submitting...' : 'Submit'}
+                            </button>
+                          )}
                           <BackupFormFailed task={row} />
                         </div>
                       </td>
                       <td className="px-5 py-3">
                         <TaskTimer task={row} canControl={canEdit} editTime={canEdit ? timeEditMode(currentUser, row.user_id) : undefined} />
                       </td>
+                      {isRst && (
+                        <td className="px-5 py-3">
+                          <TaskTimeCell value={row.created_at} />
+                        </td>
+                      )}
+                      {isRst && (
+                        <td className="px-5 py-3">
+                          <TaskTimeCell value={row.ended_at} />
+                        </td>
+                      )}
                       {ctsEnabled && (
                       <td className="px-5 py-3">
                         {row.cts_submitted_at ? (
@@ -998,6 +1046,9 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                         <div className="flex justify-end">
                           <ActionsMenu
                             items={[
+                              ...(row.status === 'in_progress'
+                                ? [{ label: 'Mark as Submitted', icon: CircleCheck, onClick: () => confirmSubmit(row) }]
+                                : []),
                               { label: 'Edit', icon: Pencil, onClick: () => setFormTarget(row) },
                               ...timeRequestItems('extension', extension),
                               ...timeRequestItems('reclaim', reclaim),

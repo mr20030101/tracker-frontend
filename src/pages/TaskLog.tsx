@@ -24,6 +24,7 @@ import { BulkImportModal } from '../components/BulkImportModal'
 import { useAppSwitches } from '../lib/appSettings'
 import { ContributorWorkPanel } from '../components/ContributorWorkPanel'
 import { downloadCsv } from '../lib/csv'
+import { TaskTimeCell } from '../components/TaskTimeCell'
 import { rstExportRows, type RstExportTask } from '../lib/rstTaskExport'
 import { useTeamFeatures } from '../lib/teamFeatures'
 import { contributorPath } from '../lib/urlRef'
@@ -108,11 +109,11 @@ function ManagerTaskLog() {
   const bulkImportEnabled = useAppSwitches().bulk_import
   const [exporting, setExporting] = useState(false)
   const queryClient = useQueryClient()
-  // The export is in the RST task sheet's format for an RST team: the team picked in the filter, a
-  // lead's own, or (no team picked) an RST team manager's program. Bootcamp keeps the plain one.
-  const exportTeamLeadId = leadId || (me?.role === 'lead' ? me.id : null)
-  const exportTeam = useTeamFeatures(exportTeamLeadId)
-  const rstExport = exportTeamLeadId ? exportTeam.loaded && exportTeam.program === 'rst' : me?.role === 'team_manager' && me.program === 'rst'
+  // An RST team gets the RST task sheet's export and Started / Ended columns: the team picked in the
+  // filter, a lead's own, or (no team picked) an RST team manager's program. Bootcamp keeps the plain ones.
+  const rstTeamLeadId = leadId || (me?.role === 'lead' ? me.id : null)
+  const rstTeam = useTeamFeatures(rstTeamLeadId)
+  const isRst = rstTeamLeadId ? rstTeam.loaded && rstTeam.program === 'rst' : me?.role === 'team_manager' && me.program === 'rst'
 
   const { data: projects } = useQuery({
     queryKey: ['projects'],
@@ -191,7 +192,7 @@ function ManagerTaskLog() {
       const rows = await fetchAllPages(pageOf)
 
       const projectById = new Map((projects ?? []).map((p) => [p.id, p.name]))
-      if (rstExport) {
+      if (isRst) {
         downloadCsv(`rst-task-log-${toISODate(new Date())}.csv`, rstExportRows((rows ?? []) as RstExportTask[], (id) => projectById.get(id)))
         return
       }
@@ -414,7 +415,7 @@ function ManagerTaskLog() {
           )
         }
       >
-        <StackTable className="w-full min-w-[56rem] text-left text-sm">
+        <StackTable className={`w-full ${isRst ? 'min-w-[66rem]' : 'min-w-[56rem]'} text-left text-sm`}>
           <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
             <tr>
               <SortableHeader
@@ -433,13 +434,15 @@ function ManagerTaskLog() {
                 onClick={() => toggleSort('status')}
               />
               <th className="px-5 py-3">Time</th>
+              {isRst && <th className="px-5 py-3">Started</th>}
+              {isRst && <th className="px-5 py-3">Ended</th>}
               <th className="px-5 py-3 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {isLoading && (
               <tr>
-                <td colSpan={7} className="px-5 py-6 text-center text-gray-400">
+                <td colSpan={isRst ? 9 : 7} className="px-5 py-6 text-center text-gray-400">
                   Loading...
                 </td>
               </tr>
@@ -507,6 +510,17 @@ function ManagerTaskLog() {
                 <td className="whitespace-nowrap px-5 py-3">
                   <TaskTimer task={row} canControl={false} editTime={timeEditMode(user, row.user_id)} />
                 </td>
+                {/* When it was logged, and when it became Submitted (RST teams only). */}
+                {isRst && (
+                  <td className="px-5 py-3">
+                    <TaskTimeCell value={row.created_at} />
+                  </td>
+                )}
+                {isRst && (
+                  <td className="px-5 py-3">
+                    <TaskTimeCell value={row.ended_at} />
+                  </td>
+                )}
                 <td className="whitespace-nowrap px-5 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center justify-end gap-2">
                     <button
