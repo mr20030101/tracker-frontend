@@ -14,6 +14,14 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+### Added
+
+- **A floating button on Remotasks pages (browser extension 1.11.0).** The extension now puts an owl button in the corner of Remotasks pages, with your task's timer next to it while one runs. Click it to open the extension right there on the page, already filled in with the task you're on, without going to the toolbar. Drag it anywhere out of the way; it stays where you leave it. To make it smaller, press the **›** at its right end: it shrinks to just the timer (a small owl with no task running), and **‹** brings it back. You can turn it off at the bottom of the extension. Update the extension from its **Update available** banner to get it.
+
+### Changed
+
+- **The browser extension is back for the RST team.** Resources shows the Browser extension card to RST contributors, RST leads and the RST team manager again, as it does for Bootcamp.
+
 ## 10.10.0 — 2026-11-28
 
 ### Added

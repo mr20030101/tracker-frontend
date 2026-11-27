@@ -15,6 +15,7 @@ const INSTALL_STEPS = [
 
 const USAGE_STEPS = [
   'Pick your project and stage, paste a task ID (or task link) and press Start. It’s logged as In Progress with its timer running.',
+  'On Remotasks, the owl button in the corner shows your timer and opens the extension right on the page. Drag it out of the way, shrink it to just the timer with the › at its end, or turn it off at the bottom of the extension.',
   'Paste your screenshot link (Snipboard, Lightshot, etc.) on the task card and press Save. It’s the same Screenshot link as on Add Submission.',
   'Press Submitted when you’re done. It stops the timer and saves the screenshot link too, if you haven’t pressed Save.',
   'Pause and Resume stop and restart the timer. Reset clears a wrong task ID, and Reload brings everything up to date from the tracker.',

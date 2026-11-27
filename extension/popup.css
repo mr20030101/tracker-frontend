@@ -149,6 +149,14 @@ textarea {
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
+/* Their own size, not the text fields' full width: the chips' hidden radios stretched 360px past
+   their chip, which scrolled the page sideways, and the floating button's checkbox became a box. */
+input[type='radio'],
+input[type='checkbox'] {
+  width: auto;
+  padding: 0;
+}
+
 input:focus,
 select:focus,
 textarea:focus {
@@ -777,4 +785,33 @@ textarea {
   margin: 0;
   padding-left: 18px;
   line-height: 1.5;
+}
+
+/* --- the floating button's panel (content.js) and its setting ------------------------------ */
+
+/* In the panel the iframe sets the width, and it never scrolls sideways. */
+html.embedded body {
+  width: 100%;
+  overflow-x: hidden;
+}
+
+.footer {
+  padding: 10px 16px 14px;
+  border-top: 1px solid var(--mist);
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--slate);
+  cursor: pointer;
+}
+
+.toggle input {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--beacon);
 }

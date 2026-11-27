@@ -4,6 +4,12 @@ Logs and times your Remotasks tasks in the tracker from a browser button, for Ch
 Brave. It signs in with your tracker account and shows your email and Remotasks ID from your
 profile.
 
+- **Floating button:** on Remotasks pages an owl button floats in the corner, showing the task's
+  timer while one runs (green dot running, grey paused). Click it to open the extension right there
+  on the page, the same as the toolbar button; it follows Remotasks to the next task's ID. Drag it
+  anywhere out of the way and it stays there. The **›** at its right end makes it smaller: just the
+  timer while a task runs, a small owl otherwise (**‹** brings the full size back). Escape or a click on the page closes it. Turn it off
+  (or back on) with **Floating button on Remotasks pages** at the bottom of the extension.
 - **Start:** open the extension on the task's Remotasks page (the ID is read from `?sceneId=` and
   filled in for you, on the Requests tab too), or paste a task ID or link, and press Start. The task is
   logged as **In Progress** under the project and stage picked, with its timer running. Your
@@ -35,7 +41,8 @@ profile.
   the reason category there and submit it. Octet Mind tasks also get **Unclaim**, which fills the
   form's issue as **Other: Unclaim**.
 
-Nothing is read from or sent to Remotasks: the extension only talks to the tracker.
+Nothing is sent to Remotasks, and nothing on its pages is read or changed: the floating button
+only reads the page's address, for the task ID. The extension only talks to the tracker.
 
 ## Install
 
@@ -62,6 +69,10 @@ Raise `version` in `manifest.json`, then run `npm run pack:extension`. The zip l
 versions show the update banner.
 
 ## How it works
+
+`content.js` puts the floating button on Remotasks pages (in a shadow root, so neither side's
+styles leak) and opens `popup.html?embedded=1` in an iframe for its panel; the popup then takes
+the task ID from the page address it's given instead of the active tab.
 
 `background.js` signs in to Supabase and writes to `task_submissions` and `task_requests` the same
 way the tracker's Add Submission form and request buttons do, under the same access rules. The

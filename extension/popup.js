@@ -18,6 +18,40 @@ const REASON_PLACEHOLDERS = {
 
 const $ = (id) => document.getElementById(id)
 
+// Opened from the floating button on a Remotasks page (content.js) instead of the toolbar: the
+// page's address comes in the URL, and again in a message whenever Remotasks moves to another task.
+const PARAMS = new URLSearchParams(location.search)
+const EMBEDDED = PARAMS.has('embedded')
+let pageUrl = PARAMS.get('page')
+const PAGE_ORIGIN = (() => {
+  try {
+    const url = new URL(pageUrl ?? '')
+    return /(^|\.)remotasks\.com$/.test(url.hostname) ? url.origin : null
+  } catch {
+    return null
+  }
+})()
+if (EMBEDDED) document.documentElement.classList.add('embedded')
+
+function tellPage(message) {
+  if (EMBEDDED && PAGE_ORIGIN) window.parent.postMessage(message, PAGE_ORIGIN)
+}
+
+if (EMBEDDED && PAGE_ORIGIN) {
+  window.addEventListener('message', (event) => {
+    if (event.source !== window.parent || event.origin !== PAGE_ORIGIN) return
+    if (event.data?.type === 'gotracker:page' && typeof event.data.url === 'string') {
+      pageUrl = event.data.url
+      fillFromPage()
+    }
+  })
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') tellPage({ type: 'gotracker:close' })
+  })
+  // The panel grows and shrinks with what's showing.
+  new ResizeObserver(() => tellPage({ type: 'gotracker:size', height: document.body.getBoundingClientRect().height })).observe(document.body)
+}
+
 async function call(message) {
   const response = await chrome.runtime.sendMessage(message)
   if (!response?.ok) throw new Error(response?.error ?? 'Something went wrong.')
@@ -348,23 +382,27 @@ $('request').addEventListener('submit', (event) => {
 })
 
 // On a Remotasks task page (when the popup opens, and on Reload): its ID goes into both task ID
-// boxes, unless one is typed already.
+// boxes, unless one is typed already. An ID filled in from an earlier page is replaced, so the panel
+// on the page follows Remotasks to the next task.
+let filledTaskId = null
 async function fillFromPage() {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+  const address = EMBEDDED ? pageUrl : (await chrome.tabs.query({ active: true, currentWindow: true }))[0]?.url
   let taskId = null
   try {
-    const url = new URL(tab?.url ?? '')
+    const url = new URL(address ?? '')
     const id = url.searchParams.get('sceneId')
     if (/(^|\.)remotasks\.com$/.test(url.hostname) && /^[0-9a-f]{24}$/i.test(id ?? '')) taskId = id.toLowerCase()
   } catch {
     // Not a page with a URL we can read.
   }
   if (!taskId) return
-  if (!$('task-input').value) $('task-input').value = taskId
-  if (!$('request-task').value) {
+  const fillable = (input) => !input.value || input.value === filledTaskId
+  if (fillable($('task-input'))) $('task-input').value = taskId
+  if (fillable($('request-task')) && $('request-task').value !== taskId) {
     $('request-task').value = taskId
     renderRequests()
   }
+  filledTaskId = taskId
 }
 
 // --- updates ------------------------------------------------------------------------------
@@ -415,6 +453,16 @@ $('update-download').addEventListener('click', async () => {
 })
 
 $('update-reload').addEventListener('click', () => chrome.runtime.reload())
+
+// --- floating button ----------------------------------------------------------------------
+
+// Kept apart from settings, which are per account, so signing out doesn't bring it back.
+chrome.storage.local.get('floatingButton').then(({ floatingButton }) => {
+  $('floating-button').checked = floatingButton !== false
+})
+$('floating-button').addEventListener('change', (event) => {
+  chrome.storage.local.set({ floatingButton: event.currentTarget.checked })
+})
 
 renderRequestType()
 checkForUpdate()
