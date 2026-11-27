@@ -2,7 +2,8 @@ import { useEffect, useRef } from 'react'
 
 // Cloudflare Turnstile's "are you human" check for the public Apply form. Most visitors never see a
 // puzzle: it runs in the background and hands back a one-time token, which api/apply.ts verifies.
-// The site key is public (it's in the page either way); the secret key lives only in Vercel.
+// The site key is public (it's in the page either way; production builds take it from
+// .env.production); the secret key lives only in the host's secrets.
 
 const SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined
 const SCRIPT_URL = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'

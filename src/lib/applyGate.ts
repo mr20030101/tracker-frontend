@@ -8,6 +8,7 @@
 // Kept free of host and browser APIs so it can be tested with a fake fetch.
 
 import { requestCountry, requestIp, servedByCloudflare } from './host.js'
+import { DEFAULT_SUPABASE_URL } from './supabaseConfig.js'
 
 export const ELIGIBLE_COUNTRY = 'PH'
 const SITEVERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify'
@@ -46,7 +47,7 @@ const refuse = (status: number, message: string) => json(status, { message })
 export async function handleApply(request: Request, env: ApplyGateEnv, fetchImpl: typeof fetch = fetch): Promise<Response> {
   if (request.method !== 'POST') return refuse(405, 'Method not allowed.')
 
-  const supabaseUrl = env.SUPABASE_URL || env.VITE_SUPABASE_URL
+  const supabaseUrl = env.SUPABASE_URL || env.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL
   if (!env.TURNSTILE_SECRET_KEY || !supabaseUrl || !env.SUPABASE_SERVICE_ROLE_KEY) {
     console.error('api/apply: TURNSTILE_SECRET_KEY, SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is not set.')
     return refuse(500, "Applications can't be received right now. Please try again later.")

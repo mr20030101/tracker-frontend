@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { handleApply, type ApplyGateEnv } from './applyGate'
+import { DEFAULT_SUPABASE_URL } from './supabaseConfig'
 
 const ENV: ApplyGateEnv = {
   TURNSTILE_SECRET_KEY: 'secret',
@@ -113,6 +114,13 @@ describe('handleApply', () => {
     const response = await handleApply(request(APPLICATION), ENV, fetchImpl)
     expect(response.status).toBe(400)
     expect(((await response.json()) as { message: string }).message).toBe('An application with this email has already been submitted.')
+  })
+
+  it("uses the app's own Supabase project when SUPABASE_URL isn't set", async () => {
+    const fetchImpl = fakeFetch()
+    const response = await handleApply(request(APPLICATION), { ...ENV, SUPABASE_URL: undefined }, fetchImpl)
+    expect(response.status).toBe(200)
+    expect(String(fetchImpl.mock.calls[1][0])).toBe(`${DEFAULT_SUPABASE_URL}/rest/v1/rpc/submit_hiring_application`)
   })
 
   it('fails closed when a secret is missing', async () => {

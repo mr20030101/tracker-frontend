@@ -4,3 +4,9 @@
 name = "greyowlstracker"
 pages_build_output_dir = "dist"
 compatibility_date = "2026-11-01"
+
+# Plain settings the Functions read (public, so kept here rather than as secrets). With this file
+# in the repo, Cloudflare takes plain variables from here instead of the dashboard.
+[vars]
+# Send each saved attendance entry to the team's Google Form (src/lib/attendanceGoogleForm.ts).
+ATTENDANCE_GOOGLE_FORM = "on"
