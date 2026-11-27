@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 10.5.0 — 2026-11-27
+
 ### Added
 
 - **RST tasks keep the task sheet's extra details.** On an RST team, the task form has Density, Task link, Progress % and # of Frames (all optional). A task marked Submitted goes to 100% and records the time it was finished. The task's details show them.
