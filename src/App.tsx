@@ -2,6 +2,7 @@ import { lazy, Suspense, type ComponentType } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAppSwitches } from './lib/appSettings'
 import { auditsAllowed, useTeamFeatures } from './lib/teamFeatures'
+import { hubstaffAllowed } from './lib/hubstaff'
 import { useAuth } from './lib/auth'
 import { AppShell } from './components/AppShell'
 import { RemotasksIdGate } from './components/RemotasksIdGate'
@@ -31,6 +32,7 @@ const LeadTeam = page(() => import('./pages/LeadTeam'), 'LeadTeam')
 const Projects = page(() => import('./pages/Projects'), 'Projects')
 const DataQuality = page(() => import('./pages/DataQuality'), 'DataQuality')
 const Audits = page(() => import('./pages/Audits'), 'Audits')
+const Hubstaff = page(() => import('./pages/Hubstaff'), 'Hubstaff')
 const TeamReports = page(() => import('./pages/TeamReports'), 'TeamReports')
 const ActivityLog = page(() => import('./pages/ActivityLog'), 'ActivityLog')
 const AppSettings = page(() => import('./pages/AppSettings'), 'AppSettings')
@@ -94,6 +96,7 @@ function ProtectedLayout() {
         {isManager && switches.hiring && <Route path="/hiring" element={<Hiring />} />}
         {isManager && switches.data_quality && <Route path="/data-quality" element={<DataQuality />} />}
         {switches.audits && auditsAllowed(user, team.program, team.loaded) && <Route path="/audits" element={<Audits />} />}
+        {hubstaffAllowed(user, team.program, team.loaded) && <Route path="/hubstaff" element={<Hubstaff />} />}
         {isManager && <Route path="/team-reports" element={<TeamReports />} />}
         {isAdmin && <Route path="/activity-log" element={<ActivityLog />} />}
         {isAdmin && <Route path="/app-settings" element={<AppSettings />} />}

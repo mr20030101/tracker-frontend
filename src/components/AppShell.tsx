@@ -26,6 +26,7 @@ import {
   ReceiptText,
   LifeBuoy,
   BriefcaseBusiness,
+  Timer,
 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { prefersReducedMotion } from '../lib/motion'
@@ -51,6 +52,7 @@ import { useAppSwitches, type AppSwitches } from '../lib/appSettings'
 import { MANAGER_COUNTS_POLL_MS, useManagerCountsLive } from '../lib/managerCountsLive'
 import { OfflineQueueBanner } from './OfflineQueueBanner'
 import { auditsAllowed, useTeamFeatures } from '../lib/teamFeatures'
+import { hubstaffAllowed } from '../lib/hubstaff'
 import { billStatus, fetchLeadBills, fetchMyBilling, manilaToday } from '../lib/billing'
 import { MANAGER_ROLES } from '../lib/roles'
 import { seesManyTeams } from '../lib/roles'
@@ -77,6 +79,8 @@ function navSections(
   // What an admin has switched off on App Settings.
   switches: AppSwitches,
   role: string | undefined,
+  // RST contributors and leads, the RST team manager and admins.
+  hubstaff: boolean,
 ): {
   label: string
   // `urgent`: the badge turns red with `badgeTitle` explaining why (overdue requests).
@@ -90,6 +94,7 @@ function navSections(
         { to: '/', label: 'Dashboard', icon: LayoutDashboard },
         // Leads and admins only: contributors file from their Dashboard and the attendance countdown.
         ...(isManager && attendanceEnabled ? [{ to: '/attendance', label: 'Attendance', icon: CalendarCheck }] : []),
+        ...(hubstaff ? [{ to: '/hubstaff', label: 'Hubstaff', icon: Timer }] : []),
         { to: '/leaderboard', label: 'Leaderboard', icon: Trophy },
         { to: '/rewards', label: 'Rewards', icon: Gift },
       ],
@@ -204,6 +209,7 @@ const CRUMBS: Record<string, string> = {
   '/feedback': 'Feedback',
   '/support': 'Support',
   '/audits': 'Audits',
+  '/hubstaff': 'Hubstaff',
   '/data-quality': 'Data Quality',
   '/team-reports': 'Team Reports',
   '/activity-log': 'Activity Log',
@@ -423,7 +429,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const appSwitches = useAppSwitches(Boolean(user))
   // Audits only for the RST team (and admins); in the menu, only once the team is known.
   const switches = { ...appSwitches, audits: appSwitches.audits && auditsAllowed(user, program, teamLoaded) && (user?.role !== 'lead' || teamLoaded) }
-  const sections = navSections(isManager, isAdmin, attendanceEnabled, messagingEnabled, pendingRequests, overdueRequests, pendingFeedback, unreadAnnouncements, isAdmin ? billsToConfirm : unpaidBills.length, overdueBills, isAdmin, supportBadge, switches, user?.role)
+  const sections = navSections(isManager, isAdmin, attendanceEnabled, messagingEnabled, pendingRequests, overdueRequests, pendingFeedback, unreadAnnouncements, isAdmin ? billsToConfirm : unpaidBills.length, overdueBills, isAdmin, supportBadge, switches, user?.role, hubstaffAllowed(user, program, teamLoaded) && (user?.role === 'admin' || user?.role === 'team_manager' || teamLoaded))
   const isCurrent = (item: { to: string; match?: string[] }) => (item.match ?? [item.to]).includes(location.pathname)
   const searchPages = [
     ...sections.flatMap((section) =>
