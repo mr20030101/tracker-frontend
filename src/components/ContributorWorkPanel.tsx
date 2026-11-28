@@ -27,7 +27,8 @@ import {
 } from 'lucide-react'
 import { api, errorMessage, supabase } from '../lib/api'
 import { useAuth } from '../lib/auth'
-import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, yearMonth, toISODate, weekStartIso, formatRange, formatTime } from '../lib/week'
+import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, yearMonth, toISODate, weekStartIso, formatRange } from '../lib/week'
+import { sheetDate, sheetTime } from '../lib/rstTaskExport'
 import { useNow } from '../lib/useNow'
 import { remotasksDiffViewerUrl } from '../lib/remotasks'
 import {
@@ -797,18 +798,18 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                     <SortableHeader label="Stage" active={sort.key === 'stage'} dir={sort.dir} onClick={() => toggleSort('stage')} />
                     <SortableHeader label="Status" active={sort.key === 'status'} dir={sort.dir} onClick={() => toggleSort('status')} />
                     <th className="px-5 py-3">Time</th>
-                    {isRst && <th className="px-5 py-3">Started</th>}
+                    {isRst && <SortableHeader label="Started" active={sort.key === 'date'} dir={sort.dir} onClick={() => toggleSort('date')} />}
                     {isRst && <th className="px-5 py-3">Ended</th>}
                     {ctsEnabled && <th className="px-5 py-3">CTS</th>}
                     <th className="px-5 py-3">Requests</th>
-                    <SortableHeader label="Date" active={sort.key === 'date'} dir={sort.dir} onClick={() => toggleSort('date')} />
+                    {!isRst && <SortableHeader label="Date" active={sort.key === 'date'} dir={sort.dir} onClick={() => toggleSort('date')} />}
                     <th className="px-5 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {pagedSubmissions.length === 0 && (
                     <tr>
-                      <td colSpan={8 + (ctsEnabled ? 1 : 0) + (isRst ? 2 : 0)} className="px-5 py-6 text-center text-gray-400">
+                      <td colSpan={8 + (ctsEnabled ? 1 : 0) + (isRst ? 1 : 0)} className="px-5 py-6 text-center text-gray-400">
                         No submissions for this {viewMode}.
                       </td>
                     </tr>
@@ -946,7 +947,7 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                       <td className="whitespace-nowrap px-5 py-3 font-mono text-xs text-gray-500">
                         <span className="inline-flex items-center gap-1.5">
                           {row.task_id ? (
-                            <a href={remotasksDiffViewerUrl(row.task_id)} target="_blank" rel="noreferrer" className="text-sky-700 hover:underline">
+                            <a href={remotasksDiffViewerUrl(row.task_id)} target="_blank" rel="noreferrer" title={row.task_id} className="block max-w-32 truncate text-sky-700 hover:underline">
                               {row.task_id}
                             </a>
                           ) : (
@@ -960,7 +961,11 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                           <SharedTaskIdTag task={row} />
                         </span>
                       </td>
-                      <td className="px-5 py-3 text-gray-600">{row.project?.name ?? '—'}</td>
+                      <td className="px-5 py-3 text-gray-600">
+                        <span className="block max-w-40 truncate" title={row.project?.name}>
+                          {row.project?.name ?? '—'}
+                        </span>
+                      </td>
                       <td className="px-5 py-3 uppercase text-gray-600">{row.stage}</td>
                       <td className="px-5 py-3">
                         <div className="flex flex-wrap items-center gap-2">
@@ -1038,10 +1043,18 @@ export function ContributorWorkPanel({ email, contributorName, canEdit, showGrap
                           <span className="text-xs text-gray-300">—</span>
                         )}
                       </td>
-                      <td className="px-5 py-3 text-gray-500">
-                        {row.date?.slice(0, 10) ?? '—'}
-                        {row.date && <span className="ml-1.5 text-xs text-gray-400">{formatTime(row.created_at)}</span>}
+                      {!isRst && (
+                      <td className="px-5 py-3">
+                        {row.date ? (
+                          <span className="whitespace-nowrap">
+                            <span className="block text-gray-700 tabular-nums">{sheetTime(row.created_at)}</span>
+                            <span className="block text-xs text-gray-400 tabular-nums">{sheetDate(row.date.slice(0, 10))}</span>
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
                       </td>
+                      )}
                       <td className="px-5 py-3 text-right">
                         <div className="flex justify-end">
                           <ActionsMenu
