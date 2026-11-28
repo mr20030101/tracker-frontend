@@ -14,6 +14,8 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 10.12.0 — 2026-11-28
+
 ### Added
 
 - **Hubstaff hours for the RST team.** RST contributors have a new **Hubstaff** page under Overview. Each day they enter the hours Hubstaff shows (7:32, or 7.5) and add a screenshot of it: pick, drop or paste the image. They can file for today or yesterday, and filing the same day again replaces it; their past days are listed below. RST leads, the RST team manager and admins see who filed for any day, with the hours, the screenshot and who hasn't filed yet. They can correct the hours when they don't match the screenshot, and the contributor's own figure stays shown next to the correction. Screenshots are kept in Google Drive.
