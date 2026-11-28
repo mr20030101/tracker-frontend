@@ -14,6 +14,12 @@ each stretch of work by the date it shipped.
 
 ## Unreleased
 
+## 10.12.1 — 2026-11-28
+
+### Fixed
+
+- **Submission dates match the Started column.** In a contributor's submissions, the Date column now shows the time with the date under it (7:17 AM over 11/28/2026), like Started and Ended, instead of 2026-11-28 7:17 AM wrapping onto two lines. Long project names and task IDs stay on one line and end in …; hover to see them in full. For RST, the Date column is gone because it repeated Started (Started now sorts the list), so the table fits without scrolling sideways.
+
 ## 10.12.0 — 2026-11-28
 
 ### Added
