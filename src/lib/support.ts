@@ -222,12 +222,12 @@ export async function screenshotToJpeg(file: Blob): Promise<Blob> {
   throw new Error('That screenshot is too large. Try a smaller one.')
 }
 
-/** Uploads a JPEG, reporting progress (0–1), and returns the ref to file the ticket with. */
-export async function uploadSupportScreenshot(jpeg: Blob, onProgress: (fraction: number) => void): Promise<string> {
+/** Uploads a JPEG to a screenshot endpoint, reporting progress (0–1), and returns its ref. */
+export async function uploadScreenshotTo(endpoint: string, jpeg: Blob, onProgress: (fraction: number) => void): Promise<string> {
   const token = await accessToken()
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
-    xhr.open('POST', SCREENSHOT_ENDPOINT)
+    xhr.open('POST', endpoint)
     xhr.setRequestHeader('Authorization', `Bearer ${token}`)
     xhr.setRequestHeader('Content-Type', 'image/jpeg')
     xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(e.loaded / e.total)
@@ -246,8 +246,11 @@ export async function uploadSupportScreenshot(jpeg: Blob, onProgress: (fraction:
   })
 }
 
-export async function fetchSupportScreenshot(ref: string): Promise<Blob> {
-  const response = await fetch(`${SCREENSHOT_ENDPOINT}?ref=${encodeURIComponent(ref)}`, {
+export const uploadSupportScreenshot = (jpeg: Blob, onProgress: (fraction: number) => void) =>
+  uploadScreenshotTo(SCREENSHOT_ENDPOINT, jpeg, onProgress)
+
+export async function fetchScreenshotFrom(endpoint: string, ref: string): Promise<Blob> {
+  const response = await fetch(`${endpoint}?ref=${encodeURIComponent(ref)}`, {
     headers: { Authorization: `Bearer ${await accessToken()}` },
   })
   if (!response.ok) {
@@ -256,3 +259,5 @@ export async function fetchSupportScreenshot(ref: string): Promise<Blob> {
   }
   return response.blob()
 }
+
+export const fetchSupportScreenshot = (ref: string) => fetchScreenshotFrom(SCREENSHOT_ENDPOINT, ref)
